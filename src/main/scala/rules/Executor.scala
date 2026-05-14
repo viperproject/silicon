@@ -385,7 +385,7 @@ object executor extends ExecutionRules {
           eval(s1, rhs, pve, v1)((s2, tRhs, eRhsNew, v2) => {
             val (tSnap, _) = ssaifyRhs(tRhs, rhs, eRhsNew, field.name, field.typ, v2, s2)
             v2.heapSupporter.execFieldAssign(s2, ass, tRcvr, eRcvrNew, tSnap, eRhsNew, pve, v2)((s1, v1) => {
-              val s2 = if (debugOn) v1.recordDebugHeap(s1, s.h, ass) else s1
+              val s2 = if (debugOn) v1.recordDebugHeap(s1, s.h, ExecStmt(ass)) else s1
               Q(s2, v1)})
           })
         })
@@ -417,7 +417,7 @@ object executor extends ExecutionRules {
         val esNew = eRcvrNew.map(rcvr => BigAnd(viper.silicon.state.utils.computeReferenceDisjointnessesExp(s, rcvr)))
         addFieldPerms(s, fields, v)((s0, v0) => {
           val s1 = s0.copy(g = s0.g + (x, (tRcvr, eRcvrNew)))
-          val s2 = if (debugOn) v0.recordDebugHeap(s1, s.h, stmt) else s1
+          val s2 = if (debugOn) v0.recordDebugHeap(s1, s.h, ExecStmt(stmt)) else s1
           v0.decider.assume(ts, Option.when(debugOn)(DebugExp.createInstance(Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false)
           Q(s2, v0)
         })
@@ -533,27 +533,29 @@ object executor extends ExecutionRules {
             tArgs zip (eArgsNew.get.map(Some(_)))
           else
             tArgs zip Seq.fill(tArgs.size)(None)
-          val s2 = s1.copy(g = Store(fargs.zip(argsWithExp)),
+          val s1a = s1.copy(g = Store(fargs.zip(argsWithExp)),
                            recordVisited = true)
-          consumes(s2, meth.pres, false, _ => pvePre, v1)((s3, _, v2) => {
+          consumes(s1a, meth.pres, false, _ => pvePre, v1)((s2, _, v2) => {
             v2.symbExLog.closeScope(preCondId)
-            val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
+            val postCondLog = new CommentRecord("Postcondition", s2, v2.decider.pcs)
             val postCondId = v2.symbExLog.openScope(postCondLog)
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
-            val s4 = s3.copy(g = s3.g + gOuts,
-                             oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
-            produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2)((s5, v3) => {
+            val s2a = s2.copy(g = s2.g + gOuts,
+                             oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
+            produces(s2a, freshSnap, meth.posts, _ => pveCallTransformed, v2)((s3, v3) => {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)
-                              .map(p => (p._1, s5.g.values(p._2))).toMap)
-              val s6 = s5.copy(g = s1.g + gLhs,
+                              .map(p => (p._1, s3.g.values(p._2))).toMap)
+              val s3a = s3.copy(g = s1.g + gLhs,
                                oldHeaps = s1.oldHeaps,
-                               intermediateHeapCause = None,
                                recordVisited = s1.recordVisited)
               v3.symbExLog.closeScope(sepIdentifier)
-              Q(s6, v3)})})})
+              val s3b = if (debugOn)
+                v3.recordDebugHeap(s3a, s3a.intermediateHeapCause.get._1, ExecStmt(call), s3a.intermediateHeapCause.get._3).copy(intermediateHeapCause = None)
+              else s3a
+              Q(s3b, v3)})})})
 
       case fold @ ast.Fold(pap @ ast.PredicateAccessPredicate(predAcc @ ast.PredicateAccess(eArgs, predicateName), _)) =>
         assert(s.constrainableARPs.isEmpty)
@@ -566,10 +568,14 @@ object executor extends ExecutionRules {
             permissionSupporter.assertPositive(s2, tPerm, if (debugOn) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
               predicateSupporter.fold(s3, predAcc, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3)((s4, v4) => {
-                  v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
-                  Q(s4.copy(intermediateHeapCause = None), v4)
-                }
-              )})))
+                v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
+                val s4a = if (debugOn) {
+                  val (parentLabel, _, interPCS) = s4.intermediateHeapCause.get
+                  v4.recordDebugHeap(s4, parentLabel, ExecStmt(fold), interPCS).copy(intermediateHeapCause = None)
+                } else s4
+                Q(s4a, v4)
+              })
+            })))
 
       case unfold @ ast.Unfold(pap @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), _)) =>
         assert(s.constrainableARPs.isEmpty)
@@ -587,22 +593,28 @@ object executor extends ExecutionRules {
               predicateSupporter.unfold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, pa)(
                 (s4, v4) => {
                   v2.decider.finishDebugSubExp(s"unfolded ${pa.toString}")
-                  Q(s4.copy(intermediateHeapCause = None), v4)
+                  val s4a = if (debugOn) {
+                    val (parentLabel, _, interPCS) = s4.intermediateHeapCause.get
+                    v2.recordDebugHeap(s4, parentLabel, ExecStmt(unfold), interPCS).copy(intermediateHeapCause = None)
+                  } else s4
+                  Q(s4a, v4)
                 })
             })
           }))
 
       case pckg @ ast.Package(wand, proofScript) =>
         val pve = PackageFailed(pckg)
-        val s0 = s.copy(isInPackage = true, intermediateHeapCause = Some(oldLabel, ExecStmt(pckg), oldPCS))
-          magicWandSupporter.packageWand(s0, wand, proofScript, pve, v)((s1, chWand, v1) => {
+        val s0 = if (debugOn)
+          s.copy(isInPackage = true, intermediateHeapCause = Some(oldLabel, ExecStmt(pckg), oldPCS))
+        else s.copy(isInPackage = true)
 
-            val hOps = s1.reserveHeaps.head + chWand
-            assert(s.exhaleExt || s1.reserveHeaps.length == 1)
-            val s2 =
-              if (s.exhaleExt) {
-                s1.copy(h = v1.heapSupporter.getEmptyHeap(s1.program),
-                        exhaleExt = true,
+        magicWandSupporter.packageWand(s0, wand, proofScript, pve, v)((s1, chWand, v1) => {
+          val hOps = s1.reserveHeaps.head + chWand
+          assert(s.exhaleExt || s1.reserveHeaps.length == 1)
+          val s2 =
+            if (s.exhaleExt) {
+              s1.copy(h = v1.heapSupporter.getEmptyHeap(s1.program),
+                      exhaleExt = true,
                         /* It is assumed, that s.reserveHeaps.head (hUsed) is not used or changed
                          * by the packageWand method. hUsed is normally used during transferring
                          * consume to store permissions that have already been consumed. The
@@ -610,25 +622,23 @@ object executor extends ExecutionRules {
                          * execution. hUsed should therefore be empty unless the package statement
                          * was triggered by heuristics during a consume operation.
                          */
-                        reserveHeaps = s.reserveHeaps.head +: hOps +: s1.reserveHeaps.tail)
-              } else {
-                /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
-                s1.copy(h = hOps,
-                        exhaleExt = false,
-                        reserveHeaps = Nil)
-              }
-            assert(s2.reserveHeaps.length == s.reserveHeaps.length)
-
-            val s3 = chWand match {
-              case ch: QuantifiedMagicWandChunk =>
-                v1.heapSupporter.triggerResourceIfNeeded(s2, wand, ch.singletonArgs.get, ch.singletonArgExps, v1)
-              case _ => s2
+                      reserveHeaps = s.reserveHeaps.head +: hOps +: s1.reserveHeaps.tail)
+            } else {
+              /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
+              s1.copy(h = hOps,
+                      exhaleExt = false,
+                      reserveHeaps = Nil)
             }
+          assert(s2.reserveHeaps.length == s.reserveHeaps.length)
+          val s3 = chWand match {
+            case ch: QuantifiedMagicWandChunk =>
+              v1.heapSupporter.triggerResourceIfNeeded(s2, wand, ch.singletonArgs.get, ch.singletonArgExps, v1)
+            case _ => s2
+          }
 
-            val s4 = if (debugOn) v1.recordDebugHeap(s3, s.h, pckg, oldPCS) else s3
-
-            continuation(s4.copy(isInPackage = s.isInPackage, intermediateHeapCause = None), v1)
-          })
+          val s4 = if (debugOn) v1.recordDebugHeap(s3, s.h, ExecStmt(pckg), oldPCS).copy(intermediateHeapCause = None) else s3
+          continuation(s4.copy(isInPackage = s.isInPackage), v1)
+        })
 
       case apply @ ast.Apply(e) =>
         val pve = ApplyFailed(apply)

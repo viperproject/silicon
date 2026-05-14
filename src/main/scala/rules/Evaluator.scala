@@ -762,7 +762,10 @@ object evaluator extends EvaluationRules {
                             constrainableARPs = s1.constrainableARPs)
                             .decCycleCounter(predicate)
                           val s10 = v5.stateConsolidator(s9).consolidateOptionally(s9, v5)
-                          val s11 = if (debugOn) v5.recordDebugHeap(s10, s1.h, uf, oldPCS) else s10
+                          val s11 = if (debugOn) {
+                            val (parentLabel, _, interPCS) = s10.intermediateHeapCause.get
+                            v5.recordDebugHeap(s10, parentLabel, EvalExp(uf), interPCS)
+                          } else s10
                           eval(s11, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))
                         })
                       } else {
@@ -775,7 +778,10 @@ object evaluator extends EvaluationRules {
                                            constrainableARPs = s1.constrainableARPs)
                                      .decCycleCounter(predicate)
                           val s10 = v5.stateConsolidator(s9).consolidateOptionally(s9, v5)
-                          val s11 = if (debugOn) v5.recordDebugHeap(s10, s1.h, uf, oldPCS) else s10
+                          val s11 = if (debugOn) {
+                            val (parentLabel, _, interPCS) = s10.intermediateHeapCause.get
+                            v5.recordDebugHeap(s10, parentLabel, EvalExp(uf), interPCS)
+                          } else s10
                           eval(s11, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))})
                       }
                     })
@@ -804,9 +810,8 @@ object evaluator extends EvaluationRules {
           magicWandSupporter.applyWand(s1, wand, pve, v1)((s2, v2) => {
             eval(s2, eIn, pve, v2)((s3, t, eInNew, v3) =>
               QB(s3, (t, eInNew), v3))
-        }))(join(eIn.typ, "joined_applying", s.relevantQuantifiedVariables.map(_._1),
-          joinExp, v))((s4, r4, v4)
-          => Q(s4.copy(intermediateHeapCause = s.intermediateHeapCause), r4._1, r4._2, v4))
+          }))(join(eIn.typ, "joined_applying", s.relevantQuantifiedVariables.map(_._1), joinExp, v))((s4, r4, v4) =>
+            Q(s4.copy(intermediateHeapCause = s.intermediateHeapCause), r4._1, r4._2, v4))
 
       case ast.Asserting(eAss, eIn) =>
         consume(s, eAss, false, pve, v)((s2, _, v2) => {
@@ -1399,7 +1404,7 @@ object evaluator extends EvaluationRules {
 
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
-        v.decider.assume(pcDelta, Option.when(withExp)(DebugExp.createInstance("pcDeltaExp", children = pcDeltaExp)), enforceAssumption = false)
+        v.decider.assume(pcDelta, Option.when(debugOn)(DebugExp.createInstance("pcDeltaExp", children = pcDeltaExp)), enforceAssumption = false)
         Q(s.copy(functionRecorder = functionRecorder), cachedTriggerTerms ++ remainingTriggerTerms, v)
       case _ =>
         for (e <- remainingTriggerExpressions)

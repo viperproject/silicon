@@ -82,25 +82,16 @@ trait Verifier {
     }
   }
 
-  def recordDebugHeap(s: State, parent: Heap, cause: ast.Stmt): State = {
-    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), getDebugHeapLabel(s, Some(parent)),
-                    ExecStmt(cause), None, None)
+  def recordDebugHeap(s: State, parent: Heap, cause: HeapCause): State = {
+    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), getDebugHeapLabel(s, Some(parent)), cause, None, None)
   }
 
-  def recordDebugHeap(s: State, parent: Heap, cause: ast.Stmt, oldPCS: PathConditionStack): State = {
-    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), getDebugHeapLabel(s, Some(parent)),
-                    ExecStmt(cause), None, Some(oldPCS))
+  def recordDebugHeap(s: State, parent: Heap, cause: HeapCause, oldPCS: PathConditionStack): State = {
+    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), getDebugHeapLabel(s, Some(parent)), cause, None, Some(oldPCS))
   }
 
-  def recordDebugHeap(s: State, parent: Heap, cause: ast.Exp, oldPCS: PathConditionStack): State = {
-    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), getDebugHeapLabel(s, Some(parent)),
-                    EvalExp(cause), None, Some(oldPCS))
-  }
-
-  def recordDebugHeap(s: State, parent: Heap, cause: HeapCause,
-                      intermediateCause: ast.Exp, oldPCS: PathConditionStack): State = {
-    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), getDebugHeapLabel(s, Some(parent)),
-                    cause, Some(intermediateCause), Some(oldPCS))
+  def recordDebugHeap(s: State, parentLabel: String, cause: HeapCause, oldPCS: PathConditionStack): State = {
+    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), parentLabel, cause, None, Some(oldPCS))
   }
 
   def recordDebugHeap(s: State, parentLabel: String, cause: HeapCause,
