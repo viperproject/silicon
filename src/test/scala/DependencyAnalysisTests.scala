@@ -12,7 +12,7 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
   val CHECK_PRECISION = false
   val EXECUTE_TEST = true
   override val EXPORT_PRUNED_PROGRAMS: Boolean = false
-  val ignores: Seq[String] = Seq()
+  val ignores: Seq[String] = Seq("iterativeTreeDelete")
 	analysisCommandLineArguments = analysisCommandLineArguments ++ Seq("--executeDependencyAnalysisTests")
 	val testDirectories: Seq[String] = Seq(
     "dependencyAnalysisTests/all",

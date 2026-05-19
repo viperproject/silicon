@@ -20,7 +20,6 @@ import viper.silicon.state.terms._
 import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silver.ast.Literal
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}

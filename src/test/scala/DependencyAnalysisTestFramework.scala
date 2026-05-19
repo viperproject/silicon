@@ -88,10 +88,12 @@ trait DependencyAnalysisTestFramework {
       val triggerNodeLines = fullGraphInterpreter.getNodes.filter(node => node.getUserLevelRepresentation.contains("@trigger()")).flatMap(_.sourceInfo.getLineNumber)
       var id: Int = 0
       // TODO ake: it would be better to work with position string instead of line numbers
-      fullGraphInterpreter.getExplicitAssertionNodes flatMap (_.sourceInfo.getLineNumber) foreach {line =>
+      val testCases = fullGraphInterpreter.getExplicitAssertionNodes flatMap (_.sourceInfo.getLineNumber)
+			testCases foreach {line =>
         pruneAndVerify(Set(line) ++ triggerNodeLines, "src/test/resources/" + fileName + s"_test$id.out")
         id += 1
       }
+			println(s"Passed all ${testCases.size} pruning tests.")
     }
 
     protected def pruneAndVerify(relevantLines: Set[Int], exportFileName: String): Unit = {
