@@ -562,7 +562,8 @@ object evaluator extends EvaluationRules {
             Q(s2, tQuant, eQuantNew, v1)
           case (s1, _, _, _, _, None, v1) =>
             // This should not happen unless the current path is dead.
-            if (v1.decider.checkSmoke(true, pos = sourceQuant.pos, member = s1.currentMember.map(_.name),
+            if (v1.decider.checkSmoke(true, kind = ProofQueryKind.PathInfeasibility,
+                                      pos = sourceQuant.pos, member = s1.currentMember.map(_.name),
                                       description = Some("smoke check: quantifier body"))) {
               Unreachable()
             } else {
@@ -1091,7 +1092,7 @@ object evaluator extends EvaluationRules {
                     recordPossibleTriggers = true,
                     possibleTriggers = Map.empty) // TODO: Why reset possibleTriggers if they are merged with s.possibleTriggers later anyway?
     type R = (State, Seq[Term], Option[Seq[ast.Exp]], Option[(Seq[Term], Option[Seq[ast.Exp]], Seq[Trigger], (Seq[Term], Seq[Quantification]), Option[(InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp])], Map[ast.Exp, Term])])
-    executionFlowController.locallyWithResult[R](s1, v)((s2, v1, QB) => {
+    executionFlowController.locallyWithResult[R](s1, v, description = Some("quantified expression evaluation"))((s2, v1, QB) => {
        val preMark = v1.decider.setPathConditionMark()
       evals(s2, es1, _ => pve, v1)((s3, ts1, es1New, v2) => {
         val bc = And(ts1)

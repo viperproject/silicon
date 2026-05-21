@@ -30,7 +30,16 @@ object ProofQueryKind {
    *  whether the current execution path is reachable at all. */
   case object PathInfeasibility extends ProofQueryKind
 
+  /** (e') Heap-infeasibility checks: smoke checks issued as a consequence of heap operations
+   *  (chunk lookup, consume, exhale, etc.) — i.e. path-feasibility queries whose origin is
+   *  a heap manipulation rather than generic control flow. */
+  case object HeapInfeasibility extends ProofQueryKind
+
   /** (f) Unknown: used when the purpose of the query does not clearly fall into any of the
    *  above categories, or has not yet been classified. */
   case object Unknown extends ProofQueryKind
+
+  /** (g) Scope-management operations: push and pop of the prover assertion stack
+   *  used to bound the scope of branch assumptions, contract checks, etc. */
+  case object ScopeManagement extends ProofQueryKind
 }
