@@ -219,7 +219,7 @@ object State {
                  functionData,
                  oldHeaps1,
                  debugOldHeaps1,
-                 recordIntermediateHeaps,
+                 intermediateHeapCause1,
                  parallelizeBranches1,
                  recordVisited1, visited1,
                  methodCfg1, invariantContexts1,
@@ -246,7 +246,7 @@ object State {
                      `predicateData`, `functionData`,
                      oldHeaps2,
                      debugOldHeaps2,
-                     `recordIntermediateHeaps`,
+                     intermediateHeapCause2,
                      `parallelizeBranches1`,
                      `recordVisited1`, `visited1`,
                      `methodCfg1`, `invariantContexts1`,
@@ -268,6 +268,7 @@ object State {
 
             val oldHeaps3 = oldHeaps1 ++ oldHeaps2
             val debugOldHeaps3 = debugOldHeaps1 ++ debugOldHeaps2
+            val intermediateHeapCause3 = if (intermediateHeapCause1 == intermediateHeapCause2) intermediateHeapCause1 else None
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
@@ -287,6 +288,7 @@ object State {
 
             s1.copy(oldHeaps = oldHeaps3,
                     debugOldHeaps = debugOldHeaps3,
+                    intermediateHeapCause = intermediateHeapCause3,
                     functionRecorder = functionRecorder3,
                     possibleTriggers = possibleTriggers3,
                     triggerExp = triggerExp3,
@@ -299,6 +301,7 @@ object State {
                     conservedPcs = conservedPcs3)
 
           case _ =>
+            println(s1.possibleTriggers.toString() + s2.possibleTriggers.toString())
             val err = new StringBuilder()
             for (ix <- 0 until s1.productArity) {
               val e1 = s1.productElement(ix)
@@ -383,7 +386,7 @@ object State {
       predicateData, functionData,
       oldHeaps1,
       debugOldHeaps1,
-      recordIntermediateHeaps,
+      intermediateHeapCause1,
       parallelizeBranches1,
       recordVisited1, visited1,
       methodCfg1, invariantContexts1,
@@ -409,7 +412,7 @@ object State {
           `predicateData`, `functionData`,
           oldHeaps2,
           debugOldHeaps2,
-          `recordIntermediateHeaps`,
+          intermediateHeapCause2,
           `parallelizeBranches1`,
           `recordVisited1`, `visited1`,
           `methodCfg1`, invariantContexts2,
@@ -429,6 +432,8 @@ object State {
           `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
           moreCompleteExhale2, `moreJoins`) =>
 
+            val debugOldHeaps3 = debugOldHeaps1 ++ debugOldHeaps2
+            val intermediateHeapCause3 = if (intermediateHeapCause1 == intermediateHeapCause2) intermediateHeapCause1 else None
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
@@ -481,8 +486,6 @@ object State {
               Some(mergeHeap(heap1, cond1._1, cond1._2, heap2, cond2._1, cond2._2))
             }))
 
-            val debugOldHeaps3 = debugOldHeaps1 ++ debugOldHeaps2
-
             assert(invariantContexts1.length == invariantContexts2.length)
             val invariantContexts3 = invariantContexts1
               .zip(invariantContexts2)
@@ -514,6 +517,7 @@ object State {
                              h = h3,
                              oldHeaps = oldHeaps3,
                              debugOldHeaps = debugOldHeaps3,
+                             intermediateHeapCause = intermediateHeapCause3,
                              partiallyConsumedHeap = partiallyConsumedHeap3,
                              smDomainNeeded = smDomainNeeded3,
                              invariantContexts = invariantContexts3,
