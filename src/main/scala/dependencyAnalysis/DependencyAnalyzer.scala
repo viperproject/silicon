@@ -7,7 +7,7 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast._
 import viper.silver.dependencyAnalysis.JoinType.JoinType
-import viper.silver.dependencyAnalysis.{DependencyAnalysisMergeInfo, EdgeType, EvalStackDependencyAnalysisJoin, JoinType}
+import viper.silver.dependencyAnalysis.{AssumptionType, DependencyAnalysisMergeInfo, EdgeType, EvalStackDependencyAnalysisJoin, JoinType, NoDependencyAnalysisMerge, SimpleDependencyAnalysisMerge, CompositeDependencyAnalysisMergeInfo}
 
 import scala.collection.mutable
 
@@ -143,6 +143,27 @@ object DependencyAnalyzer {
       else
         newGraph.addEdgesConnectingMethodsDownwards(matchingSourceNodes.map(_.id), nodes.map(_.id))
     }
+
+    // mark as custom edges, iff there are no postconditions linked to these preconditions
+    def reachable(src: Int, dest: Set[Int]): Set[Int] = {
+      newGraph.getAllDependencies(Set(src), true, true, true).intersect(dest)
+    }
+    val postCondNodes = newGraph.getAssertionNodes.filter(_.assumptionType == AssumptionType.ImplicitPostcondition)
+    dependencyGraphInterpreters foreach (interpreter => interpreter.getGraph.getCustomEdges foreach {
+      case (t, deps) =>
+        val methodPC = postCondNodes.filter(_.mergeInfo match {
+          case SimpleDependencyAnalysisMerge(sourceInfo) =>
+            val t_node = newGraph.getNodes.filter(_.id == t).head
+            t_node.mergeInfo match {
+              case CompositeDependencyAnalysisMergeInfo(sourceInfo1, _) => sourceInfo1 == sourceInfo
+              case _ => false
+            }
+          case _ => false
+        })
+        val reachableDeps = methodPC.foldLeft (Set.empty[Int]) {(acc, pcNode) => acc ++ reachable(pcNode.id, deps)}
+        val unreachableDeps = deps.diff(reachableDeps)
+        newGraph.addCustomEdges(unreachableDeps, t)
+    })
 
     val newInterpreter = new DependencyGraphInterpreter[Final](name, newGraph, dependencyGraphInterpreters.toList.flatMap(_.getErrors))
     newInterpreter
@@ -284,7 +305,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
 		customMergeDependencies.foreach{ case (sourceMergeInfos, targetMergeInfos) =>
 			val sourceNodes = mergedGraph.getNodes.filter(node => sourceMergeInfos.contains(node.mergeInfo)).map(_.id)
 			val targetNodes = mergedGraph.getNodes.filter(node => targetMergeInfos.contains(node.mergeInfo)).map(_.id)
-			mergedGraph.addEdges(sourceNodes, targetNodes)
+			mergedGraph.addCustomEdges(sourceNodes, targetNodes)
 		}
 	}
 

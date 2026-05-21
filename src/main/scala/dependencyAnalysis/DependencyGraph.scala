@@ -51,6 +51,7 @@ trait ReadOnlyDependencyGraph[T <: DependencyGraphState] {
   def getEdgesConnectingMethodsUpwards: Map[Int, Set[Int]] // e.g. edges connecting PREconditions with method/function calls
   def getAllEdges: Map[Int, Set[Int]]
   def getAllEdges(includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Map[Int, Set[Int]]
+  def getCustomEdges: Map[Int, Set[Int]]
 
 	/**
 	 * @param sources a set of node ids
@@ -74,6 +75,16 @@ trait ReadOnlyDependencyGraph[T <: DependencyGraphState] {
 	 * Exports the graph to the folder 'dirName'.
 	 */
   def exportGraph(dirName: String): Unit
+
+  /**
+   * Activates alternative Definition of Dependency. Filters out semantic edges inside the graph.
+   * Mode can be checked with: isConcreteMode(): Boolean
+   */
+  def activateConcreteMode(): Unit
+
+  def deactivateConcreteMode(): Unit
+
+  def isConcreteMode(): Boolean
 }
 
 class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph[T] {
@@ -82,7 +93,9 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   private val edges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
   private val edgesConnectingMethodsDownwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // e.g. edges connecting POSTcondition with method/function calls
   private val edgesConnectingMethodsUpwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // e.g. edges connecting PREconditions with method/function calls
+  private val customEdges: mutable.Map[Int, Set[Int]] = mutable.Map.empty // e.g. edges linking preconditions to postconditions. Already present inside edges, stored for quick access
 	private var vacuousProofs: mutable.Seq[Int] = mutable.Seq()
+  private var isConcrete = false
 
   def getNodes: Seq[DependencyAnalysisNode] = getAssumptionNodes ++ getAssertionNodes
   def getAssumptionNodes: Seq[GeneralAssumptionNode] = assumptionNodes.toSeq
@@ -90,6 +103,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   def getDirectEdges: Map[Int, Set[Int]] = edges.toMap
   def getEdgesConnectingMethodsDownwards: Map[Int, Set[Int]] = edgesConnectingMethodsDownwards.toMap
   def getEdgesConnectingMethodsUpwards: Map[Int, Set[Int]] = edgesConnectingMethodsUpwards.toMap
+  def getCustomEdges: Map[Int,Set[Int]] = customEdges.toMap
 
   def getIntraMethodEdges: Map[Int, Set[Int]] = {
     val keys = edges.keySet
@@ -193,6 +207,42 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
     addEdgesConnectingMethodsUpwards(Set(source), targets)
   }
 
+  def addCustomEdges(sources: Iterable[Int], target: Int): Unit = {
+    val oldSources = customEdges.getOrElse(target, Set.empty)
+    val newSources = sources.filter(_ != target)
+    if(newSources.nonEmpty) customEdges.update(target, oldSources ++ newSources)
+    addEdges(sources, target)
+  }
+
+  def addCustomEdges(sources: Iterable[Int], targets: Iterable[Int]): Unit = {
+    targets foreach (addCustomEdges(sources, _))
+  }
+
+  private def addCustomEdges(): Unit = {
+    customEdges foreach (k =>
+      edges.update(k._1, edges.getOrElse(k._1,Set.empty).union(k._2)))
+  }
+
+  private def removeCustomEdges(): Unit = {
+    customEdges foreach (k =>
+      edges.update(k._1, edges.getOrElse(k._1,Set.empty).diff(k._2)))
+  }
+
+  override def activateConcreteMode(): Unit = {
+    if(isConcrete) return
+
+    removeCustomEdges()
+    isConcrete = true
+  }
+
+  override def deactivateConcreteMode(): Unit = {
+    if(!isConcrete) return
+
+    addCustomEdges()
+    isConcrete = false
+  }
+
+  override def isConcreteMode(): Boolean = isConcrete
 
   def addVacuousProof(assertionId: Int): Unit = {
     vacuousProofs = assertionId +: vacuousProofs

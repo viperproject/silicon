@@ -19,7 +19,10 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
 		new BenchmarkDependencyAnalysisCliExtension(fullGraphInterpreter, program)
 	)
 
-  private val infoString = "Enter " +
+  private var concreteToggle = false
+
+  private val infoString = {
+    "Enter " +
     "\n\t'dep [line numbers]' to print all dependencies of the given line numbers or" +
     "\n\t'downDep [line numbers]' to print all dependents of the given line numbers or" +
     "\n\t'cov [members]' to print proof coverage of given member or" +
@@ -27,9 +30,11 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
     "\n\t'progress' to compute the verification progress of the program or" +
     "\n\t'guide' to compute verification guidance or" +
     "\n\t'prune [line numbers]' to prune the program with respect to the given line numbers and export the new program or" +
+    "\n\t'concrete' to activate/deactivate the alternative Dependency definition for the tool or" +
 		(if(extensions.nonEmpty) "\n\t" else "") +
 		extensions.map(_.getInfoString("\n\t")).mkString("\n\t") +
     "\n\t'q' to quit"
+  }
 
   def run(): Unit = {
     println("Dependency Analysis Tool started.")
@@ -51,6 +56,7 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
       if (userInput.nonEmpty) {
         handleUserInput(userInput)
       } else {
+        warnContext()
         println(infoString)
       }
     }catch {
@@ -59,18 +65,23 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
     runInternal()
   }
 
+  private def warnContext(): Unit = {
+    if(concreteToggle) println(" Concrete Dependency Mode active (Beta!)")
+  }
+
   private def handleUserInput(userInput: String): Unit = {
     val inputParts = userInput.split(" ").toSeq
     if (inputParts.nonEmpty) {
       inputParts.head.toLowerCase match {
 				case "help" => println(infoString)
-        case "dep" => handleDependencyQuery(inputParts.tail.toSet)
-        case "downdep" => handleDependentsQuery(inputParts.tail.toSet)
-        case "coverage" | "cov" => handleProofCoverageQuery(inputParts.tail)
-        case "covlines" | "covl" => handleProofCoverageLineQuery(inputParts.tail)
-        case "progress" | "prog" => handleVerificationProgressQuery(inputParts.tail)
-        case "guidance" | "guide" => handleVerificationGuidanceQuery()
-        case "prune" => handlePruningRequest(inputParts.tail)
+        case "dep" => warnContext(); handleDependencyQuery(inputParts.tail.toSet)
+        case "downdep" => warnContext(); handleDependentsQuery(inputParts.tail.toSet)
+        case "coverage" | "cov" => warnContext(); handleProofCoverageQuery(inputParts.tail)
+        case "covlines" | "covl" => warnContext(); handleProofCoverageLineQuery(inputParts.tail)
+        case "progress" | "prog" => warnContext(); handleVerificationProgressQuery(inputParts.tail)
+        case "guidance" | "guide" => warnContext(); handleVerificationGuidanceQuery()
+        case "prune" => warnContext(); handlePruningRequest(inputParts.tail)
+        case "concrete" => toggleConcreteDefinition()
         case _ => extensions.foreach(_.visit(inputParts))
       }
     } else {
@@ -78,6 +89,18 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
     }
   }
 
+  private def toggleConcreteDefinition(): Unit = {
+    concreteToggle = fullGraphInterpreter.isConcreteGraph()
+
+    if(concreteToggle){
+      fullGraphInterpreter.deactivateConcreteGraph()
+      println(s"deactivated concrete dependency mode")
+    }else{
+      fullGraphInterpreter.activateConcreteGraph()
+      println(s"activated concrete dependency mode")
+    }
+    concreteToggle = !concreteToggle
+  }
 
   private def handleProofCoverageQuery(memberNames: Seq[String]): Unit = {
     println("Proof Coverage")

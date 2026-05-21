@@ -142,6 +142,14 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
 		getNodes filter (node => sourceInfos.contains(node.sourceInfo))
 	}
 
+	def getCustomEdges() = dependencyGraph.getCustomEdges
+
+	def isConcreteGraph(): Boolean = dependencyGraph.isConcreteMode()
+
+	def activateConcreteGraph(): Unit = dependencyGraph.activateConcreteMode()
+
+	def deactivateConcreteGraph(): Unit = dependencyGraph.deactivateConcreteMode()
+
 	// TODO ake: might be deprecated
 	def computeProofCoverage(): (Double, Set[String]) = {
 		val explicitAssertionNodes = getNodesWithIdenticalSource(getExplicitAssertionNodes)
