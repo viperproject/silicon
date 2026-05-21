@@ -175,6 +175,7 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
       case terms.Null =>
         Some(ast.NullLit()())
       case t if matches.contains(t) =>
+        // println(s"transformed $t into ${matches.get(t)}")
         matches.get(t)
       case BuiltinEquals(t1, t2) => (transformTerm(t1), transformTerm(t2)) match {
         case (Some(e1), Some(e2)) =>

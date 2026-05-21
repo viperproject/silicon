@@ -296,8 +296,8 @@ object BiAbductionSolver {
           }*/
 
           println(s"abdGoal $abdGoal due to $f \nin h:\n\t${s.h.values.mkString("\n\t")}\nand g:\n\t${s.g.values.mkString("\n\t")}")
-          println(s"Reserved 4 Unfold: ${qFold.s.reservedForFoldUnfold}")
-          println(s"Reserved 4 Invariants: ${qFold.s.reservedForInvariants}")
+          // println(s"Reserved 4 Unfold: ${qFold.s.reservedForFoldUnfold}")
+          // println(s"Reserved 4 Invariants: ${qFold.s.reservedForInvariants}")
           //// println(s"and v:\n\t${v.decider.pcs.assumptions.mkString("\n\t")}")
           // NOTE: Without fractional permissions, the comment below is true
           // With fractional permissions, we HAVE to start with rule one because if we hold a fraction smaller
@@ -319,14 +319,14 @@ object BiAbductionSolver {
                   val newChunks = newState.collect { case (_, c: Some[BasicChunk]) => c.get }
                   //val newOldHeaps = q1.s.oldHeaps.map { case (label, heap) => (label, heap + Heap(newChunks)) }
                   //val s1 = q1.s.copy(oldHeaps = newOldHeaps)
-                  println(s"ABDUCTION TERMINATED IN \n\t\t${q1.s.h.values.mkString("\n\t\t")}")
-                  println(s"\twith g: \n\t\t${q1.s.g.values.mkString("\n\t\t")}")
+                  // println(s"ABDUCTION TERMINATED IN \n\t\t${q1.s.h.values.mkString("\n\t\t")}")
+                  // println(s"\twith g: \n\t\t${q1.s.g.values.mkString("\n\t\t")}")
                   // // println(s"\twith v: \n\t\t${q1.v.decider.pcs.assumptions.mkString("\n\t\t")}")
-                  println(s"\tWITH STATE ${newState}")
-                  println(s"\tWITH STATEMENTS ${newStmts}")
-                  println(s"\tAND RESERVED ${q1.s.reservedForFoldUnfold} ${q1.s.reservedForInvariants}")
+                  // println(s"\tWITH STATE ${newState}")
+                  // println(s"\tWITH STATEMENTS ${newStmts}")
+                  // println(s"\tAND RESERVED ${q1.s.reservedForFoldUnfold} ${q1.s.reservedForInvariants}")
                   val fieldChunks = newState.collect { case (fa: FieldAccessPredicate, c) => (c.get, fa.loc) }.toMap
-                  println(s"\tFIELDCHUNKS: $fieldChunks")
+                  // println(s"\tFIELDCHUNKS: $fieldChunks")
                   // If the abduction question was a fold, we must clean up the reserved stack
                   /*val q2 = f.message.offendingNode match {
                     case _: Fold =>
@@ -406,13 +406,13 @@ object BiAbductionSolver {
     val newMatches = abdReses.flatMap(_.newFieldChunks).toMap
     val abdCases = abdReses.groupBy(res => (res.trigger.get.pos, res.stmts, res.state.map({ case (e, _) => e })))
     //
-    println(s"abdCases:")
-    abdCases.foreach { case (key, values) =>
-      println(s"----------")
-      println(s"$key")
-      values.foreach(v => println(s"$v [${v.pcs.branchConditions}]"))
-      println(s"----------")
-    }
+    // println(s"abdCases:")
+    // abdCases.foreach { case (key, values) =>
+      // println(s"----------")
+      // println(s"$key")
+      // values.foreach(v => // println(s"$v [${v.pcs.branchConditions}]"))
+      // println(s"----------")
+    // }
     // Try to join by bc terms
     val joinedCases = abdCases.map {
       case (_, reses) =>
@@ -1084,14 +1084,14 @@ object abductionUtils {
           Q(accumulated.reverse)
 
         case (fap@FieldAccessPredicate(_, Some(WildcardPerm()))) :: tail =>
-          go(tail, abductionUtils.accWithPerm(fap, Some(FractionalPerm(IntLit(1)(), IntLit(1)())())) :: accumulated)
+          go(tail, abductionUtils.accWithPerm(fap, Some(FractionalPerm(IntLit(1)(), IntLit(4)())())) :: accumulated)
         /*findMinPerm(loc, q.s, q.v, q.lostAccesses) { permOpt =>
           val perm = permOpt.getOrElse(FullPerm()())
           go(tail, abductionUtils.accWithPerm(fap, Some(perm)) :: accumulated)
         }*/
 
         case (pap@PredicateAccessPredicate(_, Some(WildcardPerm()))) :: tail =>
-          go(tail, abductionUtils.accWithPerm(pap, Some(FractionalPerm(IntLit(1)(), IntLit(1)())())) :: accumulated)
+          go(tail, abductionUtils.accWithPerm(pap, Some(FractionalPerm(IntLit(1)(), IntLit(4)())())) :: accumulated)
         /*findMinPerm(loc, q.s, q.v, q.lostAccesses) { permOpt =>
           val perm = permOpt.getOrElse(FullPerm()())
           go(tail, abductionUtils.accWithPerm(pap, Some(perm)) :: accumulated)
