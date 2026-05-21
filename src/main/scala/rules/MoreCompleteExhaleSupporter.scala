@@ -209,7 +209,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     val relevantChunks = findChunksWithID[NonQuantifiedChunk](h.values, id).toSeq
 
     if (relevantChunks.isEmpty) {
-      if (v.decider.checkSmoke(true, pos = resource.pos, member = s.currentMember.map(_.name),
+      if (v.decider.checkSmoke(true, kind = ProofQueryKind.HeapInfeasibility,
+                               pos = resource.pos, member = s.currentMember.map(_.name),
                                description = Some("MCE smoke check"))) {
         if (s.isInPackage) {
           val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))

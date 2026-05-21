@@ -279,7 +279,8 @@ object executor extends ExecutionRules {
                         v2.decider.declareAndRecordAsFreshMacros(fm1.filter(!v2.decider.freshMacros.contains(_)))  /* [BRANCH-PARALLELISATION] */
                         v2.decider.assume(pcs.assumptions, Option.when(withExp)(DebugExp.createInstance("Loop invariant", pcs.assumptionExps)), false)
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-                        if (v2.decider.checkSmoke(member = s3.currentMember.map(_.name),
+                        if (v2.decider.checkSmoke(kind = ProofQueryKind.PathInfeasibility,
+                                                  member = s3.currentMember.map(_.name),
                                                   description = Some("smoke check: post-statement")))
                           Success()
                         else {
@@ -434,7 +435,8 @@ object executor extends ExecutionRules {
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
         executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
-          if (v1.decider.checkSmoke(true, pos = assert.pos, member = s1.currentMember.map(_.name),
+          if (v1.decider.checkSmoke(true, kind = ProofQueryKind.PathInfeasibility,
+                                    pos = assert.pos, member = s1.currentMember.map(_.name),
                                     description = Some("smoke check: assert statement")))
             QS(s1.copy(h = s.h), v1)
           else

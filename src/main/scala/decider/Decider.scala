@@ -51,6 +51,7 @@ trait Decider {
   def popScope(member: Option[String] = None, description: Option[String] = None): Unit
 
   def checkSmoke(isAssert: Boolean = false,
+                 kind: ProofQueryKind,
                  pos: ast.Position = ast.NoPosition,
                  member: Option[String] = None,
                  description: Option[String] = None): Boolean
@@ -398,6 +399,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     /* Asserting facts */
 
     def checkSmoke(isAssert: Boolean = false,
+                   kind: ProofQueryKind,
                    pos: ast.Position = ast.NoPosition,
                    member: Option[String] = None,
                    description: Option[String] = None): Boolean = {
@@ -410,7 +412,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
           kind        = QueryKind.Check,
           member      = member,
           pos         = pos,
-          category    = ProofQueryKind.PathInfeasibility,
+          category    = kind,
           durationMs  = dur,
           succeeded   = res,
           description = description))

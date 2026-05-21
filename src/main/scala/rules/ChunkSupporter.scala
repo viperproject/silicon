@@ -145,7 +145,8 @@ object chunkSupporter extends ChunkSupportRules {
                 case _ => None
               }
               QS(s2.copy(h = s.h), h2, snap, v1)
-            case _ if v1.decider.checkSmoke(true, member = s1.currentMember.map(_.name),
+            case _ if v1.decider.checkSmoke(true, kind = ProofQueryKind.HeapInfeasibility,
+                                            member = s1.currentMember.map(_.name),
                                             description = Some("smoke check after consume")) =>
               Success() // TODO: Mark branch as dead?
             case _ =>
@@ -273,7 +274,8 @@ object chunkSupporter extends ChunkSupportRules {
                                        member = s.currentMember.map(_.name),
                                        description = Some("lookup: chunk has permission")) =>
         Q(s, ch.snap, v)
-      case _ if v.decider.checkSmoke(true, pos = resource.pos, member = s.currentMember.map(_.name),
+      case _ if v.decider.checkSmoke(true, kind = ProofQueryKind.HeapInfeasibility,
+                                     pos = resource.pos, member = s.currentMember.map(_.name),
                                      description = Some("smoke check at lookup")) =>
         if (s.isInPackage) {
           val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))

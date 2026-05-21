@@ -562,7 +562,8 @@ object evaluator extends EvaluationRules {
             Q(s2, tQuant, eQuantNew, v1)
           case (s1, _, _, _, _, None, v1) =>
             // This should not happen unless the current path is dead.
-            if (v1.decider.checkSmoke(true, pos = sourceQuant.pos, member = s1.currentMember.map(_.name),
+            if (v1.decider.checkSmoke(true, kind = ProofQueryKind.PathInfeasibility,
+                                      pos = sourceQuant.pos, member = s1.currentMember.map(_.name),
                                       description = Some("smoke check: quantifier body"))) {
               Unreachable()
             } else {
