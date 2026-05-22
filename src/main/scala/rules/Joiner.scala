@@ -70,10 +70,10 @@ object joiner extends JoiningRules {
                     h = s1.h,
                     underJoin = s1.underJoin,
                     // TODO: Evaluation should not affect partiallyConsumedHeap, probably
-                    ssCache = s1.ssCache,
                     partiallyConsumedHeap = s1.partiallyConsumedHeap,
                     invariantContexts = s1.invariantContexts,
                     retrying = s1.retrying)
+               .updateCache(_.copy(ssCache = s1.ssCache))
           } else {
             // For more joins, state shouldn't be reset.
             s3

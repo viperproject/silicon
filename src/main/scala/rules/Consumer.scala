@@ -77,8 +77,7 @@ object consumer extends ConsumptionRules {
              : VerificationResult = {
 
     consumeR(s, s.h, a.whenExhaling, returnSnap, pve, v)((s1, h1, snap, v1) => {
-      val s2 = s1.copy(h = h1,
-                       partiallyConsumedHeap = s.partiallyConsumedHeap)
+      val s2 = s1.copy(h = h1).copy(partiallyConsumedHeap = s.partiallyConsumedHeap)
       Q(s2, snap, v1)})
   }
 
@@ -103,8 +102,7 @@ object consumer extends ConsumptionRules {
     })
 
     consumeTlcs(s, s.h, allTlcs.result(), returnSnap, allPves.result(), v)((s1, h1, snap1, v1) => {
-      val s2 = s1.copy(h = h1,
-                       partiallyConsumedHeap = s.partiallyConsumedHeap)
+      val s2 = s1.copy(h = h1).copy(partiallyConsumedHeap = s.partiallyConsumedHeap)
       Q(s2, snap1, v1)
     })
   }
@@ -245,16 +243,14 @@ object consumer extends ConsumptionRules {
         evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, ePerm, pve, v1)((s1a, tPerm, ePermNew, v1a) =>
             permissionSupporter.assertNotNegative(s1a, tPerm, ePerm, ePermNew, pve, v1a)((s2, v2) => {
-              val loss = if (!Verifier.config.unsafeWildcardOptimization() ||
-                (resource.isInstanceOf[ast.Location] && s2.permLocations.contains(resource.asInstanceOf[ast.Location])))
+              val loss = if (!Verifier.config.unsafeWildcardOptimization() || s2.isPermLocation(resource))
                 PermTimes(tPerm, s2.permissionScalingFactor)
               else
                 WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
               val lossExp = ePermNew.map(p => ast.PermMul(p, s2.permissionScalingFactorExp.get)(p.pos, p.info, p.errT))
               val s3 = v2.heapSupporter.triggerResourceIfNeeded(s2, accPred.loc, tArgs, eArgsNew, v2)
               v2.heapSupporter.consumeSingle(s3, h, accPred.loc, tArgs, eArgsNew, loss, lossExp, returnSnap, pve, v2)((s4, h4, snap, v4) => {
-                val s5 = s4.copy(constrainableARPs = s.constrainableARPs,
-                                 partiallyConsumedHeap = Some(h4))
+                val s5 = s4.copy(constrainableARPs = s.constrainableARPs, partiallyConsumedHeap = Some(h4))
                 Q(s5, h4, snap, v4)
               })
             })))
@@ -341,21 +337,21 @@ object consumer extends ConsumptionRules {
                                             : VerificationResult = {
     eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
       joiner.join[(Heap, Option[Term]), (Heap, Option[Term])](s1, v1, resetState = false)((s1, v1, QB) => {
-        branch(s1.copy(parallelizeBranches = false), t0, (e0, e0New), v1)(
+        branch(s1.updateSettings(_.copy(parallelizeBranches = false)), t0, (e0, e0New), v1)(
           (s2, v2) =>
-            consumeR(s2.copy(parallelizeBranches = s1.parallelizeBranches), h, a1, returnSnap, pve, v2)((s3, h1, t1, v3) => {
+            consumeR(s2.updateSettings(_.copy(parallelizeBranches = s1.parallelizeBranches)), h, a1, returnSnap, pve, v2)((s3, h1, t1, v3) => {
             v3.symbExLog.closeScope(scopeUid)
             QB(s3, (h1, t1), v3)
           }),
           (s2, v2) =>
             a2 match {
-              case Some(a2) => consumeR(s2.copy(parallelizeBranches = s1.parallelizeBranches), h, a2, returnSnap, pve, v2)((s3, h1, t1, v3) => {
+              case Some(a2) => consumeR(s2.updateSettings(_.copy(parallelizeBranches = s1.parallelizeBranches)), h, a2, returnSnap, pve, v2)((s3, h1, t1, v3) => {
                 v3.symbExLog.closeScope(scopeUid)
                 QB(s3, (h1, t1), v3)
               })
               case None =>
                 v2.symbExLog.closeScope(scopeUid)
-                QB(s2.copy(parallelizeBranches = s1.parallelizeBranches), (h, if (returnSnap) Some(Unit) else None), v2)
+                QB(s2.updateSettings(_.copy(parallelizeBranches = s1.parallelizeBranches)), (h, if (returnSnap) Some(Unit) else None), v2)
             })
       })(entries => {
         val s2 = entries match {
@@ -400,9 +396,8 @@ object consumer extends ConsumptionRules {
      * the tryOrFail that wraps the consumption of each top-level conjunct would not consolidate
      * the right heap.
      */
-    val s1 = s.copy(h = magicWandSupporter.getEvalHeap(s),
-                    reserveHeaps = Nil,
-                    exhaleExt = false)
+    val s1 = s.copy(h = magicWandSupporter.getEvalHeap(s))
+               .updateWand(_.copy(reserveHeaps = Nil, exhaleExt = false))
 
     executionFlowController.tryOrFail0(s1, v)((s2, v1, QS) => {
       eval(s2, e, pve, v1)((s3, t, eNew, v2) => {
@@ -424,9 +419,7 @@ object consumer extends ConsumptionRules {
               failure combine QS(s3, v2)
             } else failure}})
     })((s4, v4) => {
-      val s5 = s4.copy(h = s.h,
-                       reserveHeaps = s.reserveHeaps,
-                       exhaleExt = s.exhaleExt)
+      val s5 = s4.copy(h = s.h).updateWand(_.copy(reserveHeaps = s.reserveHeaps, exhaleExt = s.exhaleExt))
       Q(s5, if (returnSnap) Some(Unit) else None, v4)
     })
   }

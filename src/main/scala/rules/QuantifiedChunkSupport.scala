@@ -770,13 +770,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       summarisingSnapshotMap(
         s, resource, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition, optQVarsInstantiations)
 
-    val s1 = s.copy(smCache = smCache)
+    val s1 = s.updateCache(_.copy(smCache = smCache))
 
     val (pmDef, pmCache) =
       quantifiedChunkSupporter.summarisingPermissionMap(
         s1, resource, codomainQVars, relevantChunks, smDef, v)
 
-    val s2 = s1.copy(pmCache = pmCache, functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef).recordPermMap(pmDef))
+    val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef).recordPermMap(pmDef))
+               .updateCache(_.copy(pmCache = pmCache))
 
     (s2, smDef, pmDef)
   }
@@ -796,7 +797,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       quantifiedChunkSupporter.summarisingPermissionMap(
         s1, resource, codomainQVars, relevantChunks, null, v)
 
-    val s2 = s1.copy(pmCache = pmCache)
+    val s2 = s1.updateCache(_.copy(pmCache = pmCache))
 
     (s2, pmDef)
   }
@@ -833,8 +834,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult = {
 
-    val gain = if (!Verifier.config.unsafeWildcardOptimization() ||
-      (resource.isInstanceOf[ast.Location] && s.permLocations.contains(resource.asInstanceOf[ast.Location])))
+    val gain = if (!Verifier.config.unsafeWildcardOptimization() || s.isPermLocation(resource))
       PermTimes(tPerm, s.permissionScalingFactor)
     else
       WildcardSimplifyingPermTimes(tPerm, s.permissionScalingFactor)
@@ -1005,10 +1005,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               (s.smCache, fr1)
             }
             val s1 =
-              s.copy(h = h1,
-                     functionRecorder = fr2.recordFieldInv(inv),
-                     conservedPcs = conservedPcs,
-                     smCache = smCache1)
+              s.copy(h = h1, functionRecorder = fr2.recordFieldInv(inv))
+               .updateWand(_.copy(conservedPcs = conservedPcs))
+               .updateCache(_.copy(smCache = smCache1))
             Q(s1, v)
           case false => {
             createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver is injective")
@@ -1064,14 +1063,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         s.smCache
       }
 
-      s.copy(h = h1,
-        conservedPcs = conservedPcs,
-        functionRecorder = fr1.recordFvfAndDomain(smDef2),
-        smCache = smCache1)
+      s.copy(h = h1, functionRecorder = fr1.recordFvfAndDomain(smDef2))
+       .updateWand(_.copy(conservedPcs = conservedPcs))
+       .updateCache(_.copy(smCache = smCache1))
     } else {
-      s.copy(h = s.h + ch,
-             functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef2),
-             conservedPcs = conservedPcs)
+      s.copy(h = s.h + ch, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef2))
+       .updateWand(_.copy(conservedPcs = conservedPcs))
     }
     Q(s1, v)
   }
@@ -1163,8 +1160,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
         val chunkOrderHeuristics =
           qpAppChunkOrderHeuristics(inverseFunctions.invertibles, qvars, hints, v)
-        val loss = if (!Verifier.config.unsafeWildcardOptimization() ||
-            (resource.isInstanceOf[ast.Location] && s.permLocations.contains(resource.asInstanceOf[ast.Location])))
+        val loss = if (!Verifier.config.unsafeWildcardOptimization() || s.isPermLocation(resource))
           PermTimes(tPerm, s.permissionScalingFactor)
         else
           WildcardSimplifyingPermTimes(tPerm, s.permissionScalingFactor)
@@ -1225,7 +1221,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             /* TODO: Try to unify the upcoming if/else-block, their code is rather similar */
             if (s.exhaleExt) {
               magicWandSupporter.transfer[QuantifiedBasicChunk](
-                                          s.copy(smCache = smCache1),
+                                          s.updateCache(_.copy(smCache = smCache1)),
                                           lossOfInvOfLoc,
                                           lossExp,
                                           createFailure(pve dueTo insufficientPermissionReason/*InsufficientPermission(acc.loc)*/, v, s, "consuming QP"),
@@ -1287,8 +1283,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 v.decider.assume(FunctionPreconditionTransformer.transform(substitutedAxiomInversesOfInvertibles, s3.program), debugExp)
                 v.decider.assume(substitutedAxiomInversesOfInvertibles, debugExp)
                 val h2 = Heap(remainingChunks ++ otherChunks)
-                val s4 = s3.copy(smCache = smCache2,
-                                 constrainableARPs = s.constrainableARPs)
+                val s4 = s3.copy(constrainableARPs = s.constrainableARPs)
+                           .updateCache(_.copy(smCache = smCache2))
                 (result, s4, h2, Some(consumedChunk))
               })((s4, optCh, v3) =>
                 optCh match {
@@ -1302,7 +1298,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               v.decider.clearModel()
               val permissionRemovalResult =
                 quantifiedChunkSupporter.removePermissions(
-                  s.copy(smCache = smCache1),
+                  s.updateCache(_.copy(smCache = smCache1)),
                   relevantChunks,
                   formalQVars,
                   formalQVarsExp,
@@ -1332,8 +1328,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                     }
                     val s3 = s2.copy(functionRecorder = fr3,
                       partiallyConsumedHeap = Some(h3),
-                      constrainableARPs = s.constrainableARPs,
-                      smCache = smCache2)
+                      constrainableARPs = s.constrainableARPs)
+                      .updateCache(_.copy(smCache = smCache2))
                     Q(s3, h3, Some(smDef2.sm.convert(sorts.Snap)), v)
                   } else {
                     Q(s2, h3, None, v)
@@ -1415,8 +1411,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val consumedChunk =
           quantifiedChunkSupporter.createSingletonQuantifiedChunk(
             codomainQVars, codomainQVarsExp, resource, arguments, argumentsExp, permsTaken, permsTakenExp, smDef1.sm, s.program)
-        val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef1),
-                         smCache = smCache1)
+        val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef1))
+                   .updateCache(_.copy(smCache = smCache1))
         (result, s3, h2, Some(consumedChunk))
       })((s4, optCh, v2) =>
         optCh match {
@@ -1459,8 +1455,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 optSmDomainDefinitionCondition = None,
                 optQVarsInstantiations = Some(arguments),
                 v = v)
-            val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef1),
-              smCache = smCache1)
+            val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef1))
+                       .updateCache(_.copy(smCache = smCache1))
             val snap = ResourceLookup(resource, smDef1.sm, arguments, s2.program).convert(sorts.Snap)
             Q(s2, h1, Some(snap), v)
           } else {

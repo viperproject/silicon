@@ -111,8 +111,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
       }
 
     val s1 = s.copy(functionRecorder = functionRecorderAfterHeapMerging,
-                    h = mergedHeaps.head,
-                    reserveHeaps = mergedHeaps.tail)
+                    h = mergedHeaps.head)
+               .updateWand(_.copy(reserveHeaps = mergedHeaps.tail))
 
     val s2 = assumeUpperPermissionBoundForQPFields(s1, v)
 
@@ -272,7 +272,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           quantifiedChunkSupporter.heapSummarisingMaps(si, field, args, fieldChunks, v)
         var sf = sn
 
-        if (sn.heapDependentTriggers.exists(r => r.isInstanceOf[ast.Field] && r.asInstanceOf[ast.Field].name == fieldName)) {
+        if (sn.heapDependentTriggers.exists { case HeapDependentTrigger.Field(f) => f.name == fieldName; case _ => false }) {
           val trigger = FieldTrigger(field.name, smDef.sm, receiver)
           val currentPermAmount = PermLookup(field.name, pmDef.pm, receiver)
           v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")

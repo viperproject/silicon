@@ -72,8 +72,8 @@ object predicateSupporter extends PredicateSupportRules {
     else
       tArgs zip Seq.fill(tArgs.length)(None)
     val gIns = s.g + Store(predicate.formalArgs map (_.localVar) zip tArgsWithE)
-    val s1 = s.copy(g = gIns,
-                    smDomainNeeded = true)
+    val s1 = s.copy(g = gIns)
+              .updateCache(_.copy(smDomainNeeded = true))
               .scalePermissionFactor(tPerm, ePerm)
     consume(s1, body, true, pve, v)((s1a, snap, v1) => {
       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
@@ -83,9 +83,10 @@ object predicateSupporter extends PredicateSupportRules {
         v1.decider.assume(predTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
       }
       val s2 = s1a.copy(g = s.g,
-                        smDomainNeeded = s.smDomainNeeded,
                         permissionScalingFactor = s.permissionScalingFactor,
-                        permissionScalingFactorExp = s.permissionScalingFactorExp).setConstrainable(constrainableWildcards, false)
+                        permissionScalingFactorExp = s.permissionScalingFactorExp)
+                  .updateCache(_.copy(smDomainNeeded = s.smDomainNeeded))
+                  .setConstrainable(constrainableWildcards, false)
 
       v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snap.get.convert(s2.predicateSnapMap(predicate.name)), None, tPerm, ePerm, pve, true, v1)((s3, v3) => {
         val s4 = v3.heapSupporter.triggerResourceIfNeeded(s3, pa, tArgs, eArgs, v3)

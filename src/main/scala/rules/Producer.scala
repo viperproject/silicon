@@ -211,7 +211,7 @@ object producer extends ProductionRules {
     v.logger.debug(v.stateFormatter.format(s, v.decider.pcs))
 
     val Q: (State, Verifier) => VerificationResult = (state, verifier) =>
-      continuation(if (state.exhaleExt) state.copy(reserveHeaps = state.h +: state.reserveHeaps.drop(1)) else state, verifier)
+      continuation(if (state.exhaleExt) state.updateWand(_.copy(reserveHeaps = state.h +: state.reserveHeaps.drop(1))) else state, verifier)
 
     val produced = a match {
       case imp @ ast.Implies(e0, a0) if !a.isPure && s.moreJoins.id >= JoinMode.Impure.id =>
@@ -221,8 +221,8 @@ object producer extends ProductionRules {
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
           joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s1, v1, QB) =>
-            branch(s1.copy(parallelizeBranches = false), t0, (e0, e0New), v1)(
-              (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a0, pve, v2)((s3, v3) => {
+            branch(s1.updateSettings(_.copy(parallelizeBranches = false)), t0, (e0, e0New), v1)(
+              (s2, v2) => produceR(s2.updateSettings(_.copy(parallelizeBranches = s1.parallelizeBranches)), sf, a0, pve, v2)((s3, v3) => {
                 v3.symbExLog.closeScope(uidImplies)
                 QB(s3, null, v3)
               }),
@@ -233,7 +233,7 @@ object producer extends ProductionRules {
                  * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
                  */
                 v2.symbExLog.closeScope(uidImplies)
-                QB(s2.copy(parallelizeBranches = s1.parallelizeBranches), null, v2)
+                QB(s2.updateSettings(_.copy(parallelizeBranches = s1.parallelizeBranches)), null, v2)
               })
           )(entries => {
             val s2 = entries match {
@@ -274,12 +274,12 @@ object producer extends ProductionRules {
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
           joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s1, v1, QB) =>
-            branch(s1.copy(parallelizeBranches = false), t0, (e0, e0New), v1)(
-              (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a1, pve, v2)((s3, v3) => {
+            branch(s1.updateSettings(_.copy(parallelizeBranches = false)), t0, (e0, e0New), v1)(
+              (s2, v2) => produceR(s2.updateSettings(_.copy(parallelizeBranches = s1.parallelizeBranches)), sf, a1, pve, v2)((s3, v3) => {
                 v3.symbExLog.closeScope(uidCondExp)
                 QB(s3, null, v3)
               }),
-              (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a2, pve, v2)((s3, v3) => {
+              (s2, v2) => produceR(s2.updateSettings(_.copy(parallelizeBranches = s1.parallelizeBranches)), sf, a2, pve, v2)((s3, v3) => {
                 v3.symbExLog.closeScope(uidCondExp)
                 QB(s3, null, v3)
               }))
@@ -324,8 +324,7 @@ object producer extends ProductionRules {
             permissionSupporter.assertNotNegative(s1a, tPerm, ePerm, ePermNew, pve, v1a)((s1b, v2) => {
               val s2 = s1b.copy(constrainableARPs = s.constrainableARPs)
               val snap = sf(v2.snapshotSupporter.optimalSnapshotSort(resource, s2, v2), v2)
-              val gain = if (!Verifier.config.unsafeWildcardOptimization() ||
-                (resource.isInstanceOf[ast.Location] && s2.permLocations.contains(resource.asInstanceOf[ast.Location])))
+              val gain = if (!Verifier.config.unsafeWildcardOptimization() || s2.isPermLocation(resource))
                 PermTimes(tPerm, s2.permissionScalingFactor)
               else
                 WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)

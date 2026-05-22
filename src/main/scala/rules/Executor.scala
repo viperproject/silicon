@@ -68,9 +68,9 @@ object executor extends ExecutionRules {
             /* Using branch(...) here ensures that the edge condition is recorded
              * as a branch condition on the pathcondition stack.
              */
-            brancher.branch(s2.copy(parallelizeBranches = false), tCond, (ce.condition, condNew), v1)(
+            brancher.branch(s2.updateSettings(_.copy(parallelizeBranches = false)), tCond, (ce.condition, condNew), v1)(
               (s3, v3) =>
-                exec(s3.copy(parallelizeBranches = s2.parallelizeBranches), ce.target, ce.kind, v3, joinPoint)((s4, v4) => {
+                exec(s3.updateSettings(_.copy(parallelizeBranches = s2.parallelizeBranches)), ce.target, ce.kind, v3, joinPoint)((s4, v4) => {
                   v4.symbExLog.closeScope(sepIdentifier)
                   Q(s4, v4)
                 }),
@@ -461,7 +461,7 @@ object executor extends ExecutionRules {
           })
         } else
           consume(s, a, false, pve, v)((s1, _, v1) => {
-            val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
+            val s2 = s1.copy(h = s.h).updateWand(_.copy(reserveHeaps = s.reserveHeaps))
             Q(s2, v1)})
 
       // Calling hack407_R() results in Silicon efficiently havocking all instances of resource R.
@@ -573,27 +573,27 @@ object executor extends ExecutionRules {
 
       case pckg @ ast.Package(wand, proofScript) =>
         val pve = PackageFailed(pckg)
-          magicWandSupporter.packageWand(s.copy(isInPackage = true), wand, proofScript, pve, v)((s1, chWand, v1) => {
+          magicWandSupporter.packageWand(s.updateWand(_.copy(isInPackage = true)), wand, proofScript, pve, v)((s1, chWand, v1) => {
 
             val hOps = s1.reserveHeaps.head + chWand
             assert(s.exhaleExt || s1.reserveHeaps.length == 1)
             val s2 =
               if (s.exhaleExt) {
-                s1.copy(h = v1.heapSupporter.getEmptyHeap(s1.program),
-                        exhaleExt = true,
-                        /* It is assumed, that s.reserveHeaps.head (hUsed) is not used or changed
-                         * by the packageWand method. hUsed is normally used during transferring
-                         * consume to store permissions that have already been consumed. The
-                         * permissions on this heap should be discarded after a statement finishes
-                         * execution. hUsed should therefore be empty unless the package statement
-                         * was triggered by heuristics during a consume operation.
-                         */
-                        reserveHeaps = s.reserveHeaps.head +: hOps +: s1.reserveHeaps.tail)
+                s1.copy(h = v1.heapSupporter.getEmptyHeap(s1.program))
+                  .updateWand(_.copy(
+                    exhaleExt = true,
+                    /* It is assumed, that s.reserveHeaps.head (hUsed) is not used or changed
+                     * by the packageWand method. hUsed is normally used during transferring
+                     * consume to store permissions that have already been consumed. The
+                     * permissions on this heap should be discarded after a statement finishes
+                     * execution. hUsed should therefore be empty unless the package statement
+                     * was triggered by heuristics during a consume operation.
+                     */
+                    reserveHeaps = s.reserveHeaps.head +: hOps +: s1.reserveHeaps.tail))
               } else {
                 /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
-                s1.copy(h = hOps,
-                        exhaleExt = false,
-                        reserveHeaps = Nil)
+                s1.copy(h = hOps)
+                  .updateWand(_.copy(exhaleExt = false, reserveHeaps = Nil))
               }
             assert(s2.reserveHeaps.length == s.reserveHeaps.length)
 
@@ -603,7 +603,7 @@ object executor extends ExecutionRules {
               case _ => s2
             }
 
-            continuation(s3.copy(isInPackage = s.isInPackage), v1)
+            continuation(s3.updateWand(_.copy(isInPackage = s.isInPackage)), v1)
           })
 
       case apply @ ast.Apply(e) =>

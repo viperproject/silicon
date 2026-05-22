@@ -120,9 +120,8 @@ object evaluator extends EvaluationRules {
      * evaluation to perform involves consuming or producing permissions, e.g. because of
      * an unfolding expression, these should not be recorded.
      */
-    val s1 = s.copy(h = magicWandSupporter.getEvalHeap(s),
-                    reserveHeaps = Nil,
-                    exhaleExt = false)
+    val s1 = s.copy(h = magicWandSupporter.getEvalHeap(s))
+               .updateWand(_.copy(reserveHeaps = Nil, exhaleExt = false))
 
     eval2(s1, e, pve, v)((s2, t, eNew, v1) => {
       val s3 =
@@ -136,9 +135,7 @@ object evaluator extends EvaluationRules {
               s2}
         else
           s2
-      val s4 = s3.copy(h = s.h,
-                       reserveHeaps = s.reserveHeaps,
-                       exhaleExt = s.exhaleExt)
+      val s4 = s3.copy(h = s.h).updateWand(_.copy(reserveHeaps = s.reserveHeaps, exhaleExt = s.exhaleExt))
       Q(s4, t, eNew, v1)})
   }
 
@@ -305,9 +302,9 @@ object evaluator extends EvaluationRules {
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
           joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2.copy(parallelizeBranches = false), t0, (e0, e0New), v2)(
-              (s3, v3) => eval(s3.copy(parallelizeBranches = s2.parallelizeBranches), e1, pve, v3)((s4, t4, e4, v4) => QB(s4, (t4, e4), v4)),
-              (s3, v3) => eval(s3.copy(parallelizeBranches = s2.parallelizeBranches), e2, pve, v3)((s4, t4, e4, v4) => QB(s4, (t4, e4), v4)))
+            brancher.branch(s2.updateSettings(_.copy(parallelizeBranches = false)), t0, (e0, e0New), v2)(
+              (s3, v3) => eval(s3.updateSettings(_.copy(parallelizeBranches = s2.parallelizeBranches)), e1, pve, v3)((s4, t4, e4, v4) => QB(s4, (t4, e4), v4)),
+              (s3, v3) => eval(s3.updateSettings(_.copy(parallelizeBranches = s2.parallelizeBranches)), e2, pve, v3)((s4, t4, e4, v4) => QB(s4, (t4, e4), v4)))
           )(entries => {
             /* TODO: If branch(...) took orElse-continuations that are executed if a branch is dead, then then
                 comparisons with t0/Not(t0) wouldn't be necessary. */
@@ -646,10 +643,12 @@ object evaluator extends EvaluationRules {
                                  * of the recorded snapshots - which is wrong (probably only
                                  * incomplete).
                                  */
-                             smDomainNeeded = true,
-                             moreJoins = JoinMode.Off,
-                             assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts())
-                               s2.assertReadAccessOnly /* should currently always be false */ else true)
+                             )
+                           .updateSettings(_.copy(
+                               moreJoins = JoinMode.Off,
+                               assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts())
+                                 s2.assertReadAccessOnly /* should currently always be false */ else true))
+                           .updateCache(_.copy(smDomainNeeded = true))
             consumes(s3, pres, true, _ => pvePre, v2)((s4, snap, v3) => {
               val snap1 = snap.get.convert(sorts.Snap)
               val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
@@ -673,10 +672,10 @@ object evaluator extends EvaluationRules {
               val s5 = s4.copy(g = s2.g,
                                h = s2.h,
                                recordVisited = s2.recordVisited,
-                               functionRecorder = fr5,
-                               smDomainNeeded = s2.smDomainNeeded,
-                               moreJoins = s2.moreJoins,
-                               assertReadAccessOnly = s2.assertReadAccessOnly)
+                               functionRecorder = fr5)
+                         .updateSettings(_.copy(moreJoins = s2.moreJoins,
+                                                assertReadAccessOnly = s2.assertReadAccessOnly))
+                         .updateCache(_.copy(smDomainNeeded = s2.smDomainNeeded))
               val funcAppNewOld = Option.when(withExp)({
                 if (s5.isEvalInOld || pres.forall(_.isPure)) funcAppNew.get
                 else ast.DebugLabelledOld(funcAppNew.get, debugLabel)(fapp.pos, fapp.info, fapp.errT)
@@ -1082,8 +1081,8 @@ object evaluator extends EvaluationRules {
     val gVars = Store(localVars zip varPairs)
     val s1 = s.copy(g = s.g + gVars,
                     quantifiedVariables = varPairs ++ s.quantifiedVariables,
-                    recordPossibleTriggers = true,
                     possibleTriggers = Map.empty) // TODO: Why reset possibleTriggers if they are merged with s.possibleTriggers later anyway?
+               .updateSettings(_.copy(recordPossibleTriggers = true))
     type R = (State, Seq[Term], Option[Seq[ast.Exp]], Option[(Seq[Term], Option[Seq[ast.Exp]], Seq[Trigger], (Seq[Term], Seq[Quantification]), Option[(InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp])], Map[ast.Exp, Term])])
     executionFlowController.locallyWithResult[R](s1, v)((s2, v1, QB) => {
        val preMark = v1.decider.setPathConditionMark()
@@ -1133,9 +1132,9 @@ object evaluator extends EvaluationRules {
                          : VerificationResult = {
 
     joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s, v)((s1, v1, QB) =>
-      brancher.branch(s1.copy(parallelizeBranches = false), tLhs, eLhs, v1, fromShortCircuitingAnd = fromShortCircuitingAnd)(
-        (s2, v2) => eval(s2.copy(parallelizeBranches = s1.parallelizeBranches), eRhs, pve, v2)((s2, tRhs, eRhsNew, v2) => QB(s2, (tRhs, eRhsNew), v2)),
-        (s2, v2) => QB(s2.copy(parallelizeBranches = s1.parallelizeBranches), (True, Option.when(withExp)(ast.TrueLit()())), v2))
+      brancher.branch(s1.updateSettings(_.copy(parallelizeBranches = false)), tLhs, eLhs, v1, fromShortCircuitingAnd = fromShortCircuitingAnd)(
+        (s2, v2) => eval(s2.updateSettings(_.copy(parallelizeBranches = s1.parallelizeBranches)), eRhs, pve, v2)((s2, tRhs, eRhsNew, v2) => QB(s2, (tRhs, eRhsNew), v2)),
+        (s2, v2) => QB(s2.updateSettings(_.copy(parallelizeBranches = s1.parallelizeBranches)), (True, Option.when(withExp)(ast.TrueLit()())), v2))
     )(entries => {
       assert(entries.length <= 2)
       val s1 = entries.tail.foldLeft(entries.head.s)((sAcc, entry) => sAcc.merge(entry.s))
@@ -1157,7 +1156,7 @@ object evaluator extends EvaluationRules {
                             : VerificationResult = {
 
     val h = s.oldHeaps(label)
-    val s1 = s.copy(h = h, partiallyConsumedHeap = None, isEvalInOld = true)
+    val s1 = s.copy(h = h, isEvalInOld = true, partiallyConsumedHeap = None)
     val s2 = v.stateConsolidator(s1).consolidateOptionally(s1, v)
     val possibleTriggersBefore: Map[ast.Exp, Term] = if (s.recordPossibleTriggers) s.possibleTriggers else Map.empty
 
@@ -1374,7 +1373,7 @@ object evaluator extends EvaluationRules {
      */
 
     val r =
-      evals(s.copy(triggerExp = true), remainingTriggerExpressions, _ => pve, v)((s1, remainingTriggerTerms, _, v1) => {
+      evals(s.updateSettings(_.copy(triggerExp = true)), remainingTriggerExpressions, _ => pve, v)((s1, remainingTriggerTerms, _, v1) => {
         optRemainingTriggerTerms = Some(remainingTriggerTerms)
         pcDelta = v1.decider.pcs.after(preMark).assumptions //decider.π -- πPre
         pcDeltaExp = v1.decider.pcs.after(preMark).assumptionExps
@@ -1449,7 +1448,7 @@ object evaluator extends EvaluationRules {
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
         smDefs = smDefs ++ smDef
-      case e => evalTrigger(s.copy(triggerExp = true), Seq(e), pve, v)((_, t, _) => {
+      case e => evalTrigger(s.updateSettings(_.copy(triggerExp = true)), Seq(e), pve, v)((_, t, _) => {
         triggers = triggers ++ t
         Success()
       })
@@ -1486,9 +1485,9 @@ object evaluator extends EvaluationRules {
     val (smDef1, smCache1) =
       quantifiedChunkSupporter.summarisingSnapshotMap(
         s, resource, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition)
-    val s1 = s.copy(smCache = smCache1)
+    val s1 = s.updateCache(_.copy(smCache = smCache1))
 
-    evals(s1.copy(triggerExp = true), eArgs, _ => pve, v)((_, tArgs, _, _) => {
+    evals(s1.updateSettings(_.copy(triggerExp = true)), eArgs, _ => pve, v)((_, tArgs, _, _) => {
       axioms = axioms ++ smDef1.valueDefinitions
       mostRecentTrig = ResourceTriggerFunction(resource, smDef1.sm, tArgs, s.program)
       triggers = triggers :+ mostRecentTrig
@@ -1524,9 +1523,9 @@ object evaluator extends EvaluationRules {
         case _ =>
           val expPair = if (constructor == Or) (exps.head, e0New) else (ast.Not(exps.head)(), e0New.map(ast.Not(_)()))
           joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2.copy(parallelizeBranches = false), if (constructor == Or) t0 else Not(t0), expPair, v2, fromShortCircuitingAnd = true)(
-              (s3, v3) => QB(s3.copy(parallelizeBranches = s2.parallelizeBranches), (t0, e0New), v3),
-              (s3, v3) => evalSeqShortCircuit(constructor, s3.copy(parallelizeBranches = s2.parallelizeBranches), exps.tail, pve, v3)((s2, t2, e2, v2) => QB(s2, (t2, e2), v2)))
+            brancher.branch(s2.updateSettings(_.copy(parallelizeBranches = false)), if (constructor == Or) t0 else Not(t0), expPair, v2, fromShortCircuitingAnd = true)(
+              (s3, v3) => QB(s3.updateSettings(_.copy(parallelizeBranches = s2.parallelizeBranches)), (t0, e0New), v3),
+              (s3, v3) => evalSeqShortCircuit(constructor, s3.updateSettings(_.copy(parallelizeBranches = s2.parallelizeBranches)), exps.tail, pve, v3)((s2, t2, e2, v2) => QB(s2, (t2, e2), v2)))
             ){case Seq(ent) =>
                 (ent.s, ent.data)
               case Seq(ent1, ent2) =>

@@ -140,9 +140,11 @@ object executionFlowController extends ExecutionFlowRules {
             Verifier.config.exhaleMode != ExhaleMode.Greedy
         }
 
-        action(s0.copy(retrying = true, retryLevel = s.retryLevel, moreCompleteExhale = temporaryMCE), v, (s1, r, v1) => {
+        action(s0.copy(retrying = true, retryLevel = s.retryLevel)
+                  .updateSettings(_.copy(moreCompleteExhale = temporaryMCE)), v, (s1, r, v1) => {
           v1.symbExLog.closeScope(sepIdentifier)
-          Q(s1.copy(retrying = false, moreCompleteExhale = s0.moreCompleteExhale), r, v1)
+          Q(s1.copy(retrying = false)
+              .updateSettings(_.copy(moreCompleteExhale = s0.moreCompleteExhale)), r, v1)
         })
       }
 

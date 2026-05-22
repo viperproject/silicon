@@ -67,8 +67,8 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
       val s = sInit.copy(g = g,
                          h = v.heapSupporter.getEmptyHeap(sInit.program),
-                         oldHeaps = OldHeaps(),
-                         methodCfg = body)
+                         oldHeaps = OldHeaps())
+                   .updateMc(_.copy(methodCfg = body))
 
       if (Verifier.config.printMethodCFGs()) {
         viper.silicon.common.io.toFile(

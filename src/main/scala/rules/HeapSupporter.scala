@@ -210,7 +210,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
           v.decider.assumeDefinition(smValueDef, debugExp)
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
             field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, s.program)
-          if (s3.heapDependentTriggers.contains(field)) {
+          if (s3.isUsedAsTrigger(field)) {
             val debugExp2 = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString()}.${field.name})"))
             v.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2)
           }
@@ -321,7 +321,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
            * which is protected by a trigger term that we currently don't have.
            */
           v.decider.assume(And(fvfDef.valueDefinitions), Option.when(withExp)(DebugExp.createInstance("Value definitions", isInternal_ = true)))
-          if (s.heapDependentTriggers.contains(fa.field)) {
+          if (s.isUsedAsTrigger(fa.field)) {
             val trigger = FieldTrigger(fa.field.name, fvfDef.sm, tRcvr)
             val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
             v.decider.assume(trigger, triggerExp)
@@ -339,7 +339,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
               case true =>
                 val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                 val fr1 = s.functionRecorder.recordSnapshot(fa, v.decider.pcs.branchConditions, fvfLookup).recordFvfAndDomain(fvfDef)
-                val possTriggers = if (s.heapDependentTriggers.contains(fa.field) && s.recordPossibleTriggers)
+                val possTriggers = if (s.isUsedAsTrigger(fa.field) && s.recordPossibleTriggers)
                   s.possibleTriggers + (fa -> FieldTrigger(fa.field.name, fvfDef.sm, tRcvr))
                 else
                   s.possibleTriggers
@@ -365,7 +365,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             val perms = PermLookup(fa.field.name, pmDef1.pm, tRcvr)
             (s2.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef1).recordPermMap(pmDef1)), perms, smDef1.sm)
           }
-          if (s2.heapDependentTriggers.contains(fa.field)) {
+          if (s2.isUsedAsTrigger(fa.field)) {
             val trigger = FieldTrigger(fa.field.name, sm, tRcvr)
             val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
             v.decider.assume(trigger, triggerExp)
@@ -432,7 +432,8 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val debugExp = Option.when(withExp)(DebugExp.createInstance(Some(s"Resource trigger(${name}($eArgsStr))"), Some(resAcc),
         Some(resAcc), None, isInternal_ = true, InsertionOrderedSet.empty))
       v.decider.assume(trigger(smDef1.sm), debugExp)
-      s.copy(smCache = smCache1, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef1))
+      s.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef1))
+       .updateCache(_.copy(smCache = smCache1))
     } else {
       s
     }

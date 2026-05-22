@@ -270,8 +270,8 @@ class DefaultMainVerifier(config: Config,
 
     val verificationTaskFutures: Seq[Future[Seq[VerificationResult]]] =
       program.methods.filterNot(excludeMethod).map(method => {
-        val s = createInitialState(method, program, functionData, predicateData).copy(parallelizeBranches =
-          Verifier.config.parallelizeBranches()) /* [BRANCH-PARALLELISATION] */
+        val s = createInitialState(method, program, functionData, predicateData)
+          .updateSettings(_.copy(parallelizeBranches = Verifier.config.parallelizeBranches())) /* [BRANCH-PARALLELISATION] */
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
@@ -292,7 +292,8 @@ class DefaultMainVerifier(config: Config,
           setErrorScope(results, method)
         })
       }) ++ cfgs.map(cfg => {
-        val s = createInitialState(cfg, program, functionData, predicateData).copy(parallelizeBranches = true) /* [BRANCH-PARALLELISATION] */
+        val s = createInitialState(cfg, program, functionData, predicateData)
+          .updateSettings(_.copy(parallelizeBranches = true)) /* [BRANCH-PARALLELISATION] */
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
@@ -344,10 +345,12 @@ class DefaultMainVerifier(config: Config,
     val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
     val quantifiedPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
     val quantifiedMagicWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(member, program)).map(MagicWandIdentifier(_, program))
-    val resourceTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet(ast.utility.QuantifiedPermissions.resourceTriggers(member, program)).map{
-      case wand: ast.MagicWand => MagicWandIdentifier(wand, program)
-      case r => r
-    }
+    val resourceTriggers: InsertionOrderedSet[HeapDependentTrigger] =
+      InsertionOrderedSet(ast.utility.QuantifiedPermissions.resourceTriggers(member, program)).map {
+        case f:    ast.Field    => HeapDependentTrigger.Field(f)
+        case p:    ast.Predicate => HeapDependentTrigger.Predicate(p)
+        case wand: ast.MagicWand => HeapDependentTrigger.Wand(MagicWandIdentifier(wand, program))
+      }
 
     val mce = AnnotationSupporter.getExhaleMode(member, reporter) match {
       case Some(ExhaleMode.MoreComplete) => true
@@ -395,41 +398,47 @@ class DefaultMainVerifier(config: Config,
       case _ => InsertionOrderedSet.empty
     } else InsertionOrderedSet.empty
 
-    State(program = program,
-          functionData = functionData,
-          predicateData = predicateData,
-          qpFields = quantifiedFields,
-          qpPredicates = quantifiedPredicates,
-          qpMagicWands = quantifiedMagicWands,
-          permLocations = permResources,
-          predicateSnapMap = predSnapGenerator.snapMap,
-          predicateFormalVarMap = predSnapGenerator.formalVarMap,
-          currentMember = Some(member),
-          heapDependentTriggers = resourceTriggers,
-          moreCompleteExhale = mce,
-          moreJoins = moreJoins)
+    val mc = MemberContext(
+      program               = program,
+      currentMember         = Some(member),
+      predicateData         = predicateData,
+      functionData          = functionData,
+      predicateSnapMap      = predSnapGenerator.snapMap,
+      predicateFormalVarMap = predSnapGenerator.formalVarMap,
+      qpFields              = quantifiedFields,
+      qpPredicates          = quantifiedPredicates,
+      qpMagicWands          = quantifiedMagicWands,
+      permLocations         = permResources,
+      heapDependentTriggers = resourceTriggers)
+    State(
+      mc       = mc,
+      settings = ExecSettings(moreJoins = moreJoins, moreCompleteExhale = mce),
+      permissionScalingFactorExp = Option.when(Verifier.config.enableDebugging())(ast.FullPerm()()))
   }
 
   private def createInitialState(@unused cfg: SilverCfg,
                                  program: ast.Program,
                                  functionData: Map[String, FunctionData],
                                  predicateData: Map[String, PredicateData]): State = {
-    val quantifiedFields = InsertionOrderedSet(program.fields)
+    val quantifiedFields    = InsertionOrderedSet(program.fields)
     val quantifiedPredicates = InsertionOrderedSet(program.predicates)
     val quantifiedMagicWands = InsertionOrderedSet[MagicWandIdentifier]() // TODO: Implement support for quantified magic wands.
 
-    State(
-      program = program,
-      currentMember = None,
-      functionData = functionData,
-      predicateData = predicateData,
-      qpFields = quantifiedFields,
-      qpPredicates = quantifiedPredicates,
-      qpMagicWands = quantifiedMagicWands,
-      predicateSnapMap = predSnapGenerator.snapMap,
+    val mc = MemberContext(
+      program               = program,
+      currentMember         = None,
+      predicateData         = predicateData,
+      functionData          = functionData,
+      predicateSnapMap      = predSnapGenerator.snapMap,
       predicateFormalVarMap = predSnapGenerator.formalVarMap,
-      moreCompleteExhale = Verifier.config.exhaleMode == ExhaleMode.MoreComplete,
-      moreJoins = Verifier.config.moreJoins())
+      qpFields              = quantifiedFields,
+      qpPredicates          = quantifiedPredicates,
+      qpMagicWands          = quantifiedMagicWands)
+    State(
+      mc       = mc,
+      settings = ExecSettings(moreJoins = Verifier.config.moreJoins(),
+                              moreCompleteExhale = Verifier.config.exhaleMode == ExhaleMode.MoreComplete),
+      permissionScalingFactorExp = Option.when(Verifier.config.enableDebugging())(ast.FullPerm()()))
   }
 
   private def excludeMethod(method: ast.Method) = (

@@ -59,7 +59,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         ast.PermAdd(pse, ast.CondExp(argumentEqualitiesExp.get, ch.permExp.get, ast.NoPerm()())())())
     })
     val ssc1 = s.ssCache + ((resource, relevantChunks, args) -> (None, None, permissionSum, permissionSumExp))
-    val s1 = s.copy(ssCache = ssc1)
+    val s1 = s.updateCache(_.copy(ssCache = ssc1))
 
     (s1, permissionSum, permissionSumExp)
   }
@@ -144,7 +144,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     val (_, permissionSum, permissionSumExp) = permSummariseOnly(s, relevantChunks, resource, args, argsExp)
 
     val ssc1 = s.ssCache + ((resource, relevantChunks, args) -> (Some(taggedSummarisingSnapshot), Some(summarisingSnapshotDefinitions), permissionSum, permissionSumExp))
-    val s1 = s.copy(ssCache = ssc1)
+    val s1 = s.updateCache(_.copy(ssCache = ssc1))
 
     (s1, taggedSummarisingSnapshot, summarisingSnapshotDefinitions, permissionSum, permissionSumExp)
   }

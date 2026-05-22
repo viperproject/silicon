@@ -135,11 +135,11 @@ object magicWandSupporter extends SymbolicExecutionRules {
                             v: Verifier)
                            (Q: (State, Seq[Term], Option[Seq[ast.Exp]], Verifier) => VerificationResult)
                            : VerificationResult = {
-    val s1 = s.copy(exhaleExt = false)
+    val s1 = s.updateWand(_.copy(exhaleExt = false))
     val es = wand.subexpressionsToEvaluate(s.program)
 
     evals(s1, es, _ => pve, v)((s2, ts, esNew, v1) => {
-      Q(s2.copy(exhaleExt = s.exhaleExt), ts, esNew, v1)
+      Q(s2.updateWand(_.copy(exhaleExt = s.exhaleExt)), ts, esNew, v1)
     })
   }
 
@@ -239,7 +239,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                  : VerificationResult = {
 
     val s = if (state.exhaleExt) state else
-      state.copy(reserveHeaps = v.heapSupporter.getEmptyHeap(state.program) :: state.h :: Nil)
+      state.updateWand(_.copy(reserveHeaps = v.heapSupporter.getEmptyHeap(state.program) :: state.h :: Nil))
 
     // v.logger.debug(s"wand = $wand")
     // v.logger.debug("c.reserveHeaps:")
@@ -253,12 +253,11 @@ object magicWandSupporter extends SymbolicExecutionRules {
      *       during some executions - since such crashes are hard to debug, branch parallelisation
      *       has been disabled for now.
      */
-    val sEmp = s.copy(h = v.heapSupporter.getEmptyHeap(state.program),
-                      reserveHeaps = Nil,
-                      exhaleExt = false,
-                      conservedPcs = Vector[RecordedPathConditions]() +: s.conservedPcs,
-                      recordPcs = true,
-                      parallelizeBranches = false)
+    val sEmp = s.copy(h = v.heapSupporter.getEmptyHeap(state.program))
+                 .updateWand(_.copy(reserveHeaps = Nil, exhaleExt = false,
+                                   conservedPcs = Vector[RecordedPathConditions]() +: s.conservedPcs,
+                                   recordPcs = true))
+                 .updateSettings(_.copy(parallelizeBranches = false))
 
     def appendToResults(s5: State, ch: Chunk, pcs: RecordedPathConditions, conservedPcs: (Seq[Term], Option[Seq[DebugExp]]), v4: Verifier): Unit = {
       assert(s5.conservedPcs.nonEmpty, s"Unexpected structure of s5.conservedPcs: ${s5.conservedPcs}")
@@ -276,7 +275,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           case head +: tail => (head ++ (s5.conservedPcs.head :+ pcs.definitionsOnly)) +: tail
         }
 
-      val s6 = s5.copy(conservedPcs = conservedPcsStack, recordPcs = s.recordPcs)
+      val s6 = s5.updateWand(_.copy(conservedPcs = conservedPcsStack, recordPcs = s.recordPcs))
 
       recordedBranches :+= (s6, v4.decider.pcs.branchConditions, v4.decider.pcs.branchConditionExps, conservedPcs, ch)
     }
@@ -363,7 +362,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val freshSnapRoot = freshSnap(sorts.Snap, v1)
 
       // Produce the wand's LHS.
-      produce(s1.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1)((sLhs, v2) => {
+      produce(s1, toSf(freshSnapRoot), wand.left, pve, v1)((sLhs, v2) => {
         val proofScriptCfg = proofScript.toCfg()
         val emptyHeap = v2.heapSupporter.getEmptyHeap(sLhs.program)
 
@@ -375,11 +374,11 @@ object magicWandSupporter extends SymbolicExecutionRules {
          */
         val s2 = sLhs.copy(g = s.g, // TODO: s1.g? And analogously, s1 instead of s further down?
                            h = emptyHeap,
+                           oldHeaps = s.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> sLhs.h))
+                     .updateWand(_.copy(
                            reserveHeaps = emptyHeap +: emptyHeap +: sLhs.h +: s.reserveHeaps.tail, /* [State RHS] */
                            reserveCfgs = proofScriptCfg +: sLhs.reserveCfgs,
-                           exhaleExt = true,
-                           oldHeaps = s.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> sLhs.h),
-                           conservingSnapshotGeneration = s.conservingSnapshotGeneration)
+                           exhaleExt = true))
         /* s2.reserveHeaps is [hUsed, hOps, hLHS, ...], where hUsed and hOps are initially
          * empty, and where the dots represent the heaps belonging to surrounding package/packaging
          * operations. hOps will be populated while processing the RHS of the wand to package.
@@ -398,11 +397,13 @@ object magicWandSupporter extends SymbolicExecutionRules {
           // Consume the wand's RHS and produce a snapshot which records all the values of variables on the RHS.
           // This part indirectly calls the methods `this.transfer` and `this.consumeFromMultipleHeaps`.
           consume(
-            proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail),
+            proofScriptState.copy(oldHeaps = s2.oldHeaps)
+                            .updateWand(_.copy(reserveCfgs = proofScriptState.reserveCfgs.tail)),
             wand.right, true, pve, proofScriptVerifier
           )((s3, snapRhs, v3) => {
 
-            createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs.get, v3)
+            createWandChunkAndRecordResults(
+              s3.copy(oldHeaps = s.oldHeaps).updateWand(_.copy(exhaleExt = false)), freshSnapRoot, snapRhs.get, v3)
           })
         })
       })
@@ -413,17 +414,15 @@ object magicWandSupporter extends SymbolicExecutionRules {
       // and thus, that no wand chunk was created. In order to continue, we create one now.
       // Moreover, we need to set reserveHeaps to structurally match [State RHS] below.
       val emptyHeap = v.heapSupporter.getEmptyHeap(sEmp.program)
-      val s1 = sEmp.copy(reserveHeaps = emptyHeap +: emptyHeap +: emptyHeap +: s.reserveHeaps.tail)
+      val s1 = sEmp.updateWand(_.copy(reserveHeaps = emptyHeap +: emptyHeap +: emptyHeap +: s.reserveHeaps.tail))
       createWandChunkAndRecordResults(s1, freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v), v)
     }
 
     recordedBranches.foldLeft(tempResult)((prevRes, recordedState) => {
       prevRes && {
         val (state, branchConditions, branchConditionsExp, conservedPcs, magicWandChunk) = recordedState
-        val s1 = state.copy(
-          reserveHeaps = state.reserveHeaps.drop(3),
-          parallelizeBranches = s.parallelizeBranches /* See comment above */
-        )
+        val s1 = state.updateWand(_.copy(reserveHeaps = state.reserveHeaps.drop(3)))
+                      .updateSettings(_.copy(parallelizeBranches = s.parallelizeBranches)) /* See comment above */
 
         // We execute the continuation Q in a new scope with all branch conditions and all conserved path conditions.
         executionFlowController.locally(s1, v)((s2, v1) => {
@@ -484,9 +483,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
         }
 
         // Produce the wand's RHS.
-        produce(s3.copy(conservingSnapshotGeneration = true), toSf(magicWandSnapshotLookup), wand.right, pve, v2)((s4, v3) => {
+        produce(s3, toSf(magicWandSnapshotLookup), wand.right, pve, v2)((s4, v3) => {
           // Recreate old state without the magic wand, and the state with the oldHeap called lhs.
-          val s5 = s4.copy(g = s1.g, conservingSnapshotGeneration = s3.conservingSnapshotGeneration)
+          val s5 = s4.copy(g = s1.g)
 
           // Consolidate the state and remove labelled old heap "lhs".
           val s6 = v3.stateConsolidator(s5).consolidate(s5, v3).copy(oldHeaps = s1.oldHeaps)
@@ -523,12 +522,12 @@ object magicWandSupporter extends SymbolicExecutionRules {
       this.consumeFromMultipleHeaps(s1, s1.reserveHeaps.tail, perms, permsExp, failure, qvars, v1)(consumeFunction)(QS)
     )((s2, hs2, chs2, v2) => {
       val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark)
-      val s3 = s2.copy(conservedPcs = conservedPcs +: s2.conservedPcs.tail, reserveHeaps = s.reserveHeaps.head +: hs2)
+      val s3 = s2.updateWand(_.copy(conservedPcs = conservedPcs +: s2.conservedPcs.tail, reserveHeaps = s.reserveHeaps.head +: hs2))
 
       val usedChunks = chs2.flatten
       val (fr4, hUsed) = v2.stateConsolidator(s2).merge(s3.functionRecorder, s2, s2.reserveHeaps.head, Heap(usedChunks), v2)
 
-      val s4 = s3.copy(functionRecorder = fr4, reserveHeaps = hUsed +: s3.reserveHeaps.tail)
+      val s4 = s3.copy(functionRecorder = fr4).updateWand(_.copy(reserveHeaps = hUsed +: s3.reserveHeaps.tail))
 
       /* Returning the last of the usedChunks should be fine w.r.t to the snapshot
        * of the chunk, since consumeFromMultipleHeaps should have equated the
@@ -573,8 +572,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
        */
       val emptyHeap = v.heapSupporter.getEmptyHeap(newState.program)
       val (fr, hOpsJoinUsed) = v.stateConsolidator(newState).merge(newState.functionRecorder, newState, newState.reserveHeaps(1), newState.h, v)
-      newState.copy(functionRecorder = fr, h = emptyHeap,
-          reserveHeaps = emptyHeap +: hOpsJoinUsed +: newState.reserveHeaps.drop(2))
+      newState.copy(functionRecorder = fr, h = emptyHeap)
+              .updateWand(_.copy(reserveHeaps = emptyHeap +: hOpsJoinUsed +: newState.reserveHeaps.drop(2)))
     } else newState
 
   def getOutEdges(s: State, b: SilverBlock): Seq[Edge[Stmt, Exp]] =
