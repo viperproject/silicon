@@ -428,17 +428,17 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       val assertionE = translateStringToExp(userInput, obl)
       var resT: Term = null
       var resE: ast.Exp = null
-      var resV: Verifier = null
+      var resS: State = null
       val pve: PartialVerificationError = PartialVerificationError(r => ContractNotWellformed(assertionE, r))
-      val verificationResult = evaluator.eval3(obl.s, assertionE, pve, obl.v)((_, t, newE, newV) => {
+      val verificationResult = evaluator.eval3(obl.s, assertionE, pve)((newS, t, newE) => {
         resT = t
         resE = newE.get
-        resV = newV
+        resS = newS
         Success()
       })
       verificationResult match {
         case Success() =>
-          obl.copy(assumptionsExp = resV.decider.pcs.assumptionExps, assertion = resT, eAssertion = DebugExp.createInstance(resE, resE), v = resV)
+          obl.copy(assumptionsExp = resS.v.decider.pcs.assumptionExps, assertion = resT, eAssertion = DebugExp.createInstance(resE, resE), v = resS.v)
         case _ =>
           throw new UnknownError("Error while evaluating expression: " + verificationResult.toString)
       }
@@ -493,21 +493,20 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     var resT: Term = null
     var resS: State = null
     var resE: ast.Exp = null
-    var resV: Verifier = null
     var evalPcs: RecordedPathConditions = null
     val pve: PartialVerificationError = PartialVerificationError(r => ContractNotWellformed(e, r))
     val beforeEval = v.decider.setPathConditionMark()
-    val verificationResult = evaluator.eval3(obl.s, e, pve, v)((newS, t, newE, newV) => {
+    val verificationResult = evaluator.eval3(obl.s, e, pve)((newS, t, newE) => {
       resS = newS
       resT = t
       resE = newE.get
-      resV = newV
-      evalPcs = newV.decider.pcs.after(beforeEval)
+      evalPcs = newS.v.decider.pcs.after(beforeEval)
       Success()
     })
 
     verificationResult match {
       case Success() =>
+        val resV = resS.v
         val proved = isFree || resV.decider.prover.assert(resT, None)
         if (proved) {
           println("Assumption was added successfully!")

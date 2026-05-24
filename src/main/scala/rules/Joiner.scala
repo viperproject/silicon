@@ -14,51 +14,49 @@ import viper.silicon.logger.records.structural.JoiningRecord
 import viper.silicon.state.State
 import viper.silicon.state.terms.{And, Or, Term}
 import viper.silicon.utils.ast.{BigAnd, BigOr}
-import viper.silicon.verifier.Verifier
 import viper.silver.ast
-
-import scala.annotation.unused
 
 case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathConditions) {
   // Instead of merging states by calling State.merge,
   // we can directly merge JoinDataEntries to obtain new States,
   // and the join data entries themselves provide information about the path conditions to State.merge.
-  def pathConditionAwareMerge(other: JoinDataEntry[D], v: Verifier): State = {
+  def pathConditionAwareMerge(other: JoinDataEntry[D]): State = {
     val res = State.merge(this.s, this.pathConditions, other.s, other.pathConditions)
-    v.stateConsolidator(s).consolidate(res, v)
+    res.consolidate()
   }
 
-  def pathConditionAwareMergeWithoutConsolidation(other: JoinDataEntry[D], @unused v: Verifier): State = {
+  def pathConditionAwareMergeWithoutConsolidation(other: JoinDataEntry[D]): State = {
     State.merge(this.s, this.pathConditions, other.s, other.pathConditions)
   }
 }
 
 trait JoiningRules extends SymbolicExecutionRules {
 
-  def join[D, JD](s: State, v: Verifier, resetState: Boolean = true)
-                 (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
+  def join[D, JD](s: State, resetState: Boolean = true)
+                 (block: (State, (State, D) => VerificationResult) => VerificationResult)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
-                 (Q: (State, JD, Verifier) => VerificationResult)
+                 (Q: (State, JD) => VerificationResult)
                  : VerificationResult
 }
 
 object joiner extends JoiningRules {
-  def join[D, JD](s: State, v: Verifier, resetState: Boolean = true)
-                 (block: (State, Verifier, (State, D,  Verifier) => VerificationResult) => VerificationResult)
+  def join[D, JD](s: State, resetState: Boolean = true)
+                 (block: (State, (State, D) => VerificationResult) => VerificationResult)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
-                 (Q: (State, JD, Verifier) => VerificationResult)
+                 (Q: (State, JD) => VerificationResult)
                  : VerificationResult = {
 
+    val v = s.v
     var entries: Seq[JoinDataEntry[D]] = Vector.empty
 
     val joiningRecord = new JoiningRecord(s, v.decider.pcs)
     val uidJoin = v.symbExLog.openScope(joiningRecord)
 
-    executionFlowController.locally(s, v)((s1, v1) => {
-      val preMark = v1.decider.setPathConditionMark()
+    executionFlowController.locally(s)(s1 => {
+      val preMark = s1.v.decider.setPathConditionMark()
       val s2 = s1.copy(underJoin = true)
 
-      block(s2, v1, (s3, data, v2) => {
+      block(s2, (s3, data) => {
         val s4 =
           if (resetState) {
             /* In order to prevent mismatches between different final states of the evaluation
@@ -79,7 +77,7 @@ object joiner extends JoiningRules {
             s3
           }
 
-        entries :+= JoinDataEntry(s4, data, v2.decider.pcs.after(preMark))
+        entries :+= JoinDataEntry(s4, data, s3.v.decider.pcs.after(preMark))
         Success()
       })
     }) combine {
@@ -109,7 +107,7 @@ object joiner extends JoiningRules {
         })
         // Assume we are in a feasible branch
         v.decider.assume(Or(feasibleBranches), Option.when(withExp)(DebugExp.createInstance(Some("Feasible Branches"), feasibleBranchesExp.map(BigOr(_)), feasibleBranchesExpNew.map(BigOr(_)), InsertionOrderedSet.empty)))
-        Q(sJoined, dataJoined, v)
+        Q(sJoined, dataJoined)
       }
     }
   }

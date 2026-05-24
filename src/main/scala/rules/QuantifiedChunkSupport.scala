@@ -976,7 +976,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               )
               v.decider.assume(pcsForChunk, pcsForChunkExp, pcsForChunkExp)
             })
-            val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v)
+            val (fr1, h1) = s.stateConsolidator.merge(s.functionRecorder, s, s.h, Heap(Seq(ch)))
 
             val (smCache1, fr2) = if (s.isUsedAsTrigger(resource)){
               // TODO: Why not formalQVars? Used as codomainVars, see above.
@@ -1010,11 +1010,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                .updateCache(_.copy(smCache = smCache1))
             Q(s1, v)
           case false => {
-            createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver is injective")
+            createFailure(pve dueTo notInjectiveReason, s, receiverInjectivityCheck, "QP receiver is injective")
           }
         }
       case false =>
-        createFailure(pve dueTo negativePermissionReason, v, s, nonNegImplication, nonNegImplicationExp)}
+        createFailure(pve dueTo negativePermissionReason, s, nonNegImplication, nonNegImplicationExp)}
   }
 
   def produceSingleLocation(s: State,
@@ -1044,7 +1044,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalQVars, formalQVarsExp, resource, tArgs, eArgs, tPerm, ePerm, sm, s.program)
 
     val s1 = if (mergeAndTrigger) {
-      val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v)
+      val (fr1, h1) = s.stateConsolidator.merge(s.functionRecorder, s, s.h, Heap(Seq(ch)))
 
       val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
       val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
@@ -1224,7 +1224,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                           s.updateCache(_.copy(smCache = smCache1)),
                                           lossOfInvOfLoc,
                                           lossExp,
-                                          createFailure(pve dueTo insufficientPermissionReason/*InsufficientPermission(acc.loc)*/, v, s, "consuming QP"),
+                                          createFailure(pve dueTo insufficientPermissionReason/*InsufficientPermission(acc.loc)*/, s, "consuming QP"),
                                           formalQVars,
                                           v)((s2, heap, rPerm, rPermExp, v2) => {
                 val (relevantChunks, otherChunks) =
@@ -1335,12 +1335,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                     Q(s2, h3, None, v)
                   }
                 case (Incomplete(_, _), s2, _) =>
-                  createFailure(pve dueTo insufficientPermissionReason, v, s2, "QP consume")}
+                  createFailure(pve dueTo insufficientPermissionReason, s2, "QP consume")}
             }
           case false =>
-            createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver injective")}
+            createFailure(pve dueTo notInjectiveReason, s, receiverInjectivityCheck, "QP receiver injective")}
       case false =>
-        createFailure(pve dueTo negativePermissionReason, v, s, nonNegTerm, nonNegExp)}
+        createFailure(pve dueTo negativePermissionReason, s, nonNegTerm, nonNegExp)}
   }
 
   def consumeSingleLocation(s: State,
@@ -1372,8 +1372,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     if (s.exhaleExt) {
       val failure = resourceAccess match {
-        case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s, "single QP consume inside package")
-        case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s, "single QP consume inside package")
+        case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), s, "single QP consume inside package")
+        case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), s, "single QP consume inside package")
         case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
       }
       magicWandSupporter.transfer(s, permissions, permissionsExp, failure, Seq(), v)((s1, h1, rPerm, rPermExp, v1) => {
@@ -1464,8 +1464,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           }
         case (Incomplete(_, _), _, _) =>
           resourceAccess match {
-            case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s, "single QP consume")
-            case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s, "single QP consume")
+            case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), s, "single QP consume")
+            case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), s, "single QP consume")
             case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
           }
       }

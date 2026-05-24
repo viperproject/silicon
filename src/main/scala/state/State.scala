@@ -23,6 +23,7 @@ import viper.silicon.supporters.PredicateData
 import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
+import viper.silicon.rules.StateConsolidationRules
 import viper.silicon.{Map, Stack}
 import viper.silver.utility.Sanitizer
 
@@ -122,8 +123,16 @@ final case class State(
 
   isEvalInOld:       Boolean = false,
   invariantContexts: Stack[Heap] = Stack.empty,
-  retryLevel:        Int = 0
+  retryLevel:        Int = 0,
+
+  verifier: Verifier
 ) extends Mergeable[State] {
+
+  def v: Verifier = verifier
+
+  def stateConsolidator: StateConsolidationRules = v.stateConsolidator(this)
+  def consolidate(): State = v.stateConsolidator(this).consolidate(this)
+  def consolidateOptionally(): State = v.stateConsolidator(this).consolidateOptionally(this)
 
   // Forwarding accessors for MemberContext fields — call sites need no changes.
   def program:               ast.Program                                   = mc.program
@@ -190,7 +199,7 @@ final case class State(
     case _                 => false
   }
 
-  def getFormalArgVars(res: ast.Resource, v: Verifier): Seq[Var] = res match {
+  def getFormalArgVars(res: ast.Resource): Seq[Var] = res match {
     case _: ast.Field    => Seq(`?r`)
     case p: ast.Predicate => predicateFormalVarMap(p.name)
     case w: ast.MagicWand =>
@@ -311,12 +320,14 @@ object State {
   private def generateStateMismatchErrorMessage(s1: State, s2: State): Nothing = {
     val err = new StringBuilder()
     for (ix <- 0 until s1.productArity) {
-      val e1 = s1.productElement(ix)
-      val e2 = s2.productElement(ix)
-      if (e1 != e2) {
-        err ++= s"\n\tField ${s1.productElementName(ix)} not equal"
-        err ++= s"\n\t\t state1: $e1"
-        err ++= s"\n\t\t state2: $e2"
+      if (s1.productElementName(ix) != "verifier") {
+        val e1 = s1.productElement(ix)
+        val e2 = s2.productElement(ix)
+        if (e1 != e2) {
+          err ++= s"\n\tField ${s1.productElementName(ix)} not equal"
+          err ++= s"\n\t\t state1: $e1"
+          err ++= s"\n\t\t state2: $e2"
+        }
       }
     }
     sys.error(s"State merging failed: unexpected mismatch between symbolic states: $err")

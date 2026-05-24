@@ -219,7 +219,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
           val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s4
           Q(s5, v)
         case (Incomplete(_, _), s3, _) =>
-          createFailure(ve, v, s3, "sufficient permission")
+          createFailure(ve, s3, "sufficient permission")
       }
     } else {
       val description = s"consume ${ass.pos}: $ass"
@@ -252,7 +252,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val usesQPChunks = s.isQuantifiedResource(res)
       val (s2, currentPermAmount) =
         if (usesQPChunks) {
-          val formalVars = s.getFormalArgVars(res, v)
+          val formalVars = s.getFormalArgVars(res)
 
           val (relevantChunks, _) =
             quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h, identifier)
@@ -335,7 +335,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             val toAssert = IsPositive(totalPermissions.replace(`?r`, tRcvr))
             v.decider.assert(toAssert) {
               case false =>
-                createFailure(ve, v, s, toAssert, Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)())()))
+                createFailure(ve, s, toAssert, Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)())()))
               case true =>
                 val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                 val fr1 = s.functionRecorder.recordSnapshot(fa, v.decider.pcs.branchConditions, fvfLookup).recordFvfAndDomain(fvfDef)
@@ -386,7 +386,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             }
           v.decider.assert(permCheck) {
             case false =>
-              createFailure(ve, v, s3, permCheck, permCheckExp)
+              createFailure(ve, s3, permCheck, permCheckExp)
             case true =>
               val smLookup = Lookup(fa.field.name, sm, tRcvr)
               val fr2 =
@@ -413,7 +413,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
     if (s.isUsedAsTrigger(resAcc.res(s.program))) {
       val resource = resAcc.res(s.program)
       val chunkId = ChunkIdentifier(resource, s.program)
-      val tFormalArgs = s.getFormalArgVars(resource, v)
+      val tFormalArgs = s.getFormalArgVars(resource)
       val name = resAcc match {
         case l: ast.LocationAccess =>
           val res = l.loc(s.program)
@@ -454,7 +454,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
     val useQPs = s.isQuantifiedResource(resource)
     if (useQPs) {
       val trigger = (sm: Term) => ResourceTriggerFunction(resource, sm, tArgs, s.program)
-      val tFormalArgs = s.getFormalArgVars(resource, v)
+      val tFormalArgs = s.getFormalArgVars(resource)
       val eFormalArgs = Option.when(withExp)(s.getFormalArgDecls(resource))
       quantifiedChunkSupporter.produceSingleLocation(
         s, resource, tFormalArgs, eFormalArgs, tArgs, eArgs, tSnap, tPerm, ePerm, trigger, mergeAndTrigger, v)(Q)
@@ -500,7 +500,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
     val resource = resAcc.res(s.program)
     val useQPs = s.isQuantifiedResource(resource)
     if (useQPs) {
-      val tFormalArgs = s.getFormalArgVars(resource, v)
+      val tFormalArgs = s.getFormalArgVars(resource)
       val eFormalArgs = Option.when(withExp)(s.getFormalArgDecls(resource))
       quantifiedChunkSupporter.consumeSingleLocation(
         s, h, tFormalArgs, eFormalArgs, tArgs, eArgs, resAcc, tPerm, ePerm, returnSnap, None, pve, v)(Q)
@@ -723,7 +723,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
 
     // Get the sequence of quantified variables (r1, ..., rn). For fields, this is the same
     // as aggregateQVar.
-    val codomainQVars = s.getFormalArgVars(resource, v)
+    val codomainQVars = s.getFormalArgVars(resource)
 
     val cond = replacementCond(lhs, codomainQVars, condInfo)
 

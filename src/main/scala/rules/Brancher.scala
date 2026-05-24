@@ -24,10 +24,9 @@ trait BranchingRules extends SymbolicExecutionRules {
   def branch(s: State,
              condition: Term,
              conditionExp: (ast.Exp, Option[ast.Exp]),
-             v: Verifier,
              fromShortCircuitingAnd: Boolean = false)
-            (fTrue: (State, Verifier) => VerificationResult,
-             fFalse: (State, Verifier) => VerificationResult)
+            (fTrue: State => VerificationResult,
+             fFalse: State => VerificationResult)
             : VerificationResult
 }
 
@@ -35,11 +34,12 @@ object brancher extends BranchingRules {
   def branch(s: State,
              condition: Term,
              conditionExp: (ast.Exp, Option[ast.Exp]),
-             v: Verifier,
              fromShortCircuitingAnd: Boolean = false)
-            (fThen: (State, Verifier) => VerificationResult,
-             fElse: (State, Verifier) => VerificationResult)
+            (fThen: State => VerificationResult,
+             fElse: State => VerificationResult)
             : VerificationResult = {
+
+    val v = s.v
 
     val negatedCondition = Not(condition)
     val negatedConditionExp = ast.Not(conditionExp._1)(pos = conditionExp._1.pos, info = conditionExp._1.info, ast.NoTrafos)
@@ -68,12 +68,6 @@ object brancher extends BranchingRules {
       || !v.decider.check(condition, Verifier.config.checkTimeout()))
 
     val parallelizeElseBranch = s.parallelizeBranches && executeThenBranch && executeElseBranch
-
-//    val additionalPaths =
-//      if (executeThenBranch && exploreFalseBranch) 1
-//      else 0
-
-//    bookkeeper.branches += additionalPaths
 
     val cnt = v.counter(this).next()
 
@@ -141,28 +135,30 @@ object brancher extends BranchingRules {
           }
           elseBranchVerifier = v0.uniqueId
 
-          executionFlowController.locally(s, v0)((s1, v1) => {
-            v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
-            v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew))
+          // Switch to v0 by updating the state's verifier
+          val sWithV0 = s.copy(verifier = v0)
+          executionFlowController.locally(sWithV0)(s1 => {
+            s1.v.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
+            s1.v.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew))
 
             var functionsOfElseBranchdDeciderBefore: Set[FunctionDecl] = null
             var nMacrosOfElseBranchDeciderBefore: Int = 0
 
             if (v.uniqueId != v0.uniqueId) {
-              v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+              s1.v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
               if (s.underJoin) {
-                nMacrosOfElseBranchDeciderBefore = v1.decider.freshMacros.size
-                functionsOfElseBranchdDeciderBefore = v1.decider.freshFunctions
+                nMacrosOfElseBranchDeciderBefore = s1.v.decider.freshMacros.size
+                functionsOfElseBranchdDeciderBefore = s1.v.decider.freshFunctions
               }
             }
 
-            val result = fElse(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
+            val result = fElse(s1.consolidateOptionally())
             if (wasElseExecutedOnDifferentVerifier) {
-              v1.decider.resetProverOptions()
-              v1.decider.setProverOptions(proverConfigArgsOfElseBranchDecider)
+              s1.v.decider.resetProverOptions()
+              s1.v.decider.setProverOptions(proverConfigArgsOfElseBranchDecider)
               if (s.underJoin) {
-                functionsOfElseBranchDecider = v1.decider.freshFunctions -- functionsOfElseBranchdDeciderBefore
-                macrosOfElseBranchDecider = v1.decider.freshMacros.drop(nMacrosOfElseBranchDeciderBefore)
+                functionsOfElseBranchDecider = s1.v.decider.freshFunctions -- functionsOfElseBranchdDeciderBefore
+                macrosOfElseBranchDecider = s1.v.decider.freshMacros.drop(nMacrosOfElseBranchDeciderBefore)
               }
             }
             result
@@ -191,11 +187,11 @@ object brancher extends BranchingRules {
     val res = {
       val thenRes = if (executeThenBranch) {
           v.symbExLog.markReachable(uidBranchPoint)
-          executionFlowController.locally(s, v)((s1, v1) => {
-            v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
-            v1.decider.setCurrentBranchCondition(condition, conditionExp)
+          executionFlowController.locally(s)(s1 => {
+            s1.v.decider.prover.comment(s"[then-branch: $cnt | $condition]")
+            s1.v.decider.setCurrentBranchCondition(condition, conditionExp)
 
-            fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
+            fThen(s1.consolidateOptionally())
           })
         } else {
           Unreachable()

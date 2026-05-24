@@ -75,7 +75,8 @@ object predicateSupporter extends PredicateSupportRules {
     val s1 = s.copy(g = gIns)
               .updateCache(_.copy(smDomainNeeded = true))
               .scalePermissionFactor(tPerm, ePerm)
-    consume(s1, body, true, pve, v)((s1a, snap, v1) => {
+    consume(s1, body, true, pve)((s1a, snap) => {
+      val v1 = s1a.v
       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
         val predTrigger = App(s1a.predicateData(predicate.name).triggerFunction,
           snap.get.convert(terms.sorts.Snap) +: tArgs)
@@ -137,7 +138,7 @@ object predicateSupporter extends PredicateSupportRules {
           }
         })
         val substHeap = Heap(substChunksOptQps)
-        val (fr1, h1) = v.stateConsolidator(s).merge(newFr, s, s.h, substHeap, v)
+        val (fr1, h1) = s.stateConsolidator.merge(newFr, s, s.h, substHeap)
         val s1 = s.copy(h = h1, functionRecorder = fr1)
 
         Q(s1, v)
@@ -145,13 +146,13 @@ object predicateSupporter extends PredicateSupportRules {
         val substCond = cond.replace(toReplace)
 
         if (!isUnfolding && s.moreJoins.id >= JoinMode.Impure.id) {
-          joiner.join[scala.Null, scala.Null](s, v, resetState = false)((s1, v1, QB) => {
-            brancher.branch(s1, substCond, condExp, v1)(
-              (s2, v2) => {
-                producePredicateContents(s2, left, toReplace, v2, isUnfolding)((s3, v3) => QB(s3, null, v3))
+          joiner.join[scala.Null, scala.Null](s, resetState = false)((s1, QB) => {
+            brancher.branch(s1, substCond, condExp)(
+              s2 => {
+                producePredicateContents(s2, left, toReplace, s2.v, isUnfolding)((s3, _) => QB(s3, null))
               },
-              (s2, v2) => {
-                producePredicateContents(s2, right, toReplace, v2, isUnfolding)((s3, v3) => QB(s3, null, v3))
+              s2 => {
+                producePredicateContents(s2, right, toReplace, s2.v, isUnfolding)((s3, _) => QB(s3, null))
               }
             )
           }) (entries => {
@@ -159,19 +160,19 @@ object predicateSupporter extends PredicateSupportRules {
               case Seq(entry) => // One branch is dead
                 entry.s
               case Seq(entry1, entry2) => // Both branches are alive
-                entry1.pathConditionAwareMergeWithoutConsolidation(entry2, v)
+                entry1.pathConditionAwareMergeWithoutConsolidation(entry2)
               case _ =>
                 sys.error(s"Unexpected join data entries: $entries")
             }
             (s2, null)
-          }) ((sp, _, vp) => Q(sp, vp))
+          }) ((sp, _) => Q(sp, sp.v))
         } else {
-          brancher.branch(s, substCond, condExp, v)(
-            (s1, v1) => {
-              producePredicateContents(s1, left, toReplace, v1, isUnfolding)(Q)
+          brancher.branch(s, substCond, condExp)(
+            s1 => {
+              producePredicateContents(s1, left, toReplace, s1.v, isUnfolding)(Q)
             },
-            (s2, v2) => {
-              producePredicateContents(s2, right, toReplace, v2, isUnfolding)(Q)
+            s2 => {
+              producePredicateContents(s2, right, toReplace, s2.v, isUnfolding)(Q)
             }
           )
         }
@@ -219,7 +220,8 @@ object predicateSupporter extends PredicateSupportRules {
             v4)
         })
       } else {
-        produce(s3, toSf(snap.get), body, pve, v1)((s4, v2) => {
+        produce(s3, toSf(snap.get), body, pve)(s4 => {
+          val v2 = s4.v
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =

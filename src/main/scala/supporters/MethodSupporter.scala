@@ -81,21 +81,22 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
         /* Combined the well-formedness check and the execution of the body, which are two separate
          * rules in Smans' paper.
          */
-        executionFlowController.locally(s, v)((s1, v1) => {
-          produces(s1, freshSnap, pres, ContractNotWellformed, v1)((s2, v2) => {
+        executionFlowController.locally(s)(s1 => {
+          produces(s1, freshSnap, pres, ContractNotWellformed)(s2 => {
+            val v2 = s2.v
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
-            (  executionFlowController.locally(s2a, v2)((s3, v3) => {
-                  val s4 = s3.copy(h = v3.heapSupporter.getEmptyHeap(s3.program))
+            (  executionFlowController.locally(s2a)(s3 => {
+                  val s4 = s3.copy(h = s3.v.heapSupporter.getEmptyHeap(s3.program))
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
                   val sepIdentifier = symbExLog.openScope(impLog)
-                  produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
+                  produces(s4, freshSnap, posts, ContractNotWellformed)(_ => {
                     symbExLog.closeScope(sepIdentifier)
                     Success()})})
             && {
-               executionFlowController.locally(s2a, v2)((s3, v3) =>  {
-                  exec(s3, body, v3)((s4, v4) =>
-                    consumes(s4, posts, false, postViolated, v4)((_, _, _) =>
+               executionFlowController.locally(s2a)(s3 => {
+                  exec(s3, body)(s4 =>
+                    consumes(s4, posts, false, postViolated)((_, _) =>
                       Success()))}) }  )})})
 
       v.decider.resetProverOptions()

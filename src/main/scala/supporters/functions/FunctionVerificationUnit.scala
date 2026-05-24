@@ -228,16 +228,16 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       var phase1Data: Seq[Phase1Data] = Vector.empty
       var recorders: Seq[FunctionRecorder] = Vector.empty
 
-      val result = executionFlowController.locally(s, v)((s0, _) => {
+      val result = executionFlowController.locally(s)(s0 => {
         val preMark = decider.setPathConditionMark()
-        produces(s0, toSf(`?s`), pres, ContractNotWellformed, v)((s1, _) => {
+        produces(s0, toSf(`?s`), pres, ContractNotWellformed)(s1 => {
           val relevantPathConditionStack = decider.pcs.after(preMark)
           phase1Data :+= Phase1Data(s1, relevantPathConditionStack.branchConditions, relevantPathConditionStack.branchConditionExps,
             relevantPathConditionStack.assumptions, Option.when(evaluator.withExp)(relevantPathConditionStack.assumptionExps))
           // The postcondition must be produced with a fresh snapshot (different from `?s`) because
           // the postcondition's snapshot structure is most likely different than that of the
           // precondition
-          produces(s1, freshSnap, posts, ContractNotWellformed, v)((s2, _) => {
+          produces(s1, freshSnap, posts, ContractNotWellformed)(s2 => {
             recorders :+= s2.functionRecorder
             Success()})})})
 
@@ -264,18 +264,18 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val result = phase1data.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
         case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
-          intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
+          intermediateResult && executionFlowController.locally(sPre)(s1 => {
             decider.setCurrentBranchCondition(And(bcsPre), (BigAnd(bcsPreExp.map(_._1)), Option.when(wExp)(BigAnd(bcsPreExp.map(_._2.get)))))
             decider.assume(pcsPre, Option.when(wExp)(DebugExp.createInstance(s"precondition of ${function.name}", pcsPreExp.get)), enforceAssumption = false)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-            eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, bodyNew, _) => {
+            eval(s1, body, FunctionNotWellformed(function))((s2, tBody, bodyNew) => {
               val debugExp = if (wExp) {
                 val e = ast.EqCmp(ast.Result(function.typ)(), body)(function.pos, function.info, function.errT)
                 val eNew = ast.EqCmp(ast.Result(function.typ)(), bodyNew.get)(function.pos, function.info, function.errT)
                 Some(DebugExp.createInstance(e, eNew))
               } else { None }
               decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp)
-              consumes(s2, posts, false, postconditionViolated, v)((s3, _, _) => {
+              consumes(s2, posts, false, postconditionViolated)((s3, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}
 

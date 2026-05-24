@@ -34,7 +34,7 @@ object havocSupporter extends SymbolicExecutionRules {
   def execHavoc(havoc: ast.Quasihavoc,
                 v: Verifier,
                 s: State)
-                (Q: (State, Verifier) => VerificationResult)
+                (Q: State => VerificationResult)
                : VerificationResult = {
 
     val pve = QuasihavocFailed(havoc)
@@ -42,8 +42,9 @@ object havocSupporter extends SymbolicExecutionRules {
     // If there is no havoc condition, use True as the condition
     val lhsExpr = havoc.lhs.getOrElse(ast.TrueLit()(havoc.pos))
 
-    eval(s, lhsExpr, pve, v)((s0, lhsTerm, _, v0) => {
-      evals(s0, havoc.exp.args(s0.program), _ => pve, v0)((s1, tRcvrs, _, v1) => {
+    eval(s, lhsExpr, pve)((s0, lhsTerm, _) => {
+      evals(s0, havoc.exp.args(s0.program), _ => pve)((s1, tRcvrs, _) => {
+        val v1 = s1.v
         val resource = havoc.exp.res(s1.program)
 
         // Call the havoc helper function, which returns a new heap, which is
@@ -52,7 +53,7 @@ object havocSupporter extends SymbolicExecutionRules {
         val condInfo = HavocOneData(tRcvrs)
         val newHeap = v1.heapSupporter.havocResource(s1, lhsTerm, resource, condInfo, v1)
 
-        Q(s1.copy(h = newHeap), v1)
+        Q(s1.copy(h = newHeap))
       })
     })
   }
@@ -71,7 +72,7 @@ object havocSupporter extends SymbolicExecutionRules {
   def execHavocall(havocall: ast.Quasihavocall,
                    v: Verifier,
                    s: State)
-                   (Q: (State, Verifier) => VerificationResult)
+                   (Q: State => VerificationResult)
                   : VerificationResult = {
 
     val pve = HavocallFailed(havocall)
@@ -94,13 +95,12 @@ object havocSupporter extends SymbolicExecutionRules {
       es2   = eRsc.args(s.program), // The arguments to our resource. Evaluated assuming the condition is true
       optTriggers = None, // Triggers: none needed for Havocall
       name  = qid,
-      pve   = pve,
-      v     = v)
+      pve   = pve)
     {
-      case (s1, tVars, eVars, Seq(tCond), _, Some((tArgs, eArgs, Seq(), _, _)), v1) =>
+      case (s1, tVars, eVars, Seq(tCond), _, Some((tArgs, eArgs, Seq(), _, _))) =>
         // Seq() represents an empty list of Triggers
         // TODO: unnamed arguments are (tAuxGlobal, tAux) and (auxGlobalsExp, auxNonGlobalsExp). How should these be handled?
-
+        val v1 = s1.v
         val resource = eRsc.res(s1.program)
         val (codomainQVars, codomainQVarsExp) = getCodomainQVars(s1, resource, v1)
 
@@ -121,7 +121,7 @@ object havocSupporter extends SymbolicExecutionRules {
         val injectivityDebugExp = Option.when(withExp)(DebugExp.createInstance("QP receiver injectivity check is well-defined", true))
         v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), injectivityDebugExp)
         v.decider.assert(receiverInjectivityCheck) {
-          case false => createFailure(pve dueTo notInjectiveReason, v, s1, receiverInjectivityCheck, "QP receiver injective")
+          case false => createFailure(pve dueTo notInjectiveReason, s1, receiverInjectivityCheck, "QP receiver injective")
           case true =>
             // Generate the inverse axioms
             val (inverseFunctions, imagesOfCodomain) = quantifiedChunkSupporter.getFreshInverseFunctions(
@@ -149,9 +149,9 @@ object havocSupporter extends SymbolicExecutionRules {
             val condInfo = HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain)
             val newHeap = v1.heapSupporter.havocResource(s1, tCond, resource, condInfo, v1)
 
-            Q(s1.copy(h = newHeap), v1)
+            Q(s1.copy(h = newHeap))
         }
-      case (s1, _, _, _, _, None, v1) => Q(s1, v1)
+      case (s1, _, _, _, _, None) => Q(s1)
     }
   }
 
@@ -165,6 +165,6 @@ object havocSupporter extends SymbolicExecutionRules {
 
   // Get the variables that we must quantify over for each resource type
   private def getCodomainQVars(s: State, eRsc: ast.Resource, v: Verifier): (Seq[Var], Option[Seq[ast.LocalVarDecl]]) = {
-    (s.getFormalArgVars(eRsc, v), Option.when(withExp)(s.getFormalArgDecls(eRsc)))
+    (s.getFormalArgVars(eRsc), Option.when(withExp)(s.getFormalArgDecls(eRsc)))
   }
 }

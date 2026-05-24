@@ -15,52 +15,43 @@ import viper.silicon.supporters.AnnotationSupporter
 import viper.silicon.verifier.Verifier
 
 trait ExecutionFlowRules extends SymbolicExecutionRules {
-  def locallyWithResult[R](s: State, v: Verifier)
-                          (block: (State, Verifier, R => VerificationResult) => VerificationResult)
+  def locallyWithResult[R](s: State)
+                          (block: (State, R => VerificationResult) => VerificationResult)
                           (Q: R => VerificationResult)
                           : VerificationResult
 
-  def locally(s: State, v: Verifier)
-             (block: (State, Verifier) => VerificationResult)
+  def locally(s: State)
+             (block: State => VerificationResult)
              : VerificationResult
 
-//  def tryOrFailWithResult[R](s: State, v: Verifier)
-//                            (block:    (State, Verifier, (State, R, Verifier) => VerificationResult, Failure => VerificationResult) => VerificationResult)
-//                            (Q: (State, R, Verifier) => VerificationResult)
-//                            : VerificationResult
-//
-//  def tryOrFail(s: State, v: Verifier)
-//               (block:    (State, Verifier, (State, Verifier) => VerificationResult, Failure => VerificationResult) => VerificationResult)
-//               (Q: (State, Verifier) => VerificationResult)
-//               : VerificationResult
-  def tryOrFail0(s: State, v: Verifier)
-                (action: (State, Verifier, (State, Verifier) => VerificationResult) => VerificationResult)
-                (Q: (State, Verifier) => VerificationResult)
+  def tryOrFail0(s: State)
+                (action: (State, State => VerificationResult) => VerificationResult)
+                (Q: State => VerificationResult)
                 : VerificationResult
 
-  def tryOrFail1[R1](s: State, v: Verifier)
-                    (action: (State, Verifier, (State, R1, Verifier) => VerificationResult) => VerificationResult)
-                    (Q: (State, R1, Verifier) => VerificationResult)
+  def tryOrFail1[R1](s: State)
+                    (action: (State, (State, R1) => VerificationResult) => VerificationResult)
+                    (Q: (State, R1) => VerificationResult)
                     : VerificationResult
 
-  def tryOrFail2[R1, R2](s: State, v: Verifier)
-                        (action: (State, Verifier, (State, R1, R2, Verifier) => VerificationResult) => VerificationResult)
-                        (Q: (State, R1, R2, Verifier) => VerificationResult)
+  def tryOrFail2[R1, R2](s: State)
+                        (action: (State, (State, R1, R2) => VerificationResult) => VerificationResult)
+                        (Q: (State, R1, R2) => VerificationResult)
                         : VerificationResult
 }
 
 object executionFlowController extends ExecutionFlowRules {
-  def locallyWithResult[R](s: State, v: Verifier)
-                          (block: (State, Verifier, R => VerificationResult) => VerificationResult)
+  def locallyWithResult[R](s: State)
+                          (block: (State, R => VerificationResult) => VerificationResult)
                           (Q: R => VerificationResult)
                           : VerificationResult = {
 
     var optBlockData: Option[R] = None
 
-    v.decider.pushScope()
+    s.v.decider.pushScope()
 
     val blockResult: VerificationResult =
-      block(s, v, blockData => {
+      block(s, blockData => {
         Predef.assert(optBlockData.isEmpty,
                         "Unexpectedly found more than one block data result. Note that the local "
                       + "block is not expected to branch (non-locally)")
@@ -69,7 +60,7 @@ object executionFlowController extends ExecutionFlowRules {
 
         Success()})
 
-    v.decider.popScope()
+    s.v.decider.popScope()
 
     blockResult match {
       case _: FatalResult =>
@@ -93,16 +84,16 @@ object executionFlowController extends ExecutionFlowRules {
     }
   }
 
-  def locally(s: State, v: Verifier)
-             (block: (State, Verifier) => VerificationResult)
+  def locally(s: State)
+             (block: State => VerificationResult)
              : VerificationResult =
 
-    locallyWithResult[VerificationResult](s, v)((s1, v1, QL) => QL(block(s1, v1)))(Predef.identity)
+    locallyWithResult[VerificationResult](s)((s1, QL) => QL(block(s1)))(Predef.identity)
 
 
-  private def tryOrFailWithResult[R](s: State, v: Verifier)
-                                    (action: (State, Verifier, (State, R, Verifier) => VerificationResult) => VerificationResult)
-                                    (Q: (State, R, Verifier) => VerificationResult)
+  private def tryOrFailWithResult[R](s: State)
+                                    (action: (State, (State, R) => VerificationResult) => VerificationResult)
+                                    (Q: (State, R) => VerificationResult)
                                     : VerificationResult = {
 
     var localActionSuccess = false
@@ -115,10 +106,9 @@ object executionFlowController extends ExecutionFlowRules {
     val firstActionResult = {
       action(
         s.copy(retryLevel = s.retryLevel + 1),
-        v,
-        (s1, r, v1) => {
+        (s1, r) => {
           localActionSuccess = true
-          Q(s1.copy(retryLevel = s.retryLevel), r, v1)})
+          Q(s1.copy(retryLevel = s.retryLevel), r)})
     }
 
     val finalActionResult =
@@ -127,7 +117,8 @@ object executionFlowController extends ExecutionFlowRules {
                                           * current branch turned out to be infeasible) */
         firstActionResult
       else {
-        val s0 = v.stateConsolidator(s).consolidate(s, v)
+        val v = s.v
+        val s0 = s.consolidate()
 
         val comLog = new CommentRecord("Retry", s0, v.decider.pcs)
         val sepIdentifier = v.symbExLog.openScope(comLog)
@@ -141,34 +132,34 @@ object executionFlowController extends ExecutionFlowRules {
         }
 
         action(s0.copy(retrying = true, retryLevel = s.retryLevel)
-                  .updateSettings(_.copy(moreCompleteExhale = temporaryMCE)), v, (s1, r, v1) => {
-          v1.symbExLog.closeScope(sepIdentifier)
+                  .updateSettings(_.copy(moreCompleteExhale = temporaryMCE)), (s1, r) => {
+          v.symbExLog.closeScope(sepIdentifier)
           Q(s1.copy(retrying = false)
-              .updateSettings(_.copy(moreCompleteExhale = s0.moreCompleteExhale)), r, v1)
+              .updateSettings(_.copy(moreCompleteExhale = s0.moreCompleteExhale)), r)
         })
       }
 
     finalActionResult
   }
 
-  def tryOrFail0(s: State, v: Verifier)
-                (action: (State, Verifier, (State, Verifier) => VerificationResult) => VerificationResult)
-                (Q: (State, Verifier) => VerificationResult)
+  def tryOrFail0(s: State)
+                (action: (State, State => VerificationResult) => VerificationResult)
+                (Q: State => VerificationResult)
                 : VerificationResult =
 
-      tryOrFailWithResult[scala.Null](s, v)((s1, v1, QS) => action(s1, v1, (s2, v2) => QS(s2, null, v2)))((s2, _, v2) => Q(s2, v2))
+      tryOrFailWithResult[scala.Null](s)((s1, QS) => action(s1, s2 => QS(s2, null)))((s2, _) => Q(s2))
 
-  def tryOrFail1[R1](s: State, v: Verifier)
-                    (action: (State, Verifier, (State, R1, Verifier) => VerificationResult) => VerificationResult)
-                    (Q: (State, R1, Verifier) => VerificationResult)
+  def tryOrFail1[R1](s: State)
+                    (action: (State, (State, R1) => VerificationResult) => VerificationResult)
+                    (Q: (State, R1) => VerificationResult)
                     : VerificationResult =
 
-      tryOrFailWithResult[R1](s, v)(action)(Q)
+      tryOrFailWithResult[R1](s)(action)(Q)
 
-  def tryOrFail2[R1, R2](s: State, v: Verifier)
-                        (action: (State, Verifier, (State, R1, R2, Verifier) => VerificationResult) => VerificationResult)
-                        (Q: (State, R1, R2, Verifier) => VerificationResult)
+  def tryOrFail2[R1, R2](s: State)
+                        (action: (State, (State, R1, R2) => VerificationResult) => VerificationResult)
+                        (Q: (State, R1, R2) => VerificationResult)
                         : VerificationResult =
 
-      tryOrFailWithResult[(R1, R2)](s, v)((s1, v1, QS) => action(s1, v1, (s2, r21, r22, v2) => QS(s2, (r21, r22), v2)))((s2, r, v2) => Q(s2, r._1, r._2, v2))
+      tryOrFailWithResult[(R1, R2)](s)((s1, QS) => action(s1, (s2, r21, r22) => QS(s2, (r21, r22))))((s2, r) => Q(s2, r._1, r._2))
 }

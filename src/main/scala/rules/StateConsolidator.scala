@@ -23,13 +23,13 @@ import viper.silver.ast
 import scala.annotation.unused
 
 trait StateConsolidationRules extends SymbolicExecutionRules {
-  def consolidate(s: State, v: Verifier): State
-  def consolidateOptionally(s: State, v: Verifier): State
-  def merge(fr: FunctionRecorder, s: State, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap)
-  def merge(fr: FunctionRecorder, s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap)
+  def consolidate(s: State): State
+  def consolidateOptionally(s: State): State
+  def merge(fr: FunctionRecorder, s: State, h: Heap, newH: Heap): (FunctionRecorder, Heap)
+  def merge(fr: FunctionRecorder, s: State, h: Heap, ch: NonQuantifiedChunk): (FunctionRecorder, Heap)
 
-  protected def assumeUpperPermissionBoundForQPFields(s: State, v: Verifier): State
-  protected def assumeUpperPermissionBoundForQPFields(s: State, heaps: Seq[Heap], v: Verifier): State
+  protected def assumeUpperPermissionBoundForQPFields(s: State): State
+  protected def assumeUpperPermissionBoundForQPFields(s: State, heaps: Seq[Heap]): State
 }
 
 /** Performs the minimal work necessary for any consolidator: merging two heaps combines the chunk
@@ -38,25 +38,26 @@ trait StateConsolidationRules extends SymbolicExecutionRules {
   * are no-ops.
   */
 class MinimalStateConsolidator extends StateConsolidationRules {
-  def consolidate(s: State, @unused v: Verifier): State = s
-  def consolidateOptionally(s: State, @unused v: Verifier): State = s
+  def consolidate(s: State): State = s
+  def consolidateOptionally(s: State): State = s
 
-  def merge(fr: FunctionRecorder, s: State, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) =
+  def merge(fr: FunctionRecorder, s: State, h: Heap, newH: Heap): (FunctionRecorder, Heap) =
     (fr, Heap(h.values ++ newH.values))
 
-  def merge(fr: FunctionRecorder, s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap) =
+  def merge(fr: FunctionRecorder, s: State, h: Heap, ch: NonQuantifiedChunk): (FunctionRecorder, Heap) =
     (fr, h + ch)
 
-  protected def assumeUpperPermissionBoundForQPFields(s: State, @unused v: Verifier): State = s
+  protected def assumeUpperPermissionBoundForQPFields(s: State): State = s
 
-  protected def assumeUpperPermissionBoundForQPFields(s: State, @unused heaps: Seq[Heap], @unused v: Verifier): State = s
+  protected def assumeUpperPermissionBoundForQPFields(s: State, @unused heaps: Seq[Heap]): State = s
 }
 
 /** Default implementation that merges as many known-alias chunks as possible, and deduces various
   * additional properties from and about permissions, (non)aliasing, and field values.
   */
 class DefaultStateConsolidator(protected val config: Config) extends StateConsolidationRules {
-  def consolidate(s: State, v: Verifier): State = {
+  def consolidate(s: State): State = {
+    val v = s.v
     val comLog = new CommentRecord("state consolidation", s, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(comLog)
     v.decider.prover.comment("[state consolidation]")
@@ -114,20 +115,21 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
                     h = mergedHeaps.head)
                .updateWand(_.copy(reserveHeaps = mergedHeaps.tail))
 
-    val s2 = assumeUpperPermissionBoundForQPFields(s1, v)
+    val s2 = assumeUpperPermissionBoundForQPFields(s1)
 
     s2
   }
 
-  def consolidateOptionally(s: State, v: Verifier): State =
-    if (s.retrying) consolidate(s, v)
+  def consolidateOptionally(s: State): State =
+    if (s.retrying) consolidate(s)
     else s
 
-  def merge(fr: FunctionRecorder, s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap) = {
-    merge(fr, s, h, Heap(Seq(ch)), v)
+  def merge(fr: FunctionRecorder, s: State, h: Heap, ch: NonQuantifiedChunk): (FunctionRecorder, Heap) = {
+    merge(fr, s, h, Heap(Seq(ch)))
   }
 
-  def merge(fr1: FunctionRecorder, s: State, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
+  def merge(fr1: FunctionRecorder, s: State, h: Heap, newH: Heap): (FunctionRecorder, Heap) = {
+    val v = s.v
     val mergeLog = new CommentRecord("Merge", null, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(mergeLog)
     val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, h.values.toSeq, newH.values.toSeq, s.functionRecorderQuantifiedVariables().map(_._1), v)
@@ -250,10 +252,11 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     }
   }
 
-  protected def assumeUpperPermissionBoundForQPFields(s: State, v: Verifier): State =
-    assumeUpperPermissionBoundForQPFields(s, s.h +: s.reserveHeaps, v)
+  protected def assumeUpperPermissionBoundForQPFields(s: State): State =
+    assumeUpperPermissionBoundForQPFields(s, s.h +: s.reserveHeaps)
 
-  protected def assumeUpperPermissionBoundForQPFields(s: State, heaps: Seq[Heap], v: Verifier): State = {
+  protected def assumeUpperPermissionBoundForQPFields(s: State, heaps: Seq[Heap]): State = {
+    val v = s.v
     heaps.foldLeft(s) { case (si, heap) =>
       val chunks: Seq[QuantifiedFieldChunk] =
         heap.values.collect({ case ch: QuantifiedFieldChunk => ch }).to(Seq)
@@ -349,19 +352,19 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   *     an assertion/operation
   */
 class RetryingStateConsolidator(config: Config) extends DefaultStateConsolidator(config) {
-  override def consolidate(s: State, v: Verifier): State = {
-    if (s.retrying) super.consolidate(s, v)
+  override def consolidate(s: State): State = {
+    if (s.retrying) super.consolidate(s)
     else s
   }
 
-  override def consolidateOptionally(s: State, v: Verifier): State = consolidate(s, v)
+  override def consolidateOptionally(s: State): State = consolidate(s)
 }
 
 /** A variant of [[RetryingStateConsolidator]] that differs only in that optional state consolidations (i.e.,
   * ones not triggered by a verification failure) are not performed at all.
   */
 class RetryingFailOnlyStateConsolidator(config: Config) extends RetryingStateConsolidator(config) {
-  override def consolidateOptionally(s: State, v: Verifier): State = s
+  override def consolidateOptionally(s: State): State = s
 }
 
 /** A variant of [[DefaultStateConsolidator]]:
@@ -370,19 +373,19 @@ class RetryingFailOnlyStateConsolidator(config: Config) extends RetryingStateCon
   *     an assertion/operation for the last time.
   */
 class LastRetryStateConsolidator(config: Config) extends DefaultStateConsolidator(config) {
-  override def consolidate(s: State, v: Verifier): State = {
-    if (s.isLastRetry) super.consolidate(s, v)
+  override def consolidate(s: State): State = {
+    if (s.isLastRetry) super.consolidate(s)
     else s
   }
 
-  override def consolidateOptionally(s: State, v: Verifier): State = consolidate(s, v)
+  override def consolidateOptionally(s: State): State = consolidate(s)
 }
 
 /** A variant of [[LastRetryStateConsolidator]] that differs only in that optional state consolidations (i.e.,
   * ones not triggered by a verification failure) are not performed at all.
   */
 class LastRetryFailOnlyStateConsolidator(config: Config) extends LastRetryStateConsolidator(config) {
-  override def consolidateOptionally(s: State, v: Verifier): State = s
+  override def consolidateOptionally(s: State): State = s
 }
 
 /** A variant of [[RetryingStateConsolidator]] and [[MinimalStateConsolidator]]:
@@ -390,15 +393,15 @@ class LastRetryFailOnlyStateConsolidator(config: Config) extends LastRetryStateC
   *   - Merging heaps and assuming QP permission bounds is equivalent to [[MinimalStateConsolidator]]
   */
 class MinimalRetryingStateConsolidator(config: Config) extends RetryingStateConsolidator(config) {
-  override def merge(fr: FunctionRecorder, s: State, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) =
+  override def merge(fr: FunctionRecorder, s: State, h: Heap, newH: Heap): (FunctionRecorder, Heap) =
     (fr, Heap(h.values ++ newH.values))
 
-  override def merge(fr: FunctionRecorder, s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap) =
+  override def merge(fr: FunctionRecorder, s: State, h: Heap, ch: NonQuantifiedChunk): (FunctionRecorder, Heap) =
     (fr, h + ch)
 
-  override protected def assumeUpperPermissionBoundForQPFields(s: State, @unused v: Verifier): State = s
+  override protected def assumeUpperPermissionBoundForQPFields(s: State): State = s
 
-  override protected def assumeUpperPermissionBoundForQPFields(s: State, @unused heaps: Seq[Heap], @unused v: Verifier): State = s
+  override protected def assumeUpperPermissionBoundForQPFields(s: State, @unused heaps: Seq[Heap]): State = s
 }
 
 /** A variant of [[DefaultStateConsolidator]] that aims to work best when Silicon is run in
@@ -409,7 +412,8 @@ class MinimalRetryingStateConsolidator(config: Config) extends RetryingStateCons
   *     (by calling [[moreCompleteExhaleSupporter.assumeFieldPermissionUpperBounds]])
   */
 class MoreComplexExhaleStateConsolidator(config: Config) extends DefaultStateConsolidator(config) {
-  override def consolidate(s: State, v: Verifier): State = {
+  override def consolidate(s: State): State = {
+    val v = s.v
     // NOTE: Skipping most of what the regular state consolidation performs results in
     // incompletenesses. E.g. when using quantified permissions, the state consolidation
     // will, among other things, assume non-aliasing for receivers of *singleton quantified

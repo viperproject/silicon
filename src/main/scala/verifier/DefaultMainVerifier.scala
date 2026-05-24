@@ -413,7 +413,8 @@ class DefaultMainVerifier(config: Config,
     State(
       mc       = mc,
       settings = ExecSettings(moreJoins = moreJoins, moreCompleteExhale = mce),
-      permissionScalingFactorExp = Option.when(Verifier.config.enableDebugging())(ast.FullPerm()()))
+      permissionScalingFactorExp = Option.when(Verifier.config.enableDebugging())(ast.FullPerm()()),
+      verifier = this)
   }
 
   private def createInitialState(@unused cfg: SilverCfg,
@@ -438,7 +439,8 @@ class DefaultMainVerifier(config: Config,
       mc       = mc,
       settings = ExecSettings(moreJoins = Verifier.config.moreJoins(),
                               moreCompleteExhale = Verifier.config.exhaleMode == ExhaleMode.MoreComplete),
-      permissionScalingFactorExp = Option.when(Verifier.config.enableDebugging())(ast.FullPerm()()))
+      permissionScalingFactorExp = Option.when(Verifier.config.enableDebugging())(ast.FullPerm()()),
+      verifier = this)
   }
 
   private def excludeMethod(method: ast.Method) = (

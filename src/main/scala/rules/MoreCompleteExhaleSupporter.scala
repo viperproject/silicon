@@ -211,7 +211,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           Success() // TODO: Mark branch as dead?
         }
       } else {
-        createFailure(ve, v, s, False, "branch is dead")
+        createFailure(ve, s, False, "branch is dead")
       }
     } else {
       summarise(s, relevantChunks, resource, args, argsExp, None, v)((s1, snap, permSum, permSumExp, v1) =>
@@ -219,7 +219,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           case true =>
             Q(s1, snap, v1)
           case false =>
-            createFailure(ve, v, s1, IsPositive(permSum), permSumExp.map(IsPositive(_)()))
+            createFailure(ve, s1, IsPositive(permSum), permSumExp.map(IsPositive(_)()))
         })
     }
   }
@@ -264,7 +264,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           case true =>
             Q(s1, h, Some(snap), v1)
           case false =>
-            createFailure(ve, v, s1, IsPositive(permSum), permSumExp.map(IsPositive(_)()))
+            createFailure(ve, s1, IsPositive(permSum), permSumExp.map(IsPositive(_)()))
         })
     } else {
       val (s1, permSum, permSumExp) = permSummariseOnly(s, relevantChunks, resource, args, argsExp)
@@ -272,7 +272,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         case true =>
           Q(s1, h, None, v)
         case false =>
-          createFailure(ve, v, s1, IsPositive(permSum), permSumExp.map(IsPositive(_)()))
+          createFailure(ve, s1, IsPositive(permSum), permSumExp.map(IsPositive(_)()))
       }
     }
   }
@@ -302,7 +302,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       // if no permission is exhaled, return none
       v.decider.assert(perms === NoPerm) {
         case true => Q(s, h, None, v)
-        case false => createFailure(ve, v, s, perms === NoPerm, permsExp.map(pe => ast.EqCmp(pe, ast.NoPerm()())(pe.pos, pe.info, pe.errT)))
+        case false => createFailure(ve, s, perms === NoPerm, permsExp.map(pe => ast.EqCmp(pe, ast.NoPerm()())(pe.pos, pe.info, pe.errT)))
       }
     } else {
       if (!terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
@@ -402,7 +402,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
               case true =>
                 Q(s1, newHeap, condSnap, v1)
               case false =>
-                createFailure(ve, v1, s1, pNeeded === NoPerm, pNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT)))
+                createFailure(ve, s1, pNeeded === NoPerm, pNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT)))
             }
           }
         })
@@ -414,7 +414,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
               case true =>
                 Q(s0, newHeap, None, v)
               case false =>
-                createFailure(ve, v, s0, pNeeded === NoPerm, pNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT)))
+                createFailure(ve, s0, pNeeded === NoPerm, pNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT)))
             }
           }
         }
@@ -502,7 +502,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         }
       case false =>
         v.decider.finishDebugSubExp(s"consume permissions for ${resource.toString()}")
-        createFailure(ve, v, s, totalPermTaken !== NoPerm, totalPermTakenExp.map(tpt => ast.NeCmp(tpt, ast.NoPerm()())()))
+        createFailure(ve, s, totalPermTaken !== NoPerm, totalPermTakenExp.map(tpt => ast.NeCmp(tpt, ast.NoPerm()())()))
     }
   }
 
