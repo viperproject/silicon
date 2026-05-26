@@ -149,20 +149,29 @@ object DependencyAnalyzer {
       newGraph.getAllDependencies(Set(src), true, true, true).intersect(dest)
     }
     val postCondNodes = newGraph.getAssertionNodes.filter(_.assumptionType == AssumptionType.ImplicitPostcondition)
+    val all_nodes = newGraph.getNodes
+    
     dependencyGraphInterpreters foreach (interpreter => interpreter.getGraph.getCustomEdges foreach {
       case (t, deps) =>
-        val methodPC = postCondNodes.filter(_.mergeInfo match {
-          case SimpleDependencyAnalysisMerge(sourceInfo) =>
-            val t_node = newGraph.getNodes.filter(_.id == t).head
-            t_node.mergeInfo match {
-              case CompositeDependencyAnalysisMergeInfo(sourceInfo1, _) => sourceInfo1 == sourceInfo
-              case _ => false
-            }
-          case _ => false
-        })
-        val reachableDeps = methodPC.foldLeft (Set.empty[Int]) {(acc, pcNode) => acc ++ reachable(pcNode.id, deps)}
-        val unreachableDeps = deps.diff(reachableDeps)
-        newGraph.addCustomEdges(unreachableDeps, t)
+        try{
+          val t_node_l = all_nodes.filter(_.id == t)
+          val t_node = t_node_l.head
+          // sanity check node id's are unique:
+          assert(t_node_l.length == 1)
+          val methodPC = postCondNodes.filter(_.mergeInfo match {
+            case SimpleDependencyAnalysisMerge(sourceInfo) =>
+              t_node.mergeInfo match {
+                case CompositeDependencyAnalysisMergeInfo(sourceInfo1, _) => sourceInfo1 == sourceInfo
+                case _ => false
+              }
+            case _ => false
+          })
+          val reachableDeps = methodPC.foldLeft (Set.empty[Int]) {(acc, pcNode) => acc ++ reachable(pcNode.id, deps)}
+          val unreachableDeps = deps.diff(reachableDeps)
+          newGraph.addCustomEdges(unreachableDeps, t)
+        }catch{
+          case e: NoSuchElementException => println("tried adding custom dependencies in final graph for missing node: "+t)
+        }
     })
 
     val newInterpreter = new DependencyGraphInterpreter[Final](name, newGraph, dependencyGraphInterpreters.toList.flatMap(_.getErrors))
