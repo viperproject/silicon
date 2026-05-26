@@ -7,26 +7,29 @@
 package viper.silicon.decider
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.debugger.DebugExp
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.debugger.DebugExp
+import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider._
+import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Term, _}
 import viper.silicon.utils.ast.{extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silver.ast
-import viper.silver.ast.{LocalVarWithVersion, NoPosition}
+import viper.silver.ast.{Info, LocalVarWithVersion, Member, NoPosition}
 import viper.silver.components.StatefulComponent
+import viper.silver.dependencyAnalysis.{AdditionalAssertionNode, AdditionalAssumptionNode, AdditionalDependencyNodeInfo}
 import viper.silver.parser.{PKw, PPrimitiv, PReserved, PType}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
 import viper.silver.verifier.{DependencyNotFoundError, Model}
 
 import scala.collection.immutable.HashSet
-import scala.reflect.{ClassTag, classTag}
 import scala.collection.mutable
+import scala.reflect.{ClassTag, classTag}
 
 /*
  * Interfaces
@@ -49,31 +52,39 @@ trait Decider {
   def pushScope(): Unit
   def popScope(): Unit
 
-  def checkSmoke(isAssert: Boolean = false): Boolean
+  def checkSmoke(analysisInfos: DependencyAnalysisInfos, isAssert: Boolean = false): Boolean
 
-  def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp])): Unit
+  def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp]), analysisInfos: DependencyAnalysisInfos): Unit
   def setPathConditionMark(): Mark
 
   def finishDebugSubExp(description : String): Unit
 
   def startDebugSubExp(): Unit
 
-  def assume(t: Term, e: ast.Exp, finalExp: ast.Exp): Unit
-  def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp]): Unit
-  def assume(t: Term, debugExp: Option[DebugExp]): Unit
-  def assume(terms: Seq[Term], debugExps: Option[Seq[DebugExp]]): Unit
-  def assumeDefinition(t: Term, debugExp: Option[DebugExp]): Unit
-  def assume(assumptions: Iterable[(Term, Option[DebugExp])]): Unit
-  def assume(assumptions: InsertionOrderedSet[(Term, Option[DebugExp])], enforceAssumption: Boolean = false, isDefinition: Boolean = false): Unit
-  def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean): Unit
+  def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean): CH
+  def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH
+  def wrapWithDependencyAnalysisLabel(term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term
+  def isPathInfeasible: Boolean
 
-  def check(t: Term, timeout: Int): Boolean
+  def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos): Unit
+  def assume(t: Term, debugExp: Option[DebugExp], analysisInfos: DependencyAnalysisInfos): Unit
+  def assume(assumptions: Iterable[Term], debugExps: Option[Iterable[DebugExp]], description: String, enforceAssumption: Boolean, analysisInfos: DependencyAnalysisInfos): Unit
+  def assume(terms: Seq[Term], debugExps: Option[Seq[DebugExp]], analysisInfos: DependencyAnalysisInfos): Unit
+  def assumeDefinition(t: Term, debugExp: Option[DebugExp], analysisInfos: DependencyAnalysisInfos): Unit
+  def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean, analysisInfos: DependencyAnalysisInfos): Unit
+  def assumeLabel(term: Term, assumptionLabel: String): Unit
+
+  def check(t: Term, timeout: Int, analysisInfos: DependencyAnalysisInfos): Boolean
 
   /* TODO: Consider changing assert such that
    *         1. It passes State and Operations to the continuation
    *         2. The implementation reacts to a failing assertion by e.g. a state consolidation
    */
-  def assert(t: Term, timeout: Option[Int] = None)(Q:  Boolean => VerificationResult): VerificationResult
+
+	def handleAndGetUpdatedAnalysisInfos(analysisInfos: DependencyAnalysisInfos, info: Info, node: ast.Node): DependencyAnalysisInfos
+
+	def assert(t: Term, analysisInfos: DependencyAnalysisInfos)(Q: Boolean => VerificationResult): VerificationResult
+  def assert(t: Term, analysisInfos: DependencyAnalysisInfos, timeout: Option[Int])(Q: Boolean => VerificationResult): VerificationResult
 
   def fresh(id: String, sort: Sort, ptype: Option[PType]): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
@@ -101,6 +112,13 @@ trait Decider {
   def setPcs(other: PathConditionStack): Unit
 
   def statistics(): Map[String, String]
+
+  var dependencyAnalyzer: DependencyAnalyzer
+  def initDependencyAnalyzer(member: Member, preambleNodes: Iterable[DependencyAnalysisNode]): Unit
+  def removeDependencyAnalyzer(): Unit
+  def getAnalysisInfo(daInfos: DependencyAnalysisInfos): AnalysisInfo
+  def isDependencyAnalysisEnabled: Boolean
+  def handleFailedAssertion(failedAssertion: Term, analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit
 }
 
 /*
@@ -129,6 +147,26 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private var _proverOptions: Map[String, String] = Map.empty
     private var _proverResetOptions: Map[String, String] = Map.empty
     private val _debuggerAssumedTerms: mutable.Set[Term] = mutable.Set.empty
+
+    var dependencyAnalyzer: DependencyAnalyzer = new NoDependencyAnalyzer()
+
+    def isDependencyAnalysisEnabled: Boolean = Verifier.config.enableDependencyAnalysis() && !dependencyAnalyzer.isInstanceOf[NoDependencyAnalyzer]
+
+    override def initDependencyAnalyzer(member: Member, preambleNodes: Iterable[DependencyAnalysisNode]): Unit = {
+      val isAnalysisEnabled = DependencyAnalyzer.extractEnableAnalysisFromInfo(member.info).getOrElse(Verifier.config.enableDependencyAnalysis())
+      if(isAnalysisEnabled) {
+        dependencyAnalyzer = new DefaultDependencyAnalyzer(member)
+        dependencyAnalyzer.addNodes(preambleNodes)
+      }else{
+        removeDependencyAnalyzer()
+      }
+    }
+
+    override def removeDependencyAnalyzer(): Unit = {
+      dependencyAnalyzer = new NoDependencyAnalyzer
+    }
+
+    def getAnalysisInfo(analysisInfos: DependencyAnalysisInfos): AnalysisInfo = AnalysisInfo(this, dependencyAnalyzer, analysisInfos)
     
     def functionDecls: Set[FunctionDecl] = _declaredFreshFunctions
     def macroDecls: Vector[MacroDecl] = _declaredFreshMacros
@@ -249,9 +287,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       //symbExLog.closeScope(sepIdentifier)
     }
 
-    def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp])): Unit = {
+    def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp]), analysisInfos: DependencyAnalysisInfos): Unit = {
+      if(isPathInfeasible) return
+
       pathConditions.setCurrentBranchCondition(t, te)
-      assume(t, Option.when(te._2.isDefined)(te._1), te._2)
+      assume(t, Option.when(te._2.isDefined)(te._1), te._2, analysisInfos)
     }
 
     def setPathConditionMark(): Mark = pathConditions.mark()
@@ -270,36 +310,67 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
     }
 
+    def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean): CH = {
+      registerDerivedChunk[CH](Set.empty, buildChunk, perm, analysisInfo, isExhale)
+    }
+
+    def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH = {
+      if(!isDependencyAnalysisEnabled)
+        return buildChunk(perm)
+
+      val labelNodeOpt = getOrCreateAnalysisLabelNode()
+
+      if(isExhale)
+        dependencyAnalyzer.registerExhaleChunk(sourceChunks, buildChunk, perm, labelNodeOpt, analysisInfo)
+      else {
+        dependencyAnalyzer.registerInhaleChunk(sourceChunks, buildChunk, perm, labelNodeOpt, analysisInfo)
+      }
+    }
+
+    private def getOrCreateAnalysisLabelNode(sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Option[LabelNode] = {
+      if(!isDependencyAnalysisEnabled)
+        return None
+
+      val (label, _) = fresh(ast.LocalVar(DependencyAnalyzer.analysisLabelName, ast.Bool)())
+      val labelNode = dependencyAnalyzer.createLabelNode(label, sourceChunks, sourceTerms)
+      val smtLabel = DependencyAnalyzer.createAssumptionLabel(labelNode.map(_.id))
+      assumeLabel(label, smtLabel)
+      labelNode
+    }
+
+    def wrapWithDependencyAnalysisLabel(term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term = {
+      if(!isDependencyAnalysisEnabled || term.equals(True) || sourceChunks.size + sourceTerms.size == 0)
+        return term
+
+      val labelNode = getOrCreateAnalysisLabelNode(sourceChunks, sourceTerms)
+      labelNode.map(n => Implies(n.term, term)).getOrElse(term)
+    }
+
+    def isPathInfeasible: Boolean = Verifier.config.disableInfeasibilityChecks() && pcs.getCurrentInfeasibilityNode.isDefined
+
     def addDebugExp(e: DebugExp): Unit = {
       if (debugMode) {
         pathConditions.addDebugExp(e)
       }
     }
 
-    def assume(t: Term, e : ast.Exp, finalExp : ast.Exp): Unit = {
-      assume(assumptions=InsertionOrderedSet((t, Some(DebugExp.createInstance(e, finalExp)))), false, false)
-    }
-
-    def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp]): Unit = {
+    def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos): Unit = {
       if (finalExp.isDefined) {
-        assume(assumptions=InsertionOrderedSet((t, Some(DebugExp.createInstance(e.get, finalExp.get)))), false, false)
+        assume(assumptions=InsertionOrderedSet((t, Some(DebugExp.createInstance(e.get, finalExp.get)))), enforceAssumption = false, isDefinition = false, analysisInfos)
       } else {
-        assume(assumptions=InsertionOrderedSet((t, None)), false, false)
+        assume(assumptions=InsertionOrderedSet((t, None)), enforceAssumption = false, isDefinition = false, analysisInfos)
       }
     }
 
-    def assume(t: Term, debugExp: Option[DebugExp]): Unit = {
-      assume(InsertionOrderedSet(Seq((t, debugExp))), false)
+    def assume(t: Term, debugExp: Option[DebugExp], analysisInfos: DependencyAnalysisInfos): Unit = {
+      assume(InsertionOrderedSet(Seq((t, debugExp))), enforceAssumption = false, isDefinition = false, analysisInfos)
     }
 
-    def assumeDefinition(t: Term, debugExp: Option[DebugExp]): Unit = {
-      assume(InsertionOrderedSet(Seq((t, debugExp))), enforceAssumption=false, isDefinition=true)
+    def assumeDefinition(t: Term, debugExp: Option[DebugExp], analysisInfos: DependencyAnalysisInfos): Unit = {
+      assume(InsertionOrderedSet(Seq((t, debugExp))), enforceAssumption=false, isDefinition=true, analysisInfos)
     }
 
-    def assume(assumptions: Iterable[(Term, Option[DebugExp])]): Unit =
-      assume(InsertionOrderedSet(assumptions), false)
-
-    def assume(assumptions: InsertionOrderedSet[(Term, Option[DebugExp])], enforceAssumption: Boolean = false, isDefinition: Boolean = false): Unit = {
+    def assume(assumptions: InsertionOrderedSet[(Term, Option[DebugExp])], enforceAssumption: Boolean, isDefinition: Boolean, analysisInfos: DependencyAnalysisInfos): Unit = {
       val filteredAssumptions =
         if (enforceAssumption) assumptions
         else assumptions filterNot (a => isKnownToBeTrue(a._1))
@@ -309,26 +380,60 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         filteredAssumptions foreach (a => addDebugExp(a._2.get.withTerm(a._1)))
       }
 
-      if (filteredAssumptions.nonEmpty) assumeWithoutSmokeChecks(filteredAssumptions map (_._1), isDefinition=isDefinition)
+      val filteredAssumptionsWithLabels = filteredAssumptions map{case (t, _) =>
+        val assumptionId: Option[Int] = dependencyAnalyzer.addAssumption(t, analysisInfos)
+        (t, DependencyAnalyzer.createAssumptionLabel(assumptionId))
+      }
+
+      if (filteredAssumptions.nonEmpty) assumeWithoutSmokeChecks(filteredAssumptionsWithLabels, isDefinition=isDefinition)
     }
 
-    def assume(assumptions: Seq[Term], debugExps: Option[Seq[DebugExp]]): Unit = {
-      assumeWithoutSmokeChecks(InsertionOrderedSet(assumptions))
+    def assume(assumptions: Seq[Term], debugExps: Option[Seq[DebugExp]], analysisInfos: DependencyAnalysisInfos): Unit = {
+      val assumptionsWithLabels = addAssumptionLabels(assumptions, analysisInfos)
+
+      assumeWithoutSmokeChecks(InsertionOrderedSet(assumptionsWithLabels))
       if (debugMode) {
         debugExps.get foreach (e => addDebugExp(e))
       }
     }
 
-    def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean): Unit = {
+    def assume(assumptions: Iterable[Term], debugExps: Option[Iterable[DebugExp]], description: String, enforceAssumption: Boolean, analysisInfos: DependencyAnalysisInfos): Unit = {
+      val debugExp = Option.when(debugExps.isDefined)(DebugExp.createInstance(description, InsertionOrderedSet(debugExps.get)))
+
+      val filteredTerms =
+        if (enforceAssumption) assumptions
+        else assumptions filterNot isKnownToBeTrue
+
+      if(filteredTerms.isEmpty) return
+
+      val assumptionsWithLabels = addAssumptionLabels(filteredTerms, analysisInfos)
+
+      assumeWithoutSmokeChecks(InsertionOrderedSet(assumptionsWithLabels))
+
+      if (debugMode && debugExp.isDefined) {
+        addDebugExp(debugExp.get)
+      }
+    }
+
+    private def addAssumptionLabels(filteredTerms: Iterable[Term], analysisInfos: DependencyAnalysisInfos) = {
+      filteredTerms map (t => {
+        val assumptionIds = dependencyAnalyzer.addAssumption(t, analysisInfos)
+        (t, DependencyAnalyzer.createAssumptionLabel(assumptionIds))
+      })
+    }
+
+    def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean, analysisInfos: DependencyAnalysisInfos): Unit = {
       val filteredTerms =
         if (enforceAssumption) terms
         else terms filterNot isKnownToBeTrue
 
-      if (debugMode && filteredTerms.nonEmpty) {
+      if(filteredTerms.isEmpty) return
+
+      if (debugMode) {
         addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
       }
-
-      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms))
+      val termsWithLabel = addAssumptionLabels(filteredTerms, analysisInfos)
+      assumeWithoutSmokeChecks(InsertionOrderedSet(termsWithLabel))
     }
 
     def debuggerAssume(terms: Iterable[Term], de: DebugExp) = {
@@ -341,7 +446,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       })
     }
 
-    private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], isDefinition: Boolean = false) = {
+    private def assumeWithoutSmokeChecks(termsWithLabel: InsertionOrderedSet[(Term, String)], isDefinition: Boolean = false): None.type = {
+      if (isPathInfeasible) return None
+
+      val terms = termsWithLabel map (_._1)
       val assumeRecord = new DeciderAssumeRecord(terms)
       val sepIdentifier = symbExLog.openScope(assumeRecord)
 
@@ -353,26 +461,79 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
 
       /* Add terms to the prover's assumptions */
-      terms foreach prover.assume
+      termsWithLabel foreach { case (t, label) => prover.assume(t, label) }
 
       symbExLog.closeScope(sepIdentifier)
       None
     }
 
-    /* Asserting facts */
-
-    def checkSmoke(isAssert: Boolean = false): Boolean = {
-      val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
-      prover.check(timeout) == Unsat
+    def assumeLabel(term: Term, assumptionLabel: String): Unit = {
+      pathConditions.addAnalysisLabel(term)
+      prover.assume(term, assumptionLabel)
     }
 
-    def check(t: Term, timeout: Int): Boolean = deciderAssert(t, Some(timeout))
+    /* Asserting facts */
 
-    def assert(t: Term, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
-              (Q: Boolean => VerificationResult)
-              : VerificationResult = {
+    def checkSmoke(analysisInfos: DependencyAnalysisInfos, isAssert: Boolean=false): Boolean = {
 
-      val success = deciderAssert(t, timeout)
+      val checkNode = dependencyAnalyzer.createAssertOrCheckNode(False, analysisInfos, !isAssert)
+      val label = DependencyAnalyzer.createAssertionLabel(checkNode.map(_.id))
+
+			if(isPathInfeasible) {
+				checkNode foreach dependencyAnalyzer.addAssertionNode
+				dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, checkNode.map(_.id))
+				return true
+			}
+
+      val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
+      val result = prover.check(timeout, label) == Unsat
+
+      if(result){
+        checkNode foreach dependencyAnalyzer.addAssertionNode
+        dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
+        val infeasibleNodeId = dependencyAnalyzer.addInfeasibilityNode(!isAssert, analysisInfos)
+//        Adding the following line would be UNSOUND! Unsoundness is introduced when infeasibility is introduced while executing a package statements and pontentially in other cases as well.
+//        assumeWithoutSmokeChecks(InsertionOrderedSet((False, DependencyAnalyzer.createAssumptionLabel(infeasibleNodeId))))
+        dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibleNodeId)
+        pcs.setCurrentInfeasibilityNode(infeasibleNodeId)
+      }else if(isAssert){
+        checkNode foreach (node => dependencyAnalyzer.addAssertionNode(node.getAssertFailedNode))
+      }
+      result
+    }
+
+    override def handleFailedAssertion(failedAssertion: Term, analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit = {
+      dependencyAnalyzer.addAssertionFailedNode(failedAssertion, analysisInfos)
+      if(assumeFailedAssertion){
+        assume(failedAssertion, None, None, analysisInfos)
+        failedAssertion match {
+          case False => checkSmoke(analysisInfos)
+          case _ =>
+        }
+      }
+    }
+
+		def handleAndGetUpdatedAnalysisInfos(analysisInfos: DependencyAnalysisInfos, info: Info, node: ast.Node): DependencyAnalysisInfos = {
+			val newAnalysisInfos = analysisInfos.addInfo(info, node)
+			info.getAllInfos[AdditionalDependencyNodeInfo].foreach {
+				case AdditionalAssertionNode() => dependencyAnalyzer.createAssertOrCheckNode(True, newAnalysisInfos, isCheck = false).foreach(n => {
+					dependencyAnalyzer.addAssertionNode(n)
+					if(isPathInfeasible) dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, Some(n.id))
+				})
+				case AdditionalAssumptionNode() => dependencyAnalyzer.addAssumption(True, newAnalysisInfos)
+			}
+			newAnalysisInfos
+		}
+
+    def check(t: Term, timeout: Int, analysisInfos: DependencyAnalysisInfos): Boolean = {
+      deciderAssert(t, analysisInfos, Some(timeout), isCheck=true)._1
+    }
+
+
+    def assert(t: Term, analysisInfos: DependencyAnalysisInfos)(Q:  Boolean => VerificationResult): VerificationResult = assert(t, analysisInfos,  timeout=Verifier.config.assertTimeout.toOption)(Q)
+
+    def assert(t: Term, analysisInfos: DependencyAnalysisInfos, timeout: Option[Int])(Q:  Boolean => VerificationResult): VerificationResult = {
+      val (success, _) = deciderAssert(t, analysisInfos, timeout)
 
       // If the SMT query was not successful, store it (possibly "overwriting"
       // any previously saved query), otherwise discard any query we had saved
@@ -386,15 +547,22 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       Q(success)
     }
 
-    private def deciderAssert(t: Term, timeout: Option[Int]) = {
+    private def deciderAssert(t: Term, analysisInfos: DependencyAnalysisInfos, timeout: Option[Int], isCheck: Boolean=false) = {
       val assertRecord = new DeciderAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
-      val asserted = isKnownToBeTrue(t)
-      val result = asserted || proverAssert(t, timeout)
+      val asserted = if(isDependencyAnalysisEnabled) t.equals(True) else isKnownToBeTrue(t)
+
+      val assertNode = if(!asserted) dependencyAnalyzer.createAssertOrCheckNode(t, analysisInfos, isCheck) else None
+
+      val result = asserted || proverAssert(t, timeout, DependencyAnalyzer.createAssertionLabel(assertNode map (_.id)))
+
+      if(result) {
+        assertNode foreach dependencyAnalyzer.addAssertionNode
+      }
 
       symbExLog.closeScope(sepIdentifier)
-      result
+      (result, assertNode)
     }
 
     private def isKnownToBeTrue(t: Term) = t match {
@@ -405,11 +573,14 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       case _ => false
     }
 
-    private def proverAssert(t: Term, timeout: Option[Int]) = {
+    private def proverAssert(t: Term, timeout: Option[Int], label: String) = {
       val assertRecord = new ProverAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
-      val result = prover.assert(t, timeout)
+      val result = isPathInfeasible || prover.assert(t, timeout, label)
+
+      if(isPathInfeasible) dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, Some(DependencyAnalyzer.getIdFromLabel(label)))
+      else if(result) dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
 
       symbExLog.whenEnabled {
         assertRecord.statistics = Some(symbExLog.deltaStatistics(prover.statistics()))
@@ -527,7 +698,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def statistics(): Map[String, String] = prover.statistics()
 
-    override def generateModel(): Unit = proverAssert(False, Verifier.config.assertTimeout.toOption)
+    override def generateModel(): Unit = proverAssert(False, Verifier.config.assertTimeout.toOption, "")
 
     override def getModel(): Model = prover.getModel()
 

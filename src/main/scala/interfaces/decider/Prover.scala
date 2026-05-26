@@ -6,13 +6,15 @@
 
 package viper.silicon.interfaces.decider
 
-import viper.silicon.debugger.DebugAxiom
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.config.Version
-import viper.silver.components.StatefulComponent
-import viper.silicon.{Config, Map}
+import viper.silicon.debugger.DebugAxiom
+import viper.silicon.dependencyAnalysis._
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
+import viper.silicon.{Config, Map}
+import viper.silver.ast
+import viper.silver.components.StatefulComponent
 import viper.silver.verifier.Model
 
 sealed abstract class Result
@@ -24,6 +26,9 @@ object Unknown extends Result
 trait ProverLike {
   protected val debugMode = Verifier.config.enableDebugging()
   var preambleAssumptions: Seq[DebugAxiom] = Seq()
+  protected var preambleDependencyAnalyzer: DependencyAnalyzer =
+    if(Verifier.config.enableDependencyAnalysis()) new DefaultDependencyAnalyzer(ast.Method("none", Seq(), Seq(), Seq(), Seq(), None)())
+    else new NoDependencyAnalyzer()
   def emit(content: String): Unit
   def emit(contents: Iterable[String]): Unit = { contents foreach emit }
   def emitSettings(contents: Iterable[String]): Unit
@@ -32,8 +37,30 @@ trait ProverLike {
       preambleAssumptions :+= new DebugAxiom(description, terms)
     terms foreach assume
   }
+
+  def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, DependencyAnalysisInfos)], description: String): Unit = {
+    if (debugMode)
+      preambleAssumptions :+= new DebugAxiom(description, axioms.map(_._1))
+
+    if(Verifier.config.enableDependencyAnalysis()){
+      axioms.foreach(axiom => {
+        val analysisInfos = axiom._2
+				if(analysisInfos.analysisEnabled){
+					val id = preambleDependencyAnalyzer.addAxiom(axiom._1, analysisInfos)
+					assume(axiom._1, DependencyAnalyzer.createAxiomLabel(id))
+				}else {
+					assume(axiom._1)
+				}
+      })
+    } else{
+      axioms.foreach(t => assume(t._1))
+    }
+  }
+
+  def getPreambleAnalysisNodes: Iterable[DependencyAnalysisNode] = preambleDependencyAnalyzer.getNodes
   def setOption(name: String, value: String): String
   def assume(term: Term): Unit
+  def assume(term: Term, label: String): Unit
   def declare(decl: Decl): Unit
   def comment(content: String): Unit
   def saturate(timeout: Int, comment: String): Unit
@@ -42,8 +69,9 @@ trait ProverLike {
 
 trait Prover extends ProverLike with StatefulComponent {
   def start(userArgsString: Option[String]): Unit
-  def assert(goal: Term, timeout: Option[Int] = None): Boolean
-  def check(timeout: Option[Int] = None): Result
+  def assert(goal: Term, timeout: Option[Int] = None, label: String = ""): Boolean
+  def check(timeout: Option[Int] = None, label: String = ""): Result
+  def getLastUnsatCore: String
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
   def statistics(): Map[String, String]
   def hasModel(): Boolean

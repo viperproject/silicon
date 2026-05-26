@@ -1,0 +1,139 @@
+field f: Int
+
+predicate greater0(n: Int){
+  n > 0
+}
+
+predicate greater5(n: Int){
+  n > 5
+}
+
+method foldP(n: Int)
+    requires @dependency("Precondition")(n > 10)
+{
+    var x: Int 
+    @dependency("SourceCode")
+    x := 1
+
+    // $PrecisionTest: $READ_ONLY=n,x $INVARIANT=n>0
+
+    @testAssertion("Implicit")
+    fold greater0(x + n)
+}
+
+method unfoldP(n: Int)
+  requires @dependency("Precondition")(greater0(n))
+{
+    var x: Int
+    @dependency("SourceCode")
+    x := 1
+    @dependency("Rewrite")
+    unfold greater0(n)
+    @dependency("SourceCode")
+    x := n + x
+
+    // $PrecisionTest: $READ_ONLY=x,n $INVARIANT=x>n
+
+    @testAssertion("Explicit")
+    assert x > 1
+}
+
+method unfoldFoldP(a: Int, b: Int)
+    requires @dependency("Precondition")(greater0(a)) && @dependency("Precondition")(greater5(b))
+    ensures greater5(a + b)
+{
+    @dependency("Rewrite")
+    unfold greater0(a)
+    @dependency("Rewrite")
+    unfold greater5(b)
+
+    // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=b>0
+
+    @testAssertion("Implicit")
+    fold greater5(a + b)
+}
+
+method callWithPredicate(a: Int, b: Int)
+    requires @dependency("Precondition")(greater0(a)) && @dependency("Precondition")(greater5(b))
+    ensures greater5(a + b)
+{
+    @dependency("MethodCall")
+    unfoldFoldP(a, b)
+
+    // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=(unfolding$_$greater5(a+b)$_$in$_$a+b>0) $ACC_INVARIANT=greater5(a+b)
+
+    @testAssertion("Explicit")
+    assert greater5(a + b)
+}
+
+method unfoldPrecision(a: Int, b: Int)
+    requires @irrelevant("Precondition")(greater0(a))
+    requires @dependency("Precondition")(greater5(b))
+    ensures greater0(b)
+{
+    
+    // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=(unfolding$_$greater0(a)$_$in$_$a>0) $ACC_INVARIANT=greater0(a)
+
+    @irrelevant("Rewrite")
+    unfold greater0(a)
+    @dependency("Rewrite")
+    unfold greater5(b)
+
+    @testAssertion("Implicit")
+    fold greater0(b)
+}
+
+method foldPrecision(a: Int, b: Int)
+    requires @irrelevant("Precondition")(a > 5)
+    requires @dependency("Precondition")(b > 5)
+{
+    // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=b>2
+
+    @testAssertion("Implicit")
+    fold greater0(b)
+}
+
+method unfolding1(n: Int)
+    requires @dependency("Precondition")(greater5(n))
+{
+
+    // $PrecisionTest: $READ_ONLY=n $INVARIANT=(unfolding$_$greater5(n)$_$in$_$n>0) $ACC_INVARIANT=greater5(n)
+
+    @testAssertion("Explicit")
+    assert unfolding greater5(n) in n > 0
+}
+
+predicate implPred(a: Int, x: Ref){
+  a > 0 ==> acc(x.f)
+}
+
+method unfoldWithImpl(a: Int, x: Ref)
+  requires @dependency("Precondition")(implPred(a, x))
+{
+  @dependency("Rewrite")
+  unfold implPred(a, x)
+  if(@dependency("PathCondition")(a > 5)){
+    @irrelevant("SourceCode")
+    x.f := a
+
+    // $PrecisionTest: $READ_ONLY=a $READ_WRITE=x.f $INVARIANT=a>=0 $ACC_INVARIANT=acc(x.f)
+  }
+  @testAssertion("Implicit")
+  fold implPred(a, x)
+}
+
+method unfoldingWithImpl(a: Int, x: Ref)
+  requires @dependency("Precondition")(implPred(a, x))
+{
+  var res: Int
+  if(@dependency("PathCondition")(a > 5)){
+
+    // $PrecisionTest: $READ_ONLY=a $READ_WRITE=res $INVARIANT=a>0
+
+    @testAssertion("Implicit")
+    res := unfolding implPred(a, x) in x.f
+  }else{
+    @irrelevant("SourceCode")
+    res := a
+  }
+}

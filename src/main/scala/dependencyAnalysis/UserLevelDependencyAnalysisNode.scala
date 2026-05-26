@@ -1,0 +1,63 @@
+package viper.silicon.dependencyAnalysis
+
+import viper.silicon.state.terms.{And, Term}
+import viper.silver.ast.Position
+import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, StringAnalysisSourceInfo}
+
+object UserLevelDependencyAnalysisNode {
+
+  def from(dependencyNodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = {
+    val res = dependencyNodes
+      .map(n => (StringAnalysisSourceInfo(n.sourceInfo.getDescription, n.sourceInfo.getPosition), n))
+      .groupBy(_._1).map { case (key, nodes) =>
+      UserLevelDependencyAnalysisNode(key, nodes.map(_._2).toSet)
+    }.toSet
+    res
+  }
+
+  def extractByAssumptionType(nodes: Set[UserLevelDependencyAnalysisNode], assumptionTypes: Set[AssumptionType]): Set[UserLevelDependencyAnalysisNode] = {
+    nodes.filter(node => assumptionTypes.intersect(node.assumptionTypes).nonEmpty)
+  }
+
+  def mkUserLevelString(nodes: Set[DependencyAnalysisNode], sep: String = "\n"): String = {
+    from(nodes).toList.sortBy(n => (n.source.getLineNumber, n.source.toString)).mkString(sep)
+  }
+
+  implicit class SetNodeOps(private val left: Set[UserLevelDependencyAnalysisNode]) extends AnyVal {
+    def diffBySource(right: Set[UserLevelDependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = {
+      val sources = right.map(_.groupingCondition)
+      left.filterNot(n => sources.contains(n.groupingCondition))
+    }
+
+    def getSourceSet(): Set[AnalysisSourceInfo] = {
+      left.map(_.source)
+    }
+  }
+}
+
+case class UserLevelDependencyAnalysisNode(source: AnalysisSourceInfo, lowerLevelNodes: Set[DependencyAnalysisNode]) {
+
+  def position: Position = source.getPosition
+
+  def assumptionTypes: Set[AssumptionType] = lowLevelAssumptionNodes.map(_.assumptionType)
+  def assertionTypes: Set[AssumptionType] = lowLevelAssertionNodes.map(_.assumptionType)
+
+  lazy val lowLevelAssumptionNodes: Set[DependencyAnalysisNode] = lowerLevelNodes.filter(_.isInstanceOf[GeneralAssumptionNode])
+  lazy val lowLevelAssertionNodes: Set[DependencyAnalysisNode] = lowerLevelNodes.filter(_.isInstanceOf[GeneralAssertionNode])
+
+  lazy val assumptionTerm: Term = And(lowLevelAssumptionNodes.map(_.getTerm))
+  lazy val assertionTerm: Term = And(lowLevelAssertionNodes.map(_.getTerm))
+
+  lazy val hasFailures: Boolean = lowerLevelNodes.filter(_.isInstanceOf[GeneralAssertionNode]).map(_.asInstanceOf[GeneralAssertionNode]).exists(_.hasFailed)
+
+
+  override def toString: String = source.toString
+
+  def groupingCondition: (String, Position) = (source.toString, position)
+
+}
+
+case class CompactUserLevelDependencyAnalysisNode(source: AnalysisSourceInfo, assumptionTypes: Set[AssumptionType], assertionTypes: Set[AssumptionType], hasFailures: Boolean) {
+  def position: Position = source.getPosition
+}

@@ -1,0 +1,81 @@
+method foo(n: Int) returns (res: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L1")((n > 0))
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L2")((res > 0))
+{
+    @dependencyInfo("assumptionType:SourceCode, label:L3")
+    res := n
+    var a: Int
+    @dependencyInfo("assumptionType:SourceCode, label:L4")
+    a := 10 / res
+    while(@dependencyInfo("assumptionType:PathCondition, label:L5")((true)))
+        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L6")((res > 0))
+    {
+        @dependencyInfo("assumptionType:MethodCall, label:L7")
+        res := foo(res)
+    }
+}
+
+method bar(n: Int) returns (res: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L8")((n > 0))
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L9")((res > 0))
+{
+    @dependencyInfo("assumptionType:SourceCode, label:L10")
+    res := n
+}
+
+method barClient(n: Int) returns (res: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L11")((n > 0))
+{
+    @dependencyInfo("assumptionType:MethodCall, label:L12")
+    res := bar(n)
+}
+
+method client()
+{
+    var n: Int
+    @dependencyInfo("assumptionType:SourceCode, label:L13")
+    n := 1
+    while(@dependencyInfo("assumptionType:PathCondition, label:L14")((n < 100)))
+        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L15")((n > 0))
+    {
+        @dependencyInfo("assumptionType:SourceCode, label:L16")
+        n := n + 1
+        @dependencyInfo("assumptionType:MethodCall, label:L17")
+        n := bar(n)
+    }
+    @dependencyInfo("assertionType:Explicit, label:L18")
+    assert n > 0
+}
+
+method recWrapped(n: Int) returns (res: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L19")((n >= 0))
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L20")((res >= 0))
+{
+    @dependencyInfo("assumptionType:MethodCall, label:L21")
+    res := rec(n)
+}
+
+
+method rec(n: Int) returns (res: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L22")((n >= 0))
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L23")((res >= 0))
+{
+    var i: Int
+    @dependencyInfo("assumptionType:SourceCode, label:L24")
+    i := 0
+    @dependencyInfo("assumptionType:SourceCode, label:L25")
+    res := 0
+    while(@dependencyInfo("assumptionType:PathCondition, label:L26")((i < n)))
+        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L27")((res >= 0))
+        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L28")((i >= 0))
+        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L29")((i <= n))
+    {
+        var tmp: Int
+        @dependencyInfo("assumptionType:MethodCall, label:L30")
+        tmp := recWrapped(n)
+        @dependencyInfo("assumptionType:SourceCode, label:L31")
+        res := res + tmp
+        @dependencyInfo("assumptionType:SourceCode, label:L32")
+        i := i + 1
+    }
+}

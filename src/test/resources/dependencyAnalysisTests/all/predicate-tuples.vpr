@@ -1,0 +1,50 @@
+field left: Int
+field right: Int
+
+predicate tuple(this: Ref) {
+  acc(this.left) && acc(this.right)
+}
+
+method setTuple(this: Ref, l: Int, r: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L4")((tuple(this)))
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L5, expectedDependencies:[L4,L6]")(tuple(this))
+{
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L6, expectedDependencies:[L4]")
+  unfold tuple(this)
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L7, expectedDependencies:[L4,L6]")
+  this.left := l
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L8, expectedDependencies:[L4,L6]")
+  this.right := r
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L9, expectedDependencies:[L4,L6]")
+  fold tuple(this)
+}
+
+predicate tupleB(this: Ref) {
+  acc(this.left) && acc(this.right) && this.left > 0 && this.right > 0
+}
+
+method addTuple(this: Ref) returns (sum: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L10")((acc(tupleB(this), 1/2)))
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L11, expectedDependencies:[L10,L12,L14]")(acc(tupleB(this), 1/2))
+{
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L12, expectedDependencies:[L10]")
+  unfold acc(tupleB(this), 1/2)
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L13, expectedDependencies:[L10,L12]")
+  sum := this.left + this.right
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L14, expectedDependencies:[L10,L12]")
+  fold acc(tupleB(this), 1/2)
+}
+
+method addTupleAndUpdate(this: Ref) returns (sum: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L15")((acc(tupleB(this))))
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L16, expectedDependencies:[L15,L17,L18,L19,L20]")(acc(tupleB(this)))
+{
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L17, expectedDependencies:[L15]")
+  unfold acc(tupleB(this))
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L18, expectedDependencies:[L15,L17]")
+  sum := this.left + this.right
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L19, expectedDependencies:[L15,L17]")
+  this.left := sum
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L20, expectedDependencies:[L15,L17,L18,L19]")
+  fold acc(tupleB(this))
+}

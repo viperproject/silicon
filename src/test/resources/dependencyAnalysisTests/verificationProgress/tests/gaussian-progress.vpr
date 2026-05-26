@@ -1,0 +1,21 @@
+// spec quality: 5/5
+// proof quality (Peter): 1/3
+// proof quality (Lea): 2.625/3
+// progress (Peter): 0.333
+// progress (Lea): 0.875
+
+method gaussianSimple(n: Int) returns (res: Int)
+  ensures res == n * (n + 1) / 2
+{
+  assume 0 <= n
+  res := 0
+  var i: Int := 0
+
+  while(i <= n)
+    invariant i <= (n + 1)
+    invariant res == (i - 1) * i / 2
+  {
+    res := res + i
+    i := i + 1
+  }
+}

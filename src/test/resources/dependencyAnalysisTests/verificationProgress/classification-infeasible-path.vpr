@@ -1,0 +1,42 @@
+field f: Int
+
+predicate p(x: Ref){ acc(x.f) }
+
+method foo(x: Ref, y: Ref, n: Int, b: Bool, s: Seq[Int])
+    requires !b
+    requires acc(x.f) && x.f == 0
+{
+    if(b){
+        x.f := 1
+        assert x.f > 0
+        var i: Int
+        i := 0
+        if(i > 0){
+            i := 1
+        }
+
+        //s[0 := 1]
+
+        i := s[0]
+
+        assume |s| > 0
+
+        assume s[0] == 1
+
+        assume 2 in s
+
+        while(i > 10)
+            invariant i > 10
+        {
+            assert false
+            i := x.f
+            i := -10
+            y.f := 3
+            inhale i > 10
+            fold p(y)
+            package true --* p(y)
+            apply true --* p(y)
+            unfold p(y)
+        }
+    }
+}

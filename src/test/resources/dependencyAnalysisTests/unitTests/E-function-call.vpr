@@ -1,0 +1,88 @@
+field f: Int
+
+function sum(x: Int, y: Int): Int
+  requires x >= 0 && y >= 0
+  ensures result >= 0
+{
+ x + y
+}
+
+function sumUnverified(x: Int, y: Int): Int
+  requires x >= 0 && y >= 0
+  ensures result >= 0
+  ensures result == x + y
+
+method call1(){
+    var x: Int, y: Int
+    @dependency("Explicit")
+    assume x > 10
+    @dependency("Explicit")
+    assume y > 0
+
+    // $PrecisionTest: $READ_ONLY=x,y $INVARIANT=y>-5
+
+    @testAssertion("Implicit")
+    x := sum(x, y)
+}
+
+method call2(){
+    var x: Int, y: Int, z: Int
+    @dependency("Explicit")
+    assume x > 10
+    @dependency("Explicit")
+    assume y > 0
+
+    @dependency("SourceCode")
+    z := sum(x, y)
+
+    // $PrecisionTest: $READ_ONLY=x,y,z $INVARIANT=x>0
+
+    @testAssertion("Explicit")
+    assert z == x + y
+}
+
+method call3(x: Int, y: Int)
+{
+  @dependency("Explicit")
+  assume x > 0
+  @dependency("Explicit")
+  assume y > 0
+
+  var n: Int, n2: Int
+  @dependency("SourceCode")
+  n := sum(x, y)
+
+  // $PrecisionTest: $READ_WRITE=n2 $READ_ONLY=x,y,n $INVARIANT=x>0
+
+  @dependency("SourceCode")
+  n2 := sum(x, y)
+  @dependency("SourceCode")
+  n := n + n2
+
+  @testAssertion("Explicit")
+  assert n == 2*x + 2*y
+}
+
+
+method call4(x: Int, y: Int, z: Int)
+{
+  @dependency("Explicit")
+  assume x > 0
+  @dependency("Explicit")
+  assume y > 0
+
+  @irrelevant("Explicit")
+  assume z > 0
+
+  var n: Int, n2: Int
+  @dependency("SourceCode")
+  n := sumUnverified(x, y)
+
+  // $PrecisionTest: $READ_WRITE=n2 $READ_ONLY=n,z,x,y $INVARIANT=x>0
+
+  @irrelevant("SourceCode")
+  n2 := sumUnverified(x, z)
+
+  @testAssertion("Explicit")
+  assert n == x + y
+}

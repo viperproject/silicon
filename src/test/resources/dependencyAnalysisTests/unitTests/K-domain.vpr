@@ -1,0 +1,74 @@
+field f: Int
+field val: Int
+define access(a)
+  (forall j: Int :: 0 <= j && j < len(a) ==> acc(slot(a,j).val))
+
+
+domain IArray {
+  function slot(a: IArray, i: Int): Ref
+  function len(a: IArray): Int
+  function first(r: Ref): IArray
+  function second(r: Ref): Int
+
+
+  axiom all_diff {
+    forall a: IArray, i: Int :: { slot(a,i) }
+      first(slot(a,i)) == a && second(slot(a,i)) == i
+  }
+
+  axiom len_nonneg {
+    forall a: IArray :: { len(a) }
+      len(a) >= 0
+  }
+}
+
+method domain1()
+{
+  var a: IArray
+  @irrelevant("Explicit")
+  inhale len(a) == 3
+
+  // $PrecisionTest: $INVARIANT=len(a)>0
+
+  @testAssertion("Implicit")
+  inhale access(a) 
+}
+
+method domain2()
+{
+  var a: IArray
+  @dependency("Explicit")
+  inhale len(a) == 3
+
+  @dependency("Explicit")
+  inhale access(a)
+
+  // $PrecisionTest: $READ_WRITE=slot(a;0).val $INVARIANT=0<len(a) $ACC_INVARIANT=access(a)
+
+  @testAssertion("Implicit")
+  slot(a,0).val := 0
+}
+
+method domain3()
+{
+  var a: IArray
+  @irrelevant("Explicit")
+  inhale len(a) == 3
+  @dependency("Explicit")
+  inhale access(a) 
+
+  var i: Int
+  @dependency("SourceCode")
+  i := 0
+  while (@dependency("PathCondition")(i < len(a)))
+    invariant @dependency("LoopInvariant")(access(a))
+    invariant @dependency("LoopInvariant")(0 <= i)
+    invariant @irrelevant("LoopInvariant")(i <= len(a))
+  {
+    // $PrecisionTest: $READ_ONLY=i $READ_WRITE=slot(a;i).val $INVARIANT=-1<i&&i<len(a) $ACC_INVARIANT=access(a)
+    @testAssertion("Implicit")
+    slot(a,i).val := -i
+    @dependency("SourceCode")
+    i := i + 1
+  }
+}

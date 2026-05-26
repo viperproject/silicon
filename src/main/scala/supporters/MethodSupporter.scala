@@ -7,18 +7,22 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silver.ast
-import viper.silver.components.StatefulComponent
-import viper.silver.verifier.errors._
-import viper.silicon.interfaces._
+import viper.silicon.Map
 import viper.silicon.decider.Decider
+import viper.silicon.dependencyAnalysis._
+import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
+import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
-import viper.silicon.state.{State, Store}
 import viper.silicon.state.State.OldHeaps
-import viper.silicon.verifier.{Verifier, VerifierComponent}
+import viper.silicon.state.terms.True
+import viper.silicon.state.{State, Store}
 import viper.silicon.utils.freshSnap
-import viper.silicon.Map
+import viper.silicon.verifier.{Verifier, VerifierComponent}
+import viper.silver.ast
+import viper.silver.components.StatefulComponent
+import viper.silver.dependencyAnalysis._
+import viper.silver.verifier.errors._
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
@@ -29,9 +33,9 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
   def decider: Decider
 
   object methodSupporter extends MethodVerificationUnit with StatefulComponent {
+    import consumer._
     import executor._
     import producer._
-    import consumer._
 
     private var _units: Seq[ast.Method] = _
 
@@ -76,27 +80,44 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
           new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}.dot"))
       }
 
+      val presAssertionNodeForJoin = pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(pc)), List(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up))))
+      presAssertionNodeForJoin foreach v.decider.dependencyAnalyzer.addAssertionNode
+
+      val analysisInfosPrecondition = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Up))
+      val analysisInfosPostcondition = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))
+
       errorsReportedSoFar.set(0)
       val result =
         /* Combined the well-formedness check and the execution of the body, which are two separate
          * rules in Smans' paper.
          */
         executionFlowController.locally(s, v)((s1, v1) => {
-          produces(s1, freshSnap, pres, ContractNotWellformed, v1)((s2, v2) => {
+          produces(s1, freshSnap, pres, ContractNotWellformed, v1, analysisInfosPrecondition)((s2, v2) => {
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
             (  executionFlowController.locally(s2a, v2)((s3, v3) => {
                   val s4 = s3.copy(h = v3.heapSupporter.getEmptyHeap(s3.program))
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
                   val sepIdentifier = symbExLog.openScope(impLog)
-                  produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
+                  produces(s4, freshSnap, posts, ContractNotWellformed, v3, analysisInfosPostcondition)((_, _) => {
                     symbExLog.closeScope(sepIdentifier)
                     Success()})})
             && {
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {
-                  exec(s3, body, v3)((s4, v4) =>
-                    consumes(s4, posts, false, postViolated, v4)((_, _, _) =>
-                      Success()))}) }  )})})
+                 val da = v3.decider.dependencyAnalyzer
+                 if(method.body.isEmpty) v3.decider.removeDependencyAnalyzer()
+                  exec(s3, body, v3)((s4, v4) => {
+                    if(method.body.isEmpty) v3.decider.dependencyAnalyzer = da
+                    consumes(s4, posts, false, postViolated, v4, analysisInfosPostcondition)((_, _, _) =>
+                      Success())})}) }  )})})
+
+      if(method.body.isEmpty){
+        v.decider.dependencyAnalyzer.addDependenciesForAbstractMembers(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts), DependencyAnalysisInfos.DefaultDependencyAnalysisInfos)
+      }
+
+      val allErrors = (result :: result.previous.toList).filter(_.isInstanceOf[Failure]).map(_.asInstanceOf[Failure])
+
+      result.dependencyGraphInterpreter = v.decider.dependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(method.name, _, allErrors, Some(method)))
 
       v.decider.resetProverOptions()
 

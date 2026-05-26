@@ -1,0 +1,155 @@
+field next : Ref
+field val : Int
+field f: Int
+
+predicate list(start : Ref)
+{
+  acc(start.val) && acc(start.next) &&
+    (start.next != null && list(start.next))
+}
+
+
+method basicApply()
+{
+    var x: Int
+    var y: Int
+    @dependency("Explicit")
+    inhale x > 0
+    @dependency("Explicit")
+    inhale x > 0 --* y > 0
+
+    // $PrecisionTest: $READ_ONLY=x,y $INVARIANT=x>0
+
+    @dependency("Rewrite")
+    apply x > 0 --* y > 0
+
+    @testAssertion("Explicit")
+    assert y > 0
+}
+
+
+method basicPackage(l: Ref) 
+  requires @dependency("Precondition")(list(l))
+  ensures list(l)
+  {
+    @dependency("Rewrite")
+    unfold list(l)
+    var tmp : Ref
+    @dependency("SourceCode")
+    tmp := l.next
+
+    // $PrecisionTest: $READ_WRITE=l.val $ACC_INVARIANT=acc(l.val)&&acc(l.next, 1/2)
+
+    @dependency("Rewrite")
+    package list(tmp) --* list(l)
+    {
+      @dependency()
+      fold list(l)
+    }
+
+    @dependency("Rewrite")
+    apply list(tmp) --* list(l)
+
+    @testAssertion("Explicit")
+    assert list(l)
+}
+
+
+predicate greater0(a: Int){
+    a > 0
+}
+
+method advancedPackage(a: Int, b: Int)
+  {
+
+    @dependency("Rewrite")
+    package (greater0(a) && greater0(b)) --* greater0(a + b)
+    {
+      @dependency("Rewrite")
+      unfold greater0(a)
+      @dependency("Rewrite")
+      unfold greater0(b)
+      @dependency("Rewrite")
+      fold greater0(a + b)
+    }
+
+    @dependency("Explicit")
+    inhale greater0(a)
+    @dependency("Explicit")
+    inhale greater0(b)
+
+    // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=(unfolding$_$greater0(b)$_$in$_$b>0) $ACC_INVARIANT=greater0(b)
+
+    @dependency("Rewrite")
+    apply (greater0(a) && greater0(b)) --* greater0(a + b)
+
+    @testAssertion("Explicit")
+    assert greater0(a + b)
+}
+
+method quantifiedWand(xs: Seq[Int], b: Int)
+    requires @dependency("Precondition")(|xs| > 2)
+    requires @dependency("Precondition")(forall x: Int :: x in xs ==> (greater0(x) --* greater0(x + b)))
+  {
+    @dependency("Explicit")
+    inhale greater0(xs[0])
+    @dependency("Rewrite")
+    apply  greater0(xs[0]) --* greater0(xs[0] + b)
+
+    // $PrecisionTest: $READ_ONLY=xs[0],b,xs[1] $INVARIANT=(unfolding$_$greater0(xs[0]+b)$_$in$_$xs[0]+b>0) $ACC_INVARIANT=greater0(xs[0]+b) // TODO ake: sequence update
+
+    @testAssertion("Explicit")
+    assert greater0(xs[0] + b)
+}
+
+method packagePrecision(l: Ref)
+  requires @dependency("Precondition")(list(l))
+  {
+    @dependency("Rewrite")
+    unfold list(l)
+    var tmp : Ref
+    @dependency("SourceCode")
+    tmp := l.next
+
+    // $PrecisionTest: $READ_WRITE=l.val $ACC_INVARIANT=acc(l.val)
+
+    @irrelevant("Rewrite")
+    package list(tmp) --* list(l)
+    {
+      @irrelevant("Rewrite")
+      fold list(l)
+    }
+
+    @testAssertion("Explicit")
+    assert list(tmp)
+}
+
+method packageExhale(x: Ref)
+  requires @dependency("Precondition")(acc(x.f))
+  {
+
+    @dependency("Rewrite")
+    package acc(x.f, 1/2) --* acc(x.f)
+
+    // $PrecisionTest: $READ_ONLY=x.f $ACC_INVARIANT=acc(x.f,1/4)
+
+
+    @testAssertion("Explicit")
+    assert perm(x.f) >= 1/2
+}
+
+method applying1()
+{
+    var x: Int
+    var y: Int
+    @dependency("Explicit")
+    inhale x > 0
+    @dependency("Explicit")
+    inhale x > 0 --* y > 0
+
+    // $PrecisionTest: $READ_ONLY=x,y $INVARIANT=x>0
+
+    @testAssertion("Explicit")
+    assert applying (x > 0 --* y > 0) in y > 0
+}
+

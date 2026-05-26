@@ -6,21 +6,21 @@
 
 package viper.silicon.decider
 
-import java.io._
-import java.nio.file.Path
-import java.util.concurrent.TimeUnit
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
-import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
+import viper.silicon.dependencyAnalysis.DependencyAnalyzer
+import viper.silicon.interfaces.decider._
 import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
-import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
 import viper.silicon.{Config, Map, toMap}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, QuantifierInstantiationsMessage, Reporter}
-import viper.silver.verifier.Model
+import viper.silver.verifier.{Model, DefaultDependency => SilDefaultDependency}
 
+import java.io._
+import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 import scala.collection.mutable
 
 abstract class ProverStdIO(uniqueId: String,
@@ -39,10 +39,12 @@ abstract class ProverStdIO(uniqueId: String,
   protected var output: PrintWriter = _
   protected var allDecls: Seq[Decl] = Seq()
   protected var allEmits: Seq[String] = Seq()
+  protected var proverLabelId: Int = 0
 
   var proverPath: Path = _
   var lastReasonUnknown : String = _
   var lastModel : String = _
+  protected var lastUnsatCore_ : String = _
 
   def exeEnvironmentalVariable: String
   def dependencies: Seq[SilDefaultDependency]
@@ -220,6 +222,10 @@ abstract class ProverStdIO(uniqueId: String,
 //  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
 
   def assume(term: Term): Unit = {
+    assume(term, nextProverLabel())
+  }
+
+  def assume(term: Term, label: String): Unit = {
 //    /* Detect certain simple problems with quantifiers.
 //     * Note that the current checks don't take in account whether or not a
 //     * quantification occurs in positive or negative position.
@@ -233,26 +239,37 @@ abstract class ProverStdIO(uniqueId: String,
 //        problems.foreach(p => quantificationLogger.println(s"  $p"))
 //      }
 //    })
-
-    assume(termConverter.convert(term))
+    val finalLabel = if(label.isEmpty) nextProverLabel() else label
+    assume(termConverter.convert(term), finalLabel)
   }
 
-  def assume(term: String): Unit = {
+  def nextProverLabel(): String = {
+    val label = "prover_" + proverLabelId
+    proverLabelId += 1
+    label
+  }
+
+  def assume(term: String, label: String): Unit = {
 //    bookkeeper.assumptionCounter += 1
 
-    writeLine("(assert " + term + ")")
+    if((Verifier.config.enableDependencyAnalysis() && label.nonEmpty) ||  Verifier.config.enableUnsatCores()){
+      writeLine("(assert (! " + term + " :named " + (if(label.nonEmpty) label else nextProverLabel()) + "))")
+    }else{
+      writeLine("(assert " + term + ")")
+    }
+
     readSuccess()
   }
 
-  def assert(goal: Term, timeout: Option[Int] = None): Boolean =
-    assert(termConverter.convert(goal), timeout)
+  def assert(goal: Term, timeout: Option[Int] = None, label: String = ""): Boolean =
+    assert(termConverter.convert(goal), timeout, label)
 
-  def assert(goal: String, timeout: Option[Int]): Boolean = {
+  def assert(goal: String, timeout: Option[Int], label: String): Boolean = {
 //    bookkeeper.assertionCounter += 1
 
     val (result, duration) = Verifier.config.assertionMode() match {
       case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal, timeout)
-      case Config.AssertionMode.PushPop => assertUsingPushPop(goal, timeout)
+      case Config.AssertionMode.PushPop => assertUsingPushPop(goal, timeout, label)
     }
 
     comment(s"${viper.silver.reporter.format.formatMillisReadably(duration)}")
@@ -261,11 +278,16 @@ abstract class ProverStdIO(uniqueId: String,
     result
   }
 
-  protected def assertUsingPushPop(goal: String, timeout: Option[Int]): (Boolean, Long) = {
+  protected def assertUsingPushPop(goal: String, timeout: Option[Int], label: String): (Boolean, Long) = {
     push()
     setTimeout(timeout)
 
-    writeLine("(assert (not " + goal + "))")
+    if((Verifier.config.enableDependencyAnalysis() && label.nonEmpty) || Verifier.config.enableUnsatCores()){
+      writeLine("(assert (! (not " + goal + ") :named " + (if(label.nonEmpty) label else nextProverLabel()) + "))")
+    }else{
+      writeLine("(assert (not " + goal + "))")
+    }
+
     readSuccess()
 
     val startTime = System.currentTimeMillis()
@@ -276,12 +298,23 @@ abstract class ProverStdIO(uniqueId: String,
     if (!result) {
       retrieveAndSaveModel()
       retrieveReasonUnknown()
+    }else if(Verifier.config.enableDependencyAnalysis()){
+      lastUnsatCore_ = extractUnsatCore()
     }
 
     pop()
 
     (result, endTime - startTime)
   }
+
+  def extractUnsatCore(): String = {
+    writeLine("(get-unsat-core)")
+    val unsatCore = input.readLine()
+    comment("unsat core: " + unsatCore)
+    unsatCore
+  }
+
+  def getLastUnsatCore: String = lastUnsatCore_
 
   def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {
     data match {
@@ -348,16 +381,21 @@ abstract class ProverStdIO(uniqueId: String,
     (result, endTime - startTime)
   }
 
-  def check(timeout: Option[Int] = None): Result = {
+  def check(timeout: Option[Int] = None, label: String = ""): Result = {
     setTimeout(timeout)
 
     writeLine("(check-sat)")
 
-    readLine() match {
+    val result = readLine() match {
       case "sat" => Sat
       case "unsat" => Unsat
       case "unknown" => Unknown
     }
+
+    if(result == Unsat && Verifier.config.enableDependencyAnalysis())
+      lastUnsatCore_ = extractUnsatCore()
+
+    result
   }
 
   def statistics(): Map[String, String] = {

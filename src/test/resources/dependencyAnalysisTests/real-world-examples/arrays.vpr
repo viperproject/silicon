@@ -1,0 +1,124 @@
+/* Finding the maximum in an array by elimination.
+ * Problem 1 from http://foveoos2011.cost-ic0701.org/verification-competition
+ */
+
+define access(a) forall j: Int :: 0 <= j && j < len(a) ==> acc(loc(a, j).val)
+define untouched(a) forall j: Int :: 0 <= j && j < len(a) ==> loc(a, j).val == old(loc(a, j).val)
+define is_max(i, a, u) forall j: Int :: 0 <= j && j < u ==> loc(a, j).val <= loc(a, i).val
+
+method max(a: IArray) returns (x: Int)
+  requires access(a)
+  ensures  access(a)
+  ensures  untouched(a)
+  ensures  len(a) == 0 ? x == -1 : (0 <= x && x < len(a))
+  ensures  is_max(x, a, len(a))
+{
+  if (len(a) == 0) {
+    x := -1
+  } else {
+    var y: Int
+    x := 0;
+    y := len(a) - 1;
+
+    while (x != y)
+      invariant access(a)
+      invariant untouched(a)
+      invariant 0 <= x
+      invariant x <= y
+      invariant y < len(a)
+      invariant    (forall i: Int ::
+                          ((0 <= i && i < x) || (y < i && i < len(a)))
+                      ==> loc(a, i).val < loc(a, x).val)
+                || (forall i: Int ::
+                          ((0 <= i && i < x) || (y < i && i < len(a)))
+                      ==> loc(a, i).val <= loc(a, y).val)
+    {
+      if (loc(a, x).val <= loc(a, y).val) {
+        x := x + 1
+      } else {
+        y := y - 1
+      }
+    }
+  }
+}
+
+method client() {
+  var a: IArray
+  inhale len(a) == 3
+  inhale access(a)
+  inhale forall i: Int :: 0 <= i && i < len(a) ==> loc(a, i).val == i
+
+  var x: Int
+  x := max(a)
+
+  assert loc(a, 0).val <= x
+
+  @trigger()
+  assert x == loc(a, len(a) - 1).val
+    /* Necessary to prove the final assertion (due to triggering) */
+
+  assert x == 2
+
+  assert loc(a, 1).val < x
+}
+
+/* Task A */
+
+// used to write matching trigger terms below
+function offset(k:Int, x:Int, y:Int) : Int {
+  y + k - x
+}
+
+// longest common prefix
+method lcp(a: IArray, x: Int, y: Int) returns (n: Int)
+  requires access(a)
+  requires 0 <= x
+  requires 0 <= y
+  requires x < len(a)
+  requires y < len(a)
+  ensures  access(a)
+  ensures  0 <= n
+  ensures x + n <= len(a)
+  ensures y + n <= len(a)
+  ensures  forall k: Int :: {loc(a, offset(k,x,y))} // instantiation trigger term
+    x <= k && k < x + n ==> loc(a, k).val == loc(a, offset(k,x,y)).val
+  /* The following postcondition is logically equivalent to the previous one, and a bit
+   * easier to understand. However, it can currently not be used because it contains
+   * no possible triggers (due to the arithmetic operations inside the loc-expressions).
+   */
+  // ensures  forall k: Int :: 0 <= k && k < n ==> loc(a, x + k).val == loc(a, y + k).val
+  ensures  x + n < len(a) && y + n < len(a) ==> loc(a, x + n).val != loc(a, y + n).val
+{
+   n := 0
+   while (x + n < len(a) &&  y + n < len(a) && loc(a, x + n).val == loc(a, y + n).val)
+     invariant n >= 0
+     invariant access(a)
+     invariant x + n <= len(a)
+     invariant y + n <= len(a)
+     invariant forall k: Int :: {loc(a, offset(k,x,y))} // instantiation trigger term
+       x <= k && k < x + n ==> loc(a, k).val == loc(a, offset(k,x,y)).val
+   {
+     n := n + 1
+   }
+}
+
+
+/* Encoding of arrays */
+
+field val: Int
+
+domain IArray {
+  function loc(a: IArray, i: Int): Ref
+  function len(a: IArray): Int
+  function first(r: Ref): IArray
+  function second(r: Ref): Int
+
+  axiom all_diff {
+    forall a: IArray, i: Int :: {loc(a, i)}
+      first(loc(a, i)) == a && second(loc(a, i)) == i
+  }
+
+  axiom len_nonneg {
+    forall a: IArray :: len(a) >= 0
+  }
+}

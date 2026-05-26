@@ -1,0 +1,77 @@
+method branches1(a: Int, b: Int)
+{
+  var n:Int, c: Bool
+
+  assume a > 0
+  assume b > 4
+
+  assume c ==> a < 100
+
+  if(c){
+    n := a + 1
+  }else{
+    n := b + 1
+  }
+
+  assert n > 1
+}
+
+method branches2(a: Int, b: Int)
+{
+  var n:Int, c: Bool
+
+  assume a > 0
+  assume a < 100
+  assume a < b
+  assume b < 50
+
+  var x: Int
+  if(a >= n){
+    x := a + b
+  }else{
+    x := n + 1
+    assert x > 1
+  }
+}
+
+method branches3(a: Int, b: Int)
+{
+  var n:Int, c: Bool
+
+  assume b > 0
+
+  var x: Int
+  if(a >= n){
+    x := a + b
+  }else{
+    x := n + 1
+  }
+
+  assert x > n
+}
+
+
+method nestedBranches1(a: Int, b: Int)
+{
+  var n:Int, c: Bool
+
+  assume a > 0
+  assume a < 100
+  assume b > 0
+  assume b < 50
+  assume c ==> a > 5
+
+  if(c){
+    if(a > b){
+      n := a - b
+    }else{
+      n := a + b
+    }
+    n := n - 1
+  }else{
+    n := a + b
+  }
+
+  assert n <= a + b
+  assert c ==> n < a + b
+}

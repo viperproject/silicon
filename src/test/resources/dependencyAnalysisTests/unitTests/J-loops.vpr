@@ -1,0 +1,96 @@
+field f:Int
+
+method loop1(){
+    var i: Int
+    var res: Int
+    @dependency("SourceCode")
+    res := 0
+    // @irrelevant("SourceCode")
+    i := 10
+    while(@dependency("PathCondition")(i > 0))
+        invariant @irrelevant("LoopInvariant")(i <= 10)
+        invariant @irrelevant("LoopInvariant")(i >= 0)
+        invariant @dependency("LoopInvariant")(res >= 0)
+    {
+        @dependency("SourceCode")
+        res := res + i
+        // @irrelevant("SourceCode")
+        i := i - 1
+    }
+
+    // $PrecisionTest: $READ_ONLY=res $READ_WRITE=i $INVARIANT=i>-1
+
+    @testAssertion("Explicit")
+    assert res >= 0
+}
+
+method loop2(){
+    var i: Int
+    var res: Int
+    @irrelevant("SourceCode")
+    res := 0
+    @irrelevant("SourceCode")
+    i := 10
+    while(@dependency("PathCondition")(i > 0))
+        invariant @irrelevant("LoopInvariant")(i <= 10)
+        invariant @irrelevant("LoopInvariant")(i >= 0)
+        invariant @irrelevant("LoopInvariant")(res >= 0)
+    {
+        @irrelevant("SourceCode")
+        res := res + i
+        // $PrecisionTest: $READ_ONLY=res,i $INVARIANT=i<20
+        @dependency("SourceCode")
+        i := i - 1
+        @testAssertion("Explicit")
+        assert i >= 0
+    }
+}
+
+method loop3(){
+    var i: Int
+    var res: Int
+    @dependency("SourceCode")
+    res := 0
+    // $PrecisionTest: $READ_ONLY=res $READ_WRITE=i $INVARIANT=res<10
+    @irrelevant("SourceCode")
+    i := 10
+    while(@dependency("PathCondition")(i > 0))
+        invariant @irrelevant("LoopInvariant")(i <= 10)
+        invariant @irrelevant("LoopInvariant")(i >= 0)
+        invariant @dependency("LoopInvariant")(res >= 0)
+    {
+        @dependency("SourceCode")
+        res := res + i
+        @irrelevant("SourceCode")
+        i := i - 1
+        @testAssertion("Explicit")
+        assert res > 0
+    }
+}
+
+method loop4(){
+    var i: Int
+    var res: Int
+
+    // $PrecisionTest: $READ_WRITE=i,res
+
+    @dependency("SourceCode")
+    res := 0
+    @irrelevant("SourceCode")
+    i := 10
+    while(@irrelevant("PathCondition")(i > 0))
+        invariant @irrelevant("LoopInvariant")(i <= 10)
+        invariant @irrelevant("LoopInvariant")(i >= 0)
+        invariant @dependency("LoopInvariant")(res >= 0)
+    {
+        @irrelevant("SourceCode")
+        res := res - 1
+        @irrelevant("SourceCode")
+        i := i - 1
+        @dependency("Explicit")
+        assume res > 0
+    }
+
+    @testAssertion("Explicit")
+    assert res >= 0
+}

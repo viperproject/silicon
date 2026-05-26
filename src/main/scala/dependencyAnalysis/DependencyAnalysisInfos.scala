@@ -1,0 +1,136 @@
+package viper.silicon.dependencyAnalysis
+
+import viper.silicon.SiliconRunner
+import viper.silicon.verifier.Verifier
+import viper.silver.ast
+import viper.silver.ast._
+import viper.silver.dependencyAnalysis._
+
+/**
+ * Stores all information about the currently evaluated statement/expression such that the dependency analysis can
+ * correctly add nodes and edges to the graph.
+ */
+case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], dependencyTypes: List[DependencyTypeInfo], mergeInfos: List[DependencyAnalysisMergeInfo], joinInfos: List[DependencyAnalysisJoinInfo], nodes: List[ast.Node], analysisEnabled: Boolean = true) {
+
+	private def isAnalysisEnabled = Verifier.config.enableDependencyAnalysis() && analysisEnabled
+
+  def addInfo(info: ast.Info, node: ast.Node): DependencyAnalysisInfos = {
+		if(!isAnalysisEnabled) return this
+
+    val newSourceInfos = sourceInfos ++ info.getUniqueInfo[AnalysisSourceInfo].toList
+    val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
+    val newMergeInfos = mergeInfos ++ info.getUniqueInfo[DependencyAnalysisMergeInfo].toList
+    val newJoinInfos = joinInfos ++ info.getUniqueInfo[DependencyAnalysisJoinInfo].toList
+    DependencyAnalysisInfos(newSourceInfos, newDependencyInfos, newMergeInfos, newJoinInfos, nodes ++ List(node))
+  }
+
+  def addInfo(info: ast.Info): DependencyAnalysisInfos = {
+		if(!isAnalysisEnabled) return this
+
+    val newSourceInfos = sourceInfos ++ info.getUniqueInfo[AnalysisSourceInfo].toList
+    val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
+    val newMergeInfos = mergeInfos ++ info.getUniqueInfo[DependencyAnalysisMergeInfo].toList
+    val newJoinInfos = joinInfos ++ info.getUniqueInfo[DependencyAnalysisJoinInfo].toList
+    DependencyAnalysisInfos(newSourceInfos, newDependencyInfos, newMergeInfos, newJoinInfos, nodes)
+  }
+
+  def addInfo(infoString: String, pos: ast.Position, dependencyType: DependencyType): DependencyAnalysisInfos = {
+		if(!isAnalysisEnabled) return this
+		this.copy(sourceInfos = sourceInfos ++ List(StringAnalysisSourceInfo(infoString, pos)), dependencyTypes = dependencyTypes ++ List(DependencyTypeInfo(dependencyType)))
+	}
+
+	def withDependencyType(dependencyType: DependencyType): DependencyAnalysisInfos = {
+		if(!isAnalysisEnabled) return this
+
+		this.copy(dependencyTypes = DependencyTypeInfo(dependencyType) +: dependencyTypes)
+  }
+
+  def withSource(source: AnalysisSourceInfo): DependencyAnalysisInfos = {
+		if(!isAnalysisEnabled) return this
+
+		this.copy(sourceInfos = source +: sourceInfos)
+  }
+
+	private def getNodeInfo(n: ast.Node): String = {
+		n match {
+			case np: Positioned =>
+				s"${n.toString()} (${np.pos})"
+			case _ =>
+				s"${n.toString()} (???)"
+		}
+	}
+
+	private def getDebugInfo: String = {
+		val sourceInfo = sourceInfos.headOption.map("source info: " + _.toString + " ").getOrElse("")
+		val nodeInfo = if(nodes.nonEmpty) "nodes: " + nodes.map(getNodeInfo).mkString(", ") else ""
+		s"$sourceInfo$nodeInfo"
+	}
+
+  def getSourceInfo: AnalysisSourceInfo = {
+		if(!isAnalysisEnabled) return StringAnalysisSourceInfo("Unknown", NoPosition)
+		val sourceInfoOpt = sourceInfos.headOption
+		if(sourceInfoOpt.isDefined){
+			sourceInfoOpt.get
+		}else{
+			SiliconRunner.logger.warn(s"WARN: Missing source info for $getDebugInfo")
+			nodes.headOption.map(AnalysisSourceInfo.createAnalysisSourceInfo).getOrElse(StringAnalysisSourceInfo("Unknown", NoPosition))
+		}
+	}
+
+	def getDependencyType: DependencyType = {
+		if(!isAnalysisEnabled) return DependencyType.make(AssumptionType.Unknown)
+		val dependencyTypeOpt = dependencyTypes.headOption.map(_.dependencyType)
+		if(dependencyTypeOpt.isDefined) {
+			dependencyTypeOpt.get
+		}else {
+			SiliconRunner.logger.warn(s"WARN: Missing dependency type for $getDebugInfo")
+			DependencyType.make(AssumptionType.Unknown)
+		}
+	}
+
+	def getMergeInfo: DependencyAnalysisMergeInfo = {
+		if(!isAnalysisEnabled) return NoDependencyAnalysisMerge()
+		mergeInfos.headOption.getOrElse(SimpleDependencyAnalysisMerge(getSourceInfo))
+	}
+
+  def getJoinInfo: List[SimpleDependencyAnalysisJoin] = {
+		if(!isAnalysisEnabled) return List.empty
+    joinInfos.map {
+			case EvalStackDependencyAnalysisJoin(joinType, edgeType) => SimpleDependencyAnalysisJoin(sourceInfos.last, joinType, edgeType)
+			case a: SimpleDependencyAnalysisJoin => a
+		}
+  }
+
+  def withMergeInfo(mergeInfo: DependencyAnalysisMergeInfo): DependencyAnalysisInfos = {
+		if(!isAnalysisEnabled) return this
+
+		this.copy(mergeInfos = mergeInfo +: mergeInfos)
+	}
+
+	def withJoinInfo(joinInfo: DependencyAnalysisJoinInfo): DependencyAnalysisInfos = {
+		if(!isAnalysisEnabled) return this
+
+		this.copy(joinInfos = joinInfo +: joinInfos)
+	}
+
+	def withEnabled(analysisEnabled: Boolean): DependencyAnalysisInfos = this.copy(analysisEnabled=analysisEnabled)
+}
+
+object DependencyAnalysisInfos {
+  val DefaultDependencyAnalysisInfos = DependencyAnalysisInfos(List.empty, List.empty, List.empty, List.empty, List.empty)
+
+  def create(sourceInfo: AnalysisSourceInfo, dependencyType: DependencyType, mergeInfo: DependencyAnalysisMergeInfo): DependencyAnalysisInfos =
+    DependencyAnalysisInfos(List(sourceInfo), List(DependencyTypeInfo(dependencyType)), List(mergeInfo), List.empty, List.empty)
+
+  def create(sourceInfo: AnalysisSourceInfo, dependencyType: DependencyType): DependencyAnalysisInfos =
+    DependencyAnalysisInfos(List(sourceInfo), List(DependencyTypeInfo(dependencyType)), List.empty, List.empty, List.empty)
+
+  def create(infoString: String, dependencyType: DependencyType, mergeInfo: DependencyAnalysisMergeInfo): DependencyAnalysisInfos =
+    create(StringAnalysisSourceInfo(infoString, NoPosition), dependencyType, mergeInfo)
+
+  def create(infoString: String, dependencyType: DependencyType): DependencyAnalysisInfos =
+    create(StringAnalysisSourceInfo(infoString, NoPosition), dependencyType)
+
+	def createUnique(infoString: String, dependencyType: DependencyType): DependencyAnalysisInfos =
+		create(StringAnalysisSourceInfo(s"$infoString-${DependencyGraphHelper.nextId()}", NoPosition), dependencyType)
+}

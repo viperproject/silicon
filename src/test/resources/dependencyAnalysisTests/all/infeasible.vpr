@@ -1,0 +1,90 @@
+field f: Int
+
+method infeasibleBranch1(a: Int, b: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L2")(a > 0)
+{
+    if(@dependencyInfo("assumptionType:PathCondition, label:L3")(a < 0)){
+        @dependencyInfo("assertionType:Explicit, label:L4, expectedDependencies:[L2,L3]")
+        assert false
+    }
+}
+
+method infeasibleBranch2(a: Int, b: Int) returns (res: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L5")(a > 0)
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L9b, expectedDependencies:[L5,L6,L8]")(res > 0)
+{
+    if(@dependencyInfo("assumptionType:PathCondition, label:L6")(a < 0)){
+        assume @dependencyInfo("assumptionType:Explicit, label:L7")(res < 0)
+    }else{
+        assume @dependencyInfo("assumptionType:Explicit, label:L8")(res > 0)
+    }
+    @dependencyInfo("assertionType:Explicit, label:L9, expectedDependencies:[L5,L6,L8]")
+    assert res > 0
+}
+
+method clientInfeasibleBranch2() {
+    var a: Int, b: Int, res: Int
+    @dependencyInfo("assumptionType:SourceCode, label:LC1")
+    a := 10
+    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:LC2, expectedDependencies:[LC1]")
+    res := infeasibleBranch2(a, b)
+
+    @dependencyInfo("assertionType:Explicit, label:LC3, expectedDependencies:[LC1,LC2,L5,L6,L8,L9b]")
+    assert res > 0
+}
+
+
+method infeasibleBranchPerm(a: Ref, b: Ref)
+    requires @dependencyInfo("assumptionType:Precondition, label:L10")(acc(a.f, 1/2))
+    requires @dependencyInfo("assumptionType:Precondition, label:L11, expectedDependencies:[L10]")(a.f > 0)
+{
+     if(@dependencyInfo("assumptionType:PathCondition, label:L12, expectedDependencies:[L10]")(a.f < 0)){
+        @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L13, expectedDependencies:[L11,L12]")
+        a.f := a.f + 1
+     }
+}
+
+
+method infeasibleBranchNoPerm(a: Int, b: Ref)
+    requires @dependencyInfo("assumptionType:Precondition, label:L14")(a > 0)
+{
+    var res: Int
+    if(@dependencyInfo("assumptionType:PathCondition, label:L15")(a < 0)){
+        @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L16, expectedDependencies:[L14,L15]")
+        res := b.f + 1
+        @dependencyInfo("assertionType:Explicit, label:L17, expectedDependencies:[L14,L15]")
+        assert false
+    }
+}
+
+method implicationTest()
+{
+    var a: Int
+    @dependencyInfo("assumptionType:SourceCode, label:L18")
+    a := 10
+    @dependencyInfo("assertionType:Explicit, label:L19, expectedDependencies:[L18]")
+    assert a == 0 ==> false
+}
+
+method implicationTest2()
+{
+    var a: Int
+    var x: Ref
+    @dependencyInfo("assumptionType:SourceCode, label:L20")
+    a := 10
+    @dependencyInfo("assertionType:Explicit, label:L21, expectedDependencies:[L20]")
+    exhale a == 0 ==> acc(x.f)
+}
+
+method clientA(b: Bool, x: Ref)
+    requires @dependencyInfo("assumptionType:Precondition, label:L22")(b ==> acc(x.f))
+{
+
+    while(@dependencyInfo("assumptionType:PathCondition, label:L23")(b))
+        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L24, expectedDependencies:[L22,L26]")(b ==> acc(x.f))
+    {
+        @dependencyInfo("assertionType:Explicit, label:L25, expectedDependencies:[L22,L23,L24]")
+        exhale acc(x.f)
+        inhale @dependencyInfo("assumptionType:Explicit, label:L26")(acc(x.f))
+    }
+}

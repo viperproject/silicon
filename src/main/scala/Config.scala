@@ -6,15 +6,16 @@
 
 package viper.silicon
 
-import java.nio.file.{Files, Path, Paths}
-import scala.collection.immutable.ArraySeq
-import scala.util.matching.Regex
-import scala.util.Properties._
 import org.rogach.scallop._
 import viper.silicon.Config.JoinMode.JoinMode
 import viper.silicon.Config.StateConsolidationMode.StateConsolidationMode
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverAPI, Z3ProverStdIO}
 import viper.silver.frontend.SilFrontendConfig
+
+import java.nio.file.{Files, Path, Paths}
+import scala.collection.immutable.ArraySeq
+import scala.util.Properties._
+import scala.util.matching.Regex
 
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   import Config._
@@ -691,6 +692,78 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val startDebuggerAutomatically: ScallopOption[Boolean] = opt[Boolean]("startDebuggerAutomatically",
+    descr = "Starts the debugging mode automatically after verification completes",
+    default = Some(false),
+    noshort = true
+  )
+
+  val enableDependencyAnalysis: ScallopOption[Boolean] = opt[Boolean]("enableDependencyAnalysis",
+    descr = "Enable dependency analysis mode",
+    default = Some(false),
+    noshort = true
+  )
+
+  val enableDependencyAnalysisDebugging: ScallopOption[Boolean] = opt[Boolean]("enableDependencyAnalysisDebugging",
+    descr = "Enable debugging for dependency analysis mode",
+    default = Some(false),
+    noshort = true
+  )
+
+  val disableInfeasibilityChecks: ScallopOption[Boolean] = opt[Boolean]("disableInfeasibilityChecks",
+    descr = "Disable infeasibility checks. As a consequence all paths will be explored to the end. (Potentially) huge performance overhead!",
+    default = Some(false),
+    noshort = true
+  )
+
+  val dependencyAnalysisExportPath: ScallopOption[String] = opt[String]("dependencyAnalysisExportPath",
+    descr = "Path to the directory where the dependency analysis graphs should be exported to",
+    default = None,
+    noshort = true
+  )
+
+  val startDependencyAnalysisTool: ScallopOption[Boolean] = opt[Boolean]("startDependencyAnalysisTool",
+    descr = "Starts the dependency analysis command line tool after verification",
+    default = Some(false),
+    noshort = true
+  )
+
+	val executeDependencyAnalysisTests: ScallopOption[Boolean] = opt[Boolean]("executeDependencyAnalysisTests",
+		descr = "Automatically executes dependency analysis tests",
+		default = Some(false),
+		noshort = true
+	)
+
+  val enableUnsatCores: ScallopOption[Boolean] = opt[Boolean]("enableUnsatCores",
+    descr = "Enables UNSAT cores",
+    default = Some(false),
+    noshort = true
+  )
+
+  val pruneLines: ScallopOption[List[Int]] = opt[List[Int]]("pruneLines",
+    descr = "Line numbers to prune the program with respect to. Part of the dependency analysis tool.",
+    default = None,
+    noshort = true
+  )
+
+  val pruneExportFileName: ScallopOption[String] = opt[String]("pruneExportFileName",
+    descr = "Export file name for the pruned program (used with --pruneLines)",
+    default = Some("prunedExport.vpr"),
+    noshort = true
+  )
+  
+  val computeVerificationProgress: ScallopOption[Boolean] = opt[Boolean]("computeVerificationProgress",
+    descr = "Computes verification progress of the program",
+    default = Some(false),
+    noshort = true
+  )
+
+  val computeVerificationProgressFileName: ScallopOption[String] = opt[String]("computeVerificationProgressFileName",
+    descr = "Export file name for the verification progress output (used with --computeVerificationProgress)",
+    default = Some("progressExport.vpr"),
+    noshort = true
+  )
+
   /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(prover) {
@@ -737,6 +810,66 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   validateFileOpt(setAxiomatizationFile)
   validateFileOpt(multisetAxiomatizationFile)
   validateFileOpt(sequenceAxiomatizationFile)
+
+  validateOpt(enableDependencyAnalysis, parallelizeBranches) {
+    case (Some(false), _) => Right(())
+    case (_, Some(false)) => Right(())
+    case (Some(true), Some(true)) =>
+      Left(s"Option ${enableDependencyAnalysis.name} is not supported in combination with ${parallelizeBranches.name}")
+    case other =>
+      sys.error(s"Unexpected combination: $other")
+  }
+
+  validateOpt(rawProverArgs, enableDependencyAnalysis) {
+    case (_, Some(false)) => Right(())
+    case (Some(args), Some(true)) if args.contains("proof=true") && args.contains("unsat-core=true") => Right(())
+    case (_, _) =>
+      Left(s"Option ${enableDependencyAnalysis.name} requires ${rawProverArgs.name} with \"proof=true unsat-core=true\"")
+  }
+
+  validateOpt(dependencyAnalysisExportPath, enableDependencyAnalysis) {
+    case (None, _) => Right(())
+    case (Some(_), Some(true)) => Right(())
+    case (Some(_), Some(false)) =>
+      Left(s"Option ${dependencyAnalysisExportPath.name} requires option ${enableDependencyAnalysis.name}")
+  }
+
+	validateOpt(executeDependencyAnalysisTests, enableDependencyAnalysis) {
+		case (Some(false), _) => Right(())
+		case (_, Some(true)) => Right(())
+		case (_, _) =>
+			Left(s"Option ${executeDependencyAnalysisTests.name} requires option ${enableDependencyAnalysis.name}")
+	}
+
+  validateOpt(startDependencyAnalysisTool, enableDependencyAnalysis) {
+    case (Some(false), _) => Right(())
+    case (_, Some(true)) => Right(())
+    case (_, _) =>
+      Left(s"Option ${startDependencyAnalysisTool.name} requires option ${enableDependencyAnalysis.name}")
+  }
+
+  validateOpt(pruneLines, enableDependencyAnalysis) {
+    case (None, _) => Right(())
+    case (Some(_), Some(true)) => Right(())
+    case (Some(_), _) =>
+      Left(s"Option ${pruneLines.name} requires option ${enableDependencyAnalysis.name}")
+  }
+
+  validateOpt(computeVerificationProgress, enableDependencyAnalysis) {
+    case (Some(false), _) => Right(())
+    case (_, Some(true)) => Right(())
+    case (_, _) =>
+      Left(s"Option ${computeVerificationProgress.name} requires option ${enableDependencyAnalysis.name}")
+  }
+
+  validateOpt(startDebuggerAutomatically, enableDebugging) {
+    case (Some(false), _) => Right(())
+    case (Some(true), Some(true)) => Right(())
+    case (Some(true), Some(false)) =>
+      Left(s"Option ${startDebuggerAutomatically.name} requires option ${enableDebugging.name}")
+    case other =>
+      sys.error(s"Unexpected combination: $other")
+  }
 
   /* Finalise configuration */
 

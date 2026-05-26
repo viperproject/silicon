@@ -1,0 +1,27 @@
+
+
+function div100(n: Int): Int
+  requires n > 0
+  ensures result >= 0
+{
+  100/n
+}
+
+method client()
+{
+    var n: Int, n2: Int, res: Int, d: Int
+
+    n2 := 100
+    assume n > 10
+
+    res := div100(n)
+    d := div100(n2)
+    res := res + d
+
+    assert res >= 0
+
+    d := div100(n)
+    assert res == d + 1
+
+    res := res + div100(n)
+}

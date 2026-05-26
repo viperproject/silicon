@@ -6,19 +6,14 @@
 
 package viper.silicon.verifier
 
-import viper.silicon.debugger.SiliconDebugger
 import viper.silicon.Config.{ExhaleMode, JoinMode}
-
-import java.text.SimpleDateFormat
-import java.util.concurrent._
-import scala.annotation.unused
-import scala.collection.mutable
-import scala.util.Random
-import viper.silver.ast
-import viper.silver.components.StatefulComponent
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.debugger.SiliconDebugger
 import viper.silicon.decider.SMTLib2PreambleReader
+import viper.silicon.dependencyAnalysis._
+import viper.silicon.dependencyAnalysis.cliTool.DependencyAnalysisCliTool
+import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphTestSupporter
 import viper.silicon.extensions.ConditionalPermissionRewriter
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
@@ -26,16 +21,24 @@ import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
-import viper.silicon.supporters.{AnnotationSupporter, DefaultDomainsContributor, DefaultMapsContributor, DefaultMultisetsContributor, DefaultPredicateVerificationUnitProvider, DefaultSequencesContributor, DefaultSetsContributor, MagicWandSnapFunctionsContributor, PredicateData}
-import viper.silicon.supporters.qps._
+import viper.silicon.supporters._
 import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
+import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
+import viper.silver.ast
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.{BackendType, Member}
 import viper.silver.cfg.silver.SilverCfg
+import viper.silver.components.StatefulComponent
 import viper.silver.frontend.FrontendStateCache
 import viper.silver.reporter._
 import viper.silver.verifier.VerifierWarning
+
+import java.text.SimpleDateFormat
+import java.util.concurrent._
+import scala.annotation.unused
+import scala.collection.mutable
+import scala.util.Random
 
 /* TODO: Extract a suitable MainVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -125,6 +128,11 @@ class DefaultMainVerifier(config: Config,
     override def emit(contents: Iterable[String]): Unit = {
       decider.prover.emit(contents)
       _verificationPoolManager.pooledVerifiers.emit(contents)
+    }
+
+    def assume(term: Term, label: String): Unit = {
+      decider.prover.assume(term, label)
+      _verificationPoolManager.pooledVerifiers.assume(term, label)
     }
 
     def assume(term: Term): Unit = {
@@ -225,8 +233,10 @@ class DefaultMainVerifier(config: Config,
       val startTime = System.currentTimeMillis()
       var results: Seq[VerificationResult] = null
       try {
+        decider.initDependencyAnalyzer(function, allProvers.getPreambleAnalysisNodes ++ decider.prover.getPreambleAnalysisNodes)
         results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
           .flatMap(extractAllVerificationResults)
+        decider.removeDependencyAnalyzer()
       } catch {
         case e : Throwable =>
           logger error s"An exception was thrown while verifying function `${function.name}`."
@@ -242,8 +252,10 @@ class DefaultMainVerifier(config: Config,
       val startTime = System.currentTimeMillis()
       var results: Seq[VerificationResult] = null
       try {
+        decider.initDependencyAnalyzer(predicate, allProvers.getPreambleAnalysisNodes ++ decider.prover.getPreambleAnalysisNodes)
         results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
           .flatMap(extractAllVerificationResults)
+        decider.removeDependencyAnalyzer()
       } catch {
         case e: Throwable =>
           logger error s"An exception was thrown while verifying predicate `${predicate.name}`."
@@ -277,8 +289,10 @@ class DefaultMainVerifier(config: Config,
           val startTime = System.currentTimeMillis()
           var results: Seq[VerificationResult] = null
           try {
+            v.decider.initDependencyAnalyzer(method, allProvers.getPreambleAnalysisNodes ++ v.decider.prover.getPreambleAnalysisNodes)
             results = v.methodSupporter.verify(s, method)
               .flatMap(extractAllVerificationResults)
+            v.decider.removeDependencyAnalyzer()
           } catch {
             case e: Throwable =>
               logger error s"An exception was thrown while verifying method `${method.name}`."
@@ -325,11 +339,13 @@ class DefaultMainVerifier(config: Config,
     }
     reporter report VerificationTerminationMessage()
 
-    val verificationResults = (   functionVerificationResults
-     ++ predicateVerificationResults
-     ++ methodVerificationResults)
+    val verificationResults = (functionVerificationResults
+      ++ predicateVerificationResults
+      ++ methodVerificationResults)
 
-    if (Verifier.config.enableDebugging()){
+    runDependencyAnalysisWorkflow(verificationResults, program, inputFile)
+
+    if (Verifier.config.startDebuggerAutomatically()){
       val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
       debugger.startDebugger()
     }
@@ -633,4 +649,52 @@ class DefaultMainVerifier(config: Config,
     */
   private def extractAllVerificationResults(res: VerificationResult): Seq[VerificationResult] =
     res :: res.previous.toList
+
+
+  def runDependencyAnalysisWorkflow(verificationResults: List[VerificationResult], program: ast.Program, inputFile: Option[String]): Unit = {
+    if(!Verifier.config.enableDependencyAnalysis()) return
+
+    val dependencyGraphInterpreters = verificationResults.filter(_.dependencyGraphInterpreter.isDefined).map(_.dependencyGraphInterpreter.get)
+    val verificationErrors: List[Failure] = (verificationResults filter (_.isInstanceOf[Failure])) map (_.asInstanceOf[Failure])
+
+    // TODO ake: make sure we can access the name of frontend programs (instead of naming it "joined")
+    val result = DependencyAnalysisResult(inputFile.map(_.replaceAll("\\\\", "_").replaceAll("/", "_").replaceAll(".vpr", "")).getOrElse("joined"), program, dependencyGraphInterpreters.toSet)
+
+    if (Verifier.config.dependencyAnalysisExportPath.isDefined) {
+      result.getFullDependencyGraphInterpreter.exportGraph(program)
+    }
+
+		if (Verifier.config.pruneLines.isDefined) {
+			val commandLineTool = new DependencyAnalysisCliTool(result.getFullDependencyGraphInterpreter, dependencyGraphInterpreters, program, verificationErrors)
+			val lineInputs = Verifier.config.pruneLines().map(_.toString)
+			val exportFileName = Verifier.config.pruneExportFileName()
+			commandLineTool.handlePruningRequest(lineInputs, Some(exportFileName))
+		}
+
+    if (Verifier.config.computeVerificationProgress()) {
+      val commandLineTool = new DependencyAnalysisCliTool(result.getFullDependencyGraphInterpreter, dependencyGraphInterpreters, program, verificationErrors)
+      val exportFileName = Verifier.config.computeVerificationProgressFileName()
+      commandLineTool.handleVerificationProgressQuery(Seq.empty, Some(exportFileName))
+    }
+
+		if (Verifier.config.executeDependencyAnalysisTests()) {
+			val testSupporter = new DependencyGraphTestSupporter(result.getFullDependencyGraphInterpreter)
+			testSupporter.testDependencies()
+			testSupporter.testNodeTypes()
+		}
+
+    if (Verifier.config.startDependencyAnalysisTool()) {
+      val commandLineTool = new DependencyAnalysisCliTool(result.getFullDependencyGraphInterpreter, dependencyGraphInterpreters, program, verificationErrors)
+      commandLineTool.run()
+    }
+
+    reporter match {
+      case analysisReporter: DependencyAnalysisReporter =>
+        analysisReporter.dependencyGraphInterpretersPerMember = dependencyGraphInterpreters
+        analysisReporter.joinedDependencyGraphInterpreter = Some(result.getFullDependencyGraphInterpreter)
+      case _ =>
+    }
+
+
+  }
 }

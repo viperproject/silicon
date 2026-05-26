@@ -1,0 +1,45 @@
+field f: Int
+
+method exhaleInhale(a: Ref)
+    requires @dependency("Precondition")(acc(a.f))
+{
+    exhale acc(a.f, 1/2)
+    inhale acc(a.f, 1/2)
+
+    // $PrecisionTest: $READ_WRITE=a.f $ACC_INVARIANT=acc(a.f)
+
+    @testAssertion("Explicit")
+    assert perm(a.f) == write
+}
+
+method exhale1(){
+    var x: Ref
+
+    @dependency("Explicit")
+    inhale acc(x.f)
+    @dependency("Explicit")
+    inhale x.f > 0
+
+    exhale acc(x.f, 1/2)
+
+    // $PrecisionTest: $READ_ONLY=x.f $INVARIANT=x.f>0 $ACC_INVARIANT=acc(x.f,1/4)
+
+    @testAssertion("Explicit")
+    assert x.f > 0
+}
+
+method inhale1(){
+    var x: Ref
+
+    @dependency("Explicit")
+    inhale acc(x.f, 1/2)
+    @dependency("Explicit")
+    inhale x.f > 0
+
+    inhale acc(x.f, 1/2)
+
+    // $PrecisionTest: $READ_ONLY=x.f $INVARIANT=x.f>0 $ACC_INVARIANT=acc(x.f,1/2)
+
+    @testAssertion("Explicit")
+    assert x.f > 0
+}

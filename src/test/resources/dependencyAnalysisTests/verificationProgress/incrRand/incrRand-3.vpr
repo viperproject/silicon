@@ -1,0 +1,13 @@
+
+method rand() returns (res: Int)
+    ensures res > 0
+
+
+method incrRand(a: Int) returns (res: Int)
+    requires a >= 0
+    ensures res > a
+    ensures res > 0
+{
+    var r: Int := rand()
+    res := a + r
+}

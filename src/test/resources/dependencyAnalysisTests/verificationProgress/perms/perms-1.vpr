@@ -1,0 +1,19 @@
+field f: Int
+
+
+method store(x: Ref, a: Int)
+{
+    inhale acc(x.f)
+    x.f := a
+}
+
+
+method client()
+{
+    var x: Ref
+    x := new(f)
+
+    store(x, 0)
+
+    x.f := x.f + 1
+}
