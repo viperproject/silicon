@@ -275,18 +275,16 @@ class DefaultHeapSupportRules extends HeapSupportRules {
 
           val currentPermAmount = ResourcePermissionLookup(res, pmDef.pm, tArgs, s2.program)
 
-          val s3 = res match {
+          res match {
             case _: ast.Field =>
               v.decider.prover.comment(s"perm($resAcc)  ~~>  assume upper permission bound")
-              val (debugHeapName, debugLabel) = v.getDebugOldLabel(s2, resAcc.pos, Some(h))
+              val debugLabel = v.getDebugOldLabel(s2, resAcc.pos, Some(h))
               val exp = Option.when(debugOn)(ast.PermLeCmp(ast.DebugLabelledOld(ast.CurrentPerm(resAcc)(), debugLabel)(), ast.FullPerm()())())
               v.decider.assume(PermAtMost(currentPermAmount, FullPerm), exp, exp.map(s2.substituteVarsInExp(_)))
-              val s3 = if (Verifier.config.enableDebugging()) s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> h)) else s2
-              s3
-            case _ => s2
+            case _ =>
           }
 
-          (s3, currentPermAmount)
+          (s2, currentPermAmount)
         } else {
           val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](h.values, identifier)
           val currentPermAmount =

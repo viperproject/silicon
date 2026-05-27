@@ -175,7 +175,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val data = functionData(function.name)
       val s = sInit.copy(functionRecorder = ActualFunctionRecorder(Left(data)),
         conservingSnapshotGeneration = true,
-        assertReadAccessOnly = !Verifier.config.respectFunctionPrePermAmounts())
+        assertReadAccessOnly = !Verifier.config.respectFunctionPrePermAmounts(),
+        intermediateHeapCause = if (evaluator.debugOn) Some("nil", InhalePre(), decider.pcs.duplicate()) else None)
 
       /* Phase 1: Check well-definedness of the specifications */
       checkSpecificationWelldefinedness(s, function) match {
@@ -276,8 +277,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 Some(DebugExp.createInstance(e, eNew))
               } else { None }
               decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp)
-              consumes(s2, posts, false, postconditionViolated, v)((s3, _, _) => {
-                recorders :+= s3.functionRecorder
+              val s3 = if (wExp) s2.copy(intermediateHeapCause = Some(v.getDebugHeapLabel(s2), ExhalePost(), decider.pcs.duplicate()))
+              else s2
+              consumes(s3, posts, false, postconditionViolated, v)((s4, _, _) => {
+                recorders :+= s4.functionRecorder
                 Success()})})})}
 
       data.advancePhase(recorders)

@@ -382,10 +382,11 @@ object executor extends ExecutionRules {
         assert(!s.exhaleExt)
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) => {
-          eval(s1, rhs, pve, v1)((s2, tRhs, eRhsNew, v2) => {
+          val s1a = if (debugOn) s1.copy(intermediateHeapCause = Some(oldLabel, ExecStmt(ass), oldPCS)) else s1
+          eval(s1a, rhs, pve, v1)((s2, tRhs, eRhsNew, v2) => {
             val (tSnap, _) = ssaifyRhs(tRhs, rhs, eRhsNew, field.name, field.typ, v2, s2)
             v2.heapSupporter.execFieldAssign(s2, ass, tRcvr, eRcvrNew, tSnap, eRhsNew, pve, v2)((s1, v1) => {
-              val s2 = if (debugOn) v1.recordDebugHeap(s1, s.h, ExecStmt(ass)) else s1
+              val s2 = if (debugOn) v1.recordDebugHeap(s1, oldLabel, ExecStmt(ass)).copy(intermediateHeapCause = None) else s1
               Q(s2, v1)})
           })
         })
@@ -417,7 +418,7 @@ object executor extends ExecutionRules {
         val esNew = eRcvrNew.map(rcvr => BigAnd(viper.silicon.state.utils.computeReferenceDisjointnessesExp(s, rcvr)))
         addFieldPerms(s, fields, v)((s0, v0) => {
           val s1 = s0.copy(g = s0.g + (x, (tRcvr, eRcvrNew)))
-          val s2 = if (debugOn) v0.recordDebugHeap(s1, s.h, ExecStmt(stmt)) else s1
+          val s2 = if (debugOn) v0.recordDebugHeap(s1, oldLabel, ExecStmt(stmt)) else s1
           v0.decider.assume(ts, Option.when(debugOn)(DebugExp.createInstance(Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false)
           Q(s2, v0)
         })
@@ -430,17 +431,18 @@ object executor extends ExecutionRules {
           val s0 = if (debugOn) s.copy(intermediateHeapCause = Some(oldLabel, ExecStmt(inhale), oldPCS)) else s
           produce(s0, freshSnap, a, InhaleFailed(inhale), v)((s1, v1) => {
             v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-            val s1a = if (debugOn) {
-              v1.recordDebugHeap(s1, magicWandSupporter.getEvalHeap(s1), s1.intermediateHeapCause.get._1, ExecStmt(inhale), None, Some(v1.decider.pcs.duplicate()))
-            } else s1
-            Q(s1a.copy(intermediateHeapCause = None), v1)})
+            val s1a = if (debugOn) v1.recordDebugHeap(s1, oldLabel, ExecStmt(inhale), oldPCS).copy(intermediateHeapCause = None)
+            else s1
+            Q(s1a, v1)})
       }
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-        val s1 = if (debugOn) s.copy(intermediateHeapCause = Some(oldLabel, ExecStmt(exhale), oldPCS)) else s
-        consume(s1, a, false, pve, v)((s2, _, v1) =>
-          Q(s2.copy(intermediateHeapCause = None), v1))
+        val s0 = if (debugOn) s.copy(intermediateHeapCause = Some(oldLabel, ExecStmt(exhale), oldPCS)) else s
+        consume(s0, a, false, pve, v)((s1, _, v1) => {
+          val s1a = if (debugOn) v1.recordDebugHeap(s1, oldLabel, ExecStmt(exhale), oldPCS).copy(intermediateHeapCause = None)
+          else s1
+          Q(s1a, v1)})
 
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
@@ -569,10 +571,8 @@ object executor extends ExecutionRules {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
               predicateSupporter.fold(s3, predAcc, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3)((s4, v4) => {
                 v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
-                val s4a = if (debugOn) {
-                  val (parentLabel, _, interPCS) = s4.intermediateHeapCause.get
-                  v4.recordDebugHeap(s4, parentLabel, ExecStmt(fold), interPCS).copy(intermediateHeapCause = None)
-                } else s4
+                val s4a = if (debugOn) v4.recordDebugHeap(s4, oldLabel, ExecStmt(fold), oldPCS).copy(intermediateHeapCause = None)
+                else s4
                 Q(s4a, v4)
               })
             })))
@@ -593,10 +593,9 @@ object executor extends ExecutionRules {
               predicateSupporter.unfold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, pa)(
                 (s4, v4) => {
                   v2.decider.finishDebugSubExp(s"unfolded ${pa.toString}")
-                  val s4a = if (debugOn) {
-                    val (parentLabel, _, interPCS) = s4.intermediateHeapCause.get
-                    v2.recordDebugHeap(s4, parentLabel, ExecStmt(unfold), interPCS).copy(intermediateHeapCause = None)
-                  } else s4
+                  val s4a = if (debugOn)
+                    v2.recordDebugHeap(s4, oldLabel, ExecStmt(unfold), oldPCS).copy(intermediateHeapCause = None)
+                  else s4
                   Q(s4a, v4)
                 })
             })
@@ -636,15 +635,18 @@ object executor extends ExecutionRules {
             case _ => s2
           }
 
-          val s4 = if (debugOn) v1.recordDebugHeap(s3, s.h, ExecStmt(pckg), oldPCS).copy(intermediateHeapCause = None) else s3
+          val s4 = if (debugOn) v1.recordDebugHeap(s3, oldLabel, ExecStmt(pckg), oldPCS).copy(intermediateHeapCause = None)
+          else s3
           continuation(s4.copy(isInPackage = s.isInPackage), v1)
         })
 
       case apply @ ast.Apply(e) =>
         val pve = ApplyFailed(apply)
-        val s1 = if (debugOn) s.copy(intermediateHeapCause = Some(oldLabel, ExecStmt(apply), oldPCS)) else s
-        magicWandSupporter.applyWand(s1, e, pve, v)((s2, v1) =>
-          Q(s2.copy(intermediateHeapCause = None), v1))
+        val s0 = if (debugOn) s.copy(intermediateHeapCause = Some(oldLabel, ExecStmt(apply), oldPCS)) else s
+        magicWandSupporter.applyWand(s0, e, pve, v)((s1, v1) => {
+          val s1a = if (debugOn) v1.recordDebugHeap(s1, oldLabel, ExecStmt(apply), oldPCS).copy(intermediateHeapCause = None)
+          else s1
+          Q(s1a, v1)})
 
       case havoc: ast.Quasihavoc =>
         havocSupporter.execHavoc(havoc, v, s)(Q)

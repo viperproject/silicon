@@ -278,9 +278,9 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
 
           val debugExp = if (debugOn) {
-            val (debugHeapName, debugLabel) = v.getDebugOldLabel(sf, ast.NoPosition)
-            sf = sf.copy(oldHeaps = sf.oldHeaps + (debugHeapName -> sf.h))
-            val permExp = ast.DebugLabelledOld(ast.CurrentPerm(ast.FieldAccess(receiverExp.localVar, field)())(ast.NoPosition, ast.NoInfo, ast.NoTrafos), debugLabel)()
+            sf = v.recordDebugHeap(sf, v.getDebugHeapLabel(sf), StateConsolidation())
+            val permExp = ast.DebugLabelledOld(ast.CurrentPerm(ast.FieldAccess(receiverExp.localVar, field)())(ast.NoPosition, ast.NoInfo, ast.NoTrafos),
+              v.getDebugOldLabel(sf, ast.NoPosition))()
             val exp = ast.Forall(Seq(receiverExp), Seq(), ast.PermLeCmp(permExp, ast.FullPerm()())())()
             Some(DebugExp.createInstance(exp, exp))
           } else { None }
@@ -296,9 +296,9 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           for (chunk <- fieldChunks) {
             if (chunk.singletonRcvr.isDefined){
               val debugExp = if (debugOn) {
-                val (debugHeapName, debugLabel) = v.getDebugOldLabel(sf, ast.NoPosition)
-                val permExp = ast.DebugLabelledOld(ast.CurrentPerm(ast.FieldAccess(chunk.singletonRcvrExp.get, field)())(), debugLabel)()
-                sf = sf.copy(oldHeaps = sf.oldHeaps + (debugHeapName -> sf.h))
+                val permExp = ast.DebugLabelledOld(ast.CurrentPerm(ast.FieldAccess(chunk.singletonRcvrExp.get, field)())(),
+                  v.getDebugOldLabel(sf, ast.NoPosition))()
+                sf = v.recordDebugHeap(sf, v.getDebugHeapLabel(sf), StateConsolidation())
                 val exp = ast.PermLeCmp(permExp, ast.FullPerm()())()
                 Some(DebugExp.createInstance(exp, exp))
               } else { None }
@@ -311,9 +311,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
               val debugExp = if (debugOn) {
                 val chunkReceiverExp = chunk.quantifiedVarExps.get.head.localVar
                 var permExp: ast.Exp = ast.CurrentPerm(ast.FieldAccess(chunkReceiverExp, field)())(chunkReceiverExp.pos, chunkReceiverExp.info, chunkReceiverExp.errT)
-                val (debugHeapName, debugLabel) = v.getDebugOldLabel(sf, ast.NoPosition)
-                sf = sf.copy(oldHeaps = sf.oldHeaps + (debugHeapName -> sf.h))
-                permExp = ast.DebugLabelledOld(permExp, debugLabel)()
+                sf = v.recordDebugHeap(sf, v.getDebugHeapLabel(sf), StateConsolidation())
+                permExp = ast.DebugLabelledOld(permExp, v.getDebugOldLabel(sf, ast.NoPosition))()
                 val exp = ast.Forall(chunk.quantifiedVarExps.get, Seq(), ast.PermLeCmp(permExp, ast.FullPerm()())())()
                 Some(DebugExp.createInstance(exp, exp))
               } else { None }

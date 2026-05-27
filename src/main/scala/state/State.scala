@@ -197,6 +197,7 @@ final case class State(g: Store = Store(),
 sealed trait HeapCause
 case class InhalePre() extends HeapCause
 case class ExhalePost() extends HeapCause
+case class StateConsolidation() extends HeapCause
 case class ExecStmt(stmt: ast.Stmt) extends HeapCause
 case class EvalExp(exp: ast.Exp) extends HeapCause
 
