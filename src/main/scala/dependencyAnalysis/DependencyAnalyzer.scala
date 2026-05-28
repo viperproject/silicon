@@ -145,34 +145,34 @@ object DependencyAnalyzer {
     }
 
     // mark as custom edges, iff there are no postconditions linked to these preconditions
-    def reachable(src: Int, dest: Set[Int]): Set[Int] = {
-      newGraph.getAllDependencies(Set(src), true, true, true).intersect(dest)
+    def reachable(sources: Set[Int], dest: Set[Int]): Set[Int] = {
+      newGraph.getAllDependencies(sources, true, true, true).intersect(dest)
     }
+
+    val all_nodes_map = newGraph.getNodes.map(n => n.id -> n).toMap
     val postCondNodes = newGraph.getAssertionNodes.filter(_.assumptionType == AssumptionType.ImplicitPostcondition)
-    val all_nodes = newGraph.getNodes
-    
+    val postCondNodeIdsBySourceInfo = postCondNodes
+      .filter(_.mergeInfo.isInstanceOf[SimpleDependencyAnalysisMerge])
+      .map(n => (n.mergeInfo.asInstanceOf[SimpleDependencyAnalysisMerge].sourceInfo, n.id))
+      .groupBy(_._1)
+      .view.mapValues(_.map(_._2).toSet)
+      .toMap
+
+    // println("Combining graph with "+postCondNodes.length+" postCondNodes and "+all_nodes_map.size+" Nodes in total")
     dependencyGraphInterpreters foreach (interpreter => interpreter.getGraph.getCustomEdges foreach {
       case (t, deps) =>
-        try{
-          val t_node_l = all_nodes.filter(_.id == t)
-          val t_node = t_node_l.head
-          // sanity check node id's are unique:
-          assert(t_node_l.length == 1)
-          val methodPC = postCondNodes.filter(_.mergeInfo match {
-            case SimpleDependencyAnalysisMerge(sourceInfo) =>
-              t_node.mergeInfo match {
-                case CompositeDependencyAnalysisMergeInfo(sourceInfo1, _) => sourceInfo1 == sourceInfo
-                case _ => false
-              }
-            case _ => false
-          })
-          val reachableDeps = methodPC.foldLeft (Set.empty[Int]) {(acc, pcNode) => acc ++ reachable(pcNode.id, deps)}
-          val unreachableDeps = deps.diff(reachableDeps)
-          newGraph.addCustomEdges(unreachableDeps, t)
-        }catch{
-          case e: NoSuchElementException => println("tried adding custom dependencies in final graph for missing node: "+t)
-        }
-    })
+        all_nodes_map.get(t) match {
+          case Some(t_node) =>
+            val methodPCs = t_node.mergeInfo match {
+              case CompositeDependencyAnalysisMergeInfo(sourceInfo1, _) =>
+                postCondNodeIdsBySourceInfo.getOrElse(sourceInfo1, Set.empty[Int])
+              case _ => Set.empty[Int]
+            }
+            val unreachableDeps = deps.diff(reachable(methodPCs, deps))
+            newGraph.addCustomEdges(unreachableDeps, t)
+            // println("found "+unreachableDeps.size+" unreachable out of "+deps.size)
+          case None => ()
+    }})
 
     val newInterpreter = new DependencyGraphInterpreter[Final](name, newGraph, dependencyGraphInterpreters.toList.flatMap(_.getErrors))
     newInterpreter
