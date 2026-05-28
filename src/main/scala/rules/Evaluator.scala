@@ -146,7 +146,6 @@ object evaluator extends EvaluationRules {
                      (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
                      : VerificationResult = {
     val eOpt = Option.when(debugOn)(e)
-    lazy val oldPCS = v.decider.pcs.duplicate()
 
     val resultTerm = e match {
       case _: ast.TrueLit => Q(s, True, eOpt, v)

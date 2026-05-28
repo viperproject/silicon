@@ -355,11 +355,7 @@ object executor extends ExecutionRules {
 
       case ast.Label(name, _) =>
         val s1 = s.copy(oldHeaps = s.oldHeaps + (name -> magicWandSupporter.getEvalHeap(s)))
-        val s2 = if (debugOn) { // Rename old heap which should have just been recorded
-          val currLabel = v.getDebugHeapLabel(s)
-          val oldDebugHeap = s.debugOldHeaps(currLabel)
-          s.copy(debugOldHeaps = (s.debugOldHeaps - currLabel) + (name -> oldDebugHeap))
-        } else s1
+        val s2 = if (debugOn) v.recordDebugHeap(s, oldLabel, CreateLabel()) else s1
         Q(s2, v)
 
       case ast.LocalVarDeclStmt(decl) =>

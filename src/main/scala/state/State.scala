@@ -198,6 +198,7 @@ sealed trait HeapCause
 case class InhalePre() extends HeapCause
 case class ExhalePost() extends HeapCause
 case class StateConsolidation() extends HeapCause
+case class CreateLabel() extends HeapCause
 case class ExecStmt(stmt: ast.Stmt) extends HeapCause
 case class EvalExp(exp: ast.Exp) extends HeapCause
 

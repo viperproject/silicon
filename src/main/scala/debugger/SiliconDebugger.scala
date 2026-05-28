@@ -6,7 +6,7 @@ import viper.silicon.interfaces.state.Chunk
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, Success, VerificationResult}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.evaluator
-import viper.silicon.state.{BasicChunk, DebugHeap, EvalExp, ExecStmt, ExhalePost, Heap, IdentifierFactory, InhalePre, MagicWandChunk, QuantifiedFieldChunk, QuantifiedMagicWandChunk, QuantifiedPredicateChunk, State, StateConsolidation}
+import viper.silicon.state._
 import viper.silicon.state.terms.{Term, True}
 import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.verifier.{MainVerifier, Verifier, WorkerVerifier}
@@ -72,6 +72,7 @@ case class ProofObligation(s: State,
       case InhalePre() => "inhale precondition"
       case ExhalePost() => "exhale postcondition"
       case StateConsolidation() => "state consolidation"
+      case CreateLabel() => "heap label"
       case ExecStmt(stmt) => s"\"$stmt\""
       case EvalExp(exp) => s"\"$exp\""
     }

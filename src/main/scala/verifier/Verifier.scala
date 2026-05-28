@@ -73,7 +73,7 @@ trait Verifier {
       case Some(heap) => heap
       case None => magicWandSupporter.getEvalHeap(s)
     }
-    val equalHeaps = s.debugOldHeaps.filter(dh => dh._2.heap.equals(heap)).keys
+    val equalHeaps = s.debugOldHeaps.filter(dh => dh._2.heap.values.equals(heap.values)).keys
     if (equalHeaps.nonEmpty){
       equalHeaps.head
     } else {
