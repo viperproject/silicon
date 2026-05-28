@@ -64,21 +64,25 @@ trait Verifier {
       case column: ast.HasLineColumn => s"l:${column.line}.${column.column}"
       case _ => s"l:unknown"
     }
-    val heapLabel = getDebugHeapLabel(s, h)
+    val heapLabel = getDebugHeapLabel(s, h).getOrElse("unrecordedHeap")
     s"$heapLabel#$posString"
   }
 
-  def getDebugHeapLabel(s: State, h: Option[Heap] = None): String = {
+  def getDebugHeapLabel(s: State, h: Option[Heap] = None): Option[String] = {
     val heap = h match {
       case Some(heap) => heap
       case None => magicWandSupporter.getEvalHeap(s)
     }
     val equalHeaps = s.debugOldHeaps.filter(dh => dh._2.heap.values.equals(heap.values)).keys
-    if (equalHeaps.nonEmpty){
-      equalHeaps.head
-    } else {
-      val counter = debugHeapCounter.getAndIncrement()
-      s"debug@$counter"
+    equalHeaps.headOption
+  }
+
+  private def getOrMakeHeapLabel(s: State, h: Option[Heap] = None): String = {
+    getDebugHeapLabel(s, h) match {
+      case Some(label) => label
+      case None =>
+        val counter = debugHeapCounter.getAndIncrement()
+        s"debug@$counter"
     }
   }
 
@@ -94,7 +98,7 @@ trait Verifier {
                       cause: HeapCause,
                       intermediateCause: Option[ast.Exp],
                       oldPCS: Option[PathConditionStack]): State = {
-    val heapLabel = getDebugHeapLabel(s, Some(heap))
+    val heapLabel = getOrMakeHeapLabel(s, Some(heap))
     if (s.debugOldHeaps.contains(heapLabel))
       s // Don't overwrite parents if we return to a heap
     else {
@@ -112,13 +116,18 @@ trait Verifier {
     }
   }
 
+  def recordIntermediateHeap(s: State): State = recordIntermediateHeap(s, None)
+
+  def recordIntermediateHeap(s: State, intermediateCause: ast.Exp): State =
+    recordIntermediateHeap(s, Some(intermediateCause))
+
   // Expects intermediateHeapCause to be defined
-  def recordIntermediateHeap(s: State, intermediateCause: ast.Exp): State = {
+  def recordIntermediateHeap(s: State, intermediateCause: Option[ast.Exp]): State = {
     assert(s.recordIntermediateHeaps, "recordIntermediateHeap requires s.intermediateHeapCause to be defined.")
     val (parentLabel, originalCause, oldPCS) = s.intermediateHeapCause.get
     val s2 = recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), parentLabel,
-      originalCause, Some(intermediateCause), Some(oldPCS))
-    val currentLabel = getDebugHeapLabel(s2)
+      originalCause, intermediateCause, Some(oldPCS))
+    val currentLabel = getOrMakeHeapLabel(s2)
     s2.copy(intermediateHeapCause = Some(currentLabel, originalCause, decider.pcs.duplicate()))
   }
 }

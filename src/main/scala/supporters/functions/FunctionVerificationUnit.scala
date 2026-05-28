@@ -21,7 +21,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Decider
-import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
+import viper.silicon.rules.{consumer, evaluator, executionFlowController, magicWandSupporter, producer}
 import viper.silicon.supporters.{AnnotationSupporter, PredicateData}
 import viper.silicon.utils.ast.{BigAnd, simplifyVariableName}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
@@ -277,8 +277,11 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 Some(DebugExp.createInstance(e, eNew))
               } else { None }
               decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp)
-              val s3 = if (wExp) s2.copy(intermediateHeapCause = Some(v.getDebugHeapLabel(s2), ExhalePost(), decider.pcs.duplicate()))
-              else s2
+              val s3 = if (wExp) {
+                val initDebugHeap = DebugHeap(magicWandSupporter.getEvalHeap(s2), "nil", InhalePre(), None, Seq())
+                val s2a = s2.copy(debugOldHeaps = s2.debugOldHeaps + (Verifier.PRE_STATE_LABEL -> initDebugHeap))
+                s2a.copy(intermediateHeapCause = Some(Verifier.PRE_STATE_LABEL, ExhalePost(), decider.pcs.duplicate()))
+              } else s2
               consumes(s3, posts, false, postconditionViolated, v)((s4, _, _) => {
                 recorders :+= s4.functionRecorder
                 Success()})})})}
