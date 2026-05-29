@@ -92,7 +92,10 @@ object executor extends ExecutionRules {
         val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, s.invariantContexts.head, v)
         val s1 = s.copy(functionRecorder = fr1, h = h1,
           invariantContexts = s.invariantContexts.tail)
-        s1
+        if (debugOn && s.recordIntermediateHeaps)
+          v.recordIntermediateHeap(s1).copy(intermediateHeapCause = None)
+        else
+          s1
       case _ =>
         /* No need to do anything special. See also the handling of loop heads in exec below. */
         s
@@ -300,7 +303,11 @@ object executor extends ExecutionRules {
                               }
                             }
                             v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
-                            edgeCondWelldefinedness combine follows(s4, sortedEdges, WhileFailed, v3, joinPoint)(Q)})}})}})}))
+                            val s4a = if (debugOn) {
+                              val currentLabel = v3.getDebugHeapLabel(s4).getOrElse("nil")
+                              s4.copy(intermediateHeapCause = Some(currentLabel, MergeContext(), v3.decider.pcs.duplicate()))
+                            } else s4
+                            edgeCondWelldefinedness combine follows(s4a, sortedEdges, WhileFailed, v3, joinPoint)(Q)})}})}})}))
 
           case _ =>
             /* We've reached a loop head block via an edge other than an in-edge: a normal edge or

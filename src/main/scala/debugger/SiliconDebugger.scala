@@ -73,6 +73,7 @@ case class ProofObligation(s: State,
       case ExhalePost() => "exhale postcondition"
       case InhaleInv() => "inhale loop invariants"
       case ExhaleInv() => "exhale loop invariants"
+      case MergeContext() => "merge framed heap"
       case CreateLabel() => "heap label"
       case StateConsolidation() => "state consolidation"
       case ExecStmt(stmt) => s"\"$stmt\""

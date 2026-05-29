@@ -199,6 +199,7 @@ case class InhalePre() extends HeapCause
 case class ExhalePost() extends HeapCause
 case class InhaleInv() extends HeapCause
 case class ExhaleInv() extends HeapCause
+case class MergeContext() extends HeapCause
 case class CreateLabel() extends HeapCause
 case class StateConsolidation() extends HeapCause
 case class ExecStmt(stmt: ast.Stmt) extends HeapCause

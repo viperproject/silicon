@@ -122,12 +122,14 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
     val s3 = assumeUpperPermissionBoundForQPFields(s2, v)
 
-    if (debugOn && s1.recordIntermediateHeaps) {
-      val newParent = v.getDebugHeapLabel(s3).getOrElse("postConsolidateHeapMissing")
-      val newInterCause = Some(newParent, s1.intermediateHeapCause.get._2, v.decider.pcs.duplicate())
-      s3.copy(intermediateHeapCause = newInterCause)
-    } else if (debugOn) s3.copy(intermediateHeapCause = None)
-    else s3
+    if (debugOn){
+      if (s1.recordIntermediateHeaps) {
+        // update the old intermediateCause
+        val newParent = v.getDebugHeapLabel(s3).getOrElse("postConsolidateHeapMissing")
+        val newInterCause = Some(newParent, s1.intermediateHeapCause.get._2, v.decider.pcs.duplicate())
+        s3.copy(intermediateHeapCause = newInterCause)
+      } else s3.copy(intermediateHeapCause = None)
+    } else s3
   }
 
   def consolidateOptionally(s: State, v: Verifier): State =
