@@ -15,6 +15,7 @@ import viper.silicon.state.{DebugHeap, EvalExp, ExecStmt, Heap, HeapCause, Ident
 import viper.silicon.supporters.{QuantifierSupporter, SnapshotSupporter}
 import viper.silicon.utils.Counter
 import viper.silicon.Config
+import viper.silicon.interfaces.state.Chunk
 import viper.silicon.logger.MemberSymbExLogger
 import viper.silver.ast
 import viper.silver.reporter.Reporter
@@ -73,7 +74,13 @@ trait Verifier {
       case Some(heap) => heap
       case None => magicWandSupporter.getEvalHeap(s)
     }
-    val equalHeaps = s.debugOldHeaps.filter(dh => dh._2.heap.values.equals(heap.values)).keys
+
+    def equalChunks(h1: Heap, h2: Heap): Boolean = {
+      implicit def chunkOrd: Ordering[Chunk] = Ordering.by(_.toString)
+      h1.values.toList.sorted == h2.values.toList.sorted
+    }
+
+    val equalHeaps = s.debugOldHeaps.filter(dh => equalChunks(dh._2.heap, heap)).keys
     equalHeaps.headOption
   }
 

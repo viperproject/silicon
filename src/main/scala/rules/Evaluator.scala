@@ -206,8 +206,8 @@ object evaluator extends EvaluationRules {
           val ve = pve dueTo InsufficientPermission(fa)
           v.heapSupporter.evalFieldAccess(s1, fa, tRcvr, eRcvr, ve, v1)((s2, snap, v2) => {
             val s2a = if (debugOn && s.recordIntermediateHeaps) v2.recordIntermediateHeap(s2, fa) else s2
-            val debugLabel = v2.getDebugOldLabel(s2a, fa.pos)
             val newFa = Option.when(debugOn)({
+              val debugLabel = v2.getDebugOldLabel(s2a, fa.pos)
               if (s1.isEvalInOld) ast.FieldAccess(eRcvr.get, fa.field)(fa.pos, fa.info, fa.errT)
               else ast.DebugLabelledOld(ast.FieldAccess(eRcvr.get, fa.field)(), debugLabel)(fa.pos, fa.info, fa.errT)
             })

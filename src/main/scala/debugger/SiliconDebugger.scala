@@ -71,8 +71,10 @@ case class ProofObligation(s: State,
     val causeString = debugHeap.cause match {
       case InhalePre() => "inhale precondition"
       case ExhalePost() => "exhale postcondition"
-      case StateConsolidation() => "state consolidation"
+      case InhaleInv() => "inhale loop invariants"
+      case ExhaleInv() => "exhale loop invariants"
       case CreateLabel() => "heap label"
+      case StateConsolidation() => "state consolidation"
       case ExecStmt(stmt) => s"\"$stmt\""
       case EvalExp(exp) => s"\"$exp\""
     }

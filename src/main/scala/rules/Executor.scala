@@ -244,7 +244,8 @@ object executor extends ExecutionRules {
             val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => {
               val xNew = v.decider.fresh(x)
               map.updated(x, xNew)}))
-            val sBody = s.copy(g = gBody, h = v.heapSupporter.getEmptyHeap(s.program))
+            val sBody = s.copy(g = gBody, h = v.heapSupporter.getEmptyHeap(s.program),
+              intermediateHeapCause = if (debugOn) Some("nil", InhaleInv(), v.decider.pcs.duplicate()) else None)
 
             val edges = s.methodCfg.outEdges(block)
             val (outEdges, otherEdges) = edges partition(_.kind == cfg.Kind.Out)
@@ -267,7 +268,11 @@ object executor extends ExecutionRules {
                 })})
             combine executionFlowController.locally(s, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
-                consumes(s0, invs, false, LoopInvariantNotEstablished, v0)((sLeftover, _, v1) => {
+                val s0a = if (debugOn) {
+                  val currentLabel = v0.getDebugHeapLabel(s0).getOrElse("missingHeap")
+                  s0.copy(intermediateHeapCause = Some(currentLabel, ExhaleInv(), v.decider.pcs.duplicate()))
+                } else s0
+                consumes(s0a, invs, false, LoopInvariantNotEstablished, v0)((sLeftover, _, v1) => {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                   phase1data.foldLeft(Success(): VerificationResult) {
                     case (result, _) if !result.continueVerification => result
@@ -281,7 +286,8 @@ object executor extends ExecutionRules {
                         if (v2.decider.checkSmoke())
                           Success()
                         else {
-                          execs(s3, stmts, v2)((s4, v3) => {
+                          val s3a = if (debugOn) v2.recordDebugHeap(s3, "nil", InhaleInv()) else s3
+                          execs(s3a, stmts, v2)((s4, v3) => {
                             val edgeCondWelldefinedness = {
                               v1.decider.prover.comment("Loop head block: Check well-definedness of edge conditions")
                               edgeConditions.foldLeft(Success(): VerificationResult) {
