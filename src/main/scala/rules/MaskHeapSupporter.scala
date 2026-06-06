@@ -15,7 +15,7 @@ import viper.silicon.resources.{FieldID, MagicWandID, PredicateID}
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.sorts.{HeapSort, MaskSort, PredHeapSort, PredMaskSort, WandHeapSort}
 import viper.silicon.state.terms.utils.consumeExactRead
-import viper.silicon.state.terms.{And, AtLeast, AtMost, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, GoodFieldMask, GoodMask, Greater, HeapLookup, HeapToSnap, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, Sort, Term, Trigger, True, Var, ZeroMask, fromSnapTree, perms, sorts, toSnapTree}
+import viper.silicon.state.terms.{And, AtLeast, AtMost, DummyHeap, HeapMapTerm, MaskMapTerm, Forall, FullPerm, GoodFieldMask, GoodMask, Greater, HeapLookup, HeapToSnap, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Not, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, Sort, Term, Trigger, True, Var, ZeroMask, fromSnapTree, perms, sorts, toSnapTree}
 import viper.silicon.state.{BasicMaskHeapChunk, FunctionPreconditionTransformer, Heap, Identifier, MagicWandIdentifier, State, Store, terms}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
@@ -142,8 +142,9 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
     val heapParts = snapParts.zip(resources).map(tpl => (tpl._2,
       tpl._1 match {
         case HeapToSnap(_, msk, _) => msk
+        case terms.Unit => if (tpl._2.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask
+        case _ => if (tpl._2.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask
       }))
-      //v.decider.createAlias(SnapToHeap(tpl._1, tpl._2, if (tpl._2.isInstanceOf[ast.Field]) HeapSort(v.symbolConverter.toSort(tpl._2.asInstanceOf[ast.Field].typ)) else PredHeapSort), s)))
     immutable.ListMap.from(heapParts)
   }
 
@@ -406,13 +407,13 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
       })((s4, optCh, v2) =>
         optCh match {
           case Some(ch) if returnSnap =>
-            val snap = FakeMaskMapTerm(immutable.ListMap[Any, Term](resourceToFind -> ch.mask))
+            val snap = MaskMapTerm(immutable.ListMap[Any, Term](resourceToFind -> ch.mask))
             Q(s4, s4.h, Some(snap), v2)
           case Some(_) =>
             Q(s4, s4.h, None, v2)
           case _ =>
             val emptyMask = if (resourceToFind.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask
-            Q(s4, s4.h, Option.when(returnSnap)(FakeMaskMapTerm(immutable.ListMap[Any, Term](resourceToFind -> emptyMask))), v2)
+            Q(s4, s4.h, Option.when(returnSnap)(MaskMapTerm(immutable.ListMap[Any, Term](resourceToFind -> emptyMask))), v2)
         }
       )
     } else {
@@ -465,7 +466,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
           val snapPermTerm = if (!consumeExact && s.assertReadAccessOnly) FullPerm else permissions
           val emptyMask = if (resourceToFind.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask
           val newSnapMask = v.decider.createAlias(MaskAdd(emptyMask, argTerm, snapPermTerm), s)
-          val snap = Option.when(returnSnap)(FakeMaskMapTerm(immutable.ListMap[Any, Term](resourceToFind -> newSnapMask)))
+          val snap = Option.when(returnSnap)(MaskMapTerm(immutable.ListMap[Any, Term](resourceToFind -> newSnapMask)))
           // set up partially consumed heap
           Q(s, hp - resChunk + newChunk, snap, v)
         case false =>
@@ -652,13 +653,13 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
               })((s4, optCh, v2) => {
                 optCh match {
                   case Some(ch) if returnSnap =>
-                    val snap = FakeMaskMapTerm(immutable.ListMap[Any, Term](resourceToFind -> ch.mask))
+                    val snap = MaskMapTerm(immutable.ListMap[Any, Term](resourceToFind -> ch.mask))
                     Q(s4, s4.h, Some(snap), v2)
                   case Some(_) =>
                     Q(s4, s4.h, None, v2)
                   case _ =>
                     val emptyMask = if (resourceToFind.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask
-                    Q(s4, s4.h, Option.when(returnSnap)(FakeMaskMapTerm(immutable.ListMap[Any, Term](resourceToFind -> emptyMask))), v2)
+                    Q(s4, s4.h, Option.when(returnSnap)(MaskMapTerm(immutable.ListMap[Any, Term](resourceToFind -> emptyMask))), v2)
                 }
               })
             } else {
@@ -726,7 +727,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                   // continue
                   val newHeap = hp - currentChunk + newChunk
                   val s2 = s.copy(functionRecorder = newFr, partiallyConsumedHeap = Some(newHeap))
-                  val snap = Option.when(returnSnap)(FakeMaskMapTerm(immutable.ListMap[Any, Term](resource -> qpMask)))
+                  val snap = Option.when(returnSnap)(MaskMapTerm(immutable.ListMap[Any, Term](resource -> qpMask)))
                   Q(s2, newHeap, snap, v)
                 case false =>
                   createFailure (pve dueTo insufficientPermissionReason, v, s, completeSufficientPerm, "QP consume")
@@ -763,7 +764,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
         Option.when(withExp)(DebugExp.createInstance("Valid mask")))
 
     val snapVal = snap match {
-      case FakeMaskMapTerm(masks) => HeapLookup(masks(resId), argTerm)
+      case hmt: HeapMapTerm => HeapLookup(hmt.heaps(resId), argTerm)
       case _ => snap
     }
 
@@ -834,7 +835,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
         gain.replace(qvarsToInversesOfCodomain),
         NoPerm)
 
-    val snapHeapMap = tSnap.asInstanceOf[FakeMaskMapTerm].masks
+    val snapHeapMap = tSnap.asInstanceOf[HeapMapTerm].heaps
 
     val (qpMask, qpMaskFunc, constraintVars) = (v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort, Option.when(withExp)(PUnknown())), None, Seq())
 
@@ -1027,7 +1028,38 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                              resource: ast.Resource,
                              condInfo: havocSupporter.HavocHelperData,
                              v: Verifier): Heap = {
-    ???
+    val resourceId = resource match {
+      case mw: ast.MagicWand => MagicWandIdentifier(mw, s.program)
+      case r => r
+    }
+    val chunk = findMaskHeapChunk(s.h, resourceId)
+    condInfo match {
+      case havocSupporter.HavocOneData(args) =>
+        val (at, valueSort) = chunk.heap.sort match {
+          case sorts.HeapSort(vs) => (args(0), vs)                                    // field: location is $Ref, value is field element sort
+          case sorts.WandHeapSort => (toSnapTree(args), sorts.MagicWandSnapFunction)  // wand: value is MWSF
+          case _ => (toSnapTree(args), sorts.Snap)                                    // predicate: location is $Snap, value is $Snap
+        }
+        val fresh = v.decider.fresh(valueSort, None)
+        val oldVal = HeapLookup(chunk.heap, at)
+        val newHeap = HeapUpdate(chunk.heap, at, Ite(lhs, fresh, oldVal))
+        s.h - chunk + chunk.copy(chunk.mask, newHeap)
+
+      case condData: havocSupporter.HavocallData =>
+        val newHeapVar = v.decider.fresh(chunk.heap.sort, None)
+        val formalQVars = condData.codomainQVars
+        val at_formal = chunk.heap.sort match {
+          case sorts.HeapSort(_) => formalQVars(0)
+          case _ => toSnapTree(formalQVars)
+        }
+        val replaceMap = condData.inverseFunctions.qvarsToInversesOf(formalQVars)
+        val cond = And(lhs.replace(replaceMap), And(condData.imagesOfCodomain))
+        val lookupNew = HeapLookup(newHeapVar, at_formal)
+        val lookupOld = HeapLookup(chunk.heap, at_formal)
+        val framingAxiom = Forall(formalQVars, Implies(Not(cond), lookupNew === lookupOld), Seq(Trigger(lookupNew)), "havocall.framing")
+        v.decider.assume(framingAxiom, None)
+        s.h - chunk + chunk.copy(chunk.mask, newHeapVar)
+    }
   }
 
   override def produceSingle(s: State,

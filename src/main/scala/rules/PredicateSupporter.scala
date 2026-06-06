@@ -79,31 +79,34 @@ object predicateSupporter extends PredicateSupportRules {
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm, ePerm)
     consume(s1, body, true, pve, v)((s1a, snap, v1) => {
-      if (!Verifier.config.disableFunctionUnfoldTrigger()) {
-        val snapArg = if (Verifier.config.maskHeapMode()) {
-          val chunk = s1a.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk]
-          chunk.heap
-        } else {
-          snap.get.convert(sorts.Snap)
-        }
-        val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
-          snapArg +: tArgs)
-        val eArgsString = eArgs.mkString(", ")
-        v1.decider.assume(predTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
-      }
       val s2 = s1a.copy(g = s.g,
                         smDomainNeeded = s.smDomainNeeded,
                         permissionScalingFactor = s.permissionScalingFactor,
                         permissionScalingFactorExp = s.permissionScalingFactorExp).setConstrainable(constrainableWildcards, false)
 
       val snapToProduce = if (Verifier.config.maskHeapMode()) {
-        val tmp = v1.decider.createAlias(HeapToSnap(HeapSingleton(toSnapTree(tArgs), snap.get, PredHeapSort),
-          HeapUpdate(PredZeroMask, toSnapTree(tArgs), FullPerm), predicate), s2)
-        FakeMaskMapTerm(immutable.ListMap(predicate -> SnapToHeap(tmp, predicate, PredHeapSort)))
+        // SnapToHeap(HeapToSnap(hp, _, r), r, _) simplifies at the Scala level to hp,
+        // so this becomes HeapMapTerm({predicate -> HeapSingleton(tArgs, snap, PredHeapSort)}).
+        // HeapLookup(HeapSingleton(r, v, _), r) then simplifies to snap (the body consume snap),
+        // allowing Scala-level simplification chains to connect fold and unfold snapshots.
+        HeapMapTerm(immutable.ListMap(predicate -> SnapToHeap(HeapToSnap(HeapSingleton(toSnapTree(tArgs), snap.get, PredHeapSort),
+          HeapUpdate(PredZeroMask, toSnapTree(tArgs), FullPerm), predicate), predicate, PredHeapSort)))
       } else {
         snap.get.convert(s2.predicateSnapMap(predicate))
       }
       v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snapToProduce, None, tPerm, ePerm, pve, true, v1)((s3, v3) => {
+        if (!Verifier.config.disableFunctionUnfoldTrigger()) {
+          val snapArg = if (Verifier.config.maskHeapMode()) {
+            val chunk = s3.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk]
+            chunk.heap
+          } else {
+            snap.get.convert(sorts.Snap)
+          }
+          val predTrigger = App(s3.predicateData(predicate).triggerFunction,
+            snapArg +: tArgs)
+          val eArgsString = eArgs.mkString(", ")
+          v3.decider.assume(predTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
+        }
         val s4 = v3.heapSupporter.triggerResourceIfNeeded(s3, pa, tArgs, eArgs, v3)
         Q(s4, v3)
       })
@@ -242,10 +245,10 @@ object predicateSupporter extends PredicateSupportRules {
         })
       } else {
         val newSf = if (Verifier.config.maskHeapMode()) {
-          val packedSnap = maskHeapSupporter.convertToSnapshot(snap.get.asInstanceOf[FakeMaskMapTerm].masks, Seq(predicate), magicWandSupporter.getEvalHeap(s, v1), s2, v1.decider)
+          val packedSnap = maskHeapSupporter.convertToSnapshot(snap.get.asInstanceOf[MaskMapTerm].masks, Seq(predicate), magicWandSupporter.getEvalHeap(s, v1), s2, v1.decider)
 
           val predSnap = packedSnap match {
-            case FakeMaskMapTerm(masks) => HeapLookup(masks(predicate), toSnapTree(tArgs))
+            case hmt: HeapMapTerm => HeapLookup(hmt.heaps(predicate), toSnapTree(tArgs))
             case h2s: HeapToSnap => HeapLookup(h2s.heap, toSnapTree(tArgs))
             case _ => HeapLookup(v1.decider.createAlias(SnapToHeap(snap.get, predicate, PredHeapSort), s3), toSnapTree(tArgs))
           }

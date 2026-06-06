@@ -2567,13 +2567,24 @@ object GoodFieldMask extends CondFlyweightTermFactory[(Term, Boolean), GoodField
   override def actualCreate(args: (Term, Boolean)): GoodFieldMask = new GoodFieldMask(args._1, args._2)
 }
 
-class FakeMaskMapTerm(val masks: immutable.ListMap[Any, Term]) extends Term with ConditionalFlyweight[immutable.ListMap[Any, Term], FakeMaskMapTerm] {
+/** Maps resources to their consumed mask/permission terms (consume context). */
+class MaskMapTerm(val masks: immutable.ListMap[Any, Term]) extends Term with ConditionalFlyweight[immutable.ListMap[Any, Term], MaskMapTerm] {
   val equalityDefiningMembers = masks
-  val sort = sorts.Snap // sure, why not
+  val sort = sorts.Snap
 }
 
-object FakeMaskMapTerm extends PreciseCondFlyweightFactory[immutable.ListMap[Any, Term], FakeMaskMapTerm] {
-  override def actualCreate(args: immutable.ListMap[Any, Term]): FakeMaskMapTerm = new FakeMaskMapTerm(args)
+object MaskMapTerm extends PreciseCondFlyweightFactory[immutable.ListMap[Any, Term], MaskMapTerm] {
+  override def actualCreate(args: immutable.ListMap[Any, Term]): MaskMapTerm = new MaskMapTerm(args)
+}
+
+/** Maps resources to their heap value terms (produce context). */
+class HeapMapTerm(val heaps: immutable.ListMap[Any, Term]) extends Term with ConditionalFlyweight[immutable.ListMap[Any, Term], HeapMapTerm] {
+  val equalityDefiningMembers = heaps
+  val sort = sorts.Snap
+}
+
+object HeapMapTerm extends PreciseCondFlyweightFactory[immutable.ListMap[Any, Term], HeapMapTerm] {
+  override def actualCreate(args: immutable.ListMap[Any, Term]): HeapMapTerm = new HeapMapTerm(args)
 }
 
 class MergeSingle(val heap: Term, val mask: Term, val location: Term, val value: Term) extends Term with HasVarRepr with ConditionalFlyweight[(Term, Term, Term, Term), MergeSingle] {

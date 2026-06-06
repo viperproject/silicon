@@ -137,7 +137,7 @@ object consumer extends ConsumptionRules {
           case Some(rm) =>
             val newMap = immutable.ListMap.from(rm)
             if (isRecursive)
-              FakeMaskMapTerm(newMap)
+              MaskMapTerm(newMap)
             else
               maskHeapSupporter.convertToSnapshot(newMap, maskHeapSupporter.getResourceSeq(tlcs, s.program), magicWandSupporter.getEvalHeap(s.copy(h=h), v), s, v.decider)
           case _ => Unit
@@ -157,15 +157,15 @@ object consumer extends ConsumptionRules {
               val resources = maskHeapSupporter.getResourceSeq(tlcs, s.program)
               val fst = immutable.ListMap.from(resMap.get)
               val snd = snap2.get match {
-                case mht: FakeMaskMapTerm => mht.masks
+                case mht: MaskMapTerm => mht.masks
                 case hts: HeapToSnap => immutable.ListMap(hts.r -> hts.mask)
                 case snp =>
                   maskHeapSupporter.convertFromSnapshot(snp, resources, s2, v2)
               }
               val newMap = maskHeapSupporter.mergePreservingFirstOrder(fst, snd)
-              val term = if (isRecursive) FakeMaskMapTerm(newMap)
+              val term = if (isRecursive) MaskMapTerm(newMap)
               else
-                maskHeapSupporter.convertToSnapshot(newMap, resources, magicWandSupporter.getEvalHeap(s.copy(h=h), v2), s2, v2.decider)
+                maskHeapSupporter.convertToSnapshot(newMap, resources, magicWandSupporter.getEvalHeap(if (s.exhaleExt) s2 else s.copy(h=h), v2), s2, v2.decider)
               Q(s2, h2, Some(term), v2)
             } else {
               Q(s2, h2, snap2, v2)
@@ -180,23 +180,22 @@ object consumer extends ConsumptionRules {
                 val fst = immutable.ListMap.from(resMap.get)
                 val resources1 = maskHeapSupporter.getResourceSeq(Seq(tlcs.head), s.program)
                 val snd = snap1.get match {
-                  case mht: FakeMaskMapTerm => mht.masks
+                  case mht: MaskMapTerm => mht.masks
                   case hts: HeapToSnap => immutable.ListMap(hts.r -> hts.mask)
                   case snp =>
                     maskHeapSupporter.convertFromSnapshot(snp, resources1, s2, v2)
                 }
                 val resources2 = maskHeapSupporter.getResourceSeq(tlcs.tail, s.program)
                 val third = snap2.get match {
-                  case mht: FakeMaskMapTerm => mht.masks
+                  case mht: MaskMapTerm => mht.masks
                   case hts: HeapToSnap => immutable.ListMap(hts.r -> hts.mask)
                   case snp =>
                     maskHeapSupporter.convertFromSnapshot(snp, resources2, s2, v2)
                 }
                 val newMap = maskHeapSupporter.mergePreservingFirstOrder(maskHeapSupporter.mergePreservingFirstOrder(fst, snd), third)
-                // TODO: getEvalHeap should probably use h for s.h?
-                val term = if (isRecursive) FakeMaskMapTerm(newMap)
+                val term = if (isRecursive) MaskMapTerm(newMap)
                 else
-                  maskHeapSupporter.convertToSnapshot(newMap, maskHeapSupporter.getResourceSeq(tlcs, s.program), magicWandSupporter.getEvalHeap(s.copy(h=h), v2), s2, v2.decider)
+                  maskHeapSupporter.convertToSnapshot(newMap, maskHeapSupporter.getResourceSeq(tlcs, s.program), magicWandSupporter.getEvalHeap(if (s.exhaleExt) s2 else s.copy(h=h), v2), s2, v2.decider)
                 Q(s2, h2, Some(term), v2)
               } else {
                 Q(s2, h2, None, v2)
@@ -503,7 +502,7 @@ object consumer extends ConsumptionRules {
 
   private def unitTerm(): Term = {
     if (Verifier.config.maskHeapMode())
-      FakeMaskMapTerm(immutable.ListMap[Any, Term]())
+      MaskMapTerm(immutable.ListMap[Any, Term]())
     else
       Unit
   }

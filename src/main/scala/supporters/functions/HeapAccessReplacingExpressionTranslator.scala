@@ -164,11 +164,12 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         val snap = getOrFail(data.fappToSnap, eFApp, context, sorts.Snap, Option.when(Verifier.config.enableDebugging())(PUnknown()))
         val fapp = if (Verifier.config.maskHeapMode()) {
           def createApp(trm: Term): Term = trm match {
-            case mt: FakeMaskMapTerm => App(fun, mt.masks.values.toSeq ++ args)
+            case mt: HeapMapTerm => App(fun, mt.heaps.values.toSeq ++ args)
             case Ite(cond, e1, e2) => Ite(cond, createApp(e1), createApp(e2))
-            case v: Var =>
+            case _ =>
               val resources = maskHeapSupporter.getResourceSeq(silverFunc.pres, program)
-              val resHeaps = fromSnapTree(v, resources.size).zip(resources).map {
+              val resHeaps = fromSnapTree(trm, resources.size).zip(resources).map {
+                case (HeapToSnap(heap, _, _), _) => heap
                 case (s, r) =>
                   val srt = r match {
                     case f: ast.Field => sorts.HeapSort(symbolConverter.toSort(f.typ))

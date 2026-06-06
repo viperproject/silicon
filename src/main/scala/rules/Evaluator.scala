@@ -652,7 +652,7 @@ object evaluator extends EvaluationRules {
                 val args = resources.map(r => {
                   maskHeapSupporter.findMaskHeapChunk(s3.h, r).heap
                 })
-                (args, FakeMaskMapTerm(immutable.ListMap(resources.zip(args): _*)))
+                (args, HeapMapTerm(immutable.ListMap(resources.zip(args): _*)))
               } else {
                 val snapToRecord = snap.get.convert(sorts.Snap)
                 (Seq(snapToRecord), snapToRecord)
@@ -764,7 +764,7 @@ object evaluator extends EvaluationRules {
                       } else {
                         val predSnapFunc = if (Verifier.config.maskHeapMode()) {
                           val predSnap = snap.get match {
-                            case FakeMaskMapTerm(masks) => HeapLookup(masks(predicate), toSnapTree(tArgs))
+                            case hmt: HeapMapTerm => HeapLookup(hmt.heaps(predicate), toSnapTree(tArgs))
                             case h2s: HeapToSnap => HeapLookup(h2s.heap, toSnapTree(tArgs))
                             case _ => HeapLookup(v4.decider.createAlias(SnapToHeap(snap.get, predicate, PredHeapSort), s7a), toSnapTree(tArgs))
                           }

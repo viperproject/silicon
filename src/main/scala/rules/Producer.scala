@@ -141,7 +141,7 @@ object producer extends ProductionRules {
 
     val newSf = if (Verifier.config.maskHeapMode() && !isRecursive) {
       val givenSnap = sf(sorts.Snap, v)
-      val fakeTerm = if (!givenSnap.isInstanceOf[FakeMaskMapTerm]) {
+      val fakeTerm = if (!givenSnap.isInstanceOf[HeapMapTerm]) {
         val resources = maskHeapSupporter.getResourceSeq(as, s.program)
         val snapParts = fromSnapTree(givenSnap, resources.size)
         val heapParts = snapParts.zip(resources).map(tpl => (tpl._2,
@@ -150,7 +150,7 @@ object producer extends ProductionRules {
             case mwi: MagicWandIdentifier if !s.qpMagicWands.contains(mwi) => WandHeapSort
             case _ => PredHeapSort
           }), s)))
-        FakeMaskMapTerm(immutable.ListMap.from(heapParts))
+        HeapMapTerm(immutable.ListMap.from(heapParts))
       } else {
         givenSnap
       }
