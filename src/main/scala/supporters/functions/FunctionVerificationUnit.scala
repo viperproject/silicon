@@ -21,7 +21,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Decider
-import viper.silicon.rules.{consumer, evaluator, executionFlowController, magicWandSupporter, producer}
+import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
 import viper.silicon.supporters.{AnnotationSupporter, PredicateData}
 import viper.silicon.utils.ast.{BigAnd, simplifyVariableName}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
@@ -45,8 +45,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       extends FunctionVerificationUnit[Sort, Decl, Term]
          with StatefulComponent {
 
-    import producer._
-    import consumer._
+    import producer.{debugOn => _, _}
+    import consumer.{debugOn => _, _}
     import evaluator._
 
     @unused private var program: ast.Program = _
@@ -175,8 +175,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val data = functionData(function.name)
       val s = sInit.copy(functionRecorder = ActualFunctionRecorder(Left(data)),
         conservingSnapshotGeneration = true,
-        assertReadAccessOnly = !Verifier.config.respectFunctionPrePermAmounts(),
-        intermediateHeapCause = if (evaluator.debugOn) Some("nil", InhalePre(), decider.pcs.duplicate()) else None)
+        assertReadAccessOnly = !Verifier.config.respectFunctionPrePermAmounts())
 
       /* Phase 1: Check well-definedness of the specifications */
       checkSpecificationWelldefinedness(s, function) match {
@@ -222,25 +221,27 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val pres = function.pres
       val posts = function.posts
       val argsStore = data.formalArgs map {
-        case (localVar, t) => (localVar, (t, Option.when(evaluator.debugOn)(LocalVarWithVersion(simplifyVariableName(t.id.name), localVar.typ)(localVar.pos, localVar.info, localVar.errT))))
+        case (localVar, t) => (localVar, (t, Option.when(debugOn)(LocalVarWithVersion(simplifyVariableName(t.id.name), localVar.typ)(localVar.pos, localVar.info, localVar.errT))))
       }
       val g = Store(argsStore + (function.result -> (data.formalResult, data.valFormalResultExp)))
       val s = sInit.copy(g = g, h = v.heapSupporter.getEmptyHeap(sInit.program), oldHeaps = OldHeaps())
+      val s0 = if (debugOn) v.startKeyHeap(s, "nil", InhalePre) else s
 
       var phase1Data: Seq[Phase1Data] = Vector.empty
       var recorders: Seq[FunctionRecorder] = Vector.empty
 
-      val result = executionFlowController.locally(s, v)((s0, _) => {
+      val result = executionFlowController.locally(s0, v)((s1, _) => {
         val preMark = decider.setPathConditionMark()
-        produces(s0, toSf(`?s`), pres, ContractNotWellformed, v)((s1, _) => {
+        produces(s1, toSf(`?s`), pres, ContractNotWellformed, v)((s2, _) => {
+          val s2a = if (debugOn) v.finishKeyHeap(s2) else s2
           val relevantPathConditionStack = decider.pcs.after(preMark)
-          phase1Data :+= Phase1Data(s1, relevantPathConditionStack.branchConditions, relevantPathConditionStack.branchConditionExps,
-            relevantPathConditionStack.assumptions, Option.when(evaluator.debugOn)(relevantPathConditionStack.assumptionExps))
+          phase1Data :+= Phase1Data(s2a, relevantPathConditionStack.branchConditions, relevantPathConditionStack.branchConditionExps,
+            relevantPathConditionStack.assumptions, Option.when(debugOn)(relevantPathConditionStack.assumptionExps))
           // The postcondition must be produced with a fresh snapshot (different from `?s`) because
           // the postcondition's snapshot structure is most likely different than that of the
           // precondition
-          produces(s1, freshSnap, posts, ContractNotWellformed, v)((s2, _) => {
-            recorders :+= s2.functionRecorder
+          produces(s2a, freshSnap, posts, ContractNotWellformed, v)((s3, _) => {
+            recorders :+= s3.functionRecorder
             Success()})})})
 
       data.advancePhase(recorders)
@@ -261,29 +262,28 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val postconditionViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, function)
 
       var recorders: Seq[FunctionRecorder] = Vector.empty
-      val wExp = evaluator.debugOn
 
       val result = phase1data.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
         case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
-            decider.setCurrentBranchCondition(And(bcsPre), (BigAnd(bcsPreExp.map(_._1)), Option.when(wExp)(BigAnd(bcsPreExp.map(_._2.get)))))
-            decider.assume(pcsPre, Option.when(wExp)(DebugExp.createInstance(s"precondition of ${function.name}", pcsPreExp.get)), enforceAssumption = false)
+            decider.setCurrentBranchCondition(And(bcsPre), (BigAnd(bcsPreExp.map(_._1)), Option.when(debugOn)(BigAnd(bcsPreExp.map(_._2.get)))))
+            decider.assume(pcsPre, Option.when(debugOn)(DebugExp.createInstance(s"precondition of ${function.name}", pcsPreExp.get)), enforceAssumption = false)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-            eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, bodyNew, _) => {
-              val debugExp = if (wExp) {
+            val s1a = if (debugOn) v.startKeyHeap(s1, "nil", EvalExp(body)) else s1
+            eval(s1a, body, FunctionNotWellformed(function), v)((s2, tBody, bodyNew, _) => {
+              val debugExp = if (debugOn) {
                 val e = ast.EqCmp(ast.Result(function.typ)(), body)(function.pos, function.info, function.errT)
                 val eNew = ast.EqCmp(ast.Result(function.typ)(), bodyNew.get)(function.pos, function.info, function.errT)
                 Some(DebugExp.createInstance(e, eNew))
               } else { None }
               decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp)
-              val s3 = if (wExp) {
-                val initDebugHeap = DebugHeap(magicWandSupporter.getEvalHeap(s2), "nil", InhalePre(), None, Seq())
-                val s2a = s2.copy(debugOldHeaps = s2.debugOldHeaps + (Verifier.PRE_STATE_LABEL -> initDebugHeap))
-                s2a.copy(intermediateHeapCause = Some(Verifier.PRE_STATE_LABEL, ExhalePost(), decider.pcs.duplicate()))
+              val s2a = if (debugOn) {
+                val tmp = v.finishKeyHeap(s2)
+                v.startKeyHeap(tmp, v.getDebugHeapLabel(tmp).getOrElse("missingFunctionHeap"), ExhalePost)
               } else s2
-              consumes(s3, posts, false, postconditionViolated, v)((s4, _, _) => {
-                recorders :+= s4.functionRecorder
+              consumes(s2a, posts, false, postconditionViolated, v)((s3, _, _) => {
+                recorders :+= s3.functionRecorder
                 Success()})})})}
 
       data.advancePhase(recorders)

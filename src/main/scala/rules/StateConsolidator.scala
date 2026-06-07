@@ -110,26 +110,17 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         (functionRecorder, hs :+ Heap(mergedChunks))
       }
 
-    val s1 = s.copy(functionRecorder = functionRecorderAfterHeapMerging,
-                    h = mergedHeaps.head,
-                    reserveHeaps = mergedHeaps.tail)
-
-    val s2 = if (debugOn) {
-      val s1a = if (s1.recordIntermediateHeaps) v.recordIntermediateHeap(s1) else s1
-      val currentLabel = v.getDebugHeapLabel(s1a).getOrElse("preConsolidateHeapMissing")
-      s1a.copy(intermediateHeapCause = Some(currentLabel, StateConsolidation(), v.decider.pcs.duplicate()))
-    } else s1
+    val alreadyRecording = s.recordIntermediateHeaps
+    val s1 = if (debugOn && !alreadyRecording)
+      v.startKeyHeap(s, v.getDebugHeapLabel(s).getOrElse("preConsolidateHeapMissing"), StateConsolidation)
+    else s
+    val s2 = s1.copy(functionRecorder = functionRecorderAfterHeapMerging,
+                     h = mergedHeaps.head,
+                     reserveHeaps = mergedHeaps.tail)
 
     val s3 = assumeUpperPermissionBoundForQPFields(s2, v)
 
-    if (debugOn){
-      if (s1.recordIntermediateHeaps) {
-        // update the old intermediateCause
-        val newParent = v.getDebugHeapLabel(s3).getOrElse("postConsolidateHeapMissing")
-        val newInterCause = Some(newParent, s1.intermediateHeapCause.get._2, v.decider.pcs.duplicate())
-        s3.copy(intermediateHeapCause = newInterCause)
-      } else s3.copy(intermediateHeapCause = None)
-    } else s3
+    if (debugOn && !alreadyRecording) v.finishKeyHeap(s3) else s3
   }
 
   def consolidateOptionally(s: State, v: Verifier): State =
@@ -291,8 +282,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
 
           val debugExp = if (debugOn) {
-            sf = if (sf.recordIntermediateHeaps) v.recordIntermediateHeap(sf)
-            else v.recordDebugHeap(sf, v.getDebugHeapLabel(sf).get, StateConsolidation())
+            sf = if (sf.recordIntermediateHeaps) v.recordIntermediateHeap(sf, StateConsolidation) else sf
             val permExp = ast.DebugLabelledOld(ast.CurrentPerm(ast.FieldAccess(receiverExp.localVar, field)())(ast.NoPosition, ast.NoInfo, ast.NoTrafos),
               v.getDebugOldLabel(sf, ast.NoPosition))()
             val exp = ast.Forall(Seq(receiverExp), Seq(), ast.PermLeCmp(permExp, ast.FullPerm()())())()
@@ -310,10 +300,9 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           for (chunk <- fieldChunks) {
             if (chunk.singletonRcvr.isDefined){
               val debugExp = if (debugOn) {
+                sf = if (sf.recordIntermediateHeaps) v.recordIntermediateHeap(sf, StateConsolidation) else sf
                 val permExp = ast.DebugLabelledOld(ast.CurrentPerm(ast.FieldAccess(chunk.singletonRcvrExp.get, field)())(),
                   v.getDebugOldLabel(sf, ast.NoPosition))()
-                sf = if (sf.recordIntermediateHeaps) v.recordIntermediateHeap(sf)
-                else v.recordDebugHeap(sf, v.getDebugHeapLabel(sf).get, StateConsolidation())
                 val exp = ast.PermLeCmp(permExp, ast.FullPerm()())()
                 Some(DebugExp.createInstance(exp, exp))
               } else { None }
@@ -324,10 +313,9 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
               val currentPermAmount = PermLookup(field.name, pmDef.pm, chunk.quantifiedVars.head)
               v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
               val debugExp = if (debugOn) {
+                sf = if (sf.recordIntermediateHeaps) v.recordIntermediateHeap(sf, StateConsolidation) else sf
                 val chunkReceiverExp = chunk.quantifiedVarExps.get.head.localVar
                 var permExp: ast.Exp = ast.CurrentPerm(ast.FieldAccess(chunkReceiverExp, field)())(chunkReceiverExp.pos, chunkReceiverExp.info, chunkReceiverExp.errT)
-                sf = if (sf.recordIntermediateHeaps) v.recordIntermediateHeap(sf)
-                else v.recordDebugHeap(sf, v.getDebugHeapLabel(sf).get, StateConsolidation())
                 permExp = ast.DebugLabelledOld(permExp, v.getDebugOldLabel(sf, ast.NoPosition))()
                 val exp = ast.Forall(chunk.quantifiedVarExps.get, Seq(), ast.PermLeCmp(permExp, ast.FullPerm()())())()
                 Some(DebugExp.createInstance(exp, exp))

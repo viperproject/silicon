@@ -11,15 +11,14 @@ import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
 import viper.silicon.interfaces._
-import viper.silicon.decider.Decider
+import viper.silicon.decider.{Decider, LayeredPathConditionStack}
 import viper.silicon.logger.records.data.WellformednessCheckRecord
-import viper.silicon.rules.{consumer, executionFlowController, executor, magicWandSupporter, producer}
-import viper.silicon.state.{DebugHeap, ExhalePost, InhalePre, State, Store}
+import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
+import viper.silicon.state.{ExhalePost, InhalePre, State, Store}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
 import viper.silicon.Map
-import viper.silver.ast.MethodCall
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
@@ -71,9 +70,9 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                          oldHeaps = OldHeaps(),
                          debugOldHeaps = Map(),
                          methodCfg = body)
-      val s0 = if (producer.debugOn)
-        s.copy(intermediateHeapCause = Some("nil", InhalePre(), decider.pcs.duplicate()))
-      else s
+
+      val s0 = if (producer.debugOn) v.startKeyHeap(s, "nil", InhalePre) else s
+      val emptyPCS = v.decider.pcs.duplicate()
 
       if (Verifier.config.printMethodCFGs()) {
         viper.silicon.common.io.toFile(
@@ -91,9 +90,9 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
             val s2b = if (producer.debugOn) {
-              val branchConds = v2.decider.pcs.branchConditionExps.map(bc => bc._1).zip(v2.decider.pcs.branchConditions)
-              val initDebugHeap = DebugHeap(magicWandSupporter.getEvalHeap(s2), "nil", InhalePre(), None, branchConds)
-              s2a.copy(debugOldHeaps = s2a.debugOldHeaps + (Verifier.PRE_STATE_LABEL -> initDebugHeap))
+              val tmp = v2.finishKeyHeap(s2a)
+              val parentLabel = v2.getDebugHeapLabel(tmp).getOrElse("nil")
+              v2.recordHeap(tmp, Verifier.PRE_STATE_LABEL, parentLabel, InhalePre, emptyPCS)
             } else s2a
             (  executionFlowController.locally(s2b, v2)((s3, v3) => {
                   val s4 = s3.copy(h = v3.heapSupporter.getEmptyHeap(s3.program))
@@ -106,9 +105,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                executionFlowController.locally(s2b, v2)((s3, v3) =>  {
                   exec(s3, body, v3)((s4, v4) => {
                     val currentLabel = v4.getDebugHeapLabel(s4).getOrElse("finalHeapMissing")
-                    val s4a = if (producer.debugOn)
-                      s4.copy(intermediateHeapCause = Some(currentLabel, ExhalePost(), v4.decider.pcs.duplicate()))
-                    else s4
+                    val s4a = if (producer.debugOn) v4.startKeyHeap(s4, currentLabel, ExhalePost) else s4
                     consumes(s4a, posts, false, postViolated, v4)((_, _, _) =>
                       Success())})}) }  )})})
 

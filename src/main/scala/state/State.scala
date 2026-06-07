@@ -14,7 +14,7 @@ import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.{PathConditionStack, RecordedPathConditions}
 import viper.silicon.interfaces.state.GeneralChunk
-import viper.silicon.state.State.{DebugOldHeaps, OldHeaps}
+import viper.silicon.state.State.{DebugOldHeaps, OldHeaps, TemporaryRecord}
 import viper.silicon.state.terms.{Term, Var}
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.predef.`?r`
@@ -34,8 +34,7 @@ final case class State(g: Store = Store(),
                        functionData: Map[String, FunctionData],
                        oldHeaps: OldHeaps = Map.empty,
                        debugOldHeaps: DebugOldHeaps = Map.empty,
-                       // (parentLabel, cause, oldPCS) if an operation might cause intermediate heaps
-                       intermediateHeapCause: Option[(String, HeapCause, PathConditionStack)] = None,
+                       temporaryHeapRecord: Option[TemporaryRecord] = None,
 
                        parallelizeBranches: Boolean = false,
 
@@ -135,7 +134,7 @@ final case class State(g: Store = Store(),
 
   val isLastRetry: Boolean = retryLevel == 0
 
-  val recordIntermediateHeaps: Boolean = intermediateHeapCause.isDefined
+  val recordIntermediateHeaps: Boolean = temporaryHeapRecord.isDefined
 
   def incCycleCounter(m: ast.Predicate) =
     if (recordVisited) copy(visited = m :: visited)
@@ -195,25 +194,31 @@ final case class State(g: Store = Store(),
 }
 
 sealed trait HeapCause
-case class InhalePre() extends HeapCause
-case class ExhalePost() extends HeapCause
-case class InhaleInv() extends HeapCause
-case class ExhaleInv() extends HeapCause
-case class MergeContext() extends HeapCause
-case class CreateLabel() extends HeapCause
-case class StateConsolidation() extends HeapCause
+case object InhalePre extends HeapCause
+case object ExhalePost extends HeapCause
+case object InhaleInv extends HeapCause
+case object ExhaleInv extends HeapCause
+case object MergeContext extends HeapCause
+case object CreateLabel extends HeapCause
+case object StateConsolidation extends HeapCause
 case class ExecStmt(stmt: ast.Stmt) extends HeapCause
 case class EvalExp(exp: ast.Exp) extends HeapCause
 
-case class DebugHeap(heap: Heap,
-                     parentLabel: String,
-                     cause: HeapCause,
-                     intermediateCause: Option[ast.Exp],
-                     branchConds: Seq[(ast.Exp, Term)])
+case class HeapRecord(heap: Heap,
+                      parentLabel: String,
+                      cause: HeapCause,
+                      branchConds: Seq[(ast.Exp, Term)],
+                      intermediateHeaps: Map[String, IntermediateHeapRecord])
+
+case class IntermediateHeapRecord(heap: Heap,
+                                  intermediateCause: Option[HeapCause],
+                                  newBranchConds: Seq[(ast.Exp, Term)])
 
 object State {
   type OldHeaps = Map[String, Heap]
-  type DebugOldHeaps = Map[String, DebugHeap]
+  type DebugOldHeaps = Map[String, HeapRecord]
+  type TemporaryRecord = (String, HeapCause, PathConditionStack, Map[String, IntermediateHeapRecord])
+
   val OldHeaps = Map
 
   def merge(s1: State, s2: State): State = {
@@ -224,7 +229,7 @@ object State {
                  functionData,
                  oldHeaps1,
                  debugOldHeaps1,
-                 intermediateHeapCause1,
+                 temporaryHeapRecord1,
                  parallelizeBranches1,
                  recordVisited1, visited1,
                  methodCfg1, invariantContexts1,
@@ -251,7 +256,7 @@ object State {
                      `predicateData`, `functionData`,
                      oldHeaps2,
                      debugOldHeaps2,
-                     intermediateHeapCause2,
+                     temporaryHeapRecord2,
                      `parallelizeBranches1`,
                      `recordVisited1`, `visited1`,
                      `methodCfg1`, `invariantContexts1`,
@@ -273,7 +278,7 @@ object State {
 
             val oldHeaps3 = oldHeaps1 ++ oldHeaps2
             val debugOldHeaps3 = debugOldHeaps1 ++ debugOldHeaps2
-            val intermediateHeapCause3 = if (intermediateHeapCause1 == intermediateHeapCause2) intermediateHeapCause1 else None
+            val temporaryHeapRecord3 = if (temporaryHeapRecord1 == temporaryHeapRecord2) temporaryHeapRecord1 else None
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
@@ -293,7 +298,7 @@ object State {
 
             s1.copy(oldHeaps = oldHeaps3,
                     debugOldHeaps = debugOldHeaps3,
-                    intermediateHeapCause = intermediateHeapCause3,
+                    temporaryHeapRecord = temporaryHeapRecord3,
                     functionRecorder = functionRecorder3,
                     possibleTriggers = possibleTriggers3,
                     triggerExp = triggerExp3,
@@ -391,7 +396,7 @@ object State {
       predicateData, functionData,
       oldHeaps1,
       debugOldHeaps1,
-      intermediateHeapCause1,
+      temporaryHeapRecord1,
       parallelizeBranches1,
       recordVisited1, visited1,
       methodCfg1, invariantContexts1,
@@ -417,7 +422,7 @@ object State {
           `predicateData`, `functionData`,
           oldHeaps2,
           debugOldHeaps2,
-          intermediateHeapCause2,
+          temporaryHeapRecord2,
           `parallelizeBranches1`,
           `recordVisited1`, `visited1`,
           `methodCfg1`, invariantContexts2,
@@ -438,7 +443,7 @@ object State {
           moreCompleteExhale2, `moreJoins`) =>
 
             val debugOldHeaps3 = debugOldHeaps1 ++ debugOldHeaps2
-            val intermediateHeapCause3 = if (intermediateHeapCause1 == intermediateHeapCause2) intermediateHeapCause1 else None
+            val temporaryHeapRecord3 = if (temporaryHeapRecord1 == temporaryHeapRecord2) temporaryHeapRecord1 else None
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
@@ -522,7 +527,7 @@ object State {
                              h = h3,
                              oldHeaps = oldHeaps3,
                              debugOldHeaps = debugOldHeaps3,
-                             intermediateHeapCause = intermediateHeapCause3,
+                             temporaryHeapRecord = temporaryHeapRecord3,
                              partiallyConsumedHeap = partiallyConsumedHeap3,
                              smDomainNeeded = smDomainNeeded3,
                              invariantContexts = invariantContexts3,

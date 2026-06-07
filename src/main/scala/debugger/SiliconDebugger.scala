@@ -60,41 +60,57 @@ case class ProofObligation(s: State,
       s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._2.get}").mkString("\n\t\t")}\n\n"
   }
 
-  private def heapToString(h: Heap): String =
-    if (h.values.nonEmpty) h.values.map(c => s"\t\t${chunkString(c)}\n").mkString("")
-    else "\t\t(Empty heap)\n"
-
-  private def debugHeapString(label: String, debugHeap: DebugHeap): String = {
-    val condString = if (debugHeap.branchConds.nonEmpty)
-      "\tNew branch conditions: " + debugHeap.branchConds.map(bc => bc._1.toString).mkString(", ") + "\n"
-    else ""
-    val causeString = debugHeap.cause match {
-      case InhalePre() => "inhale precondition"
-      case ExhalePost() => "exhale postcondition"
-      case InhaleInv() => "inhale loop invariants"
-      case ExhaleInv() => "exhale loop invariants"
-      case MergeContext() => "merge framed heap"
-      case CreateLabel() => "heap label"
-      case StateConsolidation() => "state consolidation"
+  private def causeToString(cause: HeapCause): String = {
+    cause match {
+      case InhalePre => "inhale precondition"
+      case ExhalePost => "exhale postcondition"
+      case InhaleInv => "inhale loop invariants"
+      case ExhaleInv => "exhale loop invariants"
+      case MergeContext => "merge framed heap"
+      case CreateLabel => "heap label"
+      case StateConsolidation => "state consolidation"
       case ExecStmt(stmt) => s"\"$stmt\""
       case EvalExp(exp) => s"\"$exp\""
     }
-    val causeString2 = debugHeap.intermediateCause match {
-      case Some(exp) => s"\"$exp\" during $causeString"
-      case None => causeString
-    }
+  }
+
+  private def heapChunksString(h: Heap, isIntermediateHeap: Boolean = false): String = {
+    val tabs = if (isIntermediateHeap) "\t\t\t" else "\t\t"
+    if (h.values.isEmpty) s"$tabs(Empty heap)\n"
+    else h.values.map(c => s"$tabs${chunkString(c)}\n").mkString("")
+  }
+
+  private def debugHeapString(label: String, heapRecord: HeapRecord): String = {
+    val condString = if (heapRecord.branchConds.nonEmpty)
+      "\tNew branch conditions: " + heapRecord.branchConds.map(bc => bc._1.toString).mkString(", ") + "\n"
+    else ""
     s"Heap $label:\n" +
-      s"\tParent: ${debugHeap.parentLabel}\n" +
-      s"\tCause: $causeString2\n" +
+      s"\tParent: ${heapRecord.parentLabel}\n" +
+      s"\tCause: ${causeToString(heapRecord.cause)}\n" +
       condString +
-      heapToString(debugHeap.heap) + "\n"
+      heapChunksString(heapRecord.heap) + "\n" +
+      heapRecord.intermediateHeaps.map { case (l, r) => intermediateHeapString(l, r) + "\n" }.mkString("")
+  }
+
+  private def intermediateHeapString(label: String, heapRecord: IntermediateHeapRecord): String = {
+    val condString = if (heapRecord.newBranchConds.nonEmpty)
+      "\t\tNew branch conditions: " + heapRecord.newBranchConds.map(bc => bc._1.toString).mkString(", ") + "\n"
+    else ""
+    val causeString = heapRecord.intermediateCause match {
+      case Some(cause) => s"\t\tCause: ${causeToString(cause)}\n"
+      case None => ""
+    }
+    s"\tIntermediate heap $label:\n" +
+      causeString +
+      condString +
+      heapChunksString(heapRecord.heap, isIntermediateHeap = true)
   }
 
   private def heapString: String = {
     if (!printConfig.printOldHeaps)
-      s"Heap:\n${heapToString(s.h)}\n"
+      s"Heap:\n${heapChunksString(s.h)}\n"
     else {
-      s"Current Heap:\n${heapToString(s.h)}\n" +
+      s"Current Heap:\n${heapChunksString(s.h)}\n" +
         s.debugOldHeaps.map { case (label, dh) => debugHeapString(label, dh) }.mkString("")
     }
   }
