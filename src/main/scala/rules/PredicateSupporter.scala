@@ -67,7 +67,7 @@ object predicateSupporter extends PredicateSupportRules {
 
     val predicate = pa.loc(s.program)
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
-    val tArgsWithE = if (withExp)
+    val tArgsWithE = if (debugOn)
       tArgs zip eArgs.get.map(Some(_))
     else
       tArgs zip Seq.fill(tArgs.length)(None)
@@ -75,17 +75,20 @@ object predicateSupporter extends PredicateSupportRules {
     val s1 = s.copy(g = gIns,
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm, ePerm)
+
     consume(s1, body, true, pve, v)((s1a, snap, v1) => {
       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
         val predTrigger = App(s1a.predicateData(predicate.name).triggerFunction,
           snap.get.convert(terms.sorts.Snap) +: tArgs)
         val eArgsString = eArgs.mkString(", ")
-        v1.decider.assume(predTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
+        v1.decider.assume(predTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
       }
       val s2 = s1a.copy(g = s.g,
                         smDomainNeeded = s.smDomainNeeded,
                         permissionScalingFactor = s.permissionScalingFactor,
                         permissionScalingFactorExp = s.permissionScalingFactorExp).setConstrainable(constrainableWildcards, false)
+      lazy val oldHeap = magicWandSupporter.getEvalHeap(s2)
+      lazy val oldPCS = v1.decider.pcs.duplicate()
 
       v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snap.get.convert(s2.predicateSnapMap(predicate.name)), None, tPerm, ePerm, pve, true, v1)((s3, v3) => {
         val s4 = v3.heapSupporter.triggerResourceIfNeeded(s3, pa, tArgs, eArgs, v3)
@@ -99,7 +102,7 @@ object predicateSupporter extends PredicateSupportRules {
             : VerificationResult = {
     tree match {
       case PredicateLeafNode(h, assumptions) =>
-        val debugExp = Option.when(withExp)(DebugExp.createInstance("Assumption from unfolded predicate body"))
+        val debugExp = Option.when(debugOn)(DebugExp.createInstance("Assumption from unfolded predicate body"))
         v.decider.assume(assumptions.map(a => (a.replace(toReplace), debugExp)).toSeq)
         val substChunks = h.values.map(_.substitute(toReplace).asInstanceOf[GeneralChunk].permScale(s.permissionScalingFactor, s.permissionScalingFactorExp))
 
@@ -190,13 +193,15 @@ object predicateSupporter extends PredicateSupportRules {
             (Q: (State, Verifier) => VerificationResult)
             : VerificationResult = {
 
-    val tArgsWithE = if (withExp)
+    val tArgsWithE = if (debugOn)
       tArgs zip eArgs.get.map(Some(_))
     else
       tArgs zip Seq.fill(tArgs.length)(None)
     val gIns = s.g + Store(predicate.formalArgs map (_.localVar) zip tArgsWithE)
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
     val s1 = s.scalePermissionFactor(tPerm, ePerm)
+    lazy val oldHeap = magicWandSupporter.getEvalHeap(s)
+    lazy val oldPCS = v.decider.pcs.duplicate()
 
     v.heapSupporter.consumeSingle(s1, s1.h, pa, tArgs, eArgs, tPerm, ePerm, true, pve, v)((s2, h2, snap, v1) => {
       val s3 = s2.copy(g = gIns, h = h2)
@@ -210,7 +215,7 @@ object predicateSupporter extends PredicateSupportRules {
               App(s4.predicateData(predicate.name).triggerFunction,
                 snap.get.convert(terms.sorts.Snap) +: tArgs)
             val eargs = eArgs.mkString(", ")
-            v4.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
+            v4.decider.assume(predicateTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
           }
           Q(s4.copy(g = s.g,
             permissionScalingFactor = s.permissionScalingFactor,
@@ -225,7 +230,7 @@ object predicateSupporter extends PredicateSupportRules {
               App(s4.predicateData(predicate.name).triggerFunction,
                 snap.get.convert(terms.sorts.Snap) +: tArgs)
             val eargs = eArgs.mkString(", ")
-            v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
+            v2.decider.assume(predicateTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
           }
           Q(s4.copy(g = s.g,
             permissionScalingFactor = s.permissionScalingFactor,

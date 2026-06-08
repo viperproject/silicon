@@ -80,7 +80,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
           val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, s.functionRecorderQuantifiedVariables().map(_._1), v)
 
-          snapEqs foreach (t => v.decider.assume(t, Option.when(withExp)(DebugExp.createInstance("Snapshot Equations", true))))
+          snapEqs foreach (t => v.decider.assume(t, Option.when(debugOn)(DebugExp.createInstance("Snapshot Equations", true))))
 
           functionRecorder = _functionRecorder
           mergedChunks = _mergedChunks
@@ -98,25 +98,29 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         mergedChunks.filter(_.isInstanceOf[BasicChunk]) foreach { case ch: BasicChunk =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties(s.mayAssumeUpperBounds))
-          pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2))))
+          pathCond.foreach(p => v.decider.assume(p._1, Option.when(debugOn)(DebugExp.createInstance(p._2, p._2))))
         }
 
         Resources.resourceDescriptions foreach { case (id, desc) =>
           val pathCond = interpreter.buildPathConditionsForResource(id, desc.delayedProperties(s.mayAssumeUpperBounds))
-          pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2))))
+          pathCond.foreach(p => v.decider.assume(p._1, Option.when(debugOn)(DebugExp.createInstance(p._2, p._2))))
         }
 
         v.symbExLog.closeScope(sepIdentifier)
         (functionRecorder, hs :+ Heap(mergedChunks))
       }
 
-    val s1 = s.copy(functionRecorder = functionRecorderAfterHeapMerging,
-                    h = mergedHeaps.head,
-                    reserveHeaps = mergedHeaps.tail)
+    val alreadyRecording = s.recordIntermediateHeaps
+    val s1 = if (debugOn && !alreadyRecording)
+      v.startKeyHeap(s, v.getDebugHeapLabel(s).getOrElse("preConsolidateHeapMissing"), StateConsolidation)
+    else s
+    val s2 = s1.copy(functionRecorder = functionRecorderAfterHeapMerging,
+                     h = mergedHeaps.head,
+                     reserveHeaps = mergedHeaps.tail)
 
-    val s2 = assumeUpperPermissionBoundForQPFields(s1, v)
+    val s3 = assumeUpperPermissionBoundForQPFields(s2, v)
 
-    s2
+    if (debugOn && !alreadyRecording) v.finishKeyHeap(s3) else s3
   }
 
   def consolidateOptionally(s: State, v: Verifier): State =
@@ -132,13 +136,13 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     val sepIdentifier = v.symbExLog.openScope(mergeLog)
     val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, h.values.toSeq, newH.values.toSeq, s.functionRecorderQuantifiedVariables().map(_._1), v)
 
-    v.decider.assume(snapEqs, Option.when(withExp)(DebugExp.createInstance("Snapshot", isInternal_ = true)), enforceAssumption = false)
+    v.decider.assume(snapEqs, Option.when(debugOn)(DebugExp.createInstance("Snapshot", isInternal_ = true)), enforceAssumption = false)
 
     val interpreter = new NonQuantifiedPropertyInterpreter(mergedChunks, v)
     newlyAddedChunks.filter(_.isInstanceOf[BasicChunk]) foreach { case ch: BasicChunk =>
       val resource = Resources.resourceDescriptions(ch.resourceID)
       val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties(s.mayAssumeUpperBounds))
-      pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2))))
+      pathCond.foreach(p => v.decider.assume(p._1, Option.when(debugOn)(DebugExp.createInstance(p._2, p._2))))
     }
 
     v.symbExLog.closeScope(sepIdentifier)
@@ -277,10 +281,10 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           val currentPermAmount = PermLookup(field.name, pmDef.pm, receiver)
           v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
 
-          val debugExp = if (withExp) {
-            val (debugHeapName, debugLabel) = v.getDebugOldLabel(sf, ast.NoPosition)
-            sf = sf.copy(oldHeaps = sf.oldHeaps + (debugHeapName -> sf.h))
-            val permExp = ast.DebugLabelledOld(ast.CurrentPerm(ast.FieldAccess(receiverExp.localVar, field)())(ast.NoPosition, ast.NoInfo, ast.NoTrafos), debugLabel)()
+          val debugExp = if (debugOn) {
+            sf = if (sf.recordIntermediateHeaps) v.recordIntermediateHeap(sf, StateConsolidation) else sf
+            val permExp = ast.DebugLabelledOld(ast.CurrentPerm(ast.FieldAccess(receiverExp.localVar, field)())(ast.NoPosition, ast.NoInfo, ast.NoTrafos),
+              v.getDebugOldLabel(sf, ast.NoPosition))()
             val exp = ast.Forall(Seq(receiverExp), Seq(), ast.PermLeCmp(permExp, ast.FullPerm()())())()
             Some(DebugExp.createInstance(exp, exp))
           } else { None }
@@ -295,10 +299,10 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
            */
           for (chunk <- fieldChunks) {
             if (chunk.singletonRcvr.isDefined){
-              val debugExp = if (withExp) {
-                val (debugHeapName, debugLabel) = v.getDebugOldLabel(sf, ast.NoPosition)
-                val permExp = ast.DebugLabelledOld(ast.CurrentPerm(ast.FieldAccess(chunk.singletonRcvrExp.get, field)())(), debugLabel)()
-                sf = sf.copy(oldHeaps = sf.oldHeaps + (debugHeapName -> sf.h))
+              val debugExp = if (debugOn) {
+                sf = if (sf.recordIntermediateHeaps) v.recordIntermediateHeap(sf, StateConsolidation) else sf
+                val permExp = ast.DebugLabelledOld(ast.CurrentPerm(ast.FieldAccess(chunk.singletonRcvrExp.get, field)())(),
+                  v.getDebugOldLabel(sf, ast.NoPosition))()
                 val exp = ast.PermLeCmp(permExp, ast.FullPerm()())()
                 Some(DebugExp.createInstance(exp, exp))
               } else { None }
@@ -308,12 +312,11 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
               val triggers = chunkReceivers.map(r => Trigger(r)).toSeq
               val currentPermAmount = PermLookup(field.name, pmDef.pm, chunk.quantifiedVars.head)
               v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
-              val debugExp = if (withExp) {
+              val debugExp = if (debugOn) {
+                sf = if (sf.recordIntermediateHeaps) v.recordIntermediateHeap(sf, StateConsolidation) else sf
                 val chunkReceiverExp = chunk.quantifiedVarExps.get.head.localVar
                 var permExp: ast.Exp = ast.CurrentPerm(ast.FieldAccess(chunkReceiverExp, field)())(chunkReceiverExp.pos, chunkReceiverExp.info, chunkReceiverExp.errT)
-                val (debugHeapName, debugLabel) = v.getDebugOldLabel(sf, ast.NoPosition)
-                sf = sf.copy(oldHeaps = sf.oldHeaps + (debugHeapName -> sf.h))
-                permExp = ast.DebugLabelledOld(permExp, debugLabel)()
+                permExp = ast.DebugLabelledOld(permExp, v.getDebugOldLabel(sf, ast.NoPosition))()
                 val exp = ast.Forall(chunk.quantifiedVarExps.get, Seq(), ast.PermLeCmp(permExp, ast.FullPerm()())())()
                 Some(DebugExp.createInstance(exp, exp))
               } else { None }
