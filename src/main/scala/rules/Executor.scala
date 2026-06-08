@@ -369,9 +369,11 @@ object executor extends ExecutionRules {
         Q(s.copy(g = s.g + (x -> (t, newExp))), v)
 
       case ass @ ast.LocalVarAssign(x, rhs) =>
-        eval(s, rhs, AssignmentFailed(ass), v)((s1, tRhs, rhsNew, v1) => {
+        val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(ass)) else s
+        eval(s0, rhs, AssignmentFailed(ass), v)((s1, tRhs, rhsNew, v1) => {
           val (t, e) = ssaifyRhs(tRhs, rhs, rhsNew, x.name, x.typ, v, s1)
-          Q(s1.copy(g = s1.g + (x, (t, e))), v1)})
+          val s1a = if (debugOn) v.finishKeyHeap(s1) else s1
+          Q(s1a.copy(g = s1a.g + (x, (t, e))), v1)})
 
       /* TODO: Encode assignments e1.f := e2 as
        *         exhale acc(e1.f)

@@ -418,7 +418,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
     }
 
     recordedBranches.foldLeft(tempResult)((prevRes, recordedState) => {
-      prevRes combine {
+      prevRes && {
         val (state, branchConditions, branchConditionsExp, conservedPcs, magicWandChunk) = recordedState
         val s1 = state.copy(
           reserveHeaps = state.reserveHeaps.drop(3),

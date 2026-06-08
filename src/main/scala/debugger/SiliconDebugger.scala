@@ -6,6 +6,7 @@ import viper.silicon.interfaces.state.Chunk
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, Success, VerificationResult}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.evaluator
+import viper.silicon.state.State.TemporaryRecord
 import viper.silicon.state._
 import viper.silicon.state.terms.{Term, True}
 import viper.silicon.utils.ast.simplifyVariableName
@@ -106,12 +107,23 @@ case class ProofObligation(s: State,
       heapChunksString(heapRecord.heap, isIntermediateHeap = true)
   }
 
+  private def tempHeapString(tempRecord: Option[TemporaryRecord]): String = {
+    tempRecord match {
+      case None => ""
+      case Some((label, cause, pcs, heaps)) =>
+        s"Current intermediate heaps:\n" +
+          s"\tCause: ${causeToString(cause)}\n" +
+          heaps.map { case (l, r) => intermediateHeapString(l, r) + "\n" }.mkString("")
+    }
+  }
+
   private def heapString: String = {
     if (!printConfig.printOldHeaps)
       s"Heap:\n${heapChunksString(s.h)}\n"
     else {
       s"Current Heap:\n${heapChunksString(s.h)}\n" +
-        s.debugOldHeaps.map { case (label, dh) => debugHeapString(label, dh) }.mkString("")
+        s.debugOldHeaps.map { case (label, dh) => debugHeapString(label, dh) }.mkString("") +
+        tempHeapString(s.temporaryHeapRecord)
     }
   }
 

@@ -117,10 +117,11 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     val s2 = s1.copy(functionRecorder = functionRecorderAfterHeapMerging,
                      h = mergedHeaps.head,
                      reserveHeaps = mergedHeaps.tail)
+    val s3 = if (debugOn) v.recordIntermediateHeap(s2, StateConsolidation) else s2
 
-    val s3 = assumeUpperPermissionBoundForQPFields(s2, v)
+    val s4 = assumeUpperPermissionBoundForQPFields(s3, v)
 
-    if (debugOn && !alreadyRecording) v.finishKeyHeap(s3) else s3
+    if (debugOn && !alreadyRecording) v.finishKeyHeap(s4) else s4
   }
 
   def consolidateOptionally(s: State, v: Verifier): State =

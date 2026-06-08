@@ -751,8 +751,8 @@ object evaluator extends EvaluationRules {
                             permissionScalingFactorExp = s6.permissionScalingFactorExp,
                             constrainableARPs = s1.constrainableARPs)
                             .decCycleCounter(predicate)
-                          val s10 = v5.stateConsolidator(s9).consolidateOptionally(s9, v5)
-                          val s11 = if (debugOn && s10.recordIntermediateHeaps) v5.recordIntermediateHeap(s10, EvalExp(uf)) else s10
+                          val s10 = if (debugOn && s9.recordIntermediateHeaps) v5.recordIntermediateHeap(s9, EvalExp(uf)) else s9
+                          val s11 = v5.stateConsolidator(s10).consolidateOptionally(s10, v5)
                           eval(s11, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))
                         })
                       } else {
@@ -764,8 +764,8 @@ object evaluator extends EvaluationRules {
                                            permissionScalingFactorExp = s6.permissionScalingFactorExp,
                                            constrainableARPs = s1.constrainableARPs)
                                      .decCycleCounter(predicate)
-                          val s10 = v5.stateConsolidator(s9).consolidateOptionally(s9, v5)
-                          val s11 = if (debugOn && s10.recordIntermediateHeaps) v5.recordIntermediateHeap(s10, EvalExp(uf)) else s10
+                          val s10 = if (debugOn && s9.recordIntermediateHeaps) v5.recordIntermediateHeap(s9, EvalExp(uf)) else s9
+                          val s11 = v5.stateConsolidator(s10).consolidateOptionally(s10, v5)
                           eval(s11, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))})
                       }
                     })

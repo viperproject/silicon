@@ -278,7 +278,13 @@ object State {
 
             val oldHeaps3 = oldHeaps1 ++ oldHeaps2
             val debugOldHeaps3 = debugOldHeaps1 ++ debugOldHeaps2
-            val temporaryHeapRecord3 = if (temporaryHeapRecord1 == temporaryHeapRecord2) temporaryHeapRecord1 else None
+            val temporaryHeapRecord3 = (temporaryHeapRecord1, temporaryHeapRecord2) match {
+              case (Some((label1, cause1, pcs1, heaps1)), Some((label2, cause2, _, heaps2))) =>
+                if (label1 == label2 && cause1 == cause2) Some(label1, cause1, pcs1, heaps1 ++ heaps2) else None
+              case (Some(tmp1), None) => Some(tmp1)
+              case (None, Some(tmp2)) => Some(tmp2)
+              case (None, None) => None
+            }
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
@@ -443,7 +449,13 @@ object State {
           moreCompleteExhale2, `moreJoins`) =>
 
             val debugOldHeaps3 = debugOldHeaps1 ++ debugOldHeaps2
-            val temporaryHeapRecord3 = if (temporaryHeapRecord1 == temporaryHeapRecord2) temporaryHeapRecord1 else None
+            val temporaryHeapRecord3 = (temporaryHeapRecord1, temporaryHeapRecord2) match {
+              case (Some((label1, cause1, pcs1, heaps1)), Some((label2, cause2, _, heaps2))) =>
+                if (label1 == label2 && cause1 == cause2) Some(label1, cause1, pcs1, heaps1 ++ heaps2) else None
+              case (Some(tmp1), None) => Some(tmp1)
+              case (None, Some(tmp2)) => Some(tmp2)
+              case (None, None) => None
+            }
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
