@@ -698,11 +698,12 @@ object evaluator extends EvaluationRules {
           evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
             eval(s1, ePerm.getOrElse(ast.FullPerm()()), pve, v1)((s2, tPerm, ePermNew, v2) => {
               val s2a = if (debugOn && s1.recordIntermediateHeaps) v2.recordIntermediateHeap(s2, EvalExp(uf)) else s2
+              val s2Label = v2.getDebugHeapLabel(s2a).getOrElse("missingUnfoldingHeap")
               val unfoldingNew = eArgsNew.map(args => uf.copy(acc = acc.copy(loc = pa.copy(args = args)(pa.pos, pa.info, pa.errT),
                 permExp = Some(ePermNew.get))(acc.pos, acc.info, acc.errT))(uf.pos, uf.info, uf.errT))
               val joinExp = Option.when(debugOn)({
                 if (s1.isEvalInOld) unfoldingNew.get
-                else ast.DebugLabelledOld(unfoldingNew.get, v2.getDebugOldLabel(s2, uf.pos))(uf.pos, uf.info, uf.errT)
+                else ast.DebugLabelledOld(unfoldingNew.get, v2.getDebugOldLabel(s2a, uf.pos))(uf.pos, uf.info, uf.errT)
               })
               v2.decider.assert(IsPositive(tPerm)) { // TODO: Replace with permissionSupporter.assertNotNegative
                 case true =>
@@ -772,10 +773,10 @@ object evaluator extends EvaluationRules {
                   })(join(eIn.typ, "joined_unfolding", s2.relevantQuantifiedVariables.map(_._1),
                     joinExp, v2))((s12, r12, v7)
                     => {
-                    v7.decider.finishDebugSubExp(s"unfolded(${predicate.name})")
+                    v7.decider.finishDebugSubExp(s"unfolding of ${predicate.name}(${eArgs.mkString(", ")}) in heap $s2Label")
                     Q(s12, r12._1, r12._2, v7)})
                 case false =>
-                  v2.decider.finishDebugSubExp(s"unfolded(${predicate.name})")
+                  v2.decider.finishDebugSubExp(s"unfolding of ${predicate.name}(${eArgs.mkString(", ")}) in heap $s2Label")
                   createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))}}))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables.map(_._1))

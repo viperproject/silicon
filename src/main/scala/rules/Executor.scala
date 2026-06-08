@@ -463,6 +463,7 @@ object executor extends ExecutionRules {
 
       case assert @ ast.Assert(a) =>
         val pve = AssertFailed(assert)
+        val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(assert)) else s
 
         if (s.exhaleExt) {
           Predef.assert(s.h.values.isEmpty)
@@ -472,13 +473,16 @@ object executor extends ExecutionRules {
            * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
            * by s.h. By copying hUsed to s.h the contained permissions remain available inside the wand.
            */
-          consume(s, a, false, pve, v)((s2, _, v1) => {
-            Q(s2.copy(h = s2.reserveHeaps.head), v1)
+          consume(s0, a, false, pve, v)((s1, _, v1) => {
+            val s1a = s1.copy(h = s1.reserveHeaps.head)
+            val s1b = if (debugOn) v1.finishKeyHeap(s1a) else s1a
+            Q(s1b, v1)
           })
         } else
-          consume(s, a, false, pve, v)((s1, _, v1) => {
-            val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
-            Q(s2, v1)})
+          consume(s0, a, false, pve, v)((s1, _, v1) => {
+            val s1a = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
+            val s1b = if (debugOn) v1.finishKeyHeap(s1a) else s1a
+            Q(s1b, v1)})
 
       // Calling hack407_R() results in Silicon efficiently havocking all instances of resource R.
       // See also Silicon issue #407.

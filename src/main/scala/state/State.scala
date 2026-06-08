@@ -277,7 +277,11 @@ object State {
                      moreCompleteExhale2, `moreJoins`) =>
 
             val oldHeaps3 = oldHeaps1 ++ oldHeaps2
-            val debugOldHeaps3 = debugOldHeaps1 ++ debugOldHeaps2
+            val debugOldHeaps3 = mergeMaps(debugOldHeaps1, (), debugOldHeaps2, ())(
+              (record, _) => Some(record))(
+              (record1, _, record2, _) =>
+                Some(record1.copy(intermediateHeaps = record1.intermediateHeaps ++ record2.intermediateHeaps))
+            )
             val temporaryHeapRecord3 = (temporaryHeapRecord1, temporaryHeapRecord2) match {
               case (Some((label1, cause1, pcs1, heaps1)), Some((label2, cause2, _, heaps2))) =>
                 if (label1 == label2 && cause1 == cause2) Some(label1, cause1, pcs1, heaps1 ++ heaps2) else None
@@ -448,7 +452,11 @@ object State {
           `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
           moreCompleteExhale2, `moreJoins`) =>
 
-            val debugOldHeaps3 = debugOldHeaps1 ++ debugOldHeaps2
+            val debugOldHeaps3 = mergeMaps(debugOldHeaps1, (), debugOldHeaps2, ())(
+              (record, _) => Some(record))(
+              (record1, _, record2, _) =>
+                Some(record1.copy(intermediateHeaps = record1.intermediateHeaps ++ record2.intermediateHeaps))
+              )
             val temporaryHeapRecord3 = (temporaryHeapRecord1, temporaryHeapRecord2) match {
               case (Some((label1, cause1, pcs1, heaps1)), Some((label2, cause2, _, heaps2))) =>
                 if (label1 == label2 && cause1 == cause2) Some(label1, cause1, pcs1, heaps1 ++ heaps2) else None
