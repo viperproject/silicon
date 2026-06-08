@@ -214,6 +214,23 @@ object producer extends ProductionRules {
       continuation(if (state.exhaleExt) state.copy(reserveHeaps = state.h +: state.reserveHeaps.drop(1)) else state, verifier)
 
     val produced = a match {
+      case imp @ ast.Implies(e0, a0)
+          if !a.isPure
+          && Verifier.config.lazyImpureImplications()
+          && isLazyApplicable(a0) =>
+
+        val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "produce")
+        val uidImplies = v.symbExLog.openScope(impliesRecord)
+
+        eval(s, e0, pve, v)((s1, t0, e0New, v1) => {
+          v1.decider.assume(Implies(Not(t0), sf(sorts.Snap, v1) === Unit),
+            Option.when(withExp)(DebugExp.createInstance("Lazy implication: false-branch snapshot", true)))
+          produceRLazy(s1, sf, t0, e0New, a0, pve, v1)((s2, v2) => {
+            v2.symbExLog.closeScope(uidImplies)
+            Q(s2, v2)
+          })
+        })
+
       case imp @ ast.Implies(e0, a0) if !a.isPure && s.moreJoins.id >= JoinMode.Impure.id =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "produce")
         val uidImplies = v.symbExLog.openScope(impliesRecord)
@@ -266,6 +283,27 @@ object producer extends ProductionRules {
                 v2.symbExLog.closeScope(uidImplies)
                 Q(s2, v2)
             }))
+
+      case ite @ ast.CondExp(e0, a1, a2)
+          if !a.isPure
+          && Verifier.config.lazyImpureImplications()
+          && isLazyApplicable(a1)
+          && isLazyApplicable(a2) =>
+
+        val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "produce")
+        val uidCondExp = v.symbExLog.openScope(condExpRecord)
+
+        eval(s, e0, pve, v)((s1, t0, e0New, v1) => {
+          val (sf1, sf2) = v1.snapshotSupporter.createSnapshotPair(s1, sf, a1, a2, v1)
+          produceRLazy(s1, sf1, t0, e0New, a1, pve, v1)((s2, v2) => {
+            val notT0 = Not(t0)
+            val notE0New = e0New.map(e => ast.Not(e)())
+            produceRLazy(s2, sf2, notT0, notE0New, a2, pve, v2)((s3, v3) => {
+              v3.symbExLog.closeScope(uidCondExp)
+              Q(s3, v3)
+            })
+          })
+        })
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && s.moreJoins.id >= JoinMode.Impure.id =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "produce")
@@ -378,5 +416,103 @@ object producer extends ProductionRules {
     }
 
     produced
+  }
+
+  private def isLazyApplicable(body: ast.Exp): Boolean = {
+    val tlcs = body.topLevelConjuncts
+    tlcs.exists(_.isInstanceOf[ast.AccessPredicate]) &&
+    tlcs.forall {
+      case _: ast.AccessPredicate => true
+      case e if e.isPure => true
+      case _ => false
+    }
+  }
+
+  private def produceRLazy(s: State,
+                           sf: (Sort, Verifier) => Term,
+                           cond: Term,
+                           condExp: Option[ast.Exp],
+                           body: ast.Exp,
+                           pve: PartialVerificationError,
+                           v: Verifier)
+                          (Q: (State, Verifier) => VerificationResult)
+                          : VerificationResult = {
+
+    val tlcs = body.topLevelConjuncts
+    val pves = Seq.fill(tlcs.length)(pve)
+    produceTlcsLazy(s, sf, cond, condExp, tlcs, pves, v)(Q)
+  }
+
+  private def produceTlcsLazy(s: State,
+                              sf: (Sort, Verifier) => Term,
+                              cond: Term,
+                              condExp: Option[ast.Exp],
+                              as: Seq[ast.Exp],
+                              pves: Seq[PartialVerificationError],
+                              v: Verifier)
+                             (Q: (State, Verifier) => VerificationResult)
+                             : VerificationResult = {
+
+    if (as.isEmpty)
+      Q(s, v)
+    else {
+      val a = as.head.whenInhaling
+      val pve = pves.head
+
+      if (as.tail.isEmpty)
+        produceTlcLazy(s, sf, cond, condExp, a, pve, v)(Q)
+      else {
+        val (sf0, sf1) =
+          v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v)
+
+        produceTlcLazy(s, sf0, cond, condExp, a, pve, v)((s1, v1) =>
+          produceTlcsLazy(s1, sf1, cond, condExp, as.tail, pves.tail, v1)(Q))
+      }
+    }
+  }
+
+  private def produceTlcLazy(s: State,
+                             sf: (Sort, Verifier) => Term,
+                             cond: Term,
+                             condExp: Option[ast.Exp],
+                             a: ast.Exp,
+                             pve: PartialVerificationError,
+                             v: Verifier)
+                            (Q: (State, Verifier) => VerificationResult)
+                            : VerificationResult = a match {
+
+    case accPred: ast.AccessPredicate =>
+      val eArgs = accPred.loc.args(s.program)
+      val ePerm = accPred.perm
+      val resource = accPred.res(s.program)
+
+      evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
+        eval(s1, ePerm, pve, v1)((s1a, tPerm, ePermNew, v1a) =>
+          permissionSupporter.assertNotNegative(s1a, tPerm, ePerm, ePermNew, pve, v1a)((s1b, v2) => {
+            val s2 = s1b.copy(constrainableARPs = s.constrainableARPs)
+            val snap = sf(v2.snapshotSupporter.optimalSnapshotSort(resource, s2, v2), v2)
+            val baseGain = if (!Verifier.config.unsafeWildcardOptimization() ||
+              (resource.isInstanceOf[ast.Location] && s2.permLocations.contains(resource.asInstanceOf[ast.Location])))
+              PermTimes(tPerm, s2.permissionScalingFactor)
+            else
+              WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
+
+            val gain = Ite(cond, baseGain, NoPerm)
+            val baseGainExp = ePermNew.map(p => ast.PermMul(p, s2.permissionScalingFactorExp.get)(p.pos, p.info, p.errT))
+            val gainExp = condExp.flatMap(ce =>
+              baseGainExp.map(bge => ast.CondExp(ce, bge, ast.NoPerm()())()))
+
+            v2.heapSupporter.produceSingle(s2, resource, tArgs, eArgsNew, snap, None, gain, gainExp, pve, true, v2)(Q)
+          })))
+
+    case _ =>
+      v.decider.assume(sf(sorts.Snap, v) === Unit,
+        Option.when(withExp)(DebugExp.createInstance("Empty snapshot", true)))
+      eval(s, a, pve, v)((s1, t, aNew, v1) => {
+        v1.decider.assume(Implies(cond, t),
+          condExp.map(ce => ast.Implies(ce, a)()),
+          aNew.map(n => ast.Implies(condExp.get, n)()))
+        Q(s1, v1)
+      })
   }
 }
