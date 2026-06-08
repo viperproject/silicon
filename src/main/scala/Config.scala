@@ -590,6 +590,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val lazyImpureImplications: ScallopOption[Boolean] = opt[Boolean]("lazyImpureImplications",
+    descr = "Avoid branching on impure implications and conditionals by conditionalizing heap chunks.",
+    default = Some(false),
+    noshort = true
+  )
+
   val printTranslatedProgram: ScallopOption[Boolean] = opt[Boolean]("printTranslatedProgram",
     descr ="Print the final program that is going to be verified to stdout.",
     default = Some(false),
