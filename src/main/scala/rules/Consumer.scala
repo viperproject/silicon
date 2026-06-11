@@ -7,6 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
+import viper.silicon.debugger.DebugExp
 
 import scala.collection.mutable
 import viper.silver.ast
@@ -409,7 +410,8 @@ object consumer extends ConsumptionRules {
         val termToAssert = t match {
           case Quantification(q, vars, body, trgs, name, isGlob, weight) =>
             val transformed = FunctionPreconditionTransformer.transform(body, s3.program)
-            v2.decider.assume(Quantification(q, vars, transformed, trgs, name+"_precondition", isGlob, weight), Option.when(withExp)(e), eNew)
+            v2.decider.assume(Quantification(q, vars, transformed, trgs, name+"_precondition", isGlob, weight),
+              Option.when(withExp)(DebugExp.createInstance("Function preconditions hold in quantifier " + eNew.toString, true)))
             Quantification(q, vars, Implies(transformed, body), trgs, name, isGlob, weight)
           case _ => t
         }
