@@ -27,7 +27,7 @@ trait ProverLike {
   protected val debugMode = Verifier.config.enableDebugging()
   var preambleAssumptions: Seq[DebugAxiom] = Seq()
   protected var preambleDependencyAnalyzer: DependencyAnalyzer =
-    if(Verifier.config.enableDependencyAnalysis()) new DefaultDependencyAnalyzer(ast.Method("none", Seq(), Seq(), Seq(), Seq(), None)())
+    if (Verifier.config.enableDependencyAnalysis()) new DefaultDependencyAnalyzer(ast.Method("none", Seq(), Seq(), Seq(), Seq(), None)())
     else new NoDependencyAnalyzer()
   def emit(content: String): Unit
   def emit(contents: Iterable[String]): Unit = { contents foreach emit }
@@ -42,10 +42,10 @@ trait ProverLike {
     if (debugMode)
       preambleAssumptions :+= new DebugAxiom(description, axioms.map(_._1))
 
-    if(Verifier.config.enableDependencyAnalysis()){
+    if (Verifier.config.enableDependencyAnalysis()) {
       axioms.foreach(axiom => {
         val analysisInfos = axiom._2
-				if(analysisInfos.analysisEnabled){
+				if (analysisInfos.analysisEnabled) {
 					val id = preambleDependencyAnalyzer.addAxiom(axiom._1, analysisInfos)
 					assume(axiom._1, DependencyAnalyzer.createAxiomLabel(id))
 				}else {

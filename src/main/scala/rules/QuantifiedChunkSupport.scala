@@ -1041,13 +1041,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             Q(s1, v)
           case false =>
             val failure = createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver is injective")
-            if(s.retryLevel == 0) v.decider.handleFailedAssertion(completeReceiverInjectivityCheck, analysisInfos, v.reportFurtherErrors())
-            if(s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, v) else failure
+            if (s.retryLevel == 0) v.decider.handleFailedAssertion(completeReceiverInjectivityCheck, analysisInfos, v.reportFurtherErrors())
+            if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, v) else failure
         }
       case false =>
         val failure = createFailure(pve dueTo negativePermissionReason, v, s, nonNegImplication, nonNegImplicationExp)
-        if(s.retryLevel == 0) v.decider.handleFailedAssertion(nonNegTerm, analysisInfos, v.reportFurtherErrors())
-        if(s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, v) else failure
+        if (s.retryLevel == 0) v.decider.handleFailedAssertion(nonNegTerm, analysisInfos, v.reportFurtherErrors())
+        if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, v) else failure
     }
 
   }

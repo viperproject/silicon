@@ -13,7 +13,7 @@ trait AbstractDependencyAnalysisCliTool {
 	protected def getQueriedNodesFromInput(inputs: Set[String]): Set[DependencyAnalysisNode] = {
 		inputs flatMap (input => {
 			val parts = input.split("@")
-			if(parts.size == 2)
+			if (parts.size == 2)
 				parts(1).toIntOption.map(interpreter.getNodesByPosition(parts(0), _)).getOrElse(Set.empty)
 			else if(parts.size == 1){
 				parts(0).toIntOption map interpreter.getNodesByLine getOrElse Set.empty

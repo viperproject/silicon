@@ -13,7 +13,7 @@ trait DependencyAnalysisNode {
    * The unique node id, which is also given to the SMT solver such that unsat cores can be mapped back to dependency nodes.
    */
   val _id: Option[Int]
-  val id: Int = if(_id.isEmpty) DependencyGraphHelper.nextId() else _id.get
+  val id: Int = if (_id.isEmpty) DependencyGraphHelper.nextId() else _id.get
 
 
   /**

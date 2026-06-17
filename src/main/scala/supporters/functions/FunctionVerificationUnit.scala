@@ -314,7 +314,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     private def emitAndRecordFunctionAxioms(axiom: (Term, DependencyAnalysisInfos)*): Unit = {
       val cleanAxiom =
-        if(!Verifier.config.enableDependencyAnalysis()) axiom
+        if (!Verifier.config.enableDependencyAnalysis()) axiom
         else axiom.map(a => (a._1.transform{
           case Var(name, _, _) if name.name.startsWith(DependencyAnalyzer.analysisLabelName) => True // replace dependency analysis labels by True to avoid errors
         }(), a._2))

@@ -190,7 +190,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                       analysisInfos: DependencyAnalysisInfos)
                      (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
-    if(v.decider.isPathInfeasible){
+    if (v.decider.isPathInfeasible) {
       v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfos)
       v.decider.dependencyAnalyzer.addAssumption(False, analysisInfos)
       return Q(s, v)
@@ -240,7 +240,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
           Q(s5, v)
         case (Incomplete(_, _), s3, _) =>
           val failure = createFailure(ve, v, s3, "sufficient permission")
-          if(s3.retryLevel == 0) v.decider.handleFailedAssertion(False, analysisInfos, v.reportFurtherErrors())
+          if (s3.retryLevel == 0) v.decider.handleFailedAssertion(False, analysisInfos, v.reportFurtherErrors())
           if(s3.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s3, v) else failure
       }
     } else {

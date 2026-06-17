@@ -240,9 +240,9 @@ object evaluator extends EvaluationRules {
         s.oldHeaps.get(heapName) match {
           case None =>
             val failure = createFailure(pve dueTo LabelledStateNotReached(ast.LabelledOld(e0, heapName)(old.pos, old.info, old.errT)), v, s, "labelled state reached")
-            if(s.retryLevel == 0) v.decider.handleFailedAssertion(False, analysisInfos, v.reportFurtherErrors())
+            if (s.retryLevel == 0) v.decider.handleFailedAssertion(False, analysisInfos, v.reportFurtherErrors())
             val freshVar = v.decider.fresh(v.symbolConverter.toSort(old.typ), None)
-            if(s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, freshVar, None, v) else failure
+            if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, freshVar, None, v) else failure
           case _ =>
             evalInOldState(s, heapName, e0, pve, v, analysisInfos)((s1, t0, _, v1) =>
               Q(s1, t0, Some(old), v1))
@@ -252,9 +252,9 @@ object evaluator extends EvaluationRules {
         s.oldHeaps.get(lbl) match {
           case None =>
             val failure = createFailure(pve dueTo LabelledStateNotReached(old), v, s, "labelled state reached")
-            if(s.retryLevel == 0) v.decider.handleFailedAssertion(False, analysisInfos, v.reportFurtherErrors())
+            if (s.retryLevel == 0) v.decider.handleFailedAssertion(False, analysisInfos, v.reportFurtherErrors())
             val freshVar = v.decider.fresh(v.symbolConverter.toSort(old.typ), None)
-            if(s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, freshVar, None, v) else failure
+            if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, freshVar, None, v) else failure
           case _ =>
             evalInOldState(s, lbl, e0, pve, v, analysisInfos)((s1, t0, e0New, v1) =>
               Q(s1, t0, e0New.map(ast.LabelledOld(_, lbl)(old.pos, old.info, old.errT)), v1))}

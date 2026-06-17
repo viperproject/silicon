@@ -105,13 +105,13 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
             && {
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {
                  val da = v3.decider.dependencyAnalyzer
-                 if(method.body.isEmpty) v3.decider.removeDependencyAnalyzer()
+                 if (method.body.isEmpty) v3.decider.removeDependencyAnalyzer()
                   exec(s3, body, v3)((s4, v4) => {
-                    if(method.body.isEmpty) v3.decider.dependencyAnalyzer = da
+                    if (method.body.isEmpty) v3.decider.dependencyAnalyzer = da
                     consumes(s4, posts, false, postViolated, v4, analysisInfosPostcondition)((_, _, _) =>
                       Success())})}) }  )})})
 
-      if(method.body.isEmpty){
+      if (method.body.isEmpty) {
         v.decider.dependencyAnalyzer.addDependenciesForAbstractMembers(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts), DependencyAnalysisInfos.DefaultDependencyAnalysisInfos)
       }
 

@@ -292,7 +292,7 @@ object executor extends ExecutionRules {
                       intermediateResult combine executionFlowController.locally(s2, v1)((s3, v2) => {
                         v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
                         v2.decider.declareAndRecordAsFreshMacros(fm1.filter(!v2.decider.freshMacros.contains(_)))  /* [BRANCH-PARALLELISATION] */
-                        if(v2.decider.pcs.getCurrentInfeasibilityNode.isEmpty) v2.decider.pcs.setCurrentInfeasibilityNode(pcs.infeasibilityNodeId)
+                        if (v2.decider.pcs.getCurrentInfeasibilityNode.isEmpty) v2.decider.pcs.setCurrentInfeasibilityNode(pcs.infeasibilityNodeId)
                         v2.decider.assume(pcs.assumptions map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t))), Some(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, analysisInfosLoopInternal)
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
                         if (!Verifier.config.disableInfeasibilityChecks() && v2.decider.checkSmoke(analysisInfosLoopInternal))
@@ -443,13 +443,13 @@ object executor extends ExecutionRules {
         case _ =>
           produce(s, freshSnap, a, InhaleFailed(inhale), v, analysisInfos)((s1, v1) => {
             v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-            if(v1.decider.isDependencyAnalysisEnabled && a.isInstanceOf[ast.FalseLit]) v1.decider.checkSmoke(analysisInfos)
+            if (v1.decider.isDependencyAnalysisEnabled && a.isInstanceOf[ast.FalseLit]) v1.decider.checkSmoke(analysisInfos)
             Q(s1, v1)})
       }
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-				val analysisInfos1 = if(a.topLevelConjuncts.size > 1) analysisInfos.copy(sourceInfos = List.empty) else analysisInfos // needed to ensure that each top-level conjunct gets a dedicated assertion node
+				val analysisInfos1 = if (a.topLevelConjuncts.size > 1) analysisInfos.copy(sourceInfos = List.empty) else analysisInfos // needed to ensure that each top-level conjunct gets a dedicated assertion node
 				consume(s, a, false, pve, v, analysisInfos1)((s1, _, v1) =>
           Q(s1, v1))
 
@@ -460,8 +460,8 @@ object executor extends ExecutionRules {
             QS(s1.copy(h = s.h), v1)
           else {
             val failure = createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(withExp)(a))
-            if(s1.retryLevel == 0) v1.decider.handleFailedAssertion(False, analysisInfos, v1.reportFurtherErrors())
-            if(s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine QS(s1, v1) else failure
+            if (s1.retryLevel == 0) v1.decider.handleFailedAssertion(False, analysisInfos, v1.reportFurtherErrors())
+            if (s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine QS(s1, v1) else failure
           }
         })((s2, v2) =>
           if (Verifier.config.disableInfeasibilityChecks())
@@ -471,7 +471,7 @@ object executor extends ExecutionRules {
         )
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
-				val analysisInfos1 = if(a.topLevelConjuncts.size > 1) analysisInfos.copy(sourceInfos = List.empty) else analysisInfos // needed to ensure that each top-level conjunct gets a dedicated assertion node
+				val analysisInfos1 = if (a.topLevelConjuncts.size > 1) analysisInfos.copy(sourceInfos = List.empty) else analysisInfos // needed to ensure that each top-level conjunct gets a dedicated assertion node
 				val r =
           consume(s, a, false, AssertFailed(assert), v, analysisInfos1)((_, _, _) =>
             Success())

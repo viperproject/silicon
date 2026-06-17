@@ -15,7 +15,7 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
 	private def isAnalysisEnabled = Verifier.config.enableDependencyAnalysis() && analysisEnabled
 
   def addInfo(info: ast.Info, node: ast.Node): DependencyAnalysisInfos = {
-		if(!isAnalysisEnabled) return this
+		if (!isAnalysisEnabled) return this
 
     val newSourceInfos = sourceInfos ++ info.getUniqueInfo[AnalysisSourceInfo].toList
     val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
@@ -25,7 +25,7 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
   }
 
   def addInfo(info: ast.Info): DependencyAnalysisInfos = {
-		if(!isAnalysisEnabled) return this
+		if (!isAnalysisEnabled) return this
 
     val newSourceInfos = sourceInfos ++ info.getUniqueInfo[AnalysisSourceInfo].toList
     val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
@@ -35,18 +35,18 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
   }
 
   def addInfo(infoString: String, pos: ast.Position, dependencyType: DependencyType): DependencyAnalysisInfos = {
-		if(!isAnalysisEnabled) return this
+		if (!isAnalysisEnabled) return this
 		this.copy(sourceInfos = sourceInfos ++ List(StringAnalysisSourceInfo(infoString, pos)), dependencyTypes = dependencyTypes ++ List(DependencyTypeInfo(dependencyType)))
 	}
 
 	def withDependencyType(dependencyType: DependencyType): DependencyAnalysisInfos = {
-		if(!isAnalysisEnabled) return this
+		if (!isAnalysisEnabled) return this
 
 		this.copy(dependencyTypes = DependencyTypeInfo(dependencyType) +: dependencyTypes)
   }
 
   def withSource(source: AnalysisSourceInfo): DependencyAnalysisInfos = {
-		if(!isAnalysisEnabled) return this
+		if (!isAnalysisEnabled) return this
 
 		this.copy(sourceInfos = source +: sourceInfos)
   }
@@ -62,25 +62,25 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
 
 	private def getDebugInfo: String = {
 		val sourceInfo = sourceInfos.headOption.map("source info: " + _.toString + " ").getOrElse("")
-		val nodeInfo = if(nodes.nonEmpty) "nodes: " + nodes.map(getNodeInfo).mkString(", ") else ""
+		val nodeInfo = if (nodes.nonEmpty) "nodes: " + nodes.map(getNodeInfo).mkString(", ") else ""
 		s"$sourceInfo$nodeInfo"
 	}
 
   def getSourceInfo: AnalysisSourceInfo = {
-		if(!isAnalysisEnabled) return StringAnalysisSourceInfo("Unknown", NoPosition)
+		if (!isAnalysisEnabled) return StringAnalysisSourceInfo("Unknown", NoPosition)
 		val sourceInfoOpt = sourceInfos.headOption
-		if(sourceInfoOpt.isDefined){
+		if (sourceInfoOpt.isDefined) {
 			sourceInfoOpt.get
-		}else{
+		} else {
 			SiliconRunner.logger.warn(s"WARN: Missing source info for $getDebugInfo")
 			nodes.headOption.map(AnalysisSourceInfo.createAnalysisSourceInfo).getOrElse(StringAnalysisSourceInfo("Unknown", NoPosition))
 		}
 	}
 
 	def getDependencyType: DependencyType = {
-		if(!isAnalysisEnabled) return DependencyType.make(AssumptionType.Unknown)
+		if (!isAnalysisEnabled) return DependencyType.make(AssumptionType.Unknown)
 		val dependencyTypeOpt = dependencyTypes.headOption.map(_.dependencyType)
-		if(dependencyTypeOpt.isDefined) {
+		if (dependencyTypeOpt.isDefined) {
 			dependencyTypeOpt.get
 		}else {
 			SiliconRunner.logger.warn(s"WARN: Missing dependency type for $getDebugInfo")

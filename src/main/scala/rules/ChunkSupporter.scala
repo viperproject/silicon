@@ -8,6 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
+import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos.DefaultDependencyAnalysisInfos
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
@@ -84,7 +85,7 @@ object chunkSupporter extends ChunkSupportRules {
               analysisInfos: DependencyAnalysisInfos)
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
-    if(v.decider.isPathInfeasible){
+    if (v.decider.isPathInfeasible) {
       v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfos)
       return Q(s, h, Option.when(returnSnap)(Unit), v)
     }
@@ -151,14 +152,14 @@ object chunkSupporter extends ChunkSupportRules {
               }
               QS(s2.copy(h = s.h), h2, snap, v1)
             case (_, s2, h2, _) if v1.decider.checkSmoke(analysisInfos, isAssert = true) =>
-              if(Verifier.config.disableInfeasibilityChecks())
+              if (Verifier.config.disableInfeasibilityChecks())
                 QS(s2.copy(h = s.h), h2, None, v1)
               else
                 Success() // TODO: Mark branch as dead?
             case _ =>
               val failure = createFailure(ve, v1, s1, "consuming chunk", true)
-              if(s1.retryLevel == 0) v1.decider.handleFailedAssertion(False, analysisInfos, v1.reportFurtherErrors())
-              if(s1.retryLevel == 0 && v1.reportFurtherErrors() && Verifier.config.disableInfeasibilityChecks()){
+              if (s1.retryLevel == 0) v1.decider.handleFailedAssertion(False, analysisInfos, v1.reportFurtherErrors())
+              if (s1.retryLevel == 0 && v1.reportFurtherErrors() && Verifier.config.disableInfeasibilityChecks()){
                 failure combine QS(s1.copy(h = s.h), s1.h, None, v1)
               }else{
                 failure
@@ -235,7 +236,7 @@ object chunkSupporter extends ChunkSupportRules {
   def produce(s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier)
              (Q: (State, Heap, Verifier) => VerificationResult)
              : VerificationResult = {
-    val analysisInfos = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withSource(StringAnalysisSourceInfo("produce", ast.NoPosition)).withDependencyType(DependencyType.Internal)
+    val analysisInfos = DefaultDependencyAnalysisInfos.withSource(StringAnalysisSourceInfo("produce", ast.NoPosition)).withDependencyType(DependencyType.Internal)
     // Try to merge the chunk into the heap by finding an alias.
     // In any case, property assumptions are added after the merge step.
     val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, h, ch, v, analysisInfos)
@@ -252,7 +253,7 @@ object chunkSupporter extends ChunkSupportRules {
              analysisInfos: DependencyAnalysisInfos)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
             : VerificationResult = {
-    if(v.decider.isPathInfeasible){
+    if (v.decider.isPathInfeasible) {
       v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfos)
       return Q(s, h, Unit, v)
     }
@@ -291,8 +292,8 @@ object chunkSupporter extends ChunkSupportRules {
         }
       case _ =>
         val failure = createFailure(ve, v, s, "looking up chunk", true)
-        if(s.retryLevel == 0) v.decider.handleFailedAssertion(False, analysisInfos, v.reportFurtherErrors())
-        if(s.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.disableInfeasibilityChecks()){
+        if (s.retryLevel == 0) v.decider.handleFailedAssertion(False, analysisInfos, v.reportFurtherErrors())
+        if (s.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.disableInfeasibilityChecks()){
           val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
           failure combine Q(s, snap, v)
         }else{
