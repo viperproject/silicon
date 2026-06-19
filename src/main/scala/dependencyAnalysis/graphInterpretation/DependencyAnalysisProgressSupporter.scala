@@ -93,19 +93,22 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 
 	/**
 	 * Computes the assertion quality given an assertion node and all of its dependencies.
-	 * The assertion quality is defined as the fraction of non-assumption dependencies over all dependencies.
-	 * The assertion quality is 0.0 if the assertion could not be proven to hold.
+	 * It returns None if the assertion trivially verifies (it has no dependencies). Otherwise, it returns the assertion quality.
+	 * If the assertion encountered a failure, i.e. it could not be proven to hold, then the assertion quality is 0.0.
+	 * Otherwise, the assertion quality is defined as the fraction of non-assumption dependencies over all dependencies.
 	 */
-	private def computeAssertionQuality(allDependencies: Set[CompactUserLevelDependencyAnalysisNode], assertion: AnalysisSourceInfo): Double = {
+	private def computeAssertionQuality(allDependencies: Set[CompactUserLevelDependencyAnalysisNode], assertion: AnalysisSourceInfo): Option[Double] = {
 		val assertionNodes = sourceToAssertionNodesMap.getOrElse(assertion, Set.empty).filter(node => node.isInstanceOf[GeneralAssertionNode])
 		val failedAssertionNodes = assertionNodes.filter(node =>  node.asInstanceOf[GeneralAssertionNode].hasFailed || node.assumptionType.equals(AssumptionType.ExplicitPostcondition))
-		// assertions with failures have quality = 0.0
+		// assertions with failures have quality of 0.0
 		if(failedAssertionNodes.nonEmpty)
-			return 0.0
+			return Some(0.0)
+
+		if (allDependencies.isEmpty) return None // we filter out trivial assertions, e.g. assertions that do not have any dependencies
 
 		val explicitDeps = allDependencies.filter(_.assumptionTypes.intersect(AssumptionType.explicitAssumptionTypes).nonEmpty).map(_.source)
 		val numDepsTotal = allDependencies.size
-		(numDepsTotal - explicitDeps.size).toDouble / numDepsTotal.toDouble
+		Some((numDepsTotal - explicitDeps.size).toDouble / numDepsTotal.toDouble)
 	}
 
 	private def getAssertionsRelevantForProgress: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = {
@@ -132,11 +135,8 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 
 		val specQuality = computeSpecQuality(allDependenciesPerAssertionNode.flatMap(_._1).toSet, enableDebugOutput)
 
-		// for assertion quality, we filter out assertions that do not have any dependencies
-		val depsOfNonTrivialAssertions = allDependenciesPerAssertionNode filter (_._1.nonEmpty)
-		val numNonTrivialAssertions = depsOfNonTrivialAssertions.size
-
-		val assertionQualities = depsOfNonTrivialAssertions map (ass => (computeAssertionQuality(ass._1, ass._2), ass._2))
+		val assertionQualities = allDependenciesPerAssertionNode map (ass => (computeAssertionQuality(ass._1, ass._2), ass._2)) collect { case (Some(q), s) => (q, s) }
+		val numNonTrivialAssertions = assertionQualities.size
 
 		// compute Peter's proof quality
 		val fullyVerifiedAssertions = assertionQualities.filter(_._1 == 1.0)
@@ -148,8 +148,8 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 
 		if(enableDebugOutput)
 			println(
-				s"fullyVerifiedAssertions:\n\t${fullyVerifiedAssertions.mkString("\n\t")}\n" +
-				s"assertionQualitiesSum:\n\t${assertionQualities.mkString("\n\t")}"
+				s"fullyVerifiedAssertions:\n\t${fullyVerifiedAssertions.sortBy(n => (n._2.getLineNumber, n._2.toString)).mkString("\n\t")}\n" +
+				s"assertionQualitiesSum:\n\t${assertionQualities.sortBy(n => (n._2.getLineNumber, n._2.toString)).mkString("\n\t")}"
 			)
 
 		println(
