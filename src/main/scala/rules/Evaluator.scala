@@ -641,17 +641,20 @@ object evaluator extends EvaluationRules {
 							tArgs zip eArgs.map(Some(_))
 						} else if (withExp) tArgs.zip(eArgsNew.get.map(Some(_))) else tArgs.zip(Seq.fill(tArgs.size)(None))
 						// encode the function call as a sequence of assignments to fresh variables (one for each argument) and a method call using the fresh variables as arguments
+						var s2b = s2
 						val argsFreshVar =
-							if(Verifier.config.enableDependencyAnalysis()){
+							if (Verifier.config.enableDependencyAnalysis()) {
 								argsPairs.map(arg => {
 									val argNew = v1.decider.fresh(arg._1.sort, None)
-									v1.decider.assume(Equals(argNew, arg._1), None, analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(arg._2.get))))
+									val constraint = Equals(argNew, arg._1)
+									v1.decider.assume(constraint, None, analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(arg._2.get))))
+									s2b = s2b.copy(functionRecorder = s2b.functionRecorder.recordConstrainedVar(argNew, constraint))
 									(argNew, None)
 								})
-							}else argsPairs
-            val s3 = s2.copy(g = Store(fargs.zip(argsFreshVar)),
+							} else argsPairs
+            val s3 = s2b.copy(g = Store(fargs.zip(argsFreshVar)),
                              recordVisited = true,
-                             functionRecorder = s2.functionRecorder.changeDepthBy(+1),
+                             functionRecorder = s2b.functionRecorder.changeDepthBy(+1),
                                 /* Temporarily disable the recorder: when recording (to later on
                                  * translate a particular function fun) and a function application
                                  * fapp is hit, then there is no need to record any information
@@ -677,7 +680,7 @@ object evaluator extends EvaluationRules {
                              smDomainNeeded = true,
                              moreJoins = JoinMode.Off,
                              assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts())
-                               s2.assertReadAccessOnly /* should currently always be false */ else true)
+                               s2b.assertReadAccessOnly /* should currently always be false */ else true)
             val precondAnalysisInfos = analysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Up))
             consumes(s3, presWithDAInfo, true, _ => pvePre, v2, precondAnalysisInfos)((s4, snap, v3) => {
               val snap1 = snap.get.convert(sorts.Snap)
