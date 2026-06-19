@@ -1,0 +1,18 @@
+method client()
+{
+    var a1: Int, a2: Int, a3: Int, b1: Int, b2: Int, b3: Int, b4: Int
+    a1 := 10
+    a2 := 20
+    a3 := 30
+
+    assume @guidedAssumption("4")(b1 == 1)   // least useful - is used besides three other facts in last assertion
+    assume @guidedAssumption("2")(b2 == 2)
+    assume @guidedAssumption("1")(b3 == 3)   // most useful - used on its own in first assertion
+    assume @guidedAssumption("3")(b4 == 4) 
+    assume 2 == 2                            // is not used at all
+
+    assert b3 == 3
+    assert a1 + b2 == 12
+    assert a1 + a2 + b4 == 34
+    assert a1 + a2 + a3 + b1 == 61
+}

@@ -1,0 +1,24 @@
+// Spec quality: 4/6
+// Proof quality: 4/5
+// Progress: 16/30
+
+method branches(x: Bool, y: Bool)
+{
+    var a: Int
+    var b: Int
+    assume x == y
+
+    if (x) {
+        a := 1
+    } else {
+        a := -1
+    }
+
+    if (y) {
+        b := 1
+    } else {
+        b := -1
+    }
+
+    assert x ==> a * b > 0        // PQ: 4/5
+}

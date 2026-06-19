@@ -18,6 +18,8 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
     "dependencyAnalysisTests/all",
     "dependencyAnalysisTests/unitTests",
     "dependencyAnalysisTests/real-world-examples",
+    "dependencyAnalysisTests/verificationProgressTests",
+    "dependencyAnalysisTests/guidance",
   )
 
   if(EXECUTE_TEST) {
@@ -33,7 +35,7 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
         resetFrontend()
         executeTest(dirName + "/", fileName, frontend)
       }catch{
-        case t: Throwable => fail(t)
+        case t: Throwable => fail(t.getMessage, t)
       }
     }
   }
@@ -52,8 +54,14 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
     val dependencyGraphInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].dependencyGraphInterpretersPerMember
     val joinedDependencyGraphInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter
 
-		// TODO ake: annotated tests can be removed once all tests are migrated to the new test annotations (TestSupporter)
-    new AnnotatedTest(program, dependencyGraphInterpreters, CHECK_PRECISION).execute()
-    new PruningTest(filePrefix + "/" + fileName, program, joinedDependencyGraphInterpreter.get).execute()
+    if (filePrefix.contains("verificationProgressTests")) {
+      new VerificationProgressTest(filePrefix + "/" + fileName, joinedDependencyGraphInterpreter.get).execute()
+    } else if (filePrefix.contains("guidance")) {
+      new GuidanceTest(program, dependencyGraphInterpreters, joinedDependencyGraphInterpreter.get).execute()
+    } else {
+			// TODO ake: annotated tests can be removed once all tests are migrated to the new test annotations (TestSupporter)
+      new AnnotatedTest(program, dependencyGraphInterpreters, CHECK_PRECISION).execute()
+      new PruningTest(filePrefix + "/" + fileName, program, joinedDependencyGraphInterpreter.get).execute()
+    }
   }
 }

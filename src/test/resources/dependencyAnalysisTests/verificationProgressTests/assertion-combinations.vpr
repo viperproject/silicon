@@ -1,0 +1,16 @@
+// Spec quality: 1
+// Proof quality: 5/7
+// Progress: 5/7
+
+method client()
+{
+    var a: Int
+    var b: Int
+    a := 10
+    assume b == 10
+
+    assert a > 5 && a < 15 && a != 30 && b > 7  // PQ: 1/1 1/1 1/1 0/1
+    assert a > 15 || a < 15                     // PQ: 1/1
+    assert a > 15 || b < 15                     // PQ: 0/1
+    assert a == 10 || b < 15                    // PQ: 1/1
+}
