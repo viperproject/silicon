@@ -22,3 +22,15 @@ method quantifiedSum(nodes: Set[Ref], x: Ref)
   @dependencyInfo("assertionType:Explicit, label:L24, expectedDependencies:[L21,L23,L20,L15,L18,L22]")
   assert a >= 0
 }
+
+field b: Bool
+
+function F(r: Ref): Bool
+  requires @dependencyInfo("assumptionType:Precondition, label:L25, expectedDependencies:[L26]")(acc(r.b, write))
+{ true }
+
+function Target(i: Ref): Bool
+  requires @dependencyInfo("assumptionType:Precondition, label:L26")(forall r: Ref :: acc(r.b, write))
+{
+  @dependencyInfo("assumptionType:FunctionBody, label:L27, expectedDependencies:[L26]")(F(i))
+}

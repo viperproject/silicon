@@ -342,7 +342,8 @@ class DefaultHeapSupportRules extends HeapSupportRules {
 
       val sort = v.symbolConverter.toSort(fa.field.typ)
       val newVar = v.decider.fresh(sort, None) // just make sure the returned term typechecks
-      return Q(s, newVar, v)
+			val s2 = s.copy(functionRecorder = s.functionRecorder.recordConstrainedVar(newVar, True))
+      return Q(s2, newVar, v)
     }
 
     if (s.qpFields.contains(fa.field)) {

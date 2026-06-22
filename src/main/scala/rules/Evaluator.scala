@@ -572,7 +572,10 @@ object evaluator extends EvaluationRules {
           case (s1, _, _, _, _, None, v1) =>
             // This should not happen unless the current path is dead.
             if (v1.decider.checkSmoke(analysisInfos, isAssert = true)) {
-              Unreachable()
+              if (Verifier.config.disableInfeasibilityChecks()) {
+								val freshVar = v1.decider.fresh(v1.symbolConverter.toSort(sourceQuant.typ), None)
+								Q(s1, freshVar, None, v1)
+							} else Unreachable()
             } else {
               val failure = createFailure(pve.dueTo(InternalReason(sourceQuant, "Quantifier evaluation failed.")), v1, s1, "quantifier could be evaluated")
               if(s1.retryLevel == 0) v1.decider.handleFailedAssertion(False, analysisInfos, v1.reportFurtherErrors())

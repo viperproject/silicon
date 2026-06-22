@@ -88,3 +88,21 @@ method clientA(b: Bool, x: Ref)
         inhale @dependencyInfo("assumptionType:Explicit, label:L26")(acc(x.f))
     }
 }
+
+field next : Ref
+field val : Int
+
+predicate list(start : Ref)
+{
+  acc(start.val) && acc(start.next)
+}
+
+method infeasible_unfold(l1 : Ref)
+  {
+
+    assume @dependencyInfo("assumptionType:Explicit, label:L27, expectedDependencies:[]")(false)
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L28, expectedDependencies:[L27]")
+    unfold list(l1)
+    @dependencyInfo("assertionType:Explicit, label:L29, expectedDependencies:[L27]")
+    assert l1.next == l1
+  }
