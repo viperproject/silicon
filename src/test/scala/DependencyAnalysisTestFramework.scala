@@ -385,7 +385,7 @@ trait DependencyAnalysisTestFramework {
         val rankOpt = try Some(rankStr.toInt) catch { case _: NumberFormatException => None }
         val line = extractSourceLine(node.asInstanceOf[ast.Positioned].pos)
         rankOpt.map(rank => (rank, line))
-      }.sortBy(_._1)
+      }.distinct.sortBy(_._1)
 
       if (ranked.isEmpty) return Seq.empty
 
