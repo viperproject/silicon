@@ -1,0 +1,20 @@
+// Spec quality: 1
+// Proof quality: 3/8
+// Progress: 3/8
+
+predicate greater0(n: Int){
+  n > 0
+}
+
+method unfoldP(n: Int)
+{
+    var x: Int
+    x := 100
+
+    inhale greater0(n)
+    unfold greater0(n)    // PQ: 0/1
+    
+    x := n + x
+
+    assert x > 100        // PQ: 3/4
+}

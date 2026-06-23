@@ -2,7 +2,8 @@ package viper.silicon.tests
 
 import viper.silicon.SiliconFrontend
 import viper.silicon.dependencyAnalysis._
-import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisPruningSupporter, DependencyGraphInterpreter}
+import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisPruningSupporter, DependencyAnalysisProgressSupporter, DependencyGraphInterpreter}
+
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.{Infoed, Program}
 import viper.silver.dependencyAnalysis.AssumptionType
@@ -242,4 +243,240 @@ trait DependencyAnalysisTestFramework {
     protected def getTestIrrelevantAssumptionNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] =
       nodes.filter(_.sourceInfo.toString.contains("@" + irrelevantKeyword + "("))
   }
+
+  /**
+   * Takes a Viper program and its verification progress results and checks whether they match
+   * with expected results as indicated in commented lines (at the top of the file).
+   *
+   * Comment types (parentheses indicate optional text):
+   *
+   * // Spec(ification) quality: [value]
+   * // Proof quality: [value]
+   * // (Verification) Progress: [value]
+   *
+   * [value] can be either a decimal number (e.g., 0.75) or a fraction (e.g., 5/6)
+   */
+  class VerificationProgressTest(fileName: String, fullGraphInterpreter: DependencyGraphInterpreter[Final]) {
+    private val epsilon = 1e-8
+
+    def execute(): Unit = {
+      val (expectedSpecQuality, expectedProofQualityLea, expectedProgress) = readExpectedValues()
+      val baos = new java.io.ByteArrayOutputStream()
+      val (_, actualProgressLea) = Console.withOut(baos) {
+        new DependencyAnalysisProgressSupporter(fullGraphInterpreter).computeVerificationProgressOptimized()
+      }
+      val output = baos.toString
+
+      // If a metric type does not exist, it is ignored 
+      expectedSpecQuality.foreach { expected =>
+        val actual = parseLine(output, "specQuality = ")
+          .getOrElse(throw new AssertionError(s"Could not parse specQuality from output:\n$output"))
+        assert(Math.abs(actual - expected) <= epsilon,
+          s"specQuality mismatch: expected $expected, got $actual")
+      }
+      expectedProofQualityLea.foreach { expected =>
+        val actual = parseLine(output, "proof quality (Lea)")
+          .getOrElse(throw new AssertionError(s"Could not parse proofQualityLea from output:\n$output"))
+        assert(Math.abs(actual - expected) <= epsilon,
+          s"proofQualityLea mismatch: expected $expected, got $actual")
+      }
+      expectedProgress.foreach { expected =>
+        assert(Math.abs(actualProgressLea - expected) <= epsilon,
+          s"progress mismatch: expected $expected, got $actualProgressLea")
+      }
+    }
+
+    // Finds a relevant metric line by prefix, extracts its metric value
+    private def parseLine(output: String, prefix: String): Option[Double] = {
+      output.linesIterator
+        .find(_.toLowerCase.contains(prefix.toLowerCase))
+        .flatMap(line => extractMetricValue(line))
+    }
+
+    // Reads expected metric values that are written at the top of .vpr test files
+    private def readExpectedValues(): (Option[Double], Option[Double], Option[Double]) = {
+      val resourcePath = fileName.replaceAll("/+", "/").stripPrefix("/") + ".vpr"
+      val url = getClass.getClassLoader.getResource(resourcePath)
+      val lines = Files.readAllLines(Paths.get(url.toURI)).asScala.take(5).toList
+      val commentText = lines.filter(_.trim.startsWith("//")).map(_.trim.stripPrefix("//").trim).mkString("\n")
+
+      val specQuality = parseLine(commentText, "spec quality")
+        .orElse(parseLine(commentText, "specification quality"))
+        .orElse(parseLine(commentText, "spec:"))
+        .orElse(parseLine(commentText, "specification:"))
+
+      val proofQualityLea = parseLine(commentText, "proof quality")
+        .orElse(parseLine(commentText, "proof:"))
+
+      val progress = parseLine(commentText, "progress:")
+        .orElse(parseLine(commentText, "verification:"))
+        .orElse(parseLine(commentText, "verification progress"))
+
+      (specQuality, proofQualityLea, progress)
+    }
+
+    // Extract value from text with either "metric: value" or "metric = value"
+    private def extractMetricValue(line: String): Option[Double] = {
+      val delimiterIdx = List(line.lastIndexOf('='), line.lastIndexOf(':')).filter(_ >= 0).maxOption.getOrElse(-1)
+      if (delimiterIdx < 0) None
+      else parseValue(line.substring(delimiterIdx + 1).trim)
+    }
+
+    // Value can be either a decimal number or a fraction
+    private def parseValue(str: String): Option[Double] = {
+      if (str.contains("/")) {
+        val parts = str.split("/").map(_.trim)
+        if (parts.length == 2)
+          try Some(parts(0).toDouble / parts(1).toDouble)
+          catch { case _: NumberFormatException => None }
+        else None
+      } else {
+        try Some(str.toDouble)
+        catch { case _: NumberFormatException => None }
+      }
+    }
+  }
+
+  
+
+  /**
+   * Tests the verification guidance output against expected values annotated inline in the .vpr file.
+   *
+   * Annotation types:
+   * - @guidedAssumption("N") -> this assumption should appear at rank N in the guidance output (1 = most important)
+   * - @uncovered()           -> this statement should appear in the uncovered statements of its method
+   *
+   * Method ordering is checked implicitly: methods annotated with more @uncovered statements should
+   * rank higher (i.e., appear earlier) in the actual uncovered-statements-per-method ranking.
+   */
+  class GuidanceTest(program: Program,
+                     memberInterpreters: List[DependencyGraphInterpreter[IntraProcedural]],
+                     fullGraphInterpreter: DependencyGraphInterpreter[Final])
+    extends AnnotatedTest(program, memberInterpreters, checkPrecision = false) {
+
+    val guidedAssumptionKeyword = "guidedAssumption"
+    val uncoveredKeyword = "uncovered"
+
+    override def execute(): Unit = {
+      val actualAssumptionRanking = fullGraphInterpreter.progressSupporter.computeAssumptionRanking().filter(_._2 > 0.0)
+      // Compute uncovered per method once, suppressing stdout side effect
+      val actualUncoveredByMethod: Map[String, (Int, String)] = memberInterpreters
+        .filter(mi => mi.getMember.isDefined && mi.getMember.get.isInstanceOf[ast.Method])
+        .map { mi =>
+          val baos = new java.io.ByteArrayOutputStream()
+          val count = Console.withOut(baos)(new DependencyAnalysisProgressSupporter(mi).computeUncoveredStatements())
+          (mi.getMember.get.name, (count, baos.toString))
+        }.toMap
+
+      val errorMsgs =
+        checkAssumptionRanking(actualAssumptionRanking) ++
+        checkUncoveredStatements(actualUncoveredByMethod) ++
+        checkMethodOrder(actualUncoveredByMethod)
+
+      assert(errorMsgs.isEmpty, "\n" + errorMsgs.mkString("\n"))
+    }
+
+    private def checkAssumptionRanking(actualRanking: List[(String, Double)]): Seq[String] = {
+      val annotated = extractAnnotatedStmts(_.values.contains(guidedAssumptionKeyword))
+      val ranked: List[(Int, Int)] = annotated.toList.flatMap { node =>
+        val rankStr = node.info.getUniqueInfo[ast.AnnotationInfo]
+          .flatMap(_.values.get(guidedAssumptionKeyword).flatMap(_.headOption))
+          .getOrElse("")
+        val rankOpt = try Some(rankStr.toInt) catch { case _: NumberFormatException => None }
+        val line = extractSourceLine(node.asInstanceOf[ast.Positioned].pos)
+        rankOpt.map(rank => (rank, line))
+      }.distinct.sortBy(_._1)
+
+      if (ranked.isEmpty) return Seq.empty
+
+      // Find each annotated assumption in the actual ranking; match by "line N)" in the toString
+      // Carry actual score so equal-scored pairs can be skipped in the ordering check.
+      val posResults: List[Either[String, (Int, Int, Double)]] = ranked.map { case (rank, line) =>
+        val idx = actualRanking.indexWhere(_._1.contains(s"line $line)"))
+        if (idx < 0)
+          Left(s"@guidedAssumption($rank) at line $line not found in assumption ranking.\nActual ranking:\n\t${actualRanking.mkString("\n\t")}")
+        else
+          Right((rank, idx, actualRanking(idx)._2))
+      }
+
+      val missingErrors = posResults.collect { case Left(err) => err }
+      if (missingErrors.nonEmpty) return missingErrors
+
+      val positions = posResults.collect { case Right(p) => p }
+      // Pairwise: smaller annotated rank should appear earlier in actual ranking,
+      // unless the two assumptions have equal actual scores (any order is valid then).
+      (for {
+        i <- positions.indices
+        j <- i + 1 until positions.size
+        (rankI, idxI, scoreI) = positions(i)
+        (rankJ, idxJ, scoreJ) = positions(j)
+        if rankI < rankJ && scoreI != scoreJ && idxI > idxJ
+      } yield s"Wrong assumption order: @guidedAssumption($rankI) at actual position $idxI should come before @guidedAssumption($rankJ) at position $idxJ").toSeq
+    }
+
+    private def checkUncoveredStatements(actualUncoveredByMethod: Map[String, (Int, String)]): Seq[String] = {
+      val errors = scala.collection.mutable.ListBuffer.empty[String]
+      for (method <- program.methods) {
+        val annotatedLines = uncoveredAnnotatedLinesInMethod(method)
+        actualUncoveredByMethod.get(method.name) match {
+          case None =>
+            if (annotatedLines.nonEmpty)
+              errors += s"No member interpreter found for method '${method.name}'"
+          case Some((actualCount, output)) =>
+            for (line <- annotatedLines) {
+              if (!output.contains(s"line $line)"))
+                errors += s"@uncovered() at line $line not found in uncovered statements of method '${method.name}'.\nActual uncovered output:\n$output"
+            }
+            if (actualCount != annotatedLines.size)
+              errors += s"Method '${method.name}': expected ${annotatedLines.size} uncovered statement(s), got $actualCount"
+        }
+      }
+      errors.toSeq
+    }
+
+    private def checkMethodOrder(actualUncoveredByMethod: Map[String, (Int, String)]): Seq[String] = {
+      // Derive expected order from @uncovered annotation counts per method (descending)
+      val expectedOrder: List[(String, Int)] = program.methods
+        .map(m => (m.name, uncoveredAnnotatedLinesInMethod(m).size))
+        .filter(_._2 > 0)
+        .sortBy(-_._2)
+        .toList
+
+      if (expectedOrder.size < 2) return Seq.empty
+
+      val actualOrder: List[String] = actualUncoveredByMethod.toList
+        .filter(_._2._1 > 0)
+        .sortBy(-_._2._1)
+        .map(_._1)
+
+      // Pairwise: method with strictly more @uncovered annotations should appear before one with fewer.
+      // Methods with equal counts may appear in any order.
+      (for {
+        i <- expectedOrder.indices
+        j <- i + 1 until expectedOrder.size
+        (methodA, countA) = expectedOrder(i)
+        (methodB, countB) = expectedOrder(j)
+        if countA != countB
+        idxA = actualOrder.indexOf(methodA)
+        idxB = actualOrder.indexOf(methodB)
+        if idxA >= 0 && idxB >= 0 && idxA > idxB
+      } yield s"Wrong method order: '$methodA' ($countA @uncovered) should appear before '$methodB' ($countB @uncovered), but actual order is: ${actualOrder.mkString(", ")}").toSeq
+    }
+
+    private def uncoveredAnnotatedLinesInMethod(method: ast.Method): List[Int] = {
+      val lines = scala.collection.mutable.ListBuffer.empty[Int]
+      @unused
+      val _ignored: ast.Node = ViperStrategy.Slim({
+        case s: ast.Seqn => s
+        case n: ast.Infoed =>
+          val hasAnnotation = n.info.getUniqueInfo[ast.AnnotationInfo]
+            .exists(_.values.contains(uncoveredKeyword))
+          if (hasAnnotation)
+            lines += extractSourceLine(n.asInstanceOf[ast.Positioned].pos)
+          n
+      }).execute(method)
+      lines.toList
+    }
+  }
+
 }

@@ -1,0 +1,16 @@
+// Spec quality: 1
+// Proof quality: 1/6 
+// Progress: 1/6
+
+field f: Int
+
+method exhale1(){
+    var x: Ref
+
+    inhale acc(x.f)
+    x.f := 1                // PQ: 0/1
+
+    exhale acc(x.f, 1/2)    // PQ: 0/1
+
+    assert x.f > 0          // PQ: 1/2
+}
