@@ -1,0 +1,19 @@
+// Spec quality: 2/3
+// Proof quality: 13/18
+// Progress: 13/27
+
+method divide(a: Int, b: Int) returns (res: Int)
+    requires b != 0
+    ensures res == a / b      // PQ: 3/4
+{
+    res := a / b              // PQ: 2/3  
+}
+
+method client()
+{
+    var a: Int, b: Int, res: Int
+    a := 6         // uncovered
+    assume b == 3
+
+    res := divide(a, b)       // PQ: 3/4
+}
