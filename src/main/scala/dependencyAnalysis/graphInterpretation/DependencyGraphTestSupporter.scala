@@ -26,7 +26,7 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
 
 	private def testUserLevelNode(ulNode: UserLevelDependencyAnalysisNode): Option[Boolean] = {
 		val dependencyInfoOpt = dependencyInfoRegex.findFirstMatchIn(ulNode.source.toString).map(_.group(1))
-		if(dependencyInfoOpt.isEmpty) return None
+		if (dependencyInfoOpt.isEmpty) return None
 
 		val dependencyInfo = dependencyInfoOpt.get
 		var isTested = false
@@ -55,7 +55,7 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
 	}
 
 	private def printIfFalse(test: Boolean, message: String) =
-		if(!test)
+		if (!test)
 			println(message)
 
 	def testDependencies(): Unit = {
@@ -68,7 +68,7 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
 
 	def testDependencies(assertionNode: UserLevelDependencyAnalysisNode): Option[Boolean] = {
 		val expectedLabelsOpt = expectedDependenciesRegex.findFirstMatchIn(assertionNode.source.toString).map(_.group(1).split(",").map(_.trim).toSet)
-		if(expectedLabelsOpt.isEmpty) return None
+		if (expectedLabelsOpt.isEmpty) return None
 		val expectedLabels = expectedLabelsOpt.get
 
 		val queriedAssertions = assertionNode.lowLevelAssertionNodes

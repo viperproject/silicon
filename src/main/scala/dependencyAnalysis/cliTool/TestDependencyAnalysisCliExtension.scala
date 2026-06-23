@@ -16,7 +16,7 @@ class TestDependencyAnalysisCliExtension(override val interpreter: DependencyGra
 		override val cmd: Seq[String] => Unit = { inputs =>
 			try{
 				val testSupporter = new DependencyGraphTestSupporter(interpreter)
-				if(inputs.isEmpty)
+				if (inputs.isEmpty)
 					testSupporter.testNodeTypes()
 				else
 					inputs.flatMap(_.toIntOption).foreach(line => testSupporter.testNodeTypes(interpreter.getNodesByLine(line)))
@@ -32,13 +32,13 @@ class TestDependencyAnalysisCliExtension(override val interpreter: DependencyGra
 		override val cmd: Seq[String] => Unit = { inputs =>
 			try{
 				val testSupporter = new DependencyGraphTestSupporter(interpreter)
-				if(inputs.isEmpty)
+				if (inputs.isEmpty)
 					testSupporter.testDependencies()
 				else
 					inputs.flatMap(_.toIntOption).foreach(line => {
 						val testResult = UserLevelDependencyAnalysisNode.from(interpreter.getNodesByLine(line)) map testSupporter.testDependencies
-						val resultStr = if(testResult.forall(_.isEmpty)) "Skipped."
-							else if(testResult.forall(test => test.isEmpty || test.get)) "Passed."
+						val resultStr = if (testResult.forall(_.isEmpty)) "Skipped."
+							else if (testResult.forall(test => test.isEmpty || test.get)) "Passed."
 							else "Failed."
 						println(s"Line $line: $resultStr")
 					})

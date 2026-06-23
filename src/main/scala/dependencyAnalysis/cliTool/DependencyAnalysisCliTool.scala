@@ -27,7 +27,7 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
     "\n\t'progress' to compute the verification progress of the program or" +
     "\n\t'guide' to compute verification guidance or" +
     "\n\t'prune [line numbers]' to prune the program with respect to the given line numbers and export the new program or" +
-		(if(extensions.nonEmpty) "\n\t" else "") +
+		(if (extensions.nonEmpty) "\n\t" else "") +
 		extensions.map(_.getInfoString("\n\t")).mkString("\n\t") +
     "\n\t'q' to quit"
 
@@ -98,7 +98,7 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
   }
 
   private def handleProofCoverageLineQuery(memberNames: Seq[String]): Unit = {
-    if(memberNames.isEmpty) return
+    if (memberNames.isEmpty) return
 
     println("Proof Coverage")
     val lines = memberNames.tail.flatMap(_.toIntOption)
@@ -108,10 +108,10 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
         case _ => false
       })
       .foreach(aa => {
-        val ((coverage, uncoveredSources), time) = if(lines.nonEmpty){
+        val ((coverage, uncoveredSources), time) = if (lines.nonEmpty) {
           val assertions = lines flatMap aa.getNodesByLine
           measureTime(aa.computeProofCoverage(assertions.toSet))
-        }else{
+        } else {
           measureTime(aa.computeProofCoverage())
         }
         println(s"${aa.getMember.map(_.name).getOrElse("")}  (${time}ms)")
@@ -154,7 +154,7 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
     println(s"\nDependencies without infeasibility (${timeWithoutInfeasibility}ms):\n\t${getSourceInfoString(allDependenciesWithoutInfeasibility.diff(queriedNodes))}")
     println(s"\nExplicit Dependencies (${timeExplicit}ms):\n\t${getSourceInfoString(explicitDependencies.diff(queriedNodes))}")
 
-    if(queriedAssertions.exists(_.asInstanceOf[GeneralAssertionNode].hasFailed)) println("\nQueried assertions (partially) FAILED!\n")
+    if (queriedAssertions.exists(_.asInstanceOf[GeneralAssertionNode].hasFailed)) println("\nQueried assertions (partially) FAILED!\n")
     println("Done.")
   }
 

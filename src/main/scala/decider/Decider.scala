@@ -446,8 +446,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       })
     }
 
-    private def assumeWithoutSmokeChecks(termsWithLabel: InsertionOrderedSet[(Term, String)], isDefinition: Boolean = false): None.type = {
-      if (isPathInfeasible) return None
+    private def assumeWithoutSmokeChecks(termsWithLabel: InsertionOrderedSet[(Term, String)], isDefinition: Boolean = false): Unit = {
+      if (isPathInfeasible) return
 
       val terms = termsWithLabel map (_._1)
       val assumeRecord = new DeciderAssumeRecord(terms)
@@ -464,7 +464,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       termsWithLabel foreach { case (t, label) => prover.assume(t, label) }
 
       symbExLog.closeScope(sepIdentifier)
-      None
     }
 
     def assumeLabel(term: Term, assumptionLabel: String): Unit = {
@@ -492,8 +491,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         checkNode foreach dependencyAnalyzer.addAssertionNode
         dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
         val infeasibleNodeId = dependencyAnalyzer.addInfeasibilityNode(!isAssert, analysisInfos)
-//        Adding the following line would be UNSOUND! Unsoundness is introduced when infeasibility is introduced while executing a package statements and pontentially in other cases as well.
-//        assumeWithoutSmokeChecks(InsertionOrderedSet((False, DependencyAnalyzer.createAssumptionLabel(infeasibleNodeId))))
         dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibleNodeId)
         pcs.setCurrentInfeasibilityNode(infeasibleNodeId)
       } else if (isAssert) {
@@ -553,11 +550,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       val asserted = if (isDependencyAnalysisEnabled) t.equals(True) else isKnownToBeTrue(t)
 
-      val assertNode = if(!asserted) dependencyAnalyzer.createAssertOrCheckNode(t, analysisInfos, isCheck) else None
+      val assertNode = if (!asserted) dependencyAnalyzer.createAssertOrCheckNode(t, analysisInfos, isCheck) else None
 
       val result = asserted || proverAssert(t, timeout, DependencyAnalyzer.createAssertionLabel(assertNode map (_.id)))
 
-      if(result) {
+      if (result) {
         assertNode foreach dependencyAnalyzer.addAssertionNode
       }
 
@@ -579,8 +576,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       val result = isPathInfeasible || prover.assert(t, timeout, label)
 
-      if(isPathInfeasible) dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, Some(DependencyAnalyzer.getIdFromLabel(label)))
-      else if(result) dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
+      if (isPathInfeasible) dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, Some(DependencyAnalyzer.getIdFromLabel(label)))
+      else if (result) dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
 
       symbExLog.whenEnabled {
         assertRecord.statistics = Some(symbExLog.deltaStatistics(prover.statistics()))

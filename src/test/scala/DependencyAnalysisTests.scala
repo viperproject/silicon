@@ -22,7 +22,7 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
     "dependencyAnalysisTests/guidance",
   )
 
-  if(EXECUTE_TEST) {
+  if (EXECUTE_TEST) {
     testDirectories foreach (dir => visitFiles(dir, createSingleTest))
 		// TODO ake: more complete exhale tests
 //    analysisCommandLineArguments = Seq("--enableMoreCompleteExhale") ++ analysisCommandLineArguments
@@ -46,7 +46,7 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
 
     val program: Program = tests.loadProgram(filePrefix, fileName, frontend)
     val result = frontend.verifier.verify(program)
-    if(result.isInstanceOf[verifier.Failure]) {
+    if (result.isInstanceOf[verifier.Failure]) {
       cancel(f"Program does not verify. Skip test.\n$result")
       return
     }

@@ -89,12 +89,12 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
 	}
 
 	def getMergeInfo: DependencyAnalysisMergeInfo = {
-		if(!isAnalysisEnabled) return NoDependencyAnalysisMerge()
+		if (!isAnalysisEnabled) return NoDependencyAnalysisMerge()
 		mergeInfos.headOption.getOrElse(SimpleDependencyAnalysisMerge(getSourceInfo))
 	}
 
   def getJoinInfo: List[SimpleDependencyAnalysisJoin] = {
-		if(!isAnalysisEnabled) return List.empty
+		if (!isAnalysisEnabled) return List.empty
     joinInfos.map {
 			case EvalStackDependencyAnalysisJoin(joinType, edgeType) => SimpleDependencyAnalysisJoin(sourceInfos.last, joinType, edgeType)
 			case a: SimpleDependencyAnalysisJoin => a
@@ -102,13 +102,13 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
   }
 
   def withMergeInfo(mergeInfo: DependencyAnalysisMergeInfo): DependencyAnalysisInfos = {
-		if(!isAnalysisEnabled) return this
+		if (!isAnalysisEnabled) return this
 
 		this.copy(mergeInfos = mergeInfo +: mergeInfos)
 	}
 
 	def withJoinInfo(joinInfo: DependencyAnalysisJoinInfo): DependencyAnalysisInfos = {
-		if(!isAnalysisEnabled) return this
+		if (!isAnalysisEnabled) return this
 
 		this.copy(joinInfos = joinInfo +: joinInfos)
 	}

@@ -49,7 +49,7 @@ object DependencyGraphImporter {
 
   private def extractGraphFolderFromArgs(args: Array[String]): String = {
     val idx = args.indexOf("--graphFolder")
-    if(0 <= idx && idx < args.length - 1)
+    if (0 <= idx && idx < args.length - 1)
       args(idx + 1)
     else
         throw new IllegalArgumentException("Error: --graphFolder argument is required but not found.")
@@ -60,7 +60,7 @@ object DependencyGraphImporter {
 
     val cmds = if (0 <= cmdsIndex && cmdsIndex < args.length - 1) Some(args(cmdsIndex + 1).split(";").map(_.trim)) else None
 
-    if(cmds.isEmpty)
+    if (cmds.isEmpty)
       userTool.run()
     else
       cmds.get foreach {c =>

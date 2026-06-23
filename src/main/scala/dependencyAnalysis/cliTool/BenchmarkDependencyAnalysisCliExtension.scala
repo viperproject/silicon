@@ -16,12 +16,13 @@ import scala.util.matching.Regex
 class BenchmarkDependencyAnalysisCliExtension(override val interpreter: DependencyGraphInterpreter[Final], program: ast.Program) extends DependencyAnalysisCliToolExtension {
 
 	override val name: String = "Benchmark Features"
-	override val commands: List[DependencyAnalysisCliCommand] = List(
-																																new PerformanceBenchmarkCommand,
-																																new GraphSizeCommand,
-																																new AnnotateProgramCommand,
-																																new PrecisionEvaluationCommand
-																															)
+	override val commands: List[DependencyAnalysisCliCommand] =
+		List(
+			new PerformanceBenchmarkCommand,
+			new GraphSizeCommand,
+			new AnnotateProgramCommand,
+			new PrecisionEvaluationCommand
+		)
 
 	class PerformanceBenchmarkCommand extends DependencyAnalysisCliCommand {
 		override val cmdName: String = "benchmark"
@@ -39,10 +40,10 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
 			while(check){
 				println("enter line number(s) for query or 'q' to quit")
 				val userInput = readLine()
-				if(userInput.equalsIgnoreCase("q")){
+				if (userInput.equalsIgnoreCase("q")) {
 					println("Quit.")
 					check = false
-				}else{
+				} else {
 					val inputs = userInput.split(" ").toSet
 
 					val queriedNodes = getQueriedNodesFromInput(inputs)
@@ -122,11 +123,6 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
 				assert(actualLabelInReportedDeps.size <= callGraphLabels.size, "Call graph size is smaller than reported dependencies.")
 
 				addOutput(bw, s"$assertionLabel,${if (isSound) "YES" else "NO"},${groundTruthLabels.size},${actualLabelInReportedDeps.size},${imprecise.size},${callGraphLabels.size},${durationMs}ms,${noise.size}")
-
-				//      println(s"Queried:\n\t${getSourceInfoString(queriedAssertions)}")
-				//      println(s"\nAll Dependencies (${timeAll}ms):\n\t$sourceDependenciesString")
-				//
-				//      if(queriedAssertions.exists(_.asInstanceOf[GeneralAssertionNode].hasFailed)) println("\nQueried assertions (partially) FAILED!\n")
 			}
 
 			val dir: Path = Paths.get(pathToTestFolder)

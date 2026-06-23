@@ -541,7 +541,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         if (s.retryLevel == 0) v.decider.handleFailedAssertion(Implies(PermLess(NoPerm, perms), totalPermTaken !== NoPerm), analysisInfos, v.reportFurtherErrors())
         if (s.retryLevel == 0 && v.reportFurtherErrors()){
           val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
-          failure combine Q(s1, updatedChunks, if(returnSnap) Some(snap) else None, v)
+          failure combine Q(s1, updatedChunks, if (returnSnap) Some(snap) else None, v)
         }else{
           failure
         }

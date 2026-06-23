@@ -15,9 +15,9 @@ trait AbstractDependencyAnalysisCliTool {
 			val parts = input.split("@")
 			if (parts.size == 2)
 				parts(1).toIntOption.map(interpreter.getNodesByPosition(parts(0), _)).getOrElse(Set.empty)
-			else if(parts.size == 1){
+			else if (parts.size == 1) {
 				parts(0).toIntOption map interpreter.getNodesByLine getOrElse Set.empty
-			}else{
+			} else {
 				Set.empty
 			}
 		})
@@ -49,6 +49,6 @@ trait DependencyAnalysisCliCommand {
 
 	def accept(inputs: Seq[String]): Boolean = inputs.nonEmpty && inputs.head.equals(cmdName)
 
-	def visit(inputs: Seq[String]): Unit = if(accept(inputs)) cmd(inputs.tail)
+	def visit(inputs: Seq[String]): Unit = if (accept(inputs)) cmd(inputs.tail)
 
 }

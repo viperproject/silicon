@@ -652,7 +652,7 @@ class DefaultMainVerifier(config: Config,
 
 
   def runDependencyAnalysisWorkflow(verificationResults: List[VerificationResult], program: ast.Program, inputFile: Option[String]): Unit = {
-    if(!Verifier.config.enableDependencyAnalysis()) return
+    if (!Verifier.config.enableDependencyAnalysis()) return
 
     val dependencyGraphInterpreters = verificationResults.filter(_.dependencyGraphInterpreter.isDefined).map(_.dependencyGraphInterpreter.get)
     val verificationErrors: List[Failure] = (verificationResults filter (_.isInstanceOf[Failure])) map (_.asInstanceOf[Failure])

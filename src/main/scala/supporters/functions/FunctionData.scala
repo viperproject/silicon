@@ -141,7 +141,7 @@ class FunctionData(val programFunction: ast.Function,
 
 
   private val bodyAnalysisInfos: DependencyAnalysisInfos =
-		if(programFunction.body.isDefined)
+		if (programFunction.body.isDefined)
 			DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.addInfo(programFunction.body.get.info, programFunction.body.get)
 				.withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(programFunction.body.get), JoinType.Sink, EdgeType.Down))
 				.withEnabled(isAnalysisEnabled)
@@ -190,7 +190,7 @@ class FunctionData(val programFunction: ast.Function,
       ++ freshConstrainedVars.map(_._2)
       ++ freshConstraints)
 
-    val nested = if(!Verifier.config.enableDependencyAnalysis()) nestedTmp
+    val nested = if (!Verifier.config.enableDependencyAnalysis()) nestedTmp
       else nestedTmp.map(_.transform{
         case Var(name, _, _) if name.name.startsWith(DependencyAnalyzer.analysisLabelName) => True // replace dependency analysis labels by True to avoid errors
       }())
@@ -247,13 +247,13 @@ class FunctionData(val programFunction: ast.Function,
       def wrapBody(body: Term): Term = Let(toMap(bodyBindings), body)
       val analysisInfos = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withEnabled(isAnalysisEnabled)
 
-      if(isAnalysisEnabled){
+      if (isAnalysisEnabled) {
         (Forall(arguments, wrapBody(And(generateNestedDefinitionalAxioms)), Trigger(limitedFunctionApplication)), bodyAnalysisInfos) +:
           programFunction.posts.flatMap(_.topLevelConjuncts).map({p =>
             val terms = expressionTranslator.translatePostcondition(program, Seq(p), this)
             (And(Forall(arguments, wrapBody(Implies(pre, And(terms))), Trigger(limitedFunctionApplication)), True), analysisInfos.addInfo(p.info, p).withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(p), JoinType.Sink, EdgeType.Down)))
           })
-      }else{
+      } else {
         val innermostBody = And(generateNestedDefinitionalAxioms ++ List(Implies(pre, And(translatedPosts))))
         Seq((Forall(arguments, wrapBody(innermostBody), Trigger(limitedFunctionApplication)), analysisInfos))
       }

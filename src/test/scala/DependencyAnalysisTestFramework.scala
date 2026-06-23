@@ -37,9 +37,9 @@ trait DependencyAnalysisTestFramework {
 
     for (filePath: Path <- dirContent.sorted
          if Files.isReadable(filePath)) {
-      if(Files.isDirectory(filePath)){
+      if (Files.isDirectory(filePath)) {
         visitFiles(filePath, dirName + "/" + filePath.getFileName.toString, function)
-      }else{
+      } else {
         val rawFileName = filePath.getFileName.toString
         if (rawFileName.endsWith(".vpr")) {
           val fileName = rawFileName.replace(".vpr", "")
@@ -200,7 +200,7 @@ trait DependencyAnalysisTestFramework {
       val relevantAssumptionNodes = getTestAssumptionNodes(dependencyGraphInterpreter.getNonInternalAssumptionNodes)
       val resRelevant: Seq[String] = checkDependenciesAndGetErrorMsgs(relevantAssumptionNodes, dependencies, isDependencyExpected = true, "Missing dependency")
 
-      val resIrrelevant = if(checkPrecision){
+      val resIrrelevant = if (checkPrecision) {
         val irrelevantNodes = getTestIrrelevantAssumptionNodes(dependencyGraphInterpreter.getNonInternalAssumptionNodes)
         checkDependenciesAndGetErrorMsgs(irrelevantNodes, dependencies, isDependencyExpected = false, "Unexpected dependency")
       } else Seq.empty

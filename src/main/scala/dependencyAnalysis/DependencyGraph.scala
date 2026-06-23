@@ -112,8 +112,8 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
 
   def getAllEdges(includeDownwardEdges: Boolean, includeUpwardEdges: Boolean): Map[Int, Set[Int]] = {
     val intraMethodEdges = getIntraMethodEdges
-    val upwardEdges: mutable.Map[Int, Set[Int]] = if(includeUpwardEdges) edgesConnectingMethodsUpwards else mutable.Map.empty
-    val downwardEdges: mutable.Map[Int, Set[Int]]  = if(includeDownwardEdges) edgesConnectingMethodsDownwards else mutable.Map.empty
+    val upwardEdges: mutable.Map[Int, Set[Int]] = if (includeUpwardEdges) edgesConnectingMethodsUpwards else mutable.Map.empty
+    val downwardEdges: mutable.Map[Int, Set[Int]]  = if (includeDownwardEdges) edgesConnectingMethodsDownwards else mutable.Map.empty
     val keys = intraMethodEdges.keySet ++ downwardEdges.keySet ++ upwardEdges.keySet
     val allEdges = mutable.Map[Int, Set[Int]]()
     keys foreach {key =>
@@ -155,7 +155,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   def addEdges(sources: Iterable[Int], target: Int): Unit = {
     val oldSources = edges.getOrElse(target, Set.empty)
     val newSources = sources.filter(_ != target)
-    if(newSources.nonEmpty)
+    if (newSources.nonEmpty)
       edges.update(target, oldSources ++ newSources)
   }
 
@@ -166,7 +166,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   def addEdgesConnectingMethodsDownwards(sources: Iterable[Int], target: Int): Unit = {
     val oldSources = edgesConnectingMethodsDownwards.getOrElse(target, Set.empty)
     val newSources = sources.filter(_ != target)
-    if(newSources.nonEmpty)
+    if (newSources.nonEmpty)
       edgesConnectingMethodsDownwards.update(target, oldSources ++ newSources)
   }
 
@@ -181,7 +181,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   def addEdgesConnectingMethodsUpwards(sources: Iterable[Int], target: Int): Unit = {
     val oldSources = edgesConnectingMethodsUpwards.getOrElse(target, Set.empty)
     val newSources = sources.filter(_ != target)
-    if(newSources.nonEmpty)
+    if (newSources.nonEmpty)
       edgesConnectingMethodsUpwards.update(target, oldSources ++ newSources)
   }
 
@@ -199,7 +199,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   }
 
   def getAllDependencies(targets: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
-    val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
+    val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else (getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
     var visited: Set[Int] = Set.empty
     var queue: List[Int] = targets.toList
     val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
@@ -213,7 +213,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   }
 
   def getAllDependents(sources: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
-    val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
+    val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else (getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
     var visited: Set[Int] = Set.empty
     var queue: Set[Int] = sources
     val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)

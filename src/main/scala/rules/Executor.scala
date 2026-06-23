@@ -481,7 +481,7 @@ object executor extends ExecutionRules {
       case assert @ ast.Assert(a) =>
         val pve = AssertFailed(assert)
 
-				val analysisInfos1 = if(a.topLevelConjuncts.size > 1) analysisInfos.copy(sourceInfos = List.empty) else analysisInfos // needed to ensure that each top-level conjunct gets a dedicated assertion node
+				val analysisInfos1 = if (a.topLevelConjuncts.size > 1) analysisInfos.copy(sourceInfos = List.empty) else analysisInfos // needed to ensure that each top-level conjunct gets a dedicated assertion node
 
         if (s.exhaleExt) {
           Predef.assert(s.h.values.isEmpty)
@@ -552,7 +552,7 @@ object executor extends ExecutionRules {
           val preCondLog = new CommentRecord("Precondition", s1, v1.decider.pcs)
           val preCondId = v1.symbExLog.openScope(preCondLog)
           val argsWithExp: Seq[(Term, Option[ast.Exp])] = {
-						if(Verifier.config.enableDependencyAnalysis()){
+						if (Verifier.config.enableDependencyAnalysis()) {
 							tArgs zip eArgsWithDAInfo.map(Some(_))
 						} else if (withExp)
             	tArgs zip (eArgsNew.get.map(Some(_)))
@@ -561,18 +561,18 @@ object executor extends ExecutionRules {
 						}
 					// encode the method call as a sequence of assignments to fresh variables (one for each argument) and a method call using the fresh variables as arguments
 					val argsFreshVar =
-						if(Verifier.config.enableDependencyAnalysis()){
+						if (Verifier.config.enableDependencyAnalysis()) {
 							argsWithExp.map(arg => {
 								val argNew = v1.decider.fresh(arg._1.sort, None)
 								v1.decider.assume(Equals(argNew, arg._1), None, analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(arg._2.get))))
 								(argNew, None)
 							})
-						}else argsWithExp
+						} else argsWithExp
           val s2 = s1.copy(g = Store(fargs.zip(argsFreshVar)),
                            recordVisited = true)
 
 
-					val presWithDAInfo = if(!v1.decider.isDependencyAnalysisEnabled) meth.pres else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.pres.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
+					val presWithDAInfo = if (!v1.decider.isDependencyAnalysisEnabled) meth.pres else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.pres.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
 
           consumes(s2, presWithDAInfo, false, _ => pvePre, v1, analysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Up)))((s3, _, v2) => {
             v2.symbExLog.closeScope(preCondId)
@@ -582,7 +582,7 @@ object executor extends ExecutionRules {
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
 
-						val postsWithDAInfo = if(!v1.decider.isDependencyAnalysisEnabled) meth.posts else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.posts.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
+						val postsWithDAInfo = if (!v1.decider.isDependencyAnalysisEnabled) meth.posts else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.posts.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
             produces(s4, freshSnap, postsWithDAInfo, _ => pveCallTransformed, v2, analysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Down)))((s5, v3) => {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)

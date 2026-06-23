@@ -1381,27 +1381,27 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   }
                 case (Incomplete(_, _), s2, _) =>
                   val failure = createFailure(pve dueTo insufficientPermissionReason, v, s2, "QP consume")
-                  if(s2.retryLevel == 0) v.decider.handleFailedAssertion(False, analysisInfos, v.reportFurtherErrors())
-                  if(s2.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.disableInfeasibilityChecks()) failure combine Q(s2, s2.h, None, v) else failure
+                  if (s2.retryLevel == 0) v.decider.handleFailedAssertion(False, analysisInfos, v.reportFurtherErrors())
+                  if (s2.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.disableInfeasibilityChecks()) failure combine Q(s2, s2.h, None, v) else failure
               }
             }
           case false =>
             val failure = createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver injective")
-            if(s.retryLevel == 0) v.decider.handleFailedAssertion(receiverInjectivityCheck, analysisInfos, v.reportFurtherErrors())
-            if(s.retryLevel == 0 && v.reportFurtherErrors()){
+            if (s.retryLevel == 0) v.decider.handleFailedAssertion(receiverInjectivityCheck, analysisInfos, v.reportFurtherErrors())
+            if (s.retryLevel == 0 && v.reportFurtherErrors()) {
               val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
-              failure combine Q(s, s.h, if(returnSnap) Some(snap) else None, v)
-            }else{
+              failure combine Q(s, s.h, if (returnSnap) Some(snap) else None, v)
+            } else {
               failure
             }
         }
       case false =>
         val failure = createFailure(pve dueTo negativePermissionReason, v, s, nonNegTerm, nonNegExp)
-        if(s.retryLevel == 0) v.decider.handleFailedAssertion(nonNegTerm, analysisInfos, v.reportFurtherErrors())
-        if(s.retryLevel == 0 && v.reportFurtherErrors()){
+        if (s.retryLevel == 0) v.decider.handleFailedAssertion(nonNegTerm, analysisInfos, v.reportFurtherErrors())
+        if (s.retryLevel == 0 && v.reportFurtherErrors()) {
           val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
-          failure combine Q(s, s.h, if(returnSnap) Some(snap) else None, v)
-        }else{
+          failure combine Q(s, s.h, if (returnSnap) Some(snap) else None, v)
+        } else {
           failure
         }
     }

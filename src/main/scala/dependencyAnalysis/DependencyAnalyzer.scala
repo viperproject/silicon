@@ -82,7 +82,7 @@ object DependencyAnalyzer {
 
   def extractEnableAnalysisFromInfo(info: ast.Info): Option[Boolean] = {
     val annotation = extractAnnotationFromInfo(info, enableDependencyAnalysisAnnotationKey)
-    if(annotation.isDefined && annotation.get.nonEmpty) annotation.get.head.toBooleanOption else None
+    if (annotation.isDefined && annotation.get.nonEmpty) annotation.get.head.toBooleanOption else None
   }
 
   def createAssumptionLabel(id: Option[Int]): String = {
@@ -138,7 +138,7 @@ object DependencyAnalyzer {
 
     sinkNodesByJoinInfo.foreach{case (joinInfo, nodes) =>
       val matchingSourceNodes = sourceNodesByJoinInfo.filter{case (sourceJoinInfo, _) => sourceJoinInfo.matches(joinInfo)}.values.flatten
-      if(joinInfo.edgeType.equals(EdgeType.Up))
+      if (joinInfo.edgeType.equals(EdgeType.Up))
         newGraph.addEdgesConnectingMethodsUpwards(matchingSourceNodes.map(_.id), nodes.map(_.id))
       else
         newGraph.addEdgesConnectingMethodsDownwards(matchingSourceNodes.map(_.id), nodes.map(_.id))
@@ -187,7 +187,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     val labelNode = labelNodeOpt.get
     val chunk = buildChunk(Ite(labelNode.term, perm, NoPerm))
     val chunkNode = addPermissionExhaleNode(chunk, chunk.perm, analysisInfo.analysisInfos, labelNode)
-    if(chunkNode.isDefined) addDependency(chunkNode, Some(labelNode.id))
+    if (chunkNode.isDefined) addDependency(chunkNode, Some(labelNode.id))
     chunk
   }
 
@@ -195,7 +195,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     val labelNode = labelNodeOpt.get
     val chunk = buildChunk(Ite((labelNode.term, perm, NoPerm)))
     val chunkNode = addPermissionInhaleNode(chunk, chunk.perm, analysisInfo.analysisInfos, labelNode)
-    if(chunkNode.isDefined) addDependency(chunkNode, Some(labelNode.id))
+    if (chunkNode.isDefined) addDependency(chunkNode, Some(labelNode.id))
     chunk
   }
 
@@ -219,7 +219,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   }
 
   override def createAssertOrCheckNode(term: Term, analysisInfos: DependencyAnalysisInfos, isCheck: Boolean): Option[GeneralAssertionNode] = {
-    if(isCheck)
+    if (isCheck)
       Some(SimpleCheckNode(term, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assertionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo))
     else
       Some(SimpleAssertionNode(term, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assertionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo))
@@ -254,7 +254,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
 
 
   override def addDependency(source: Option[Int], dest: Option[Int]): Unit = {
-    if(source.isDefined && dest.isDefined)
+    if (source.isDefined && dest.isDefined)
       dependencyGraph.addEdges(source.get, Set(dest.get))
   }
 
@@ -262,7 +262,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     val assumptionLabels = dep.replace("(", "").replace(")", "").split(" ")
     val assertionId = DependencyAnalyzer.getIdFromLabel(assertionLabel)
     val assumptionIds = assumptionLabels.map(DependencyAnalyzer.getIdFromLabel).toSet
-    if(!assumptionIds.contains(assertionId))
+    if (!assumptionIds.contains(assertionId))
       dependencyGraph.addVacuousProof(assertionId)
     dependencyGraph.addEdges(assumptionIds.diff(Set(assertionId)), assertionId)
   }
@@ -297,9 +297,9 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
    */
   override def buildFinalGraph(): Option[DependencyGraph[IntraProcedural]] = {
     dependencyGraph.removeLabelNodes()
-    val mergedGraph = if(Verifier.config.enableDependencyAnalysisDebugging()) dependencyGraph.asInstanceOf[DependencyGraph[IntraProcedural]] else buildAndGetMergedGraph()
+    val mergedGraph = if (Verifier.config.enableDependencyAnalysisDebugging()) dependencyGraph.asInstanceOf[DependencyGraph[IntraProcedural]] else buildAndGetMergedGraph()
     addTransitiveEdges(mergedGraph)
-    if(!Verifier.config.enableDependencyAnalysisDebugging()) mergedGraph.removeInternalNodes()
+    if (!Verifier.config.enableDependencyAnalysisDebugging()) mergedGraph.removeInternalNodes()
     Some(mergedGraph)
   }
 

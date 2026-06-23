@@ -16,7 +16,7 @@ class DebugDependencyAnalysisCliExtension(override val interpreter: DependencyGr
 	class AssumptionTypesCommand extends DependencyAnalysisCliCommand {
 		override val cmdName: String = "assumptionTypes"
 		override val cmd: Seq[String] => Unit = { inputs =>
-			if(inputs.isEmpty)
+			if (inputs.isEmpty)
 				println(getAssumptionTypesPerNode().mkString("\n"))
 			else
 				inputs.flatMap(_.toIntOption).foreach(i => println(s"$i: ${getAssumptionTypesByLine(i)}"))
@@ -37,7 +37,7 @@ class DebugDependencyAnalysisCliExtension(override val interpreter: DependencyGr
 	class AssertionTypesCommand extends DependencyAnalysisCliCommand {
 		override val cmdName: String = "assertionTypes"
 		override val cmd: Seq[String] => Unit = { inputs =>
-			if(inputs.isEmpty)
+			if (inputs.isEmpty)
 				println(getAssertionTypesPerNode().mkString("\n"))
 			else
 				inputs.flatMap(_.toIntOption).foreach(i => println(s"$i: ${getAssertionTypesByLine(i)}"))

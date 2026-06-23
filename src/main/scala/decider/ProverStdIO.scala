@@ -252,7 +252,7 @@ abstract class ProverStdIO(uniqueId: String,
 //    bookkeeper.assumptionCounter += 1
 
     if ((Verifier.config.enableDependencyAnalysis() && label.nonEmpty) ||  Verifier.config.enableUnsatCores()) {
-      writeLine("(assert (! " + term + " :named " + (if(label.nonEmpty) label else nextProverLabel()) + "))")
+      writeLine("(assert (! " + term + " :named " + (if (label.nonEmpty) label else nextProverLabel()) + "))")
     }else {
       writeLine("(assert " + term + ")")
     }
@@ -282,7 +282,7 @@ abstract class ProverStdIO(uniqueId: String,
     setTimeout(timeout)
 
     if ((Verifier.config.enableDependencyAnalysis() && label.nonEmpty) || Verifier.config.enableUnsatCores()){
-      writeLine("(assert (! (not " + goal + ") :named " + (if(label.nonEmpty) label else nextProverLabel()) + "))")
+      writeLine("(assert (! (not " + goal + ") :named " + (if (label.nonEmpty) label else nextProverLabel()) + "))")
     }else{
       writeLine("(assert (not " + goal + "))")
     }

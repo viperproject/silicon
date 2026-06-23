@@ -101,7 +101,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 		val assertionNodes = sourceToAssertionNodesMap.getOrElse(assertion, Set.empty).filter(node => node.isInstanceOf[GeneralAssertionNode])
 		val failedAssertionNodes = assertionNodes.filter(node =>  node.asInstanceOf[GeneralAssertionNode].hasFailed || node.assumptionType.equals(AssumptionType.ExplicitPostcondition))
 		// assertions with failures have quality of 0.0
-		if(failedAssertionNodes.nonEmpty)
+		if (failedAssertionNodes.nonEmpty)
 			return Some(0.0)
 
 		if (allDependencies.isEmpty) return None // we filter out trivial assertions, e.g. assertions that do not have any dependencies
@@ -140,13 +140,13 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 
 		// compute Peter's proof quality
 		val fullyVerifiedAssertions = assertionQualities.filter(_._1 == 1.0)
-		val proofQualityPeter = if(numNonTrivialAssertions > 0) fullyVerifiedAssertions.size.toDouble / numNonTrivialAssertions.toDouble else 1.0
+		val proofQualityPeter = if (numNonTrivialAssertions > 0) fullyVerifiedAssertions.size.toDouble / numNonTrivialAssertions.toDouble else 1.0
 
 		// compute Lea's proof quality
 		val assertionQualitiesSum = assertionQualities.map(_._1).sum
-		val proofQualityLea = if(numNonTrivialAssertions > 0) assertionQualitiesSum / numNonTrivialAssertions.toDouble else 1.0
+		val proofQualityLea = if (numNonTrivialAssertions > 0) assertionQualitiesSum / numNonTrivialAssertions.toDouble else 1.0
 
-		if(enableDebugOutput)
+		if (enableDebugOutput)
 			println(
 				s"fullyVerifiedAssertions:\n\t${fullyVerifiedAssertions.sortBy(n => (n._2.getLineNumber, n._2.toString)).mkString("\n\t")}\n" +
 				s"assertionQualitiesSum:\n\t${assertionQualities.sortBy(n => (n._2.getLineNumber, n._2.toString)).mkString("\n\t")}"
@@ -172,10 +172,10 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 		val nonSourceCodeAssumptionTypes = AssumptionType.explicitAssumptionTypes ++ AssumptionType.verificationAnnotationTypes
 		val allSourceCodeNodes = toCompactUserLevelNodes(interpreter.getNonInternalAssumptionNodes).filter(n => nonSourceCodeAssumptionTypes.intersect(n.assumptionTypes).isEmpty).map(_.source).diff(explicitAssertions.map(_.source))
 
-		if(allSourceCodeNodes.isEmpty) return 1.0
+		if (allSourceCodeNodes.isEmpty) return 1.0
 
 		val coveredSourceCodeNodes = coveredNodes.map(_.source).intersect(allSourceCodeNodes)
-		if(enableDebugOutput)
+		if (enableDebugOutput)
 		    println(
 					s"Covered Source Code:\n\t${coveredSourceCodeNodes.toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}\n" +
 					s"Uncovered Source Code:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}"
@@ -227,7 +227,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 		val allSourceCodeStmts = allNodes.getSourceSet().diff(UserLevelDependencyAnalysisNode.extractByAssumptionType(allNodes,
 			AssumptionType.explicitAssumptionTypes ++ AssumptionType.verificationAnnotationTypes).getSourceSet()).diff(explicitAssertions.getSourceSet())
 		val uncoveredSourceCodeStmts = allSourceCodeStmts.diff(allDependencies)
-		if(uncoveredSourceCodeStmts.nonEmpty)
+		if (uncoveredSourceCodeStmts.nonEmpty)
 			println(s"${interpreter.getName}:\n\t${allSourceCodeStmts.diff(allDependencies).toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}")
 		uncoveredSourceCodeStmts.size
 	}
