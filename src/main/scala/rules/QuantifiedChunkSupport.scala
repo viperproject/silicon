@@ -1535,8 +1535,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s, "single QP consume")
             case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
           }
-          if(s.retryLevel == 0) v.decider.handleFailedAssertion(False, analysisInfos, v.reportFurtherErrors())
-          if(s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, s.h, None, v) else failure
+          if (s.retryLevel == 0) v.decider.handleFailedAssertion(False, analysisInfos, v.reportFurtherErrors())
+          if (s.retryLevel == 0 && v.reportFurtherErrors()) {
+						val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
+						failure combine Q(s, s.h, Some(snap), v)
+					} else failure
       }
     }
   }
