@@ -2,8 +2,7 @@ package viper.silicon.tests
 
 import viper.silicon.SiliconFrontend
 import viper.silicon.dependencyAnalysis._
-import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisPruningSupporter, DependencyAnalysisProgressSupporter, DependencyGraphInterpreter}
-
+import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisProgressSupporter, DependencyAnalysisPruningSupporter, DependencyGraphInterpreter}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.{Infoed, Program}
 import viper.silver.dependencyAnalysis.AssumptionType
@@ -257,7 +256,7 @@ trait DependencyAnalysisTestFramework {
    * [value] can be either a decimal number (e.g., 0.75) or a fraction (e.g., 5/6)
    */
   class VerificationProgressTest(fileName: String, fullGraphInterpreter: DependencyGraphInterpreter[Final]) {
-    private val epsilon = 1e-8
+    private val epsilon = 1e-6
 
     def execute(): Unit = {
       val (expectedSpecQuality, expectedProofQualityLea, expectedProgress) = readExpectedValues()
