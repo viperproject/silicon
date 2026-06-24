@@ -144,7 +144,7 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
 
 	def getCustomEdges() = dependencyGraph.getCustomEdges
 
-	def isConcreteGraph(): Boolean = dependencyGraph.isConcreteMode()
+	def isConcreteGraph(): Boolean = dependencyGraph.isConcreteMode
 
 	def activateConcreteGraph(): Unit = dependencyGraph.activateConcreteMode()
 

@@ -143,6 +143,8 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
       this.predicateData(predicate.name).params = Some(Seq(snap) ++ argVars.map(_._2._1))
       this.predicateData(predicate.name).addRecorders(Seq(funcRecorder))
 
+      result.pathContext = v.decider.dependencyAnalyzer.getPathContext
+
       symbExLog.closeMemberScope()
       Seq(result)
     }

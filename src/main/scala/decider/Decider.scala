@@ -480,7 +480,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val label = DependencyAnalyzer.createAssertionLabel(checkNode.map(_.id))
 
 			if(isPathInfeasible) {
-				checkNode foreach dependencyAnalyzer.addAssertionNode
+				checkNode foreach { n =>
+          dependencyAnalyzer.addAssertionNode(n)
+          if(dependencyAnalyzer.isPathSensitive){
+            dependencyAnalyzer.getPathContext.get.setPathContext(n.id,analysisInfos.pathContextID)
+          }
+        }
 				dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, checkNode.map(_.id))
 				return true
 			}
@@ -489,7 +494,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val result = prover.check(timeout, label) == Unsat
 
       if(result){
-        checkNode foreach dependencyAnalyzer.addAssertionNode
+        checkNode foreach { n =>
+          dependencyAnalyzer.addAssertionNode(n)
+          if(dependencyAnalyzer.isPathSensitive){
+            dependencyAnalyzer.getPathContext.get.setPathContext(n.id,analysisInfos.pathContextID)
+          }
+        }
         dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
         val infeasibleNodeId = dependencyAnalyzer.addInfeasibilityNode(!isAssert, analysisInfos)
 //        Adding the following line would be UNSOUND! Unsoundness is introduced when infeasibility is introduced while executing a package statements and pontentially in other cases as well.
@@ -497,7 +507,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibleNodeId)
         pcs.setCurrentInfeasibilityNode(infeasibleNodeId)
       }else if(isAssert){
-        checkNode foreach (node => dependencyAnalyzer.addAssertionNode(node.getAssertFailedNode))
+        checkNode foreach { node =>
+          dependencyAnalyzer.addAssertionNode(node.getAssertFailedNode)
+          if(dependencyAnalyzer.isPathSensitive){
+            dependencyAnalyzer.getPathContext.get.setPathContext(node.id,analysisInfos.pathContextID)
+          }
+        }
       }
       result
     }
@@ -514,10 +529,21 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
 		def handleAndGetUpdatedAnalysisInfos(analysisInfos: DependencyAnalysisInfos, info: Info, node: ast.Node): DependencyAnalysisInfos = {
-			val newAnalysisInfos = analysisInfos.addInfo(info, node)
+			var newAnalysisInfos = analysisInfos.addInfo(info, node)
+
+      if(dependencyAnalyzer.isPathSensitive){
+        val ctx = dependencyAnalyzer.getPathContext
+        if(ctx.isDefined){  // for methods with empty body, the dependencyAnalyzer is removed
+          val pathID = ctx.get.getPathId(pcs.branchConditions.toList)
+          newAnalysisInfos = newAnalysisInfos.copy(pathContextID = pathID)
+        }
+      }
 			info.getAllInfos[AdditionalDependencyNodeInfo].foreach {
 				case AdditionalAssertionNode() => dependencyAnalyzer.createAssertOrCheckNode(True, newAnalysisInfos, isCheck = false).foreach(n => {
 					dependencyAnalyzer.addAssertionNode(n)
+          if(dependencyAnalyzer.isPathSensitive){
+            dependencyAnalyzer.getPathContext.get.setPathContext(n.id,newAnalysisInfos.pathContextID)
+          }
 					if(isPathInfeasible) dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, Some(n.id))
 				})
 				case AdditionalAssumptionNode() => dependencyAnalyzer.addAssumption(True, newAnalysisInfos)
@@ -558,7 +584,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val result = asserted || proverAssert(t, timeout, DependencyAnalyzer.createAssertionLabel(assertNode map (_.id)))
 
       if(result) {
-        assertNode foreach dependencyAnalyzer.addAssertionNode
+        assertNode foreach { node =>
+          dependencyAnalyzer.addAssertionNode(node)
+          if(dependencyAnalyzer.isPathSensitive){
+            dependencyAnalyzer.getPathContext.get.setPathContext(node.id, analysisInfos.pathContextID)
+          }
+        }
       }
 
       symbExLog.closeScope(sepIdentifier)

@@ -67,17 +67,26 @@ object brancher extends BranchingRules {
     )
 
     val analysisInfos1 = v.decider.handleAndGetUpdatedAnalysisInfos(analysisInfos, conditionExp._1.info, conditionExp._1)
+    var analysisInfosThen = analysisInfos1
+    var analysisInfosElse = analysisInfos1
+
+    if(v.decider.dependencyAnalyzer.isPathSensitive){
+      val idTuple = v.decider.dependencyAnalyzer.getPathContext.get.registerOrGetBranchpoint((v.decider.pcs.branchConditions).toList:List[Term], condition, negatedCondition)
+
+      analysisInfosThen = analysisInfos1.copy(pathContextID = idTuple._1)
+      analysisInfosElse = analysisInfos1.copy(pathContextID = idTuple._2)
+    }
 
     /* True if the then-branch is to be explored */
     val executeThenBranch = (
          skipPathFeasibilityCheck
-      || !v.decider.check(negatedCondition, Verifier.config.checkTimeout(), analysisInfos1.withDependencyType(DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge())))
+      || !v.decider.check(negatedCondition, Verifier.config.checkTimeout(), analysisInfosThen.withDependencyType(DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge())))
 
     /* False if the then-branch is to be explored */
     val executeElseBranch = (
          !executeThenBranch /* Assumes that ast least one branch is feasible */
       || skipPathFeasibilityCheck
-      || !v.decider.check(condition, Verifier.config.checkTimeout(), analysisInfos1.withDependencyType(DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge())))
+      || !v.decider.check(condition, Verifier.config.checkTimeout(), analysisInfosElse.withDependencyType(DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge())))
 
     val parallelizeElseBranch = s.parallelizeBranches && executeThenBranch && executeElseBranch
 
@@ -155,8 +164,8 @@ object brancher extends BranchingRules {
 
           executionFlowController.locally(s, v0)((s1, v1) => {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
-            v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew), analysisInfos1)
-            if(v.decider.isDependencyAnalysisEnabled && !executeElseBranch) v.decider.checkSmoke(analysisInfos1.withDependencyType(DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge()))
+            v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew), analysisInfosElse)
+            if(v.decider.isDependencyAnalysisEnabled && !executeElseBranch) v.decider.checkSmoke(analysisInfosElse.withDependencyType(DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge()))
 
             var functionsOfElseBranchdDeciderBefore: Set[FunctionDecl] = null
             var nMacrosOfElseBranchDeciderBefore: Int = 0
@@ -206,8 +215,8 @@ object brancher extends BranchingRules {
           v.symbExLog.markReachable(uidBranchPoint)
           executionFlowController.locally(s, v)((s1, v1) => {
             v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
-            v1.decider.setCurrentBranchCondition(condition, conditionExp, analysisInfos1)
-            if(v.decider.isDependencyAnalysisEnabled && !executeThenBranch) v.decider.checkSmoke(analysisInfos1.withDependencyType(DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge()))
+            v1.decider.setCurrentBranchCondition(condition, conditionExp, analysisInfosThen)
+            if(v.decider.isDependencyAnalysisEnabled && !executeThenBranch) v.decider.checkSmoke(analysisInfosThen.withDependencyType(DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge()))
 
             fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
           })

@@ -710,6 +710,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val enablePathSensitiveDependencyAnalysis: ScallopOption[Boolean] = opt[Boolean]("enablePathSensitiveDependencyAnalysis",
+    descr = "Disables node merging from different execution paths, works in combination with 'enableDependencyAnalysis' / 'enableDependencyAnalysisDebugging'",
+    default = Some(false),
+    noshort = true
+  )
+
   val disableInfeasibilityChecks: ScallopOption[Boolean] = opt[Boolean]("disableInfeasibilityChecks",
     descr = "Disable infeasibility checks. As a consequence all paths will be explored to the end. (Potentially) huge performance overhead!",
     default = Some(false),

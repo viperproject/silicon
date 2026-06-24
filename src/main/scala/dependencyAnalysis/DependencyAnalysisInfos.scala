@@ -10,7 +10,13 @@ import viper.silver.dependencyAnalysis._
  * Stores all information about the currently evaluated statement/expression such that the dependency analysis can
  * correctly add nodes and edges to the graph.
  */
-case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], dependencyTypes: List[DependencyTypeInfo], mergeInfos: List[DependencyAnalysisMergeInfo], joinInfos: List[DependencyAnalysisJoinInfo], nodes: List[ast.Node], analysisEnabled: Boolean = true) {
+case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo],
+																	 dependencyTypes: List[DependencyTypeInfo],
+																	 mergeInfos: List[DependencyAnalysisMergeInfo],
+																	 joinInfos: List[DependencyAnalysisJoinInfo],
+																	 nodes: List[ast.Node],
+																	 analysisEnabled: Boolean = true,
+																	 pathContextID: Int = 0) {
 
 	private def isAnalysisEnabled = Verifier.config.enableDependencyAnalysis() && analysisEnabled
 

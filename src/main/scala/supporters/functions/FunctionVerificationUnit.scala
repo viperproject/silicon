@@ -167,7 +167,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       data.formalArgs.values foreach (v => decider.prover.declare(ConstDecl(v)))
       decider.prover.declare(ConstDecl(data.formalResult))
 
-      var res = handleFunction(sInit, function)
+      val res = handleFunction(sInit, function)
 
       v.decider.resetProverOptions()
       symbExLog.closeMemberScope()
@@ -176,6 +176,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       res.dependencyGraphInterpreter = v.decider.dependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(function.name, _,
         allErrors, Some(function)))
+
+      res.pathContext = v.decider.dependencyAnalyzer.getPathContext
 
       Seq(res)
     }
@@ -189,6 +191,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       val presAssertionNodeForJoin = function.pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(pc)), List(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up))))
       presAssertionNodeForJoin foreach v.decider.dependencyAnalyzer.addAssertionNode
+
+
 
 
       /* Phase 1: Check well-definedness of the specifications */

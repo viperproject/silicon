@@ -84,7 +84,7 @@ trait ReadOnlyDependencyGraph[T <: DependencyGraphState] {
 
   def deactivateConcreteMode(): Unit
 
-  def isConcreteMode(): Boolean
+  def isConcreteMode: Boolean
 }
 
 class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph[T] {

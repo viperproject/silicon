@@ -7,15 +7,18 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast._
 import viper.silver.dependencyAnalysis.JoinType.JoinType
-import viper.silver.dependencyAnalysis.{AssumptionType, DependencyAnalysisMergeInfo, EdgeType, EvalStackDependencyAnalysisJoin, JoinType, NoDependencyAnalysisMerge, SimpleDependencyAnalysisMerge, CompositeDependencyAnalysisMergeInfo}
+import viper.silver.dependencyAnalysis.{AssumptionType, DependencyAnalysisMergeInfo, EdgeType, EvalStackDependencyAnalysisJoin, JoinType, SimpleDependencyAnalysisMerge, CompositeDependencyAnalysisMergeInfo}
 
 import scala.collection.mutable
 
 
 trait DependencyAnalyzer {
   protected val dependencyGraph: DependencyGraph[Init] = new DependencyGraph()
+  lazy val isPathSensitive: Boolean = DependencyAnalyzer.isPathSensitive
 
   def getMember: Option[ast.Member]
+
+  def getPathContext: Option[PathContextManager]
 
   def getNodes: Iterable[DependencyAnalysisNode]
 
@@ -73,6 +76,7 @@ trait DependencyAnalyzer {
 object DependencyAnalyzer {
   val analysisLabelName: String = "$$analysisLabel$$"
   private val enableDependencyAnalysisAnnotationKey = "enableDependencyAnalysis"
+  def isPathSensitive: Boolean = Verifier.config.enablePathSensitiveDependencyAnalysis()
 
   private def extractAnnotationFromInfo(info: ast.Info, annotationKey: String): Option[Seq[String]] = {
     info.getAllInfos[ast.AnnotationInfo]
@@ -128,9 +132,7 @@ object DependencyAnalyzer {
     def getJoinNodesByJoinInfo(candidateNodes: Set[DependencyAnalysisNode], joinType: JoinType) = {
       candidateNodes
         .flatMap(node => node.joinInfos.filter(_.joinType.equals(joinType)).map((_, node)))
-        .groupBy(_._1)
-        .view.mapValues(_.map(_._2))
-        .toMap
+        .groupMap(_._1)(_._2)
     }
 
     val sourceNodesByJoinInfo = getJoinNodesByJoinInfo(joinSourceNodes, JoinType.Source)
@@ -144,19 +146,13 @@ object DependencyAnalyzer {
         newGraph.addEdgesConnectingMethodsDownwards(matchingSourceNodes.map(_.id), nodes.map(_.id))
     }
 
-    // mark as custom edges, iff there are no postconditions linked to these preconditions
-    def reachable(sources: Set[Int], dest: Set[Int]): Set[Int] = {
-      newGraph.getAllDependencies(sources, true, true, true).intersect(dest)
-    }
-
     val all_nodes_map = newGraph.getNodes.map(n => n.id -> n).toMap
     val postCondNodes = newGraph.getAssertionNodes.filter(_.assumptionType == AssumptionType.ImplicitPostcondition)
     val postCondNodeIdsBySourceInfo = postCondNodes
       .filter(_.mergeInfo.isInstanceOf[SimpleDependencyAnalysisMerge])
       .map(n => (n.mergeInfo.asInstanceOf[SimpleDependencyAnalysisMerge].sourceInfo, n.id))
-      .groupBy(_._1)
-      .view.mapValues(_.map(_._2).toSet)
-      .toMap
+      .groupMapReduce(_._1)(x => Set(x._2))(_ ++ _)
+    val reachableCache = mutable.HashMap[Set[Int], Set[Int]]()
 
     // println("Combining graph with "+postCondNodes.length+" postCondNodes and "+all_nodes_map.size+" Nodes in total")
     dependencyGraphInterpreters foreach (interpreter => interpreter.getGraph.getCustomEdges foreach {
@@ -168,7 +164,8 @@ object DependencyAnalyzer {
                 postCondNodeIdsBySourceInfo.getOrElse(sourceInfo1, Set.empty[Int])
               case _ => Set.empty[Int]
             }
-            val unreachableDeps = deps.diff(reachable(methodPCs, deps))
+            val reachableFromPCs = reachableCache.getOrElseUpdate(methodPCs, newGraph.getAllDependencies(methodPCs, true, true, true))
+            val unreachableDeps = deps.diff(reachableFromPCs.intersect(deps))
             newGraph.addCustomEdges(unreachableDeps, t)
             // println("found "+unreachableDeps.size+" unreachable out of "+deps.size)
           case None => ()
@@ -181,8 +178,11 @@ object DependencyAnalyzer {
 
 class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
 	protected var customMergeDependencies: Set[(Set[DependencyAnalysisMergeInfo], Set[DependencyAnalysisMergeInfo])] = Set.empty
+  private val pathContext: Option[PathContextManager] = if (isPathSensitive) Some(new PathContextManager()) else None
 
   override def getMember: Option[ast.Member] = Some(member)
+
+  override def getPathContext: Option[PathContextManager] = pathContext
 
   override def getNodes: Iterable[DependencyAnalysisNode] = dependencyGraph.getNodes
 
@@ -192,9 +192,9 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
       .map(_.id).toSet
   }
 
-
   override def addNodes(nodes: Iterable[DependencyAnalysisNode]): Unit = {
     nodes foreach dependencyGraph.addNode
+    // TODO: jho: maybe insert precondition PC here???
   }
 
   override def addAssumptionNode(node: GeneralAssumptionNode): Unit = dependencyGraph.addAssumptionNode(node)
@@ -204,19 +204,23 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   override def addAssumption(assumption: Term, analysisInfos: DependencyAnalysisInfos, description: Option[String]): Option[Int] = {
     val node = SimpleAssumptionNode(assumption, description, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assumptionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo)
     addAssumptionNode(node)
+    // store path information:
+    if(isPathSensitive) pathContext.get.setPathContext(node.id, analysisInfos.pathContextID)
     Some(node.id)
   }
 
   override def addAxiom(assumption: Term, analysisInfos: DependencyAnalysisInfos, description: Option[String]): Option[Int] = {
     val node = AxiomAssumptionNode(assumption, description, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assumptionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo)
     addAssumptionNode(node)
+    // store path information:
+    if(isPathSensitive) pathContext.get.setPathContext(node.id, analysisInfos.pathContextID)
     Some(node.id)
   }
 
   override def registerExhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, labelNodeOpt: Option[LabelNode], analysisInfo: AnalysisInfo): CH = {
     val labelNode = labelNodeOpt.get
     val chunk = buildChunk(Ite(labelNode.term, perm, NoPerm))
-    val chunkNode = addPermissionExhaleNode(chunk, chunk.perm, analysisInfo.analysisInfos, labelNode)
+    val chunkNode = addPermissionExhaleNode(chunk, chunk.perm, analysisInfo.analysisInfos, labelNode) // Path condition is tracked by callee
     if(chunkNode.isDefined) addDependency(chunkNode, Some(labelNode.id))
     chunk
   }
@@ -224,7 +228,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   override def registerInhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, labelNodeOpt: Option[LabelNode], analysisInfo: AnalysisInfo): CH = {
     val labelNode = labelNodeOpt.get
     val chunk = buildChunk(Ite((labelNode.term, perm, NoPerm)))
-    val chunkNode = addPermissionInhaleNode(chunk, chunk.perm, analysisInfo.analysisInfos, labelNode)
+    val chunkNode = addPermissionInhaleNode(chunk, chunk.perm, analysisInfo.analysisInfos, labelNode) // Path condition is tracked by callee
     if(chunkNode.isDefined) addDependency(chunkNode, Some(labelNode.id))
     chunk
   }
@@ -232,18 +236,23 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   private def addPermissionInhaleNode(chunk: Chunk, permAmount: Term, analysisInfos: DependencyAnalysisInfos, labelNode: LabelNode): Option[Int] = {
     val node = PermissionInhaleNode(chunk, permAmount, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assumptionType, analysisInfos.getMergeInfo, labelNode, analysisInfos.getJoinInfo)
     addAssumptionNode(node)
+    // store path information:
+    if(isPathSensitive) pathContext.get.setPathContext(node.id, analysisInfos.pathContextID)
     Some(node.id)
   }
 
   private def addPermissionExhaleNode(chunk: Chunk, permAmount: Term, analysisInfos: DependencyAnalysisInfos, labelNode: LabelNode): Option[Int] = {
     val node = PermissionExhaleNode(chunk, permAmount, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assertionType, analysisInfos.getMergeInfo, labelNode, analysisInfos.getJoinInfo)
     addAssertionNode(node)
+    // store path information:
+    if(isPathSensitive) pathContext.get.setPathContext(node.id, analysisInfos.pathContextID)
     Some(node.id)
   }
 
   override def createLabelNode(label: Var, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): Option[LabelNode] = {
     val labelNode = LabelNode(label)
     addAssumptionNode(labelNode)
+    // TODO: jho: add path information ??
     dependencyGraph.addEdges(getNodeIdsByTerm(sourceTerms.toSet), labelNode.id)
     Some(labelNode)
   }
@@ -257,19 +266,27 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   
   private def addAssertNode(term: Term, analysisInfos: DependencyAnalysisInfos): Option[Int] = {
     val node = createAssertOrCheckNode(term, analysisInfos, isCheck=false)
-    node foreach addAssertionNode
+    node foreach { n =>
+      addAssertionNode(n)
+      // store path information:
+      if(isPathSensitive) pathContext.get.setPathContext(n.id, analysisInfos.pathContextID)
+    }
     node map (_.id)
   }
 
   override def addAssertFalseNode(isCheck: Boolean, analysisInfos: DependencyAnalysisInfos): Option[Int] = {
     val node = createAssertOrCheckNode(False, analysisInfos, isCheck)
     addAssertionNode(node.get)
+    // store path information:
+    if(isPathSensitive) pathContext.get.setPathContext(node.get.id, analysisInfos.pathContextID)
     node.map(_.id)
   }
 
   override def addInfeasibilityNode(isCheck: Boolean, analysisInfos: DependencyAnalysisInfos): Option[Int] = {
     val node = InfeasibilityNode(analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assumptionType)
     addAssumptionNode(node)
+    // store path information:
+    if(isPathSensitive) pathContext.get.setPathContext(node.id, analysisInfos.pathContextID)
     Some(node.id)
   }
 
@@ -278,6 +295,11 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     val assertFailedNode = SimpleAssertionNode(failedAssertion, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assertionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo, hasFailed=true)
     dependencyGraph.addNode(assumeNode)
     dependencyGraph.addNode(assertFailedNode)
+    // store path information:
+    if(isPathSensitive){
+      pathContext.get.setPathContext(assumeNode.id, analysisInfos.pathContextID)
+      pathContext.get.setPathContext(assertFailedNode.id, analysisInfos.pathContextID)
+    }
     dependencyGraph.addEdges(Set(assumeNode.id), assertFailedNode.id)
     Some(assertFailedNode.id)
   }
@@ -311,10 +333,24 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
 	}
 
 	protected def addCustomMergeDependencies(mergedGraph: DependencyGraph[IntraProcedural]): Unit = {
+    val nodesByMergeInfo = mergedGraph.getNodes.groupMapReduce(_.mergeInfo)(n => Set(n.id))(_ ++ _)
 		customMergeDependencies.foreach{ case (sourceMergeInfos, targetMergeInfos) =>
-			val sourceNodes = mergedGraph.getNodes.filter(node => sourceMergeInfos.contains(node.mergeInfo)).map(_.id)
-			val targetNodes = mergedGraph.getNodes.filter(node => targetMergeInfos.contains(node.mergeInfo)).map(_.id)
-			mergedGraph.addCustomEdges(sourceNodes, targetNodes)
+      val sourceNodes = mutable.Set.empty[Int]
+      val targetNodes = mutable.Set.empty[Int]
+      nodesByMergeInfo.keys foreach { n =>
+        if(sourceMergeInfos.contains(n)){ sourceNodes.addAll(nodesByMergeInfo(n))}
+        if(targetMergeInfos.contains(n)){ targetNodes.addAll(nodesByMergeInfo(n))}
+      }
+
+      if(isPathSensitive){
+        // only combine nodes from the same path
+        val srcNodesByContext = sourceNodes.groupBy(pathContext.get.getPathContext(_))
+        val targetByContext = targetNodes.groupBy(pathContext.get.getPathContext(_))
+        // assert(srcNodesByContext.keySet == targetByContext.keySet)
+        srcNodesByContext foreach  { case (k, va) => mergedGraph.addCustomEdges(va,targetByContext.getOrElse(k,Set.empty[Int]))}
+      }else{
+        mergedGraph.addCustomEdges(sourceNodes, targetNodes)
+      }
 		}
 	}
 
@@ -339,7 +375,13 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
 	 * and indirect dependencies.
 	 */
   private def addTransitiveEdges(mergedGraph: DependencyGraph[IntraProcedural]): Unit = {
-    val nodesPerSourceInfo = mergedGraph.getNodes.filter(_.mergeInfo.isMerge).groupBy(_.mergeInfo)
+    val nodesPerSourceInfo =
+      if(isPathSensitive){
+        mergedGraph.getNodes.filter(_.mergeInfo.isMerge).groupBy( n => (n.mergeInfo, pathContext.get.getPathContext(n.id)))
+      }else{
+        mergedGraph.getNodes.filter(_.mergeInfo.isMerge).groupBy(_.mergeInfo)
+      }
+
     nodesPerSourceInfo foreach {case (_, nodes) =>
       val asserts = nodes.filter(_.isInstanceOf[GeneralAssertionNode])
       val assumes = nodes.filter(n => n.isInstanceOf[GeneralAssumptionNode] && !n.isInstanceOf[LabelNode])
@@ -365,29 +407,52 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     val mergedGraph = new DependencyGraph[IntraProcedural]
     val nodeMap = mutable.HashMap[Int, Int]()
 
-    dependencyGraph.getAssumptionNodes.filter(keepNode).foreach { n =>
+    val (keptAssumptions, mergedAssumptions) = dependencyGraph.getAssumptionNodes.partition(keepNode)
+
+    keptAssumptions.foreach { n =>
       nodeMap.put(n.id, n.id)
       mergedGraph.addAssumptionNode(n)
     }
-    val assumptionNodesBySource = dependencyGraph.getAssumptionNodes.filter(!keepNode(_)).groupBy(n => (n.sourceInfo, n.assumptionType, n.mergeInfo, n.joinInfos))
-    assumptionNodesBySource foreach { case ((sourceInfo, assumptionType, mergeInfo, joinInfos), assumptionNodes) =>
-      if (assumptionNodes.nonEmpty) {
-        val newNode = SimpleAssumptionNode(True, None, sourceInfo, assumptionType, mergeInfo, joinInfos)
-        assumptionNodes foreach (n => nodeMap.put(n.id, newNode.id))
-        mergedGraph.addAssumptionNode(newNode)
-      }
+
+    val assumptionNodesBySource = mergedAssumptions.groupBy {
+      n =>
+        val base = (n.sourceInfo, n.assumptionType, n.mergeInfo, n.joinInfos)
+        if (isPathSensitive) {
+          // group additionally by pathContextID
+          (base, pathContext.get.getPathContext(n.id))
+        } else {(base, None)}
+    }
+    assumptionNodesBySource foreach {
+      case (((sourceInfo, assumptionType, mergeInfo, joinInfos),pathContext), assumptionNodes) =>
+        if (assumptionNodes.nonEmpty) {
+          val newNode = SimpleAssumptionNode(True, None, sourceInfo, assumptionType, mergeInfo, joinInfos)
+          assumptionNodes foreach (n => nodeMap.put(n.id, newNode.id))
+          mergedGraph.addAssumptionNode(newNode)
+          // TODO: jho: check path information
+        }
     }
 
-    dependencyGraph.getAssertionNodes.filter(keepNode).foreach { n =>
+    val (keptAssertions, mergedAssertions) = dependencyGraph.getAssertionNodes.partition(keepNode)
+
+    keptAssertions.foreach { n =>
       nodeMap.put(n.id, n.id)
       mergedGraph.addAssertionNode(n)
     }
-    val assertionNodesBySource = dependencyGraph.getAssertionNodes.filter(!keepNode(_)).groupBy(n => (n.sourceInfo, n.assumptionType, n.mergeInfo, n.joinInfos))
-    assertionNodesBySource foreach { case ((sourceInfo, assumptionType, mergeInfo, joinInfos), assertionNodes) =>
+
+    val assertionNodesBySource = mergedAssertions.groupBy { n =>
+      val base =
+        (n.sourceInfo, n.assumptionType, n.mergeInfo, n.joinInfos)
+      if (isPathSensitive) {
+        // group additionally by pathContextID
+        (base, pathContext.get.getPathContext(n.id))
+      } else {(base, None)}
+    }
+    assertionNodesBySource foreach { case (((sourceInfo, assumptionType, mergeInfo, joinInfos),pathContext), assertionNodes) =>
       if (assertionNodes.nonEmpty) {
         val newNode = SimpleAssertionNode(True, sourceInfo, assumptionType, mergeInfo, joinInfos, hasFailed=assertionNodes.exists(_.hasFailed))
         assertionNodes foreach (n => nodeMap.put(n.id, newNode.id))
         mergedGraph.addAssertionNode(newNode)
+        // TODO: jho: check path information
       }
     }
 
@@ -416,6 +481,8 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
 class NoDependencyAnalyzer extends DependencyAnalyzer {
 
   override def getMember: Option[ast.Member] = None
+
+  override def getPathContext: Option[PathContextManager] = None
 
   override def getNodes: Iterable[DependencyAnalysisNode] = Set.empty
 
