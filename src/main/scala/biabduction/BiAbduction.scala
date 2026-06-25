@@ -295,7 +295,7 @@ object BiAbductionSolver {
             case _ => qFold
           }*/
 
-          println(s"abdGoal $abdGoal due to $f \nin h:\n\t${s.h.values.mkString("\n\t")}\nand g:\n\t${s.g.values.mkString("\n\t")}")
+          // println(s"abdGoal $abdGoal due to $f \nin h:\n\t${s.h.values.mkString("\n\t")}\nand g:\n\t${s.g.values.mkString("\n\t")}")
           // println(s"Reserved 4 Unfold: ${qFold.s.reservedForFoldUnfold}")
           // println(s"Reserved 4 Invariants: ${qFold.s.reservedForInvariants}")
           //// println(s"and v:\n\t${v.decider.pcs.assumptions.mkString("\n\t")}")
