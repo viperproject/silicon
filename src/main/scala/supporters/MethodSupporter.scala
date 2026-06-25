@@ -9,6 +9,7 @@ package viper.silicon.supporters
 import com.typesafe.scalalogging.Logger
 import viper.silicon.Map
 import viper.silicon.decider.Decider
+import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos.DefaultDependencyAnalysisInfos
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.interfaces._
@@ -83,8 +84,8 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       val presAssertionNodeForJoin = pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(pc)), List(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up))))
       presAssertionNodeForJoin foreach v.decider.dependencyAnalyzer.addAssertionNode
 
-      val analysisInfosPrecondition = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Up))
-      val analysisInfosPostcondition = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))
+      val analysisInfosPrecondition = DefaultDependencyAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Up))
+      val analysisInfosPostcondition = DefaultDependencyAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))
 
       errorsReportedSoFar.set(0)
       val result =

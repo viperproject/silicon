@@ -73,6 +73,7 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
         case "prune" => handlePruningRequest(inputParts.tail)
         case _ => extensions.foreach(_.visit(inputParts))
       }
+			println("Done.")
     } else {
       println("Invalid input."); println(infoString)
     }
@@ -94,7 +95,7 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
           println(s"uncovered nodes:\n\t${uncoveredSources.mkString("\n\t")}")
           println(s"#uncovered nodes:\n\t${uncoveredSources.size}")
       })
-    println("Done.")
+
   }
 
   private def handleProofCoverageLineQuery(memberNames: Seq[String]): Unit = {
@@ -120,7 +121,7 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
           println(s"uncovered nodes:\n\t${uncoveredSources.mkString("\n\t")}")
           println(s"#uncovered nodes:\n\t${uncoveredSources.size}")
       })
-    println("Done.")
+
   }
 
   def handleVerificationProgressQuery(inputs: Seq[String], exportFileNameOpt: Option[String] = None): Unit = {
@@ -155,7 +156,7 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
     println(s"\nExplicit Dependencies (${timeExplicit}ms):\n\t${getSourceInfoString(explicitDependencies.diff(queriedNodes))}")
 
     if (queriedAssertions.exists(_.asInstanceOf[GeneralAssertionNode].hasFailed)) println("\nQueried assertions (partially) FAILED!\n")
-    println("Done.")
+
   }
 
   private def handleDependentsQuery(inputs: Set[String]): Unit = {
@@ -171,7 +172,7 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
     println(s"\nAll Dependents (${timeAll}ms):\n\t${getSourceInfoString(allDependents)}")
     println(s"\nDependents without infeasibility (${timeWithoutInfeasibility}ms):\n\t${getSourceInfoString(dependentsWithoutInfeasibility)}")
     println(s"\nExplicit Dependents (${timeExplicit}ms):\n\t${getSourceInfoString(explicitDependents)}")
-    println("Done.")
+
   }
 
   def handlePruningRequest(inputs: Seq[String], exportFileNameOpt: Option[String] = None): Unit = {
@@ -181,7 +182,7 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
 		}
     val queriedNodes = getQueriedNodesFromInput(inputs.toSet)
 		fullGraphInterpreter.pruningSupporter.pruneProgramAndExport(queriedNodes, program, exportFileName)
-    println("Done.")
+
   }
 
   private def handleVerificationGuidanceQuery(): Unit = {

@@ -143,7 +143,7 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
 				callGraphs.foreach { case (assertionLabel, callGraphLabels) => evalSingleAssertion(assertionLabel, groundTruths(assertionLabel), callGraphLabels, bw) }
 
 				bw.close()
-				println("Done.")
+
 			} catch {
 				case e: Throwable => println(s"Failed. ${e.getMessage}")
 			} finally {
@@ -215,7 +215,7 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
 			val writer = new PrintWriter(resultFileName)
 			writer.println(newProgram.toString())
 			writer.close()
-			println("Done.")
+
 
 		}
 	}
@@ -238,7 +238,7 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
 			println(s"#low-level Assumptions (all) = ${interpreter.getAssumptionNodes.size}")
 			println(s"#low-level Assertions (non-internal) = ${allAssertions.size}")
 			println(s"#low-level Assertions (all) = ${interpreter.getAssertionNodes.size}")
-			println("Done.")
+
 		}
 	}
 

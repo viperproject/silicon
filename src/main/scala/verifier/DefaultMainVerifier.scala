@@ -678,6 +678,7 @@ class DefaultMainVerifier(config: Config,
     }
 
 		if (Verifier.config.executeDependencyAnalysisTests()) {
+			assert(verificationResults.count(result => result.isFatal) == 0)
 			val testSupporter = new DependencyGraphTestSupporter(result.getFullDependencyGraphInterpreter)
 			testSupporter.testDependencies()
 			testSupporter.testNodeTypes()

@@ -78,8 +78,9 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
 		val labelsInReportedDeps: Set[Set[String]] = sourceDependencies.map(node => nodeLabelRegex.findAllMatchIn(node.toString).map(_.group(1)).toSet)
 		val actualLabelInReportedDeps = labelsInReportedDeps.filter(_.size == 1).flatten
 
-		val isSound = expectedLabels.diff(actualLabelInReportedDeps).isEmpty
-		printIfFalse(isSound, s"Missing dependencies for ${assertionNode.source.toString}. Reported dependencies: $actualLabelInReportedDeps")
+		val labelDiff = expectedLabels.diff(actualLabelInReportedDeps)
+		val isSound = labelDiff.isEmpty
+		printIfFalse(isSound, s"Missing dependencies (${labelDiff.mkString(", ")}) for ${assertionNode.source.toString}. Reported dependencies: ${actualLabelInReportedDeps.mkString(", ")}")
 		Some(isSound)
 	}
 }
