@@ -600,6 +600,7 @@ object evaluator extends EvaluationRules {
 				val fappSourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(fapp)
 				val presWithDAInfo = DependencyAnalysisMergeInfo.attachExpMergeInfo(pres.flatMap(_.topLevelConjuncts), Some(fappSourceInfo))
 				val eArgsWithDAInfO = DependencyAnalysisMergeInfo.attachExpMergeInfo(eArgs, None)
+
         evals2(s, eArgsWithDAInfO, Nil, _ => pve, v, analysisInfos)((s1, tArgs, eArgsNew, v1) => {
 //          bookkeeper.functionApplications += 1
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
@@ -640,24 +641,10 @@ object evaluator extends EvaluationRules {
             val pvePre =
               ErrorWrapperWithExampleTransformer(PreconditionInAppFalse(fapp).withReasonNodeTransformed(reasonOffendingNode =>
                 reasonOffendingNode.replace(formalsToActuals)), exampleTrafo)
-            val argsPairs: Seq[(Term, Option[ast.Exp])] = if (Verifier.config.enableDependencyAnalysis()) {
-							tArgs zip eArgs.map(Some(_))
-						} else if (withExp) tArgs.zip(eArgsNew.get.map(Some(_))) else tArgs.zip(Seq.fill(tArgs.size)(None))
-						// encode the function call as a sequence of assignments to fresh variables (one for each argument) and a method call using the fresh variables as arguments
-						var s2b = s2
-						val argsFreshVar =
-							if (Verifier.config.enableDependencyAnalysis()) {
-								argsPairs.map(arg => {
-									val argNew = v1.decider.fresh(arg._1.sort, None)
-									val constraint = Equals(argNew, arg._1)
-									v1.decider.assume(constraint, None, analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(arg._2.get))))
-									s2b = s2b.copy(functionRecorder = s2b.functionRecorder.recordConstrainedVar(argNew, constraint)) // FIXME ake: the new variables are introduced as globals but they should appear as quantified variables in function axioms.
-									(argNew, None)
-								})
-							} else argsPairs
-            val s3 = s2b.copy(g = Store(fargs.zip(argsFreshVar)),
+            val argsPairs: Seq[(Term, Option[ast.Exp])] = if (withExp) tArgs.zip(eArgsNew.get.map(Some(_))) else tArgs.zip(Seq.fill(tArgs.size)(None))
+            val s3 = s2.copy(g = Store(fargs.zip(argsPairs)),
                              recordVisited = true,
-                             functionRecorder = s2b.functionRecorder.changeDepthBy(+1),
+                             functionRecorder = s2.functionRecorder.changeDepthBy(+1),
                                 /* Temporarily disable the recorder: when recording (to later on
                                  * translate a particular function fun) and a function application
                                  * fapp is hit, then there is no need to record any information
@@ -683,7 +670,7 @@ object evaluator extends EvaluationRules {
                              smDomainNeeded = true,
                              moreJoins = JoinMode.Off,
                              assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts())
-                               s2b.assertReadAccessOnly /* should currently always be false */ else true)
+                               s2.assertReadAccessOnly /* should currently always be false */ else true)
             val precondAnalysisInfos = analysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Up))
             consumes(s3, presWithDAInfo, true, _ => pvePre, v2, precondAnalysisInfos)((s4, snap, v3) => {
               val snap1 = snap.get.convert(sorts.Snap)
@@ -706,7 +693,7 @@ object evaluator extends EvaluationRules {
                 s4.functionRecorder.changeDepthBy(-1)
                                    .recordSnapshot(fapp, v3.decider.pcs.branchConditions, snap1)
               val s5 = s4.copy(g = s2.g,
-                               h = s2.h,
+                               h = s2.h, // possibleTriggers = newPossibleTriggers,
                                recordVisited = s2.recordVisited,
                                functionRecorder = fr5,
                                smDomainNeeded = s2.smDomainNeeded,
@@ -722,10 +709,13 @@ object evaluator extends EvaluationRules {
              */
             })(join(func.typ, s"joined_${func.name}", joinFunctionArgs, joinExp, v1, analysisInfos))((s6, r, v4)
               => {
-						if (v4.decider.isDependencyAnalysisEnabled) v4.decider.dependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(presWithDAInfo, Seq(DependencyAnalysisMergeInfo.attachExpMergeInfo(fapp, analysisInfos.getMergeInfo)))
+						if (v4.decider.isDependencyAnalysisEnabled) {
+							v4.decider.dependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(eArgsWithDAInfO, presWithDAInfo)
+							v4.decider.dependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(presWithDAInfo, Seq(DependencyAnalysisMergeInfo.attachExpMergeInfo(fapp, analysisInfos.getMergeInfo)))
+						}
 						Q(s6, r._1, r._2, v4)
-					})})
-
+					})}
+				)
       case uf@ast.Unfolding(
               acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm),
               eIn) =>
