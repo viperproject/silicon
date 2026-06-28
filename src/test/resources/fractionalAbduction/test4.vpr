@@ -1,0 +1,21 @@
+field f: Ref
+
+predicate pred(x: Ref) {
+    acc(x.f)
+}
+
+// The unfold is not really neecessary here, maybe we can
+// do a second pass to remove unnecessary statements? 
+// Or keep iterating until we reach a fixed point?
+method foo(x: Ref) 
+    requires acc(x.f, 1/4)
+    // requires acc(x.f, 1/4)
+    // requires acc(x.f, 1/4)
+{
+    // fold acc(pred(x), 1/4)
+    assert acc(pred(x), 1/4)
+    // unfold acc(pred(x), 1/4)
+    assert acc(x.f, 1/4)
+    assert acc(x.f, 1/2)
+    
+}

@@ -1,0 +1,12 @@
+field f: Ref
+
+predicate pred(x: Ref) { 
+    acc(x.f)
+}
+
+method foo(x: Ref)
+    requires acc(x.f, wildcard)
+{
+    // fold acc(pred(x), 1/2)
+    assert acc(pred(x), 1/2)
+}

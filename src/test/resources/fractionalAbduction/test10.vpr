@@ -1,0 +1,25 @@
+import "doublelinkedlist.vpr"
+
+method main() {
+    var x: Ref := new(*)
+    var y: Ref := new(*)
+    var z: Ref := new(*)
+
+    var list: Ref := new(*)
+
+    x.prev := null
+    x.next := y
+
+    y.prev := x
+    y.next := z
+
+    z.prev := y
+    z.next := null
+
+    fold nodes(z)
+    fold nodes(y)
+    fold nodes(x) 
+
+    list.head := x
+    fold dlist(list)
+}

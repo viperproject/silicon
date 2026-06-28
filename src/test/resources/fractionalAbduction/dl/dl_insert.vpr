@@ -1,0 +1,64 @@
+import "./dl.vpr"
+
+method insert(list: Ref, elt: Ref) returns (res: Ref) 
+    requires dllist(list)
+    // ensures dllist(res)
+{
+    // unfold dllist(list)
+    var list_head: Ref := list.head
+
+    if (list_head == null) {
+        res := new(*)
+        res.prev := null
+        res.next := null
+    } else {
+        var curr: Ref := list_head
+        var nondet: Bool
+
+        // package nodes(curr) --* nodes(list_head) 
+        // unfold nodes(curr)
+
+        while (nondet && curr.next != null)
+            invariant acc(curr.next)
+            // invariant acc(curr.prev, 1/2) 
+            invariant curr.next != null ==> acc(nodes(curr.next))
+            invariant curr.next != null ==> acc(curr.next.prev, 1/2)
+            invariant curr.next != null ==> curr.next.prev == curr
+            // invariant acc(nodes(curr)) --* acc(nodes(list_head))
+        {
+            var ocurr: Ref := curr
+            nondet := havoc()
+            curr := curr.next
+
+            // unfold nodes(curr)
+            // package nodes(curr) --* nodes(list_head)  {
+            //     fold nodes(ocurr)
+            //     apply nodes(ocurr) --* nodes(list_head)
+            // }
+        }
+
+        if (curr.next != null) {
+            // unfold nodes(elt)
+            elt.next := curr.next
+            curr.next := elt
+            elt.prev := curr
+            // unfold nodes(elt.next)
+            elt.next.prev := elt
+            // fold nodes(elt.next)
+            // fold nodes(elt)
+            // fold nodes(curr)
+        } else {
+            // unfold nodes(elt)
+            elt.next := null
+            curr.next := elt
+            elt.prev := curr
+            // fold nodes(elt)
+            // fold nodes(curr)
+        }
+        // apply nodes(curr) --* nodes(list_head)
+    }
+    res := list
+    // fold dllist(res)
+}
+
+method havoc() returns (res: Bool)

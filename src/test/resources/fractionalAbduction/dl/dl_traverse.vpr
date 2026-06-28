@@ -1,0 +1,38 @@
+import "./dl.vpr"
+
+method dl_traverse(list: Ref)
+    // requires dllist(list)
+    requires acc(list.head) && acc(list.head.prev) && (list.head.prev == null) 
+    requires acc(list.head.next) && acc(list.head.next.prev, 1/2) && list.head.next.prev == list.head
+    // ensures dllist(list)
+{
+    var list_head: Ref := list.head
+    var curr: Ref := list_head
+    
+    if (list_head == null) {
+        // fold dllist(list)
+    } else {
+        while (curr.next != null) 
+            invariant acc(curr.next)
+            // invariant acc(curr.prev, 1/2)
+            invariant curr.next != null ==> acc(nodes(curr.next))
+            invariant curr.next != null ==> acc(curr.next.prev, 1/2)
+            invariant curr.next != null ==> curr.next.prev == curr
+            // invariant nodes(curr) --* nodes(list_head)
+        {
+            var ocurr: Ref := curr
+            curr := curr.next
+            
+            // unfold nodes(curr)
+            // package acc(nodes(curr)) --* acc(nodes(list_head))  {
+            //     fold acc(nodes(ocurr))
+            //     apply acc(nodes(ocurr)) --* acc(nodes(list_head))
+            // }
+        }
+        
+        // fold nodes(list2.head)
+        // fold nodes(curr)
+        // apply acc(nodes(curr)) --* acc(nodes(list_head))
+        // fold dllist(res)
+    }
+}

@@ -1,0 +1,26 @@
+field next: Ref
+
+predicate list(x: Ref) {
+    x != null ==> acc(x.next) && acc(list(x.next))
+}
+
+method iter_read(x: Ref)
+    requires acc(list(x), 1/2)
+    ensures acc(list(x), 1/2)
+{
+    var curr: Ref := x
+    package acc(list(curr), 1/2) --* acc(list(x), 1/2)
+    while(curr != null)
+        invariant acc(list(curr), 1/2)
+        invariant acc(list(curr), 1/2) --* acc(list(x), 1/2) 
+    {
+        var curr0: Ref := curr
+        unfold acc(list(curr), 1/2)
+        curr := curr.next
+        package acc(list(curr), 1/2) --* acc(list(x), 1/2) {
+            fold acc(list(curr0), 1/2)
+            apply acc(list(curr0), 1/2) --* acc(list(x), 1/2)
+        }
+    }
+    apply acc(list(curr), 1/2) --* acc(list(x), 1/2)
+} 

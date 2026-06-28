@@ -1,0 +1,47 @@
+import "./dl.vpr"
+
+method remove(lst: Ref) returns (res: Ref) 
+    requires dllist(lst)
+{
+    var curr: Ref
+    var tmp: Ref
+    var nondet: Bool
+    // unfold dllist(lst)
+    var lst_head: Ref := lst.head
+
+    if(lst_head == null){
+        res := null
+    } else {
+        curr := lst_head
+
+        // package nodes(curr) --* nodes(lst_head) 
+
+        while (nondet && curr.next != null)
+            invariant acc(curr.next)
+            // invariant acc(curr.prev, 1/2) 
+            invariant curr.next != null ==> acc(nodes(curr.next))
+            invariant curr.next != null ==> acc(curr.next.prev, 1/2)
+            invariant curr.next != null ==> curr.next.prev == curr
+            // invariant acc(nodes(curr)) --* acc(nodes(lst_head))
+        {
+            var ocurr: Ref := curr
+            nondet := havoc()
+            curr := curr.next
+
+            // package nodes(curr) --* nodes(lst_head)  {
+            //     fold nodes(ocurr)
+            //     apply nodes(ocurr) --* nodes(lst_head)
+            // }
+        }
+        tmp := curr.next
+        if (tmp != null) {
+            // unfold nodes(tmp)
+            curr.next := tmp.next
+        }
+        // fold nodes(curr)
+        // apply nodes(curr) --* nodes(lst_head)
+        res := lst_head
+    }
+}
+
+method havoc() returns (res: Bool)

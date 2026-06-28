@@ -1,0 +1,111 @@
+import "dl.vpr"
+
+method copy(list: Ref) returns (cp_list: Ref)
+requires dllist(list)
+// requires acc(list.head) && acc(list.head.prev) && (list.head.prev == null) 
+// requires acc(list.head.next) && acc(list.head.next.prev, 1/2) && list.head.next.prev == list.head
+// requires acc(dllist(list), 1/4)
+// ensures acc(dllist(list), 1/4) && dllist(cp_list)
+{   
+    cp_list := new(head)
+    // unfold acc(dllist(list), 1/4)
+    var list_head: Ref := list.head
+    if (list.head == null) {
+        // fold acc(dllist(list), 1/4)
+        cp_list.head := null
+        // fold dllist(cp_list)
+    } else {
+        var curr: Ref := list_head
+
+        var cp: Ref := new(next, prev)
+        cp.next := null
+        cp.prev := null 
+
+        var cp_head: Ref := cp
+        cp_list.head := cp_head
+
+        fold nodes(cp)
+        package nodes(cp) --* nodes(cp_head)
+        
+        // package acc(nodes(curr), 1/4) --* acc(nodes(list_head), 1/4)
+        // unfold acc(nodes(curr), 1/4)
+
+        while (curr.next != null) 
+            invariant acc(curr.next) 
+            // invariant acc(curr.prev, 1/2) 
+            invariant curr.next != null ==> acc(curr.next.prev, 1/2)
+            invariant curr.next != null ==> curr.next.prev == curr
+            invariant curr.next != null ==> acc(nodes(curr.next))
+            // invariant nodes(cp)
+            invariant nodes(cp) --*  nodes(cp_head)
+            // invariant acc(nodes(curr), 1/4) --* acc(nodes(list_head), 1/4)
+        {
+
+            var ocp: Ref := cp
+            cp := new(next, prev)
+            // unfold nodes(ocp)
+            ocp.next := cp
+            cp.next := null
+            cp.prev := ocp
+
+            var ocurr: Ref := curr
+            curr := curr.next
+            
+            // package acc(nodes(curr), 1/4) --* acc(nodes(list_head), 1/4)  {
+            //     fold acc(nodes(ocurr), 1/4)
+            //     apply acc(nodes(ocurr), 1/4) --* acc(nodes(list_head), 1/4)
+            // }
+            // unfold acc(nodes(curr), 1/4)
+
+            // fold nodes(cp)
+            package nodes(cp) --*  nodes(cp_head) {
+                fold nodes(ocp)
+                apply nodes(ocp) --* nodes(cp_head)
+            }
+        }
+        // fold  acc(nodes(curr), 1/4)
+        // apply acc(nodes(curr), 1/4) --* acc(nodes(list_head), 1/4)
+        // fold acc(dllist(list), 1/4)
+        // apply nodes(cp) --*  nodes(cp_head)
+        // fold dllist(cp_list)
+    }
+    
+}
+
+// var list_head: Ref := list.head
+// var curr: Ref := list_head
+
+// // var cp: Ref := new(*)
+// // cp.next := null
+// // cp.prev := null 
+
+// // fold nodes(cp)
+// package acc(nodes(curr), 1/4) --* acc(nodes(list_head), 1/4)
+// unfold acc(nodes(curr), 1/4)
+
+// while (curr.next != null)
+//     invariant acc(curr.next, 1/4) 
+//     invariant acc(curr.prev, 1/8) 
+//     invariant curr.next != null ==> acc(curr.next.prev, 1/8)
+//     invariant curr.next != null ==> curr.next.prev == curr
+//     invariant curr.next != null ==> acc(nodes(curr.next), 1/4)
+//     // invariant nodes(cp)
+//     invariant acc(nodes(curr), 1/4) --* acc(nodes(list_head), 1/4)
+// {   
+//     // var ocp: Ref := cp
+//     // cp := new(*)
+//     // unfold nodes(ocp)
+//     // ocp.next := cp
+//     // cp.next := null
+//     // cp.prev := ocp
+
+//     var ocurr: Ref := curr
+//     curr := curr.next
+
+//     package acc(nodes(ocurr), 1/4) --* acc(nodes(list_head), 1/4) {
+//         fold acc(nodes(ocurr), 1/4)
+//         apply acc(nodes(ocurr), 1/4) --* acc(nodes(list_head), 1/4)
+//     }
+//     // fold nodes(cp)
+//     unfold acc(nodes(curr), 1/4)
+// }

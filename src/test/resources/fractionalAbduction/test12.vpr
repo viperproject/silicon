@@ -1,0 +1,13 @@
+field f: Ref
+
+predicate pred(x: Ref) { 
+    acc(x.f)
+}
+
+
+method foo(x: Ref, p: Perm)
+    // requires p == 1/2
+{
+    fold acc(pred(x), p)
+    assert acc(pred(x), 1/2)
+}

@@ -1,0 +1,22 @@
+field next: Ref
+field prev: Ref
+
+predicate nodes(this: Ref) {
+    acc(this.next) && acc(this.prev, 1/2) && 
+    (this.next != null ==> 
+        nodes(this.next) &&
+        acc(this.next.prev, 1/2) && 
+        this.next.prev == this 
+    )
+}
+
+field head: Ref
+
+predicate dllist(this: Ref) {
+    acc(this.head) && 
+    (this.head != null ==>
+        acc(this.head.prev, 1/2) &&
+        this.head.prev == null && 
+        nodes(this.head)
+    )
+}

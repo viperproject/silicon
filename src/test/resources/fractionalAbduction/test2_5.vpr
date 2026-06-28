@@ -1,0 +1,16 @@
+field f: Ref
+
+predicate pred(x: Ref) {
+    acc(x.f)
+}
+
+method foo(x: Ref) 
+    requires x.f == null
+{   
+    // fold acc(pred(x), 1/3)
+    assert acc(pred(x), 1/3)
+    // unfold acc(pred(x), 1/3)
+    assert x.f == null
+    // fold acc(pred(x), 1/3)
+    assert acc(pred(x), 1/3)
+}

@@ -1,0 +1,11 @@
+field f: Ref
+
+method bar(x: Ref) 
+    // requires acc(x.f, 1/4)
+{
+    if (x.f == null) {
+        assert acc(x.f, 2/4)
+    } else {
+        assert acc(x.f, 1/4)
+    } 
+}

@@ -1,0 +1,12 @@
+field next: Ref
+
+predicate list(x: Ref) {
+    x != null ==> (acc(x.next) && list(x.next))
+}
+
+method foo(x: Ref)
+    requires acc(x.next)
+    requires x.next == null
+{
+    assert list(x)
+}

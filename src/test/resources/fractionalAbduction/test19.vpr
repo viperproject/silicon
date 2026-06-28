@@ -1,0 +1,25 @@
+field f: Ref
+
+predicate pred(x: Ref) {
+    (x != null) ==> acc(x.f, 1/4)
+}
+
+predicate predpred(x: Ref) {
+  (x != null) ==> acc(x.f, 1/4)
+}
+
+method bar(x: Ref)
+    requires x != null
+    requires acc(pred(x), write)
+    requires acc(predpred(x), write)
+    // ensures acc(pred(x), 2/1)
+{
+    // if (!(x == null)) {
+    //     unfold acc(predpred(x), write)
+    //     unfold acc(pred(x), write)
+    // }
+    assert acc(x.f, 1 / 2)
+    // if (!(x == null)) {
+    //     fold acc(pred(x), 1 / 2 / (1 / 4))
+    // }
+}

@@ -1,0 +1,19 @@
+field f: Ref
+
+predicate pred(x: Ref) {
+    acc(x.f)
+}
+
+// If we were to fold 1/2 instead of 1/3, 
+// we would nto have to perform the unfold and second fold
+method foo(x: Ref) 
+    // requires acc(x.f, 1/3)
+    // requires x.f == null
+{   
+    // fold acc(pred(x), 1/3)
+    assert acc(pred(x), 1/3)
+    // unfold acc(pred(x), 1/3)
+    assert x.f == null
+    // fold acc(pred(x), 1/3)
+    assert acc(pred(x), 1/3)
+}

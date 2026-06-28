@@ -1,0 +1,15 @@
+field next: Ref
+field data: Int
+
+predicate list(x: Ref) {
+    x != null ==> (acc(x.next) && acc(x.data) && list(x.next))
+}
+method assign(x: Ref, elem: Ref)
+{
+    var curr: Ref := x
+    while (curr != null) {
+        var old_curr: Ref := curr            
+        curr := curr.next
+    }
+    curr.next := elem
+}

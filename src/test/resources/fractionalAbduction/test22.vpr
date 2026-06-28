@@ -1,0 +1,20 @@
+field f: Ref
+
+method foo(x: Ref)
+    requires acc(x.f, 1/2)
+
+method foo2(x: Ref)
+    requires acc(x.f, 3/4)
+
+method bar(x: Ref) 
+{
+    assert acc(x.f, 1/2)
+    assert acc(x.f, 3/4)
+}
+
+method bar2(x: Ref) 
+{
+    foo(x)
+    foo2(x)
+}
+

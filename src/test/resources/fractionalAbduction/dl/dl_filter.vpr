@@ -1,0 +1,67 @@
+import "dl.vpr"
+
+method dl_filter(list: Ref) returns (res: Ref)
+    requires acc(dllist(list))
+    // ensures dllist(res)
+{   
+    // unfold acc(dllist(list))
+    var list_head: Ref := list.head
+
+    if (list_head == null) {
+        res := list
+        // fold dllist(list)
+    }
+    else {
+        // unfold nodes(list_head)
+        if (list_head.next == null) {
+            res := list
+            // fold nodes(list_head)
+            // fold dllist(res)
+        } else {
+            var p: Ref := list_head
+            var curr: Ref := list_head.next
+            // unfold nodes(curr) 
+            // package acc(nodes(p)) --* acc(nodes(list_head))
+
+            while (curr.next != null)
+                invariant acc(curr.next)
+                // invariant acc(curr.prev, 1/2)
+                invariant curr.next != null ==> acc(nodes(curr.next))
+                invariant curr.next != null ==> acc(curr.next.prev, 1/2)
+                invariant curr.next != null ==> curr.next.prev == curr
+                invariant acc(p.next)
+                invariant p.next == curr
+                // invariant acc(nodes(p)) --* acc(nodes(list_head))
+            {   
+                var ocurr: Ref := curr
+                var old_p: Ref := p
+                curr := curr.next
+                // unfold nodes(curr)
+
+                var nondet: Bool
+                if(nondet) {
+                    p.next := curr;
+                    curr.prev := p
+                    free(ocurr)
+                } else {
+                    p := ocurr
+                }
+
+                // if(!nondet){
+                //     package nodes(p) --* nodes(list_head)  {
+                //         fold nodes(old_p)
+                //         apply nodes(old_p) --* nodes(list_head)
+                //     }
+                // }
+            }
+            // fold nodes(curr)
+            // fold nodes(p)
+            // apply acc(nodes(p)) --* acc(nodes(list_head))
+            res := list
+            // fold dllist(res)
+        }
+    }
+}
+
+method free(this: Ref)
+    requires acc(this.next) && acc(this.prev)

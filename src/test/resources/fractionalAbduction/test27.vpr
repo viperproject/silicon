@@ -1,0 +1,14 @@
+field f: Int
+field g: Bool
+field b: Bool
+
+method test1(x: Ref, bo: Bool)
+  //requires b ? acc(x.f) : acc(x.g)
+  //ensures b ? acc(x.f) && x.f == 0 : acc(x.g) && x.g
+{
+  if (bo) {
+    x.f := 0
+  } else {
+    x.g := true
+  }
+}

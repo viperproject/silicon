@@ -1,0 +1,15 @@
+field f: Int
+field g: Ref
+
+method foo(x: Ref)
+{
+    if (x.f > 2) {
+        assert acc(x.g, 1/4)
+    } elseif (x.f < -2) {
+        assert acc(x.g, 1/4)
+    }
+    if (x.f > 0) {
+        assert acc(x.g, 1/4)
+    }
+}
+

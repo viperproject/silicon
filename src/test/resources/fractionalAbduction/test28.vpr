@@ -1,0 +1,11 @@
+field f: Int
+predicate pred(x: Ref) { acc(x.f) }
+predicate pred2(x: Ref) { acc(pred(x), 1/2) && acc(x.f, 1/2) }
+
+method failure (x: Ref)
+    requires acc(x.f, 1/2)
+{
+    // Folding pred2 (x) might fail .
+    // There might be insufficient permission to access pred (x)
+    assert acc(pred2(x), 1/2)
+}

@@ -1,0 +1,9 @@
+field f: Ref
+
+method example(x: Ref)
+    requires acc(x.f, 3/4)
+    requires acc(x.f, 1/4) --* acc(x.f, 1/2)
+{
+    apply acc(x.f, 1/4) --* acc(x.f, 1/2)
+    assert acc(x.f)
+}

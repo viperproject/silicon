@@ -1,0 +1,9 @@
+field f: Ref
+
+method example(x: Ref)
+    requires acc(x.f)
+{
+    package acc(x.f, 1/2) --* acc(x.f)
+    // apply acc(x.f, 1/2) --* acc(x.f)
+    assert acc(x.f)
+}

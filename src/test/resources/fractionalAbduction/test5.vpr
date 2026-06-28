@@ -1,0 +1,18 @@
+field f1: Ref
+field f2: Ref
+
+predicate pred1(x: Ref) {
+    acc(x.f1)
+}
+
+predicate pred2(x: Ref)  {
+    acc(x.f2)
+}
+
+method foo(x: Ref)
+  requires acc(x.f1, 1 / 2)
+{
+  assert acc(pred1(x), 1 / 4)
+  assert acc(pred2(x), 1 / 4)
+  assert acc(x.f2, 1 / 2)
+}

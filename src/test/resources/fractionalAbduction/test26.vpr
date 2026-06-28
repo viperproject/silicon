@@ -1,0 +1,32 @@
+field f: Ref
+
+predicate pred(x: Ref) {
+    x != null ==> acc(x.f)
+}
+
+method foo(x: Ref) returns (y: Ref)
+{
+    if (x.f == null) {
+        y := null
+    } else {
+        y := x
+    }
+}
+
+
+/* method foo(x: Ref) returns (y: Ref)
+  requires acc(x.f, write)
+  ensures !(x == null) && !(x.f == null) ==> acc(pred(y), write)
+  ensures !(x == y) && x.f == y ==> acc(pred(x), write)
+{
+  if (x.f == null) {
+    y := null
+  } else {
+    y := x}
+  if (!(x == y) && y == y) {
+    fold acc(pred(x), write)
+  }
+  if (!(x == null)) {
+    fold acc(pred(y), write)
+  }
+} */

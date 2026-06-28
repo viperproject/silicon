@@ -1,0 +1,12 @@
+field f: Ref
+field g: Ref
+
+predicate pred(x: Ref) { 
+    acc(x.f) && acc(x.g)
+}
+
+method foo(x: Ref) 
+    requires acc(x.f, 1/2)
+{
+    assert pred(x)
+}

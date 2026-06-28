@@ -1,0 +1,51 @@
+import "./dl.vpr"
+
+method dl_reverse(list: Ref) returns (res: Ref)
+    requires dllist(list)
+    // ensures dllist(res)
+{
+    // unfold dllist(list)
+    var list_head: Ref := list.head
+    var curr: Ref := list_head
+    var res_head: Ref := new(next, prev)
+    res_head.next := null
+    res_head.prev := null
+    
+    if (list_head == null) {
+        res := list
+        // fold dllist(res)
+    } else {
+        // fold nodes(res_head)
+        // unfold nodes(curr) 
+
+        while (curr.next != null) 
+            invariant acc(curr.next)
+            // invariant acc(curr.prev)
+            invariant curr.next != null ==> acc(nodes(curr.next))
+            invariant curr.next != null ==> acc(curr.next.prev, 1/2)
+            invariant curr.next != null ==> curr.next.prev == curr
+            // invariant nodes(res_head)
+            invariant acc(res_head.prev, 1/2)
+            invariant res_head.prev == null
+        {
+            var tmp: Ref := curr
+            curr := curr.next
+            
+            tmp.next := res_head
+            // unfold nodes(res_head)
+            res_head.prev := tmp
+            // fold nodes(res_head)
+
+            res_head := tmp
+            tmp.prev := null
+
+            fold nodes(res_head) 
+            // unfold nodes(curr)
+        }
+
+        res := new(head)
+        res.head := res_head
+        list.head := null
+        // fold dllist(res)
+    }
+}

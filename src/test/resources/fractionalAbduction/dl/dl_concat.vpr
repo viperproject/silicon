@@ -1,0 +1,107 @@
+import "dl.vpr"
+
+// method dl_concat(list1: Ref, list2: Ref) returns (res: Ref)
+//     requires dllist(list1)
+//     requires dllist(list2)
+//     ensures dllist(res)
+// {
+//     unfold dllist(list2)
+//     if (list2.head == null) {
+//         fold dllist(list2)
+//         res := list1
+//     }
+//     else {
+//         unfold nodes(list2.head)
+//         unfold dllist(list1)
+//         if (list1.head == null) {
+//             list2.head.prev := null
+//             fold nodes(list2.head)
+//             fold dllist(list2)
+//             res := list2
+//         }
+//         else {
+//             var curr: Ref := list1.head
+//             package nodes(curr) --* dllist(list1) {
+//                 fold dllist(list1)
+//             }
+//             unfold nodes(curr)
+//             while (curr.next != null)
+//                 invariant acc(curr.next) && acc(curr.prev, 1/2)
+//                 invariant curr.next != null ==> acc(curr.next.prev, 1/2) && curr.next.prev == curr && nodes(curr.next)
+//                 invariant nodes(curr) --* dllist(list1)
+//             {
+//                 var ocurr: Ref := curr
+//                 curr := curr.next
+
+//                 package nodes(curr) --* dllist(list1)  {
+//                     fold nodes(ocurr)
+//                     apply nodes(ocurr) --* dllist(list1)
+//                 }
+//                 unfold nodes(curr)
+//             }
+//             curr.next := list2.head
+//             list2.head.prev := curr
+
+//             fold nodes(list2.head)
+//             fold nodes(curr)
+
+//             apply nodes(curr) --* dllist(list1)
+
+//             res := list1
+//         }
+//     }
+// }
+
+method dl_concat(list1: Ref, list2: Ref) returns (res: Ref) 
+requires dllist(list1)
+requires dllist(list2)
+// ensures dllist(res)
+{   
+    // unfold dllist(list1)
+    var head1: Ref := list1.head
+    // unfold dllist(list2)
+    var head2: Ref := list2.head
+    var curr: Ref := head1
+    
+    if (head1 == null) {
+        res := list2
+        // fold dllist(res)
+    } else {
+        
+        if (head2 == null) {
+            res := list1
+            // fold dllist(res)
+        } else {
+
+            // package nodes(curr) --* nodes(head1) 
+            // unfold nodes(curr) 
+
+            while (curr.next != null) // unfolding acc(nodes(curr), 1/4) in curr.next != null)
+                invariant acc(curr.next)
+                // invariant acc(curr.prev, 1/2)
+                invariant curr.next != null ==> acc(nodes(curr.next))
+                invariant curr.next != null ==> acc(curr.next.prev, 1/2)
+                invariant curr.next != null ==> curr.next.prev == curr
+                // invariant nodes(curr) --* nodes(head1)
+            {
+                var ocurr: Ref := curr
+                curr := curr.next
+                
+                // unfold nodes(curr)
+                // package acc(nodes(curr)) --* acc(nodes(head1))  {
+                //     fold acc(nodes(ocurr))
+                //     apply acc(nodes(ocurr)) --* acc(nodes(head1))
+                // }
+            }
+            curr.next := list2.head
+            // unfold nodes(list2.head)
+            list2.head.prev := curr
+            res := list1
+            // fold nodes(list2.head)
+            // fold nodes(curr)
+            // apply acc(nodes(curr)) --* acc(nodes(head1))
+            // fold dllist(res)
+            list2.head := null
+        }
+    }
+}

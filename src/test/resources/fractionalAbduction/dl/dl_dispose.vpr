@@ -1,0 +1,33 @@
+import "dl.vpr"
+
+method dl_dispose(list: Ref) 
+    // requires acc(dllist(list))
+{
+    var ocurr: Ref := new(next, prev)
+    ocurr.next := null
+    
+    // unfold acc(dllist(list))
+    var curr: Ref := list.head
+
+    while (curr != null) 
+        // Need the invariant
+        invariant curr != null ==> acc(nodes(curr))
+    {
+        // unfold acc(nodes(curr))
+        ocurr := curr
+        curr := curr.next
+
+        free(ocurr)
+    }
+
+    free_head(list)
+}
+
+method free(this: Ref)
+    requires acc(this.next) && acc(this.prev, 1/2) && 
+    (this.next != null ==> 
+        acc(this.next.prev, 1/2) && 
+        this.next.prev == this)
+
+method free_head(this: Ref)
+    requires acc(this.head) 

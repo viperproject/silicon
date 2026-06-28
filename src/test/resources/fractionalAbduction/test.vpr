@@ -1,0 +1,12 @@
+field next: Ref
+
+/* predicate list(x: Ref) {
+    x != null ==> acc(x.next, 1/2) && acc(list(x.next), 1/2)
+} */
+
+method foo(x: Ref)
+  requires acc(x.next, 1/6)
+  requires acc(x.next, 1/6)
+{ 
+  assert acc(x.next, 1/2)
+}

@@ -1,0 +1,8 @@
+field f: Ref
+field v: Int
+
+method foo(x: Ref) {
+  if (x.f != null) {
+    assert acc(x.f, 1/2)
+  }
+}

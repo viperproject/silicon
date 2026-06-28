@@ -1,0 +1,15 @@
+field f: Ref
+
+predicate pred(x: Ref) { 
+    acc(x.f)
+}
+
+method foo(x: Ref)
+    requires acc(pred(x), wildcard)
+    ensures acc(pred(x), wildcard)
+    ensures acc(x.f, wildcard)
+{   
+    unfold acc(pred(x), wildcard)
+    var y : Ref := x.f
+    fold acc(pred(x), wildcard)
+}

@@ -1,0 +1,20 @@
+field f: Ref
+
+predicate pred(x: Ref) {
+    acc(x.f)
+}
+
+// Here, ideally, we only infer 2/3
+// Furthermore, if possible, we could
+// directly fold 2/3 at the beginning
+method foo(x: Ref) 
+    //requires acc(pred(x), 1/2)
+    //requires acc(pred(x), 1/6)
+{
+    // fold acc(pred(x), 1/2)
+    assert acc(pred(x), 1/2)
+    // unfold acc(pred(x), 1/2)
+    // fold acc(pred(x), 2/3)
+    assert acc(pred(x), 2/3)
+    assert acc(pred(x), 1/2)
+}

@@ -1,0 +1,15 @@
+field f: Ref
+
+predicate pred(x: Ref) { 
+    acc(x.f)
+}
+
+method foo(x: Ref, p: Perm, q: Perm)
+    requires 0/1 < q && q < 1/1
+    requires acc(x.f, 1/2) 
+    // requires 0/1 < p && p < 1/1
+    // requires acc(x.f, p) 
+{
+    fold acc(pred(x), 1/2)
+    assert acc(pred(x), p)
+}

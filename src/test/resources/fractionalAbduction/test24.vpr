@@ -1,0 +1,11 @@
+field f: Int
+field g: Ref
+
+method foo(x: Ref)
+{
+    if (x.f > 2) {
+        assert acc(x.g, 1/4)
+    } 
+    // assert acc(x.f, 2/4)
+}
+
