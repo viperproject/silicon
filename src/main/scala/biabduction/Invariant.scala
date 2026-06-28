@@ -113,46 +113,30 @@ object LoopInvariantSolver {
     loopCons = loopCons :+ loopConExp
 
     //if (loopConExp == loopCons.head) {
-      // println("\nIteration: " + iteration)
+      println("\nIteration: " + iteration)
     //}
 
     executionFlowController.locally(s, v) { (s1, v1) =>
-      /*// println(s"BEFORE PRODUCING H: \n\t${s1.h.values.mkString("\n\t")}")
-      // println(s"BEFORE PRODUCING G: \n\t${s1.g.values.mkString("\n\t")}")
-      // println(s"BEFORE PRODUCING V: \n\t${v1.decider.pcs.assumptions.mkString("\n\t")}")*/
       producer.produce(s1, freshSnap, BigAnd(loopHead.invs), pve, v1, withAbduction = true) { (s2, v2) =>
-        // println(s"AFTER PRODUCING H: \n\t${s2.h.values.mkString("\n\t")}")
-        // println(s"AFTER PRODUCING G: \n\t${s2.g.values.mkString("\n\t")}")
-        // println(s"AFTER PRODUCING V: \n\t${v2.decider.pcs.assumptions.mkString("\n\t")}")
 
         executionFlowController.locally(s2, v2) { (sF, vF) =>
-          // println(s"WILL EXECUTE FOLLOW")
           // edges have condition that is assumed by verifier
           executor.follows(sF, loopEdges, pveLam, vF, joinPoint) { (s3, v3) =>
-            // println(s"DONE")
-            // println(s"After follows: \n\t${s3.h.values.mkString("\n\t")}")
-            // println(s"and g\n\t${s3.g.values.mkString("\n\t")}")
-            // println(s"and v\n\t${v3.decider.pcs.assumptions.mkString("\n\t")}")
             // To find a fixed point we are only interested in branches where the loop condition can remains true
             var nextCon = false
             /*// println(s"Will produce loopConExp")*/
             executionFlowController.locally(s3, v3) { (s4, v4) =>
               producer.produce(s4, freshSnap, loopConExp, pve, v4, withAbduction = true) { (s5, v5) =>
                 nextCon = !v5.decider.checkSmoke()
-                /*// println(s"nextCon: $nextCon in \n\t${s5.h.values.mkString("\n\t")}")
-                // println(s"and V \n\t${v5.decider.pcs.assumptions.mkString("\n\t")}")*/
                 Success()
               }
             }
             if (!nextCon) {
               Success()
             } else {
-              // println(s"SUCCESSFUL framing")
               val endStmt = abductionUtils.getEndOfLoopStmt(loop)
               val postTran = VarTransformer(s3, v3, s3.g.values, s3.h)
               val postState = postTran.transformState(s3)
-              // println(s"\twith s \n\t\t${s3.h.values.mkString("\n\t\t")}")
-              // println(s"and V \n\t${v3.decider.pcs.assumptions.mkString("\n\t")}")
               Success(Some(FramingSuccess(s3, v3, postState, endStmt, v3.decider.pcs.duplicate(), postTran)))
             }
           }
