@@ -176,15 +176,10 @@ object LoopInvariantSolver {
         val preState = s.copy(h = q.preHeap)
         val preTran = VarTransformer(preState, v, preLoopVars, preState.h)
         // We need to normalize the state otherwise we might have fragmented chunks
-        // println(s"FULL ABDRESES: - ${abductionUtils.getAbductionSuccesses(nonf).reverse.mkString("\n- ")}")
-        // println(s"ACTUAL ABDRESES: - ${abdReses.mkString("\n- ")}")
-        // println(s"ABDRESES PRE: ${abdReses.flatMap(abd => abd.getPreconditions(preLoopVars, s.h, Seq(), newMatches).get)}")
-        // println(s"ABDRESFRAME: - ${abductionUtils.getFramingSuccesses(nonf).mkString("\n- ")}")
         val newStateOpt = abductionUtils.normalizePreconditions(
         abdReses.flatMap(abd =>
           abd.getPreconditions(preLoopVars, s.h, Seq(), newMatches).toSeq.flatten
         ), s, v)
-        // println(s"NEWSTATEOPT: $newStateOpt")
         // We still need to remove the current loop condition
         val newState = abductionUtils.sortExps(newStateOpt.map(_.transform {
           case im: Implies if im.left == loopConExp => im.right
@@ -200,23 +195,11 @@ object LoopInvariantSolver {
           case fa: FieldAccessPredicate => fa.loc
           case pa: PredicateAccessPredicate => pa.loc
         }
-        // println(s"Prestate is: ${preState.h.values.mkString("\n\t")}")
-        // println(s"Prestate verifier: \n\t${v.decider.pcs.assumptions.mkString("\n\t")}")
-        // println(s"accs $accs")
         abductionUtils.findOptChunks(accs, preState, v, pve) {
           chunks =>
             val toKeep = chunks.keys
             val toAbs = preState.copy(h= Heap(preState.h.values.toSeq.diff(toKeep.toSeq)))
-            // println(s"toAbs is: ${toAbs.h.values.mkString("\n\t")}")
-            // println(s"Will try to abstract for pre from ${toAbs.h.values.mkString("\n\t")}")
-            //// println(s"with v\n\t${v.decider.pcs.assumptions.mkString("\n\t")}")
-            // println(s"and g\n\t${toAbs.g.values.mkString("\n\t")}")
-
             BiAbductionSolver.solveAbstraction(toAbs, v) { (newPreState0, newPreAbstraction0, _) =>
-              // println(s"Done abstracting with ${newPreState0.h.values.mkString("\n\t")}")
-              // println(s"and g\n\t${newPreState0.g.values.mkString("\n\t")}")
-              // println(s"Preabstraction is \n\t${newPreAbstraction0.mkString("\n\t")}")
-              // println(s"Need to add back $toKeep")
               // Now we add back the things we removed before abstraction. Or not I guess?
               val newPreState = newPreState0.copy(h = newPreState0.h + Heap(toKeep))
               val newPreAbstraction = newPreAbstraction0.map(e => preTran.transformExp(e, strict = false).get) //++ chunks.values
@@ -229,7 +212,6 @@ object LoopInvariantSolver {
 
               // Consolidate the framing successes
               val posts = abductionUtils.getFramingSuccesses(nonf).groupBy(_.posts)
-              // println(s"posts $posts")
               // We take the frame with the most posts
               val chosenFrame = posts.maxBy { case (exps, _) => exps.size }._2.head //posts.head._2.head
               chosenFrame.v.decider.setPcs(chosenFrame.pcs)
@@ -237,13 +219,7 @@ object LoopInvariantSolver {
               val inVars = chosenFrame.s.g.values.collect { case (v, t) if ins.contains(v) => (v, t) }
               val preLoopVars = chosenFrame.s.g.values.filter { case (v, _) => origVars.contains(v) }
               val postTran = VarTransformer(chosenFrame.s, chosenFrame.v, inVars, chosenFrame.s.h, otherVars = preLoopVars)
-              // println(s"Will try to abstract for post from \n\t${chosenFrame.s.h.values.mkString("\n\t")}")
-              // println(s"with v\n\t${chosenFrame.v.decider.pcs.assumptions.mkString("\n\t")}")
-              // println(s"and g\n\t${chosenFrame.s.g.values.mkString("\n\t")}")
               BiAbductionSolver.solveAbstraction(chosenFrame.s, chosenFrame.v) { (sPostAbs, postAbstraction0, vPostAbs) =>
-                // println(s"Done abstracting with ${sPostAbs.h.values.mkString("\n\t")}")
-                // println(s"and g\n\t${sPostAbs.g.values.mkString("\n\t")}")
-                // println(s"PostAbstraction is \n\t${postAbstraction0.mkString("\n\t")}")
 
                 val newPostAbstraction = postAbstraction0.map(e => postTran.transformExp(e, strict = false).get)
                 //if (loopConExp == loopCons.head) {
@@ -256,7 +232,6 @@ object LoopInvariantSolver {
                 if (iteration > 2 && newPreAbstraction.toSet == q.preAbstraction.toSet && newPostAbstraction.toSet == q.postAbstraction.toSet) {
 
                   val existingInvs = loop.invs
-                  // println(s"Will compute invariants form $newPreAbstraction and $newPostAbstraction")
                   // Need to distinct otherwise we get some weird duplication
                   val res = getInvariants(newPreAbstraction, newPostAbstraction, loopConExp, existingInvs, sPostAbs, vPostAbs).distinctBy(_.toString)
                   //if (loopConExp == loopCons.head) {
@@ -271,8 +246,7 @@ object LoopInvariantSolver {
                   // val allNewChunks = abdReses.map(abd => (abd.allNewChunks, abd.pcs.branchConditions))
                   // val matchingPreChunks = allNewChunks.collect { case (chunks, bcs) if bcs.diff(vPostAbs.decider.pcs.branchConditions).isEmpty => chunks }.flatten
 
-                  // We need to merge chunks that refer to the same value but have different snaps(?)
-                  // println(s"ABDRESES: - ${abdReses.mkString("\n- ")}")
+                  // We need to merge chunks that refer to the same value but have different snaps (?)
                   val preChunks = abdReses
                     .map(abd => (abd.allNewChunks, abd.pcs.branchConditions))
                     .flatMap { case (chunks, bcs) => chunks.map(chunk => (chunk, bcs)) }
@@ -288,7 +262,6 @@ object LoopInvariantSolver {
                       bestChunk
                     }
                     .toList
-                  // println(s"preChunks: \n\t${preChunks.mkString("\n\t")}")
                   solveLoopInvariants(sPostAbs, vPostAbs, origVars, loopHead, loopEdges, joinPoint, initialBcs, q.copy(preHeap = newPreState.h + Heap(preChunks), preAbstraction = newPreAbstraction,
                     postAbstraction = newPostAbstraction), iteration = iteration + 1)
                 }

@@ -50,7 +50,6 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, stat
     //  case None => None
     //}
 
-
     // If we can express as in vars, then we want to
     val ins = s.currentMember.get.asInstanceOf[Method].formalArgs.map(_.localVar)
     val preVars = s.g.values.collect { case (v, t) if ins.contains(v) => (v, t) }
@@ -94,10 +93,7 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, stat
         }
     }
 
-    // println(s"WILL TRANSFORM $assertions")
     val assertionsTransformed = assertions.map { assert => varTran.transformExp(assert, onlyInner = true) }
-    // println(s".   $assertionsTransformed")
-
     val bcPreExps = bcExps.collect {
       case exp => varTran.transformExp(exp)
     }
@@ -227,9 +223,8 @@ object BiAbductionSolver {
           Some(acc)
         case reason: MagicWandChunkNotFound =>
           Some(reason.offendingNode)
+        // If we fail a fold because of an assertion, we might want to reattempt it with the assertion produced
         case AssertionFalse(assert)  =>
-          // // println(s"Failed due to assertion in \n\t${s.h.values.mkString("\n\t")}\n\t${s.g.values.mkString("\n\t")}\nwith pcs ${v.decider.pcs}")
-          // // println(s"Failed due to assertion $assert while packaging ${s.packaging}")
           f.message.offendingNode match {
             case _: Fold => Some(Assert(assert)())
             case _ => None
@@ -240,28 +235,20 @@ object BiAbductionSolver {
       reason match {
         case None => f
         case Some(Assert(assertion)) if s.packaging.isDefined =>
-          // println(s"abdGoal $assertion triggered by $trigger in s: \n\t${s.h.values.mkString("\n\t")}")
-          // println(s"\tdue to $f")
-          // // println(s"Packaging ${s.packaging}")
-          // If we failed to fold a predicate because of an assertion, we try producing the assertion in the state and continuing
+          // If we failed to fold a predicate because of an assertion while packaging a wand,
+          // we try producing the assertion in the state and continuing
           executionFlowController.tryOrElse0(s, v) { (s1, v1, T) =>
-            // // println(s"Will attempt producing $assertion (${s1.produceableAssertions})")
-            // // println(s"ReserveHeaps: \n${if (s1.produceableAssertions.nonEmpty) s1.reserveHeaps.zipWithIndex.map { case (h, i) => s"[$i] ${h.values.mkString(", ")}" }.mkString("\n") else ""}")
             val sProd = s1.reserveHeaps.length match {
               // This means that we are inside package... right?
               // if we are in a pakcage stmt we must record all permissions added by previously executed statements
               case 4 => s1.copy(h=s1.reserveHeaps(1))
               case _ => s1
             }
-            // println(s"H ${sProd.h.values.mkString("\n\t")}")
-            // println(s"H2 ${s1.h.values.mkString("\n\t")}")
-            // println(s"G ${sProd.g.values.mkString("\n\t")}")
             producer.produce(sProd, freshSnap, assertion, pve, v1) { (s2, v2) =>
               T(s2, v2)
             }
           } {
             (s1a, v1a) =>
-              // .copy(produceableAssertions = s1a.produceableAssertions :+ assertion)
               val abd = AbductionSuccess(s1a, v1a, v1a.decider.pcs.duplicate(), Seq.empty, Seq.empty, Map.empty, Seq.empty, trigger, Seq(assertion))
               Success(Some(abd)) && Q(s1a, v1a)
           } {
@@ -288,6 +275,7 @@ object BiAbductionSolver {
             case _ => q
           }
           // We also need to check if we're failing because of an invariant and, if yes, save it
+          // amherz: we now handle this differently, here for completeness
           /*val qInvariant = f.message match {
             case LoopInvariantNotPreserved(invariant, _, _) =>
               val predAccesses: Seq[Exp] = invariant.collect { case pap: PredicateAccessPredicate => pap }.toSeq
@@ -295,19 +283,15 @@ object BiAbductionSolver {
             case _ => qFold
           }*/
 
-          // println(s"abdGoal $abdGoal due to $f \nin h:\n\t${s.h.values.mkString("\n\t")}\nand g:\n\t${s.g.values.mkString("\n\t")}")
-          // println(s"Reserved 4 Unfold: ${qFold.s.reservedForFoldUnfold}")
-          // println(s"Reserved 4 Invariants: ${qFold.s.reservedForInvariants}")
-          //// println(s"and v:\n\t${v.decider.pcs.assumptions.mkString("\n\t")}")
           // NOTE: Without fractional permissions, the comment below is true
           // With fractional permissions, we HAVE to start with rule one because if we hold a fraction smaller
           // than the goal, we must subtract it from the goal
+          // amherz: THIS IS NO LONGER TURE. We now start at 1, because all math is performed in the missing (last) rule
           //
           // We skip the first rule because we know that an error occured, so we cannot be done
           // This allows us to fold on null references multiple times, as is required for e.g. trees.
           AbductionApplier.applyRules(qFold, currentRule = 1) {
             q1 =>
-              // println(s"Completed abduction with state: \n\t${q1.s.h.values.mkString("\n\t")}")
               if (q1.goal.isEmpty) {
                 val newState = q1.foundState.reverse
                 val newStmts = q1.foundStmts
@@ -317,22 +301,9 @@ object BiAbductionSolver {
                   //Unreachable()
                 } else {
                   val newChunks = newState.collect { case (_, c: Some[BasicChunk]) => c.get }
-                  //val newOldHeaps = q1.s.oldHeaps.map { case (label, heap) => (label, heap + Heap(newChunks)) }
-                  //val s1 = q1.s.copy(oldHeaps = newOldHeaps)
-                  // println(s"ABDUCTION TERMINATED IN \n\t\t${q1.s.h.values.mkString("\n\t\t")}")
-                  // println(s"\twith g: \n\t\t${q1.s.g.values.mkString("\n\t\t")}")
-                  // // println(s"\twith v: \n\t\t${q1.v.decider.pcs.assumptions.mkString("\n\t\t")}")
-                  // println(s"\tWITH STATE ${newState}")
-                  // println(s"\tWITH STATEMENTS ${newStmts}")
-                  // println(s"\tAND RESERVED ${q1.s.reservedForFoldUnfold} ${q1.s.reservedForInvariants}")
+                  // val newOldHeaps = q1.s.oldHeaps.map { case (label, heap) => (label, heap + Heap(newChunks)) }
+                  // val s1 = q1.s.copy(oldHeaps = newOldHeaps)
                   val fieldChunks = newState.collect { case (fa: FieldAccessPredicate, c) => (c.get, fa.loc) }.toMap
-                  // println(s"\tFIELDCHUNKS: $fieldChunks")
-                  // If the abduction question was a fold, we must clean up the reserved stack
-                  /*val q2 = f.message.offendingNode match {
-                    case _: Fold =>
-                      q1.copy(s = q1.s.copy(reservedForFoldUnfold = q1.s.reservedForFoldUnfold.init))
-                    case _ => q1
-                  }*/
 
                   val abd = AbductionSuccess(q1.s, q1.v, q1.v.decider.pcs.duplicate(), newState, newStmts, fieldChunks, newChunks, trigger)
                   Success(Some(abd)) && Q(q1.s, q1.v)
@@ -344,7 +315,7 @@ object BiAbductionSolver {
         case _ =>
           // This will only happen if we fail with an assertion (value constraint) AND
           // we're not packaging
-          // println(s"Not good")
+          // In that case, we fail
           f
       }
     }
@@ -355,18 +326,11 @@ object BiAbductionSolver {
     AbstractionApplier.applyRules(q) { q1 =>
       val absTransForm = VarTransformer(q1.s, q1.v, q1.s.g.values, q1.s.h)
       val res = absTransForm.transformState(q1.s)
-      // println(s"Done solveAbstraction with state")
-      // println(s"${q1.s.h.values.mkString("\n\t")}")
-      // println(s"and res")
-      // println(s"${res.mkString("\n\t")}")
-      // println(s"and v")
-      // println(s"${q.v.decider.pcs.assumptions.mkString("\n\t")}")
       Q(q1.s, res, q1.v)
     }
   }
 
   def solveFraming(s: State, v: Verifier, pvef: Exp => PartialVerificationError, tra: VarTransformer, loc: Positioned, knownPosts: Seq[Exp], stateAllowed: Boolean)(Q: FramingSuccess => VerificationResult): VerificationResult = {
-    // println(s"Will consume $knownPosts")
     executionFlowController.tryOrElse1[Option[Term]](s, v) { (s, v, QS) =>
       consumes(s, knownPosts, false, pvef, v)(QS)
     } { (s1: State, _: Option[Term], v1: Verifier) =>
@@ -379,11 +343,9 @@ object BiAbductionSolver {
       } {
         // We consumed all the posts and did not find any new ones. So create a fresh Framing Success with the bcs
         case Seq() =>
-          // println(s"No new post")
           Q(FramingSuccess(s1, v1, Seq(), loc, v.decider.pcs.duplicate(), tra)) // No new state or needed stmts
         // We consumed the post conditions and found new ones. Handle the new ones and add them to the result
         case newPosts1 =>
-          // println(s"New posts $newPosts1")
           solveFraming(s1, v1, pvef, tra, loc, newPosts1, stateAllowed) { frame =>
             val sortedPost = abductionUtils.sortExps(newPosts1)
             val newFrame = frame.copy(posts = frame.posts ++ sortedPost)
@@ -393,7 +355,6 @@ object BiAbductionSolver {
     } {
       // We failed to fulfill the posts. Perform abduction, add the results and try again.
       f =>
-        // println(s"Failed abstraction with $f")
         BiAbductionSolver.solveAbductionForError(s, v, f, stateAllowed, Some(loc))((s3, v3) => {
           solveFraming(s3, v3, pvef, tra, loc, knownPosts, stateAllowed)(Q)
         }
@@ -405,15 +366,7 @@ object BiAbductionSolver {
     val abdReses = abductionUtils.getAbductionSuccesses(nf)
     val newMatches = abdReses.flatMap(_.newFieldChunks).toMap
     val abdCases = abdReses.groupBy(res => (res.trigger.get.pos, res.stmts, res.state.map({ case (e, _) => e })))
-    //
-    // println(s"abdCases:")
-    // abdCases.foreach { case (key, values) =>
-      // println(s"----------")
-      // println(s"$key")
-      // values.foreach(v => // println(s"$v [${v.pcs.branchConditions}]"))
-      // println(s"----------")
-    // }
-    // Try to join by bc terms
+
     val joinedCases = abdCases.map {
       case (_, reses) =>
         val unjoined = reses.map(res =>
@@ -504,9 +457,8 @@ object BiAbductionSolver {
     // We get a framing result for every branch.
     // So postconditions that are in every branch can just be added without any bcs
     val everyPosts = frames.head.posts.filter { p => frames.forall(_.posts.contains(p)) }
-    //val formals = m.formalArgs.map(_.localVar) ++ m.formalReturns.map(_.localVar)
-    //val bcs = frames.map(_.pcs.branchConditions)
-    // println(s"everyposts: $everyPosts")
+    // val formals = m.formalArgs.map(_.localVar) ++ m.formalReturns.map(_.localVar)
+    // val bcs = frames.map(_.pcs.branchConditions)
     val cases = frames.map { f =>
       val prefVars = f.s.g.values.collect { case (var2, t) if m.formalArgs.map(_.localVar).contains(var2) => (var2, t) }
       val otherVars = f.s.g.values.collect { case (var2, t) if m.formalReturns.map(_.localVar).contains(var2) => (var2, t) }
@@ -516,7 +468,6 @@ object BiAbductionSolver {
       }.distinct.filter(_ != True)
       (f.posts.diff(everyPosts), f.getBcExps(bcs, prefVars, otherVars))
     }.distinct
-    // println(s"cases: $cases")
     // We can remove bcs that hold in every branch
     val everyTerms = cases.head._2.filter { t => cases.forall(_._2.contains(t)) }
 
@@ -529,21 +480,6 @@ object BiAbductionSolver {
     val sortedPosts = abductionUtils.sortExps(m.posts ++ res)
     val newM = m.copy(posts = sortedPosts)(pos = m.pos, info = m.info, errT = m.errT)
     Some(newM)
-
-    /*
-    val frameCases = frames.groupBy(f => f.posts.diff(everyPosts)).flatMap {
-      case (_, frs) =>
-        val unjoined = frs.map(fr => (Seq(fr), fr.pcs.branchConditions.distinct.filter(_ != True)))
-        val joined = abductionUtils.joinBcs(unjoined)
-        joined.map {
-          case (frs, pcs) =>
-            frs.head -> pcs
-        }
-    }
-
-    frameCases.foldLeft[Option[Method]](Some(m))((m1, res) => m1.flatMap { mm => res._1.addToMethod(mm, res._2.diff(alwaysTerms)) })
-  */
-
   }
 
 
@@ -780,6 +716,8 @@ object abductionUtils {
     fields ++ preds ++ others
   }
 
+  // We need to normalize conditions, that includes: performing airhtmetic on the permissions to the same lcoation,
+  // clamp the permissions.
   def normalizePreconditions(expressions: Seq[Exp], s: State, v: Verifier): Seq[Exp] = {
     val varTran = VarTransformer(s, v, s.g.values, s.h)
 
@@ -998,6 +936,9 @@ object abductionUtils {
     }
   }
 
+  // Computes permissions to a location
+  // We need the (rather expensive) verifier check to minimize the amoutn of aliased locations that we could miss on
+  // This is the _definitelyEqual_ variable.
   def permsTo(loc: LocationAccess, s: State, v: Verifier, lostAccesses: Map[Exp, Term])
              (Q: Option[Exp] => VerificationResult) = {
     val arg = loc match {
@@ -1038,7 +979,6 @@ object abductionUtils {
   def expMatchWithPermissions(exp1: Exp, exp2: Exp, v: Verifier, varTran: VarTransformer): Boolean = {
     (exp1, exp2) match {
       case (fap1: FieldAccessPredicate, fap2: FieldAccessPredicate) =>
-        // println(s"${fap1.permExp}, ${fap2.permExp}")
         fap1.loc == fap2.loc &&
           ((fap1.permExp, fap2.permExp) match {
           case (Some(perm1), Some(perm2)) =>
@@ -1049,7 +989,6 @@ object abductionUtils {
           case _ => false
         })
       case (pap1: PredicateAccessPredicate, pap2: PredicateAccessPredicate) =>
-        // println(s"${pap1.permExp}, ${pap2.permExp}")
         pap1.loc == pap2.loc &&
           ((pap1.permExp, pap2.permExp) match {
             case (Some(perm1), Some(perm2)) =>
@@ -1075,6 +1014,8 @@ object abductionUtils {
     }
   }
 
+  // This is the fucntion that takes care of cocnretizing (i.e. turning into concrete values that we can work with) permissions
+  // It currently turns wildcard (i.e. read) permissions into an exact fraction that can be modified.
   def concretizeAccs(accs: Seq[AccessPredicate], q: AbductionQuestion)
                     (Q: Seq[AccessPredicate] => VerificationResult): VerificationResult = {
     def go(remaining: List[AccessPredicate],
@@ -1279,7 +1220,6 @@ object abductionUtils {
       case pred: PredicateAccessPredicate =>
         val newArgs = pred.loc.args.map {
           case fa: FieldAccess =>
-            // Resolve receiver to a term via the store
             resolveToVar(fa, q).getOrElse(fa)
           case arg => arg
         }

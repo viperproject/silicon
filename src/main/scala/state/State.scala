@@ -54,7 +54,7 @@ final case class State(g: Store = Store(),
                        // We need to keep track of the predicate that we are reserved and of what we have produced while reserved
                        // it. This way, if we fold nodes(curr.next) by folding away curr.next.prev, we will not try to unfold it when
                        // trying to abduce curr.next.prev again.
-                       // The same thing happens th eother way around: if we produce curr.next.prev
+                       // The same thing happens the other way around: if we produce curr.next.prev
                        reservedForFoldUnfold: Seq[(ast.Exp, Seq[ast.Exp])] = Seq.empty,
                        // A similar problem as above can rise when checking invariants as well
                        // If we need an invariant nodes(curr

@@ -19,7 +19,7 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
                           targetHeap: Heap, newFieldChunks: Map[BasicChunk, ast.LocationAccess] = Map(),
                           otherVars: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])] = Map()) {
 
-  //val pve: PartialVerificationError = Internal()
+  // val pve: PartialVerificationError = Internal()
 
   // Ask the decider whether any of the terms are equal to a target.
   var matches: Map[Term, ast.Exp] = resolveMatches()
@@ -39,14 +39,6 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
         Seq(t)
     }
 
-    // TODO: Should probably exclude null
-    /*// // println(s"\t\t s.h(): \n\t\t\t${s.h.values.mkString("\n\t\t\t")}")
-    // // println(s"\t\t s.g(): \n\t\t\t${s.g.values.mkString("\n\t\t\t")}")
-    // // println(s"\t\t s.g: ${s.g.values.values.map { case (t1, _) => t1 }}")
-    // // println(s"\t\t s.h: ${s.h.values.collect {
-      case c: BasicChunk if c.resourceID == FieldID => Seq(c.args.head, c.snap)
-      case c: BasicChunk if c.resourceID == PredicateID => c.args ++ extractSnapTerms(c.snap)
-    }.flatten}")*/
     val allTerms: Seq[Term] = (s.g.values.values.map { case (t1, _) => t1 }
       ++ s.h.values.collect {
       case c: BasicChunk if c.resourceID == FieldID => Seq(c.args.head, c.snap)
@@ -58,19 +50,15 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
 
 
     // The symbolic values of the target vars in the store. Everything else is an attempt to match things to these terms
-    //val targetMap: Map[Term, AbstractLocalVar] = targets.view.map(localVar => s.g.get(localVar).get -> localVar).toMap
+    // val targetMap: Map[Term, AbstractLocalVar] = targets.view.map(localVar => s.g.get(localVar).get -> localVar).toMap
     val directPrefTargets = prefVars.map{case (lv, (t, _)) => t -> lv} //++ Map(terms.Null -> ast.NullLit()())
-    /*// // println(s"\tdirectPrefTargets: $directPrefTargets")*/
     val directTargets = directPrefTargets ++ otherVars.map{case (lv, (t, _)) => t -> lv}.filter { case (t, _) => !directPrefTargets.contains(t) }
-    /*// // println(s"\tdirectTargets: $directTargets")*/
     val directAliases = allTerms.map { t =>
       t -> directTargets.collectFirst { case (t1, e) if t.sort == t1.sort && v.decider.check(BuiltinEquals(t, t1), Verifier.config.checkTimeout()) => e }
     }.collect { case (t2, Some(e)) => t2 -> e }.toMap
-    /*// // println(s"\tdirectAliases: $directAliases")*/
     val chunksToResolve = targetHeap.values.collect { case c: BasicChunk
       if c.resourceID == FieldID && !(directAliases.contains(c.args.head) && directAliases.contains(c.snap)) && c.snap != Null => c
     }.toSeq
-    /*// // println(s"\tchunksToResolve: $chunksToResolve")*/
 
     resolveChunks(directAliases, chunksToResolve, allTerms.filter(!directAliases.contains(_)))
   }
@@ -175,7 +163,6 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
       case terms.Null =>
         Some(ast.NullLit()())
       case t if matches.contains(t) =>
-        // println(s"transformed $t into ${matches.get(t)}")
         matches.get(t)
       case BuiltinEquals(t1, t2) => (transformTerm(t1), transformTerm(t2)) match {
         case (Some(e1), Some(e2)) =>
@@ -251,8 +238,6 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
           case (key, value) if key.sort == t.sort && v.decider.check(key === t, Verifier.config.checkTimeout()) => value
         }*/
       case e =>
-        // println(s"ERROR IN TRASNFORMTERM: Unsupported operand ${e}:${e.getClass}")
-        // println(s"\tmatches is \n\t${matches.mkString("\n\t")}")
         None
     }).map(abductionUtils.simplifyPermission)
 
@@ -288,7 +273,7 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
           val expBindings = mwc.bindings.collect { case (lv, (term, _)) if rcvs.contains(term) => lv -> rcvs(term).get }
           val instantiated = shape.replace(expBindings)
           Some(instantiated)
-          //Some(abductionUtils.getPredicate(s.program, rcv.get, transformTerm(b.perm).get))
+          // Some(abductionUtils.getPredicate(s.program, rcv.get, transformTerm(b.perm).get))
         }
     }
   }
@@ -331,8 +316,6 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
           ast.FieldAccessPredicate(ast.FieldAccess(newRcv, fa.field)(), perm)()
         case fa@ast.FieldAccess(target, field) =>
 
-          // // println(s"Will attempt transforming $fa")
-
           if (onlyInner && target.isInstanceOf[ast.FieldAccess]) {
             val rvcExp = transformExp(target)
             ast.FieldAccess(rvcExp.get, field)()
@@ -342,19 +325,14 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
                 val existingChunkTerm = transformTerm(term)
                 existingChunkTerm match {
                   case Some(nfa: ast.FieldAccess) =>
-                    // // println(s"Done $nfa")
                     nfa
 
                   case Some(ast.NullLit()) | Some(ast.LocalVar(_, _)) | None =>
-                    // // println(s"Will try transforming target $target")
                     val rvcExp = transformExp(target)
-                    // // println(s"Done $rvcExp")
                     ast.FieldAccess(rvcExp.get, field)()
                 }
               case None =>
-                // // println(s"Will recurse")
                 val rvcExp = transformExp(target)
-                // // println(s"Done $rvcExp")
                 ast.FieldAccess(rvcExp.get, field)()
             }
           }

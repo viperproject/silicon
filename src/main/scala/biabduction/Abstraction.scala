@@ -59,7 +59,6 @@ object AbstractionFold extends AbstractionRule {
           acc
         case _ => None
       }
-      // // println(s"Reason is $reason")
       reason match {
         // We ONLY want to reattempt fold if we're missing a field
         // TODO: This should NOT be a field of a recursive predicate
@@ -67,10 +66,8 @@ object AbstractionFold extends AbstractionRule {
           abductionUtils.permsTo(acc.loc, currentQ.s, currentQ.v, Map.empty) {
             // We only reattempt the fold if we have some permissions to the other field
             case Some(_: NoPerm) =>
-              // // println(s"Will check rest 1 $rest")
               checkChunks(rest, q)(Q)
             case permH@Some(p) =>
-              // println(s"Will reattempt fold due to having $p to ${acc.loc}, failed with $previousFailure (${abductionUtils.asRational(Some(p)) == Rational(0, 1)})")
               val newPerm = abductionUtils.clampSubPerm(acc.permExp, permH)
               val toProd = abductionUtils.accWithPerm(acc, Some(newPerm))
               producer.produce(currentQ.s, freshSnap, toProd, pve, currentQ.v) { (s1p, v1p) =>
@@ -93,19 +90,16 @@ object AbstractionFold extends AbstractionRule {
                 }
               }
             case _ =>
-              // // println(s"Will check rest 2")
               checkChunks(rest, q)(Q)
           }
         case _ =>
           // Failure was not due to insufficient permissions to a field, give up and check rest
-          // // println(s"Will check rest 3")
           checkChunks(rest, q)(Q)
       }
     }
 
     chunks match {
       case _ if chunks.isEmpty =>
-        // // println(s"Chunks is empty")
         Q(None)
       case (chunk, pred) +: rest =>
         q.varTran.transformTerm(chunk.args.head) match {
@@ -133,7 +127,6 @@ object AbstractionFold extends AbstractionRule {
                 FullPerm()(), q.v, q.varTran)
             }
             val fold = Fold(PredicateAccessPredicate(PredicateAccess(Seq(eArgs), pred.name)(), Some(permToFold))())()
-            println(s"Will attempt folding $fold")
             executionFlowController.tryOrElse0(q.s, q.v) {
               (s1, v1, T) =>
                 executor.exec(s1.copy(abdPermScalingFactorExp = permToFold), fold, v1, None, abdStateAllowed = false)((s1a, v1a) => {
@@ -151,7 +144,6 @@ object AbstractionFold extends AbstractionRule {
                   reservedForFoldUnfold = s2.reservedForFoldUnfold filter {
                     case (exp, _) => exp != fold.acc
                   })
-                // println(s"Folding succeeded with s \n\t${sFoldSucceeded.h.values.mkString("\n\t")}")
                 Q(Some(q.copy(s = sFoldSucceeded, v = v2)))
             } {
               f =>
@@ -160,7 +152,7 @@ object AbstractionFold extends AbstractionRule {
                 // we can just add the field and keep going
                 // If we have acc(x.next, 1/1) && acc(x.data, 1/4), then it just means that x.data was never accesses
                 // for write permissions BUT we can just over-approximate and add them
-                println(s"Will retry fold because of $f")
+
                 // checkChunks(rest, q)(Q)
                 retryFold(fold, q.copy(s = q.s.copy(abdPermScalingFactorExp = permToFold)), f, rest)
             }
@@ -183,7 +175,6 @@ object AbstractionFold extends AbstractionRule {
           Verifier.config.checkTimeout()
         )
       }
-    // // println(s"Candidate Chunks $candChunks")
 
     checkChunks(candChunks, q)(Q)
   }
@@ -256,7 +247,6 @@ object AbstractionPackage extends AbstractionRule {
     findWand(q.s.h.values.toSeq, q) {
       // case None => Q(None)
       case Some(wand)  =>
-        // // println(s"Will attempt asserting $wand")
         // Asserting the wand might fail: The fact that we can attempt packaging it does nto imply that packaging
         // it will succees
         executionFlowController.tryOrElse0(q.s, q.v) { (s1, v1, T) =>
@@ -265,11 +255,9 @@ object AbstractionPackage extends AbstractionRule {
           }
         } {
           (s1a, v1a) =>
-            // // println(s"Wand $wand succesfully asserted")
             Q(Some(q.copy(s = s1a, v = v1a)))
         } {
           f =>
-            // // println(s"Failed to assert wand $wand with $f")
             Q(None)
         }
         /*executor.exec(q.s, Assert(wand)(), q.v) {
@@ -306,7 +294,6 @@ object AbstractionApply extends AbstractionRule {
   override def apply(q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
     val wands = q.s.h.values.collect { case wand: MagicWandChunk => q.varTran.transformChunk(wand) }.collect { case Some(wand: MagicWand) => wand }
     val targets = q.s.h.values.collect { case c: BasicChunk => q.varTran.transformChunk(c) }.collect { case Some(exp) => exp }.toSeq
-    // // println(s"Will try apply rule with wands $wands and targets $targets")
     wands.collectFirst {
       case wand if targets.exists(target => abductionUtils.expMatchWithPermissions(wand.left, target, q.v, q.varTran)) => wand
     } match {
