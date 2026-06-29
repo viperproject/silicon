@@ -20,11 +20,12 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
 	)
 
   private val infoString = "Enter " +
-    "\n\t'dep [line numbers]' to print all dependencies of the given line numbers or" +
-    "\n\t'downDep [line numbers]' to print all dependents of the given line numbers or" +
+    "\n\t'dep [line numbers]' to print the direct, explicit, and all dependencies of the given line numbers or" +
+    "\n\t'allDeps [line numbers]' (short: 'ad') to print all dependencies of the given line numbers or" +
+    "\n\t'downDep [line numbers]' to print the dependents of the given line numbers or" +
     "\n\t'cov [members]' to print proof coverage of given member or" +
     "\n\t'covL member [line numbers]' to print proof coverage of given lines of given member or" +
-    "\n\t'progress' to compute the verification progress of the program or" +
+    "\n\t'progress' (short: 'prog') to compute the verification progress of the program or" +
     "\n\t'guide' to compute verification guidance or" +
     "\n\t'prune [line numbers]' to prune the program with respect to the given line numbers and export the new program or" +
 		(if (extensions.nonEmpty) "\n\t" else "") +
@@ -65,6 +66,7 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
       inputParts.head.toLowerCase match {
 				case "help" => println(infoString)
         case "dep" => handleDependencyQuery(inputParts.tail.toSet)
+        case "ad" | "alldeps" => handleAllDependenciesQuery(inputParts.tail.toSet)
         case "downdep" => handleDependentsQuery(inputParts.tail.toSet)
         case "coverage" | "cov" => handleProofCoverageQuery(inputParts.tail)
         case "covlines" | "covl" => handleProofCoverageLineQuery(inputParts.tail)
@@ -158,6 +160,19 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
     if (queriedAssertions.exists(_.asInstanceOf[GeneralAssertionNode].hasFailed)) println("\nQueried assertions (partially) FAILED!\n")
 
   }
+
+	private def handleAllDependenciesQuery(inputs: Set[String]): Unit = {
+		val queriedNodes = getQueriedNodesFromInput(inputs)
+		val queriedAssertions = queriedNodes.filter(node => node.isInstanceOf[GeneralAssertionNode])
+
+		val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedAssertions.map(_.id)))
+
+		println(s"Queried:\n\t${getSourceInfoString(queriedNodes)}")
+
+		println(s"\nAll Dependencies (${timeAll}ms):\n\t${getSourceInfoString(allDependencies.diff(queriedNodes))}")
+
+		if (queriedAssertions.exists(_.asInstanceOf[GeneralAssertionNode].hasFailed)) println("\nQueried assertions (partially) FAILED!\n")
+	}
 
   private def handleDependentsQuery(inputs: Set[String]): Unit = {
 
