@@ -59,15 +59,7 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
 	}
 
 	def getDirectDependencies(nodeIdsToAnalyze: Set[Int]): Set[DependencyAnalysisNode] = {
-		var queue = nodeIdsToAnalyze
-		var result: Set[Int] = Set.empty
-		val internalNodeIds = getAssumptionNodes.diff(getNonInternalAssumptionNodes).map(_.id).union(getAssertionNodes.map(_.id))
-		while (queue.nonEmpty) {
-			val directDependencyIds = queue flatMap (id => dependencyGraph.getDirectEdges.getOrElse(id, Set.empty))
-			queue = internalNodeIds.intersect(directDependencyIds).diff(result) // internal assumptions are hidden -> add their direct dependencies instead
-			result = result.union(directDependencyIds)
-		}
-
+		val result: Set[Int] = dependencyGraph.getDirectDependencies(nodeIdsToAnalyze, true, true, true)
 		getNonInternalAssumptionNodes.filter(node => result.contains(node.id))
 	}
 
@@ -84,6 +76,11 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
 	def getAllExplicitDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
 		val allDeps = getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes)
 		getExplicitAssumptionNodes.filter(node => allDeps.contains(node.id))
+	}
+
+	def getDirectDependents(nodeIdsToAnalyze: Set[Int]): Set[DependencyAnalysisNode] = {
+		val result: Set[Int] = dependencyGraph.getDirectDependents(nodeIdsToAnalyze, true, true, true)
+		getNonInternalAssertionNodes.filter(node => result.contains(node.id))
 	}
 
 	private def getAllDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true) = {

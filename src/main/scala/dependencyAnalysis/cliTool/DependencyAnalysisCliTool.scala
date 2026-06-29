@@ -178,12 +178,14 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
 
     val queriedNodes = getQueriedNodesFromInput(inputs).intersect(fullGraphInterpreter.getNonInternalAssumptionNodes)
 
+    val (directDependents, timeDirect) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getDirectDependents(queriedNodes.map(_.id)))
     val (allDependents, timeAll) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id)))
     val (dependentsWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id), includeInfeasibilityNodes=false))
     val (explicitDependents, timeExplicit) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllExplicitDependents(queriedNodes.map(_.id)))
 
     println(s"Queried:\n\t${getSourceInfoString(queriedNodes)}")
 
+    println(s"\nDirect Dependents (${timeDirect}ms):\n\t${getSourceInfoString(directDependents)}")
     println(s"\nAll Dependents (${timeAll}ms):\n\t${getSourceInfoString(allDependents)}")
     println(s"\nDependents without infeasibility (${timeWithoutInfeasibility}ms):\n\t${getSourceInfoString(dependentsWithoutInfeasibility)}")
     println(s"\nExplicit Dependents (${timeExplicit}ms):\n\t${getSourceInfoString(explicitDependents)}")

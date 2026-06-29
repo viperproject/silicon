@@ -63,8 +63,8 @@ class DebugDependencyAnalysisCliExtension(override val interpreter: DependencyGr
 
 		override def accept(inputs: Seq[String]): Boolean = super.accept(inputs) && inputs.tail.nonEmpty
 
-		def getLowLevelNodesByLine(line: Int): Set[DependencyAnalysisNode] = {
-			interpreter.getNodesByLine(line)
+		def getLowLevelNodesByLine(line: Int): List[DependencyAnalysisNode] = {
+			interpreter.getNodesByLine(line).toList.sortBy(_.id)
 		}
 	}
 }
