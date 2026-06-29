@@ -4,9 +4,9 @@
 
 method add(a: Int, b: Int) returns (res: Int)
     requires b != 0
-    ensures res == a + b
+    ensures res == a + b // PQ: 1/1
 {
-    res := a + b        // PQ: 1/1
+    res := a + b
 }
 
 method client()

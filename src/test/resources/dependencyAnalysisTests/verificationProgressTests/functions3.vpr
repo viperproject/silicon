@@ -1,12 +1,12 @@
 // Spec quality: 1
-// Proof quality: 0.68201
-// Progress: 0.68201
+// Proof quality: 0.663492
+// Progress: 0.663492
 
 function div(x: Int, y: Int) : Int
     requires x > 0 && y > 0
-    ensures result >= 0 // PQ: 7/9
+    ensures result >= 0 // PQ: 5/7
 {
-    x / y // PQ: 5/7
+    x / y // PQ: 2/3
 }
 
 

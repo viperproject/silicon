@@ -59,7 +59,7 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
 	}
 
 	def getDirectDependencies(nodeIdsToAnalyze: Set[Int]): Set[DependencyAnalysisNode] = {
-		val result: Set[Int] = dependencyGraph.getDirectDependencies(nodeIdsToAnalyze, true, true, true)
+		val result: Set[Int] = dependencyGraph.getDirectDependenciesById(nodeIdsToAnalyze, true, true, true)
 		getNonInternalAssumptionNodes.filter(node => result.contains(node.id))
 	}
 

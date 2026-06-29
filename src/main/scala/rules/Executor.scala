@@ -583,7 +583,9 @@ object executor extends ExecutionRules {
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
 
 						val postsWithDAInfo = if (!v1.decider.isDependencyAnalysisEnabled) meth.posts else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.posts.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
-            produces(s4, freshSnap, postsWithDAInfo, _ => pveCallTransformed, v2, analysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Down)))((s5, v3) => {
+						// TODO ake: Assuming the postcondition should not introduce any proof obligations as they are guaranteed by the fact / assumption that the callee verifies. Hence, we mark them as internal assertions.
+						val analysisInfos2 = analysisInfos.copy(dependencyTypes = List(DependencyTypeInfo(DependencyType(analysisInfos.getDependencyType.assumptionType, AssumptionType.Internal)))).withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Down))
+            produces(s4, freshSnap, postsWithDAInfo, _ => pveCallTransformed, v2, analysisInfos2)((s5, v3) => {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)

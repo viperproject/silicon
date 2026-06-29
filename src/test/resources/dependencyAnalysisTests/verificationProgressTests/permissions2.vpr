@@ -1,12 +1,12 @@
 // Spec quality: 1
-// Proof quality: 11/30
-// Progress: 11/30
+// Proof quality: 14/45
+// Progress: 14/45
 
 field f: Int
 
 method permissions(x: Ref)
     requires acc(x.f, 1/2)
-    ensures acc(x.f, 3/4)       // PQ: 2/4
+    ensures acc(x.f, 3/4)       // PQ: 1/3
 {
     inhale acc(x.f, 1/4)
 }

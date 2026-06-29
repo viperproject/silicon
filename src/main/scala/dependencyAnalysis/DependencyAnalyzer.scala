@@ -7,7 +7,7 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast._
 import viper.silver.dependencyAnalysis.JoinType.JoinType
-import viper.silver.dependencyAnalysis.{DependencyAnalysisMergeInfo, EdgeType, EvalStackDependencyAnalysisJoin, JoinType}
+import viper.silver.dependencyAnalysis._
 
 import scala.collection.mutable
 
@@ -136,17 +136,30 @@ object DependencyAnalyzer {
     val sourceNodesByJoinInfo = getJoinNodesByJoinInfo(joinSourceNodes, JoinType.Source)
     val sinkNodesByJoinInfo = getJoinNodesByJoinInfo(joinSinkNodes, JoinType.Sink)
 
-    sinkNodesByJoinInfo.foreach{case (joinInfo, nodes) =>
-      val matchingSourceNodes = sourceNodesByJoinInfo.filter{case (sourceJoinInfo, _) => sourceJoinInfo.matches(joinInfo)}.values.flatten
-      if (joinInfo.edgeType.equals(EdgeType.Up))
-        newGraph.addEdgesConnectingMethodsUpwards(matchingSourceNodes.map(_.id), nodes.map(_.id))
-      else
-        newGraph.addEdgesConnectingMethodsDownwards(matchingSourceNodes.map(_.id), nodes.map(_.id))
+		sinkNodesByJoinInfo.foreach{case (joinInfo, sinkNodes) =>
+      val matchingSourceNodes = sourceNodesByJoinInfo.filter{case (sourceJoinInfo, _) => sourceJoinInfo.matches(joinInfo)}.values.flatten.toSet
+			addEdgesConnectingMethods(newGraph, joinInfo, matchingSourceNodes, sinkNodes)
     }
 
     val newInterpreter = new DependencyGraphInterpreter[Final](name, newGraph, dependencyGraphInterpreters.toList.flatMap(_.getErrors))
     newInterpreter
   }
+
+	private def addEdgesConnectingMethods(newGraph: DependencyGraph[Final], joinInfo: SimpleDependencyAnalysisJoin, sourceNodes: Set[DependencyAnalysisNode], sinkNodes: Set[DependencyAnalysisNode]): Unit = {
+		if (joinInfo.edgeType.equals(EdgeType.Up)) {
+			val directDepsOfSources = if(!Verifier.config.disableDependencyAnalysisJoinPrecisionOpt()) {
+				// Preconditions are connected to the dependencies required to prove them at all call sites. However, they do not depend on the calls themselves.
+				sourceNodes.groupBy(_.sourceInfo).flatMap(t => newGraph.getDirectDependenciesByNode(t._2, true, true, true))
+			} else {
+				// Connect preconditions directly to call and therefore, indirectly to all its dependencies -> imprecise but might be faster and
+				// more user-friendly since it becomes apparent which call introduced these indirect dependencies.
+				sourceNodes.map(_.id)
+			}
+			newGraph.addEdgesConnectingMethodsUpwards(directDepsOfSources, sinkNodes.map(_.id))
+		} else {
+			newGraph.addEdgesConnectingMethodsDownwards(sourceNodes.map(_.id), sinkNodes.map(_.id))
+		}
+	}
 }
 
 class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {

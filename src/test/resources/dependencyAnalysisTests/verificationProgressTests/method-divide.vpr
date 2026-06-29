@@ -1,12 +1,12 @@
-// Spec quality: 2/3
-// Proof quality: 13/18
-// Progress: 13/27
+// Spec quality: 1/3
+// Proof quality: 7/18
+// Progress: 7/54
 
 method divide(a: Int, b: Int) returns (res: Int)
     requires b != 0
-    ensures res == a / b      // PQ: 3/4
+    ensures res == a / b      // PQ: 2/3
 {
-    res := a / b              // PQ: 2/3  
+    res := a / b              // PQ: 1/2
 }
 
 method client()
@@ -15,5 +15,5 @@ method client()
     a := 6         // uncovered
     assume b == 3
 
-    res := divide(a, b)       // PQ: 3/4
+    res := divide(a, b)       // PQ: 0/1
 }

@@ -704,6 +704,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+	val disableDependencyAnalysisJoinPrecisionOpt: ScallopOption[Boolean] = opt[Boolean]("disableDependencyAnalysisJoinPrecisionOpt",
+		descr = "Disables the precision optimizations regarding edges across method boundaries.",
+		default = Some(false),
+		noshort = true
+	)
+
   val enableDependencyAnalysisDebugging: ScallopOption[Boolean] = opt[Boolean]("enableDependencyAnalysisDebugging",
     descr = "Enable debugging for dependency analysis mode",
     default = Some(false),

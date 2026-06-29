@@ -1,10 +1,10 @@
-// Spec quality: 1
-// Proof quality: 1/3
-// Progress: 1/3
+// Spec quality: 0
+// Proof quality: 3/10
+// Progress: 0
 
 function sum(x: Int, y: Int): Int
   requires x >= 0 && y >= 0
-  ensures result >= 0       // PQ: 4/6
+  ensures result >= 0       // PQ: 3/5
 {
     x + y
 }
