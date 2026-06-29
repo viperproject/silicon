@@ -8,7 +8,7 @@ package viper.silicon.supporters
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon.state.terms.{Combine, First, Second, Sort, Term, Unit, sorts}
-import viper.silicon.state.{MagicWandIdentifier, State, SymbolConverter}
+import viper.silicon.state.{State, SymbolConverter}
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -40,8 +40,6 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
     case p: ast.Predicate =>
       p.body.map(v.snapshotSupporter.optimalSnapshotSort(_, s.program)._1)
         .getOrElse(sorts.Snap)
-    case mw: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(mw, s.program)) =>
-      sorts.Snap
     case _: ast.MagicWand => sorts.MagicWandSnapFunction
   }
 

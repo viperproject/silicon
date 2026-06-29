@@ -545,7 +545,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       case p: ast.Predicate =>
         sf(sorts.PredicateSnapFunction(s.predicateSnapMap(p.name), p.name), v)
       case _: ast.MagicWand =>
-        sf(sorts.PredicateSnapFunction(sorts.Snap, qid), v)
+        sf(sorts.PredicateSnapFunction(sorts.MagicWandSnapFunction, qid), v)
     }
 
     quantifiedChunkSupporter.produce(

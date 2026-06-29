@@ -44,6 +44,7 @@ final case class State(g: Store = Store(),
 
                        constrainableARPs: InsertionOrderedSet[Var] = InsertionOrderedSet.empty,
                        quantifiedVariables: Stack[(Var, Option[ast.AbstractLocalVar])] = Nil,
+                       packagingWandSnapshots: Stack[(Var, Option[ast.AbstractLocalVar])] = Nil,
                        retrying: Boolean = false,
                        underJoin: Boolean = false,
                        functionRecorder: FunctionRecorder = NoopFunctionRecorder,
@@ -183,8 +184,9 @@ final case class State(g: Store = Store(),
     Sanitizer.replaceFreeVariablesInExpression(e, varMapping.map(vm => vm._1 -> vm._2.get), Set())
   }
 
+  // Unlike the filtered overload (used for inverse functions), this also includes packagingWandSnapshots.
   lazy val relevantQuantifiedVariables: Seq[(Var, Option[ast.AbstractLocalVar])] =
-    relevantQuantifiedVariables(_ => true)
+    functionRecorderQuantifiedVariables() ++ packagingWandSnapshots ++ quantifiedVariables
 
   override val toString = s"${this.getClass.getSimpleName}(...)"
 }
@@ -205,6 +207,7 @@ object State {
                  methodCfg1, invariantContexts1,
                  constrainableARPs1,
                  quantifiedVariables1,
+                 packagingWandSnapshots1,
                  retrying1,
                  underJoin1,
                  functionRecorder1,
@@ -230,6 +233,7 @@ object State {
                      `methodCfg1`, `invariantContexts1`,
                      constrainableARPs2,
                      quantifiedVariables2,
+                     packagingWandSnapshots2,
                      `retrying1`,
                      `underJoin1`,
                      functionRecorder2,
@@ -250,6 +254,7 @@ object State {
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
             val constrainableARPs3 = constrainableARPs1 ++ constrainableARPs2
             val quantifiedVariables3 = (quantifiedVariables1 ++ quantifiedVariables2).distinct
+            val packagingWandSnapshots3 = (packagingWandSnapshots1 ++ packagingWandSnapshots2).distinct
 
             val smCache3 = smCache1.union(smCache2)
             val pmCache3 = pmCache1 ++ pmCache2
@@ -268,6 +273,7 @@ object State {
                     triggerExp = triggerExp3,
                     constrainableARPs = constrainableARPs3,
                     quantifiedVariables = quantifiedVariables3,
+                    packagingWandSnapshots = packagingWandSnapshots3,
                     ssCache = ssCache3,
                     smCache = smCache3,
                     pmCache = pmCache3,
@@ -363,6 +369,7 @@ object State {
       methodCfg1, invariantContexts1,
       constrainableARPs1,
       quantifiedVariables1,
+      packagingWandSnapshots1,
       retrying1,
       underJoin1,
       functionRecorder1,
@@ -387,6 +394,7 @@ object State {
           `methodCfg1`, invariantContexts2,
           constrainableARPs2,
           `quantifiedVariables1`,
+          `packagingWandSnapshots1`,
           `retrying1`,
           `underJoin1`,
           functionRecorder2,
