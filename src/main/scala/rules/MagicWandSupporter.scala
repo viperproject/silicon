@@ -176,9 +176,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                * and thus be unsound. Since fractional wands do not exist it is not necessary to equate their
                * snapshots. Also have a look at the comments in the packageWand and applyWand methods.
                */
-              case (Some(_: MagicWandChunk), Some(_: MagicWandChunk)) => True
-              // Same reasoning as for non-quantified magic wand chunks above.
-              case (Some(_: QuantifiedMagicWandChunk), Some(_: QuantifiedMagicWandChunk)) => True
+              case (Some(_: MagicWandChunk | _: QuantifiedMagicWandChunk), Some(_: MagicWandChunk | _: QuantifiedMagicWandChunk)) => True
               case (Some(ch1: NonQuantifiedChunk), Some(ch2: NonQuantifiedChunk)) => ch1.snap === ch2.snap
               case (Some(ch1: QuantifiedBasicChunk), Some(ch2: QuantifiedBasicChunk)) => ch1.snapshotMap === ch2.snapshotMap
               case _ => True
@@ -333,24 +331,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
           Trigger(MWSFLookup(wandSnapshot.mwsf, freshSnapRoot)),
         )
 
-        // Quantified and non-quantified wands differ only in the chunk representation; the quantified
-        // branch additionally produces a ground singleton-SM value def, emitted outside the quantifier.
-        val (ch, groundPcs, groundPcsExp) = if (s2.qpMagicWands.contains(MagicWandIdentifier(wand, s2.program))) {
-          val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
-          val formalVarExps = Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
-          // The singleton snapshot map maps the wand's arguments to its magic wand snap function.
-          val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s2, wand, tArgs, wandSnapshot.mwsf, v2)
-          v2.decider.prover.comment("Definitional axioms for singleton-SM's value")
-          val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
-          v2.decider.assumeDefinition(smValueDef, debugExp)
-          val chunk = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, tArgs,
-            eArgsNew, FullPerm, Option.when(withExp)(ast.FullPerm()()), sm, s.program)
-          (chunk, Seq(smValueDef), Option.when(withExp)(Seq(debugExp.get)))
-        } else {
-          val chunk = MagicWandChunk(MagicWandIdentifier(wand, s.program), s2.g.values, tArgs, eArgsNew, wandSnapshot, FullPerm,
-            Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)))
-          (chunk, Seq.empty[Term], Option.when(withExp)(Seq.empty[DebugExp]))
-        }
+        // The quantified/non-quantified chunk distinction lives in the HeapSupporter; the quantified
+        // case additionally yields a ground singleton-SM value def, which is emitted outside the quantifier.
+        val (ch, groundPcs, groundPcsExp) = v2.heapSupporter.createWandChunk(s2, wand, tArgs, eArgsNew, wandSnapshot, v2)
 
         val tPcs = (pcsQuantified +: pcsWithoutFreshSnapRoot) ++ groundPcs
         val ePcs = Option.when(withExp)(DebugExp.createInstance("MWSF definition path conditions", pcsQuantified, true) +: (pcsWithoutExp.get ++ groundPcsExp.get))

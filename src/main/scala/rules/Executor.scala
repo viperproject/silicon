@@ -597,11 +597,7 @@ object executor extends ExecutionRules {
               }
             assert(s2.reserveHeaps.length == s.reserveHeaps.length)
 
-            val s3 = chWand match {
-              case ch: QuantifiedMagicWandChunk =>
-                v1.heapSupporter.triggerResourceIfNeeded(s2, wand, ch.singletonArgs.get, ch.singletonArgExps, v1)
-              case _ => s2
-            }
+            val s3 = v1.heapSupporter.triggerWandIfNeeded(s2, wand, chWand, v1)
 
             continuation(s3.copy(isInPackage = s.isInPackage), v1)
           })
