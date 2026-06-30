@@ -169,8 +169,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 	private def computeSpecQuality(coveredNodes: Set[CompactUserLevelDependencyAnalysisNode], enableDebugOutput: Boolean = false): Double = {
 
 		val explicitAssertions = toCompactUserLevelNodes(interpreter.getExplicitAssertionNodes)
-		val nonSourceCodeAssumptionTypes = AssumptionType.explicitAssumptionTypes ++ AssumptionType.verificationAnnotationTypes
-		val allSourceCodeNodes = toCompactUserLevelNodes(interpreter.getNonInternalAssumptionNodes).filter(n => nonSourceCodeAssumptionTypes.intersect(n.assumptionTypes).isEmpty).map(_.source).diff(explicitAssertions.map(_.source))
+		val allSourceCodeNodes = toCompactUserLevelNodes(interpreter.getNonInternalAssumptionNodes).filter(n => AssumptionType.sourceCodeTypes.intersect(n.assumptionTypes).nonEmpty).map(_.source).diff(explicitAssertions.map(_.source))
 
 		if (allSourceCodeNodes.isEmpty) return 1.0
 
