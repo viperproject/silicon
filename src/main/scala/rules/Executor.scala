@@ -20,6 +20,7 @@ import viper.silicon.state.terms._
 import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
+import viper.silver.ast.FalseLit
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
@@ -460,7 +461,7 @@ object executor extends ExecutionRules {
             QS(s1.copy(h = s.h), v1)
           else {
             val failure = createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(withExp)(a))
-            if (s1.retryLevel == 0) v1.decider.handleFailedAssertion(False, analysisInfos, v1.reportFurtherErrors())
+            if (s1.retryLevel == 0) v1.decider.handleFailedAssertion(False, Option.when(withExp)(FalseLit()()), Option.when(withExp)(FalseLit()()), analysisInfos, v1.reportFurtherErrors())
             if (s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine QS(s1, v1) else failure
           }
         })((s2, v2) =>

@@ -24,12 +24,13 @@ object permissionSupporter extends SymbolicExecutionRules {
       case k: Var if s.constrainableARPs.contains(k) =>
         Q(s, v)
       case _ =>
-        v.decider.assert(perms.IsNonNegative(tPerm), analysisInfos) {
+        val termToAssert = perms.IsNonNegative(tPerm)
+				val debugExp = ePermNew.map(ep => perms.IsNonNegative(ep)(ep.pos, ep.info, ep.errT))
+				v.decider.assert(termToAssert, analysisInfos) {
           case true => Q(s, v)
           case false =>
-            val assertExp = ePermNew.map(ep => perms.IsNonNegative(ep)(ep.pos, ep.info, ep.errT))
-            val failure = createFailure(pve dueTo NegativePermission(ePerm), v, s, perms.IsNonNegative(tPerm), assertExp)
-            if (s.retryLevel == 0) v.decider.handleFailedAssertion(perms.IsNonNegative(tPerm), analysisInfos, v.reportFurtherErrors())
+            val failure = createFailure(pve dueTo NegativePermission(ePerm), v, s, termToAssert, debugExp)
+            if (s.retryLevel == 0) v.decider.handleFailedAssertion(termToAssert, debugExp, debugExp, analysisInfos, v.reportFurtherErrors())
             if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, v) else failure
         }
     }
@@ -43,11 +44,13 @@ object permissionSupporter extends SymbolicExecutionRules {
       case k: Var if s.constrainableARPs.contains(k) =>
         Q(s, v)
       case _ =>
-        v.decider.assert(perms.IsPositive(tPerm), analysisInfos) {
+        val termToAssert = perms.IsPositive(tPerm)
+				val debugExp = Option.when(withExp)(perms.IsPositive(ePerm)())
+				v.decider.assert(termToAssert, analysisInfos) {
           case true => Q(s, v)
           case false =>
-            val failure = createFailure(pve dueTo NonPositivePermission(ePerm), v, s, perms.IsPositive(tPerm), Option.when(withExp)(perms.IsPositive(ePerm)()))
-            if (s.retryLevel == 0) v.decider.handleFailedAssertion(perms.IsPositive(tPerm), analysisInfos, v.reportFurtherErrors())
+						val failure = createFailure(pve dueTo NonPositivePermission(ePerm), v, s, termToAssert, debugExp)
+            if (s.retryLevel == 0) v.decider.handleFailedAssertion(termToAssert, debugExp, debugExp, analysisInfos, v.reportFurtherErrors())
             if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, v) else failure
         }
     }

@@ -22,7 +22,7 @@ import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silver.ast
 import viper.silver.ast.{Info, LocalVarWithVersion, Member, NoPosition}
 import viper.silver.components.StatefulComponent
-import viper.silver.dependencyAnalysis.{AdditionalAssertionNode, AdditionalAssumptionNode, AdditionalDependencyNodeInfo}
+import viper.silver.dependencyAnalysis._
 import viper.silver.parser.{PKw, PPrimitiv, PReserved, PType}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
 import viper.silver.verifier.{DependencyNotFoundError, Model}
@@ -118,7 +118,7 @@ trait Decider {
   def removeDependencyAnalyzer(): Unit
   def getAnalysisInfo(daInfos: DependencyAnalysisInfos): AnalysisInfo
   def isDependencyAnalysisEnabled: Boolean
-  def handleFailedAssertion(failedAssertion: Term, analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit
+  def handleFailedAssertion(failedAssertion: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit
 }
 
 /*
@@ -499,10 +499,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       result
     }
 
-    override def handleFailedAssertion(failedAssertion: Term, analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit = {
+    override def handleFailedAssertion(failedAssertion: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit = {
       dependencyAnalyzer.addAssertionFailedNode(failedAssertion, analysisInfos)
       if (assumeFailedAssertion) {
-        assume(failedAssertion, None, None, analysisInfos)
+        assume(failedAssertion, e, finalExp, analysisInfos.withDependencyType(DependencyType.make(AssumptionType.Explicit)))
         failedAssertion match {
           case False => checkSmoke(analysisInfos)
           case _ =>

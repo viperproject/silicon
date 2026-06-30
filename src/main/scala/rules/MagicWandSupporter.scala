@@ -18,7 +18,7 @@ import viper.silicon.state.terms._
 import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.{Exp, NoPosition, Stmt}
+import viper.silver.ast.{Exp, FalseLit, NoPosition, Stmt}
 import viper.silver.cfg.Edge
 import viper.silver.cfg.silver.SilverCfg.SilverBlock
 import viper.silver.dependencyAnalysis.{DependencyType, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
@@ -214,7 +214,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         assert(consumedChunks.length == hs.length)
         Q(s1, heaps.reverse, consumedChunks.reverse, v)
       case Incomplete(_, _) =>
-        if (s1.retryLevel == 0) v.decider.handleFailedAssertion(False, analysisInfos, v.reportFurtherErrors())
+        if (s1.retryLevel == 0) v.decider.handleFailedAssertion(False, Option.when(withExp)(FalseLit()()), Option.when(withExp)(FalseLit()()), analysisInfos, v.reportFurtherErrors())
         if (s1.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s1, heaps.reverse, consumedChunks.reverse, v) else failure
     }
   }
