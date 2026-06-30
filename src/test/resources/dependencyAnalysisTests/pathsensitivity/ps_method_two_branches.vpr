@@ -1,0 +1,31 @@
+method choose(flag: Bool, a: Int, b: Int) returns (res: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L1")(a == 1)
+  requires @dependencyInfo("assumptionType:Precondition, label:L2")(b == 2)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L3")(flag ==> res == 1)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L4")(!flag ==> res == 2)
+{
+  if (@dependencyInfo("assumptionType:PathCondition, label:L5")(flag)) {
+    @dependencyInfo("assumptionType:SourceCode, label:L6")
+    res := a
+  } else {
+    @dependencyInfo("assumptionType:SourceCode, label:L7")
+    res := b
+  }
+}
+
+method client()
+{
+  var a: Int
+  var b: Int
+  var r: Int
+
+  @dependencyInfo("assumptionType:SourceCode, label:L8")
+  a := 1
+  @dependencyInfo("assumptionType:SourceCode, label:L9")
+  b := 2
+  @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L10")
+  r := choose(true, a, b)
+
+  @dependencyInfo("assertionType:Explicit, label:L11, expectedDependencies:[L10,L8,L3,L1]")
+  assert r == 1
+}

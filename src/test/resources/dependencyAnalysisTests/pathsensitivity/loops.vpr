@@ -1,0 +1,35 @@
+// two_paths_same_loop.vpr
+
+method two_paths_same_loop(takeFirstPath: Bool)
+{
+  var fromFirstPath: Bool
+  var x: Int
+  var i: Int
+
+  if (@dependencyInfo("assumptionType:PathCondition, label:L1")(takeFirstPath)) {
+    @dependencyInfo("assumptionType:SourceCode, label:L2")
+    fromFirstPath := true
+    @dependencyInfo("assumptionType:SourceCode, label:L3")
+    x := 42
+  } else {
+    @dependencyInfo("assumptionType:SourceCode, label:L4")
+    fromFirstPath := false
+    @dependencyInfo("assumptionType:SourceCode, label:L5")
+    x := 0
+  }
+
+  @dependencyInfo("assumptionType:SourceCode, label:L6")
+  i := 0
+
+  while (@dependencyInfo("assumptionType:PathCondition, label:L7")(i < 1))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L8, expectedDependencies:[L6,L7,L12]")(0 <= i && i <= 1)
+  {
+    if (@dependencyInfo("assumptionType:PathCondition, label:L9")(fromFirstPath)) {
+      @dependencyInfo("assertionType:Explicit, label:L10, expectedDependencies:[L3,L9]")
+      assert x == 42
+    }
+
+    @dependencyInfo("assumptionType:SourceCode, label:L12")
+    i := i + 1
+  }
+}

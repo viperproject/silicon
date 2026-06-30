@@ -6,19 +6,19 @@ import viper.silicon.dependencyAnalysis._
 import viper.silver.ast._
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier
-
-import java.io.PrintWriter
+import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphTestSupporter
 
 class DependencyAnalysisTestsPathSensitive extends AnyFunSuite with DependencyAnalysisTestFramework with BeforeAndAfterAll {
 
   val EXECUTE_TEST = false
-  val EXPORT = true
+  val CHECK_PRECISION = false
   val ignores: Seq[String] = Seq("iterativeTreeDelete")
   analysisCommandLineArguments = analysisCommandLineArguments ++ Seq("--executeDependencyAnalysisTests") ++ Seq("--enablePathSensitiveDependencyAnalysis")
 	val testDirectories: Seq[String] = Seq(
     "dependencyAnalysisTests/all",
     "dependencyAnalysisTests/unitTests",
     "dependencyAnalysisTests/real-world-examples",
+    "dependencyAnalysisTests/pathsensitivity"
   )
 
   if(EXECUTE_TEST) {
@@ -51,6 +51,8 @@ class DependencyAnalysisTestsPathSensitive extends AnyFunSuite with DependencyAn
     }
 
     val joinedDependencyGraphInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter.get
+
+    new DependencyGraphTestSupporter(joinedDependencyGraphInterpreter).testDependencies(CHECK_PRECISION)
     new PruningTest(filePrefix + "/" + fileName, program, joinedDependencyGraphInterpreter).execute()
   }
 }

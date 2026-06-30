@@ -1,0 +1,18 @@
+method overwrite_kills_path(a: Int)
+{
+  var x: Int
+
+  if (@dependencyInfo("assumptionType:PathCondition, label:L1")(a == 0)) {
+    @dependencyInfo("assumptionType:SourceCode, label:L2")
+    x := 1
+  } else {
+    @dependencyInfo("assumptionType:SourceCode, label:L3")
+    x := 2
+  }
+
+  @dependencyInfo("assumptionType:SourceCode, label:L4")
+  x := 5
+
+  @dependencyInfo("assertionType:Explicit, label:L5, expectedDependencies:[L4]")
+  assert x == 5
+}

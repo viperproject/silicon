@@ -1,0 +1,15 @@
+method five(a: Int) returns (res: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L1")(a == 10)
+    ensures @dependencyInfo("assertionType:ExplicitPostcondition, label:L2")(res == 5)
+
+
+method client() {
+    var a: Int
+    @dependencyInfo("assumptionType:SourceCode, label:L3")
+    a := 10
+    var res: Int
+    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L4, expectedDependencies:[L3]")
+    res := five(a)
+    @dependencyInfo("assertionType:Explicit, label:L5, expectedDependencies:[L1,L2,L3,L4]")
+    assert res == 5
+}

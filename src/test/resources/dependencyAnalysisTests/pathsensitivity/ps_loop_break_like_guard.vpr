@@ -1,0 +1,28 @@
+method loop_guard_path(n: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L1")(0 <= n)
+{
+  var i: Int
+  var seen: Bool
+
+  @dependencyInfo("assumptionType:SourceCode, label:L2")
+  i := 0
+  @dependencyInfo("assumptionType:SourceCode, label:L3")
+  seen := false
+
+  while (@dependencyInfo("assumptionType:PathCondition, label:L4")(i < n))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L5")(0 <= i && i <= n)
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L6")(seen ==> n > 0)
+  {
+    if (@dependencyInfo("assumptionType:PathCondition, label:L7")(i == 0)) {
+      @dependencyInfo("assumptionType:SourceCode, label:L8")
+      seen := true
+    }
+    @dependencyInfo("assumptionType:SourceCode, label:L9")
+    i := i + 1
+  }
+
+  if (@dependencyInfo("assumptionType:PathCondition, label:L10")(seen)) {
+    @dependencyInfo("assertionType:Explicit, label:L11, expectedDependencies:[L10,L9,L6,L3,L4,L2]")
+    assert n > 0
+  }
+}

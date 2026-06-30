@@ -1,0 +1,20 @@
+method mutually_exclusive(flag: Bool)
+{
+  var x: Int
+
+  if (@dependencyInfo("assumptionType:PathCondition, label:L1")(flag)) {
+    @dependencyInfo("assumptionType:SourceCode, label:L2")
+    x := 7
+  } else {
+    @dependencyInfo("assumptionType:SourceCode, label:L3")
+    x := 9
+  }
+
+  if (@dependencyInfo("assumptionType:PathCondition, label:L4")(!flag)) {
+    @dependencyInfo("assertionType:Explicit, label:L5, expectedDependencies:[L3]")
+    assert x == 9
+  } else {
+    @dependencyInfo("assertionType:Explicit, label:L6, expectedDependencies:[L2]")
+    assert x == 7
+  }
+}

@@ -1,0 +1,43 @@
+method test_input_guard(b: Bool)
+{
+  var x: Int
+  var i: Int
+
+  if (b) {
+    x := 42
+  } else {
+    x := 0
+  }
+
+  i := 0
+  while (i < 1)
+    invariant 0 <= i && i <= 1
+  {
+    if (b) {
+      assert x == 42
+    }
+    i := i + 1
+  }
+}
+
+method test_guard_only(b: Bool)
+{
+  var p: Bool
+  var i: Int
+
+  if (b) {
+    p := true
+  } else {
+    p := false
+  }
+
+  i := 0
+  while (i < 1)
+    invariant 0 <= i && i <= 1
+  {
+    if (p) {
+      assert p
+    }
+    i := i + 1
+  }
+}

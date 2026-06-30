@@ -1,0 +1,86 @@
+//use this file to test precision by return type for concrete mode
+
+method five_set(a: Int) returns (res: Set[Int])
+    requires @dependencyInfo("assumptionType:Precondition, label:L1")(a > 0)
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L2, expectedDependencies:[L4]")(|res| == 1)
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L3, expectedDependencies:[L4]")(res == Set(5))
+{
+    @dependencyInfo("assumptionType:SourceCode, label:L4")
+    res := Set(5)
+}
+
+method five_tuple(a: Int) returns (r1: Int, r2: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L10")(a > 0)
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L11, expectedDependencies:[L15]")(r1 == 5)
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L12, expectedDependencies:[L16]")(r2 == 0)
+{
+    @dependencyInfo("assumptionType:SourceCode, label:L15")
+    r1 := 5
+    @dependencyInfo("assumptionType:SourceCode, label:L16")
+    r2:= 0
+}
+
+method five_seq(a: Int) returns (res: Seq[Int])
+    requires @dependencyInfo("assumptionType:Precondition, label:L20")(a > 0)
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L21, expectedDependencies:[L22]")(|res| == 1)
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L23, expectedDependencies:[L22]")(res[0] == 5)
+{
+    @dependencyInfo("assumptionType:SourceCode, label:L22")
+    res := Seq(5)
+}
+
+method five_ref(a: Int) returns (res: Ref)
+    requires @dependencyInfo("assumptionType:Precondition, label:L30")(a > 0)
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L31, expectedDependencies:[L32]")(res == null)
+{
+    @dependencyInfo("assumptionType:SourceCode, label:L32")
+    res := null
+}
+
+method five_multiset(a: Int) returns (res: Multiset[Int])
+    requires @dependencyInfo("assumptionType:Precondition, label:L40")(a > 0)
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L41, expectedDependencies:[L42]")(res == Multiset(5))
+{
+    @dependencyInfo("assumptionType:SourceCode, label:L42")
+    res := Multiset(5)
+}
+
+method client() {
+    var a: Int
+    @dependencyInfo("assumptionType:SourceCode, label:L5")
+    a := 10
+
+    var res: Set[Int]
+    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L6, expectedDependencies:[L5]")
+    res := five_set(a)
+    @dependencyInfo("assertionType:Explicit, label:L7, expectedDependencies:[L3,L4,L6]")
+    assert res == Set(5)
+
+
+    var res1: Int
+    var res2: Int
+    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L13, expectedDependencies:[L5]")
+    res1, res2 := five_tuple(a)
+    @dependencyInfo("assertionType:Explicit, label:L14, expectedDependencies:[L13,L5,L11,L15]")
+    assert res1 == 5
+
+
+    var resSeq: Seq[Int]
+    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L24, expectedDependencies:[L5]")
+    resSeq := five_seq(a)
+    @dependencyInfo("assertionType:Explicit, label:L25, expectedDependencies:[L24,L23,L22]")
+    assert resSeq[0] == 5
+
+
+    var resRef: Ref
+    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L33, expectedDependencies:[L5]")
+    resRef := five_ref(a)
+    @dependencyInfo("assertionType:Explicit, label:L34, expectedDependencies:[L33,L31,L32]")
+    assert resRef == null
+
+    var resMultiset: Multiset[Int]
+    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L43, expectedDependencies:[L5]")
+    resMultiset := five_multiset(a)
+    @dependencyInfo("assertionType:Explicit, label:L44, expectedDependencies:[L43,L41,L42]")
+    assert resMultiset == Multiset(5)
+}

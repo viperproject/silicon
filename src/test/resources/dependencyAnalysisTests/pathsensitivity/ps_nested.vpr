@@ -1,0 +1,27 @@
+method nested(a: Int, b: Int)
+{
+  var x: Int
+  var y: Int
+
+  if (@dependencyInfo("assumptionType:PathCondition, label:L1")(a > 0)) {
+    @dependencyInfo("assumptionType:SourceCode, label:L2")
+    x := 1
+    if (@dependencyInfo("assumptionType:PathCondition, label:L3")(b > 0)) {
+      @dependencyInfo("assumptionType:SourceCode, label:L4")
+      y := x + 1
+    } else {
+      @dependencyInfo("assumptionType:SourceCode, label:L5")
+      y := x + 2
+    }
+  } else {
+    @dependencyInfo("assumptionType:SourceCode, label:L6")
+    x := 10
+    @dependencyInfo("assumptionType:SourceCode, label:L7")
+    y := x + 5
+  }
+
+  if (@dependencyInfo("assumptionType:PathCondition, label:L8")(a > 0 && b > 0)) {
+    @dependencyInfo("assertionType:Explicit, label:L9, expectedDependencies:[L4,L2,L3,L1,L8]")
+    assert y == 2
+  }
+}

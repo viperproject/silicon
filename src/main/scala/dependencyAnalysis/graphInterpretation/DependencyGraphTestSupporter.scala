@@ -58,15 +58,17 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
 		if(!test)
 			println(message)
 
-	def testDependencies(): Unit = {
-		val testResults = UserLevelDependencyAnalysisNode.from(interpreter.getNonInternalAssertionNodes).toList map testDependencies
+	def testDependencies(checkPrecision:Boolean = false): Unit = {
+		val testResults = UserLevelDependencyAnalysisNode.from(interpreter.getNonInternalAssertionNodes).toList map (e => testDependencies(e,checkPrecision))
 		val numExecutedTests = testResults.count(_.isDefined)
 		val numPassedTests = testResults.count(_.getOrElse(false))
 		println(s"Dependency tests: Passed $numPassedTests/$numExecutedTests tests.")
 		assert(numPassedTests == numExecutedTests, s"Dependency test failed. Only $numPassedTests/$numExecutedTests tests passed.")
 	}
 
-	def testDependencies(assertionNode: UserLevelDependencyAnalysisNode): Option[Boolean] = {
+	def testDependencies(assertionNode: UserLevelDependencyAnalysisNode): Option[Boolean] = testDependencies(assertionNode, false)
+
+	def testDependencies(assertionNode: UserLevelDependencyAnalysisNode, checkPrecision: Boolean): Option[Boolean] = {
 		val expectedLabelsOpt = expectedDependenciesRegex.findFirstMatchIn(assertionNode.source.toString).map(_.group(1).split(",").map(_.trim).toSet)
 		if(expectedLabelsOpt.isEmpty) return None
 		val expectedLabels = expectedLabelsOpt.get
@@ -80,6 +82,13 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
 
 		val isSound = expectedLabels.diff(actualLabelInReportedDeps).isEmpty
 		printIfFalse(isSound, s"Missing dependencies for ${assertionNode.source.toString}. Reported dependencies: $actualLabelInReportedDeps")
-		Some(isSound)
+
+		if(checkPrecision){
+			val isPrecise = if(checkPrecision) actualLabelInReportedDeps.diff(expectedLabels).isEmpty else true
+			printIfFalse(isPrecise, s"Imprecise dependencies for ${assertionNode.source.toString}. Reported dependencies: $actualLabelInReportedDeps")
+			Some(isSound && isPrecise)
+		}else{
+			Some(isSound)
+		}
 	}
 }
