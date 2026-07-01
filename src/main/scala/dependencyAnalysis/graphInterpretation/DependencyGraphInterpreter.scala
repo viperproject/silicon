@@ -30,7 +30,7 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
 	lazy val nonInternalAssumptionNodesMap: Map[Int, DependencyAnalysisNode] = getNonInternalAssumptionNodes(getNodes).map(node => (node.id, node)).toMap
 	lazy val assertionNodesMap: Map[Int, DependencyAnalysisNode] = getAssertionNodes.map(node => (node.id, node)).toMap
 
-	def getNodes: Set[DependencyAnalysisNode] = dependencyGraph.getNodes.toSet
+	def getNodes: Set[DependencyAnalysisNode] = dependencyGraph.getNodes
 
 	def getAssumptionNodes: Set[DependencyAnalysisNode] = dependencyGraph.getAssumptionNodes.toSet
 

@@ -25,9 +25,9 @@ class IntraProcedural extends DependencyGraphState
 class Final extends DependencyGraphState
 
 trait ReadOnlyDependencyGraph[T <: DependencyGraphState] {
-  def getNodes: Seq[DependencyAnalysisNode]
-  def getAssumptionNodes: Seq[GeneralAssumptionNode]
-  def getAssertionNodes: Seq[GeneralAssertionNode]
+  def getNodes: Set[DependencyAnalysisNode]
+  def getAssumptionNodes: Set[GeneralAssumptionNode]
+  def getAssertionNodes: Set[GeneralAssertionNode]
 
 	/**
 	 * @return a map from node to the set of direct dependencies in the intraprocedural low-level graph
@@ -71,7 +71,7 @@ trait ReadOnlyDependencyGraph[T <: DependencyGraphState] {
   def getAllDependents(sources: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int]
 
 	/**
-	 * @param sources a set of node ids
+	 * @param targets a set of node ids
 	 * @param includeInfeasibilityNodes if set to true, dependencies found via infeasibility nodes are included in the result
 	 * @param includeUpwardEdges if set to true, interprocedural upward edges are taken into account
 	 * @param includeDownwardEdges if set to true, interprocedural downward edges are taken into account
@@ -97,16 +97,16 @@ trait ReadOnlyDependencyGraph[T <: DependencyGraphState] {
 }
 
 class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph[T] {
-  private var assumptionNodes: mutable.Seq[GeneralAssumptionNode] = mutable.Seq()
-  private var assertionNodes: mutable.Seq[GeneralAssertionNode] = mutable.Seq()
+  private var assumptionNodes: mutable.Set[GeneralAssumptionNode] = mutable.Set()
+  private var assertionNodes: mutable.Set[GeneralAssertionNode] = mutable.Set()
   private val edges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
   private val edgesConnectingMethodsDownwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // e.g. edges connecting POSTcondition with method/function calls
   private val edgesConnectingMethodsUpwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // e.g. edges connecting PREconditions with method/function calls
-	private var vacuousProofs: mutable.Seq[Int] = mutable.Seq()
+	private var vacuousProofs: mutable.Set[Int] = mutable.Set()
 
-  def getNodes: Seq[DependencyAnalysisNode] = getAssumptionNodes ++ getAssertionNodes
-  def getAssumptionNodes: Seq[GeneralAssumptionNode] = assumptionNodes.toSeq
-  def getAssertionNodes: Seq[GeneralAssertionNode] = assertionNodes.toSeq
+  def getNodes: Set[DependencyAnalysisNode] = getAssumptionNodes ++ getAssertionNodes
+  def getAssumptionNodes: Set[GeneralAssumptionNode] = assumptionNodes.toSet
+  def getAssertionNodes: Set[GeneralAssertionNode] = assertionNodes.toSet
   def getDirectEdges: Map[Int, Set[Int]] = edges.toMap
   def getEdgesConnectingMethodsDownwards: Map[Int, Set[Int]] = edgesConnectingMethodsDownwards.toMap
   def getEdgesConnectingMethodsUpwards: Map[Int, Set[Int]] = edgesConnectingMethodsUpwards.toMap
@@ -145,11 +145,11 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   def getVacuousProofs: Set[Int] = vacuousProofs.toSet // TODO ake: what to do with these?
 
   def addAssumptionNode(node: GeneralAssumptionNode): Unit = {
-    assumptionNodes = assumptionNodes :+ node
+    assumptionNodes.add(node)
   }
 
   def addAssumptionNodes(newNodes: Iterable[GeneralAssumptionNode]): Unit = {
-    assumptionNodes = assumptionNodes ++ newNodes
+    assumptionNodes.addAll(newNodes)
   }
 
   def addNode(node: DependencyAnalysisNode): Unit = {
@@ -161,11 +161,11 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   }
 
   def addAssertionNode(node: GeneralAssertionNode): Unit = {
-    assertionNodes = assertionNodes :+ node
+    assertionNodes.add(node)
   }
 
   def addAssertionNodes(newNodes: Iterable[GeneralAssertionNode]): Unit = {
-    assertionNodes = assertionNodes ++ newNodes
+    assertionNodes.addAll(newNodes)
   }
 
   def addEdges(source: Int, targets: Iterable[Int]): Unit = {
@@ -215,15 +215,15 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
 
 
   def addVacuousProof(assertionId: Int): Unit = {
-    vacuousProofs = assertionId +: vacuousProofs
+    vacuousProofs.add(assertionId)
   }
 
-	def getNodesByIds(targets: Set[Int]) = {
+	def getNodesByIds(targets: Set[Int]): Set[DependencyAnalysisNode] = {
 		getNodes.filter(n => targets.contains(n.id))
 	}
 
   def getAllDependencies(targets: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
-    val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else (getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
+    val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)
     var visited: Set[Int] = Set.empty
     var queue: List[Int] = targets.toList
     val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
@@ -231,7 +231,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
       val curr = queue.head
       val newVisits = allEdges.getOrElse(curr, Set()).diff(infeasibilityNodeIds)
       visited = visited ++ Set(curr)
-      queue = queue.tail ++ newVisits.diff(visited)
+      queue = queue.tail ++ newVisits.diff(visited).diff(queue.toSet)
     }
     visited
   }
@@ -241,11 +241,11 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
 	}
 
 	def getDirectDependenciesById(targets: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
-		getDirectDependencies(targets.toList, getNodesByIds(targets).toSet, includeInfeasibilityNodes, includeUpwardEdges, includeDownwardEdges)
+		getDirectDependencies(targets.toList, getNodesByIds(targets), includeInfeasibilityNodes, includeUpwardEdges, includeDownwardEdges)
 	}
 
 	private def getDirectDependencies(initQueue: List[Int], targetNodes: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
-		val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else (getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
+		val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)
 		var visited: Set[Int] = initQueue.toSet
 		var result: Set[Int] = Set.empty
 		var queue: List[Int] = initQueue
@@ -256,27 +256,27 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
 			val newVisits = allEdges.getOrElse(curr, Set()).diff(infeasibilityNodeIds).diff(visited)
 			val newQueues = getNodesByIds(newVisits).filter(n => targetSourceInfos.contains(n.sourceInfo)).map(_.id)
 			visited = visited ++ newVisits
-			result = result ++ newVisits.diff(newQueues.toSet)
-			queue = queue.tail ++ newQueues
+			result = result ++ newVisits.diff(newQueues)
+			queue = queue.tail ++ newQueues.diff(queue.toSet)
 		}
 		result
 	}
 
   def getAllDependents(sources: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
-    val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else (getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
+    val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)
     var visited: Set[Int] = Set.empty
     var queue: Set[Int] = sources
     val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
     while(queue.nonEmpty){
-      val newVisits = allEdges.filter{case (t, s) => s.intersect(queue).nonEmpty && !infeasibilityNodeIds.contains(t)}.keys.toSet
+      val newVisits = allEdges.filter{ case (t, s) => s.intersect(queue).nonEmpty && !infeasibilityNodeIds.contains(t) }.keys.toSet
       visited = visited ++ queue
-      queue = newVisits diff visited
+      queue = newVisits.diff(visited)
     }
     visited
   }
 
 	def getDirectDependents(sources: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
-		val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else (getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
+		val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)
 		var visited: Set[Int] = sources
 		var result: Set[Int] = Set.empty
 		var queue: Set[Int] = sources
@@ -284,10 +284,10 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
 		val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
 		while(queue.nonEmpty){
 			val newVisits = allEdges.filter{case (t, s) => s.intersect(queue).nonEmpty && !infeasibilityNodeIds.contains(t)}.keys.toSet.diff(visited)
-			val newQueues = getNodesByIds(newVisits).filter(n => sourceSourceInfos.contains(n.sourceInfo)).map(_.id).toSet
+			val newQueues = getNodesByIds(newVisits).filter(n => sourceSourceInfos.contains(n.sourceInfo)).map(_.id)
 			visited = visited ++ newVisits
 			result = result ++ newVisits.diff(newQueues)
-			queue = newQueues
+			queue = newQueues.diff(visited)
 		}
 		result
 	}
