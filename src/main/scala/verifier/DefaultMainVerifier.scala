@@ -12,8 +12,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.SiliconDebugger
 import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.dependencyAnalysis._
-import viper.silicon.dependencyAnalysis.cliTool.DependencyAnalysisCliTool
-import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphTestSupporter
+import viper.silicon.dependencyAnalysis.cliTool.DependencyAnalysisTool
 import viper.silicon.extensions.ConditionalPermissionRewriter
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
@@ -343,7 +342,13 @@ class DefaultMainVerifier(config: Config,
       ++ predicateVerificationResults
       ++ methodVerificationResults)
 
-    runDependencyAnalysisWorkflow(verificationResults, program, inputFile)
+		val result = DependencyAnalysisTool.runDependencyAnalysisWorkflow(verificationResults, program, inputFile)
+		(reporter, result) match {
+			case (analysisReporter: DependencyAnalysisReporter, Some(res)) =>
+				analysisReporter.dependencyGraphInterpretersPerMember = res.dependencyGraphInterpreters.toList
+				analysisReporter.joinedDependencyGraphInterpreter = Some(res.getFullDependencyGraphInterpreter)
+			case _ =>
+		}
 
     if (Verifier.config.startDebuggerAutomatically()){
       val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
@@ -650,52 +655,4 @@ class DefaultMainVerifier(config: Config,
   private def extractAllVerificationResults(res: VerificationResult): Seq[VerificationResult] =
     res :: res.previous.toList
 
-
-  def runDependencyAnalysisWorkflow(verificationResults: List[VerificationResult], program: ast.Program, inputFile: Option[String]): Unit = {
-    if (!Verifier.config.enableDependencyAnalysis()) return
-
-    val dependencyGraphInterpreters = verificationResults.filter(_.dependencyGraphInterpreter.isDefined).map(_.dependencyGraphInterpreter.get)
-    val verificationErrors: List[Failure] = (verificationResults filter (_.isInstanceOf[Failure])) map (_.asInstanceOf[Failure])
-
-    // TODO ake: make sure we can access the name of frontend programs (instead of naming it "joined")
-    val result = DependencyAnalysisResult(inputFile.map(_.replaceAll("\\\\", "_").replaceAll("/", "_").replaceAll(".vpr", "")).getOrElse("joined"), program, dependencyGraphInterpreters.toSet)
-
-    if (Verifier.config.dependencyAnalysisExportPath.isDefined) {
-      result.getFullDependencyGraphInterpreter.exportGraph(program)
-    }
-
-		if (Verifier.config.pruneLines.isDefined) {
-			val commandLineTool = new DependencyAnalysisCliTool(result.getFullDependencyGraphInterpreter, dependencyGraphInterpreters, program, verificationErrors)
-			val lineInputs = Verifier.config.pruneLines().map(_.toString)
-			val exportFileName = Verifier.config.pruneExportFileName()
-			commandLineTool.handlePruningRequest(lineInputs, Some(exportFileName))
-		}
-
-    if (Verifier.config.computeVerificationProgress()) {
-      val commandLineTool = new DependencyAnalysisCliTool(result.getFullDependencyGraphInterpreter, dependencyGraphInterpreters, program, verificationErrors)
-      val exportFileName = Verifier.config.computeVerificationProgressFileName()
-      commandLineTool.handleVerificationProgressQuery(Seq.empty, Some(exportFileName))
-    }
-
-		if (Verifier.config.executeDependencyAnalysisTests()) {
-			assert(verificationResults.count(result => result.isFatal) == 0)
-			val testSupporter = new DependencyGraphTestSupporter(result.getFullDependencyGraphInterpreter)
-			testSupporter.testDependencies()
-			testSupporter.testNodeTypes()
-		}
-
-    if (Verifier.config.startDependencyAnalysisTool()) {
-      val commandLineTool = new DependencyAnalysisCliTool(result.getFullDependencyGraphInterpreter, dependencyGraphInterpreters, program, verificationErrors)
-      commandLineTool.run()
-    }
-
-    reporter match {
-      case analysisReporter: DependencyAnalysisReporter =>
-        analysisReporter.dependencyGraphInterpretersPerMember = dependencyGraphInterpreters
-        analysisReporter.joinedDependencyGraphInterpreter = Some(result.getFullDependencyGraphInterpreter)
-      case _ =>
-    }
-
-
-  }
 }

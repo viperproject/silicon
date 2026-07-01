@@ -2,7 +2,6 @@ package viper.silicon.dependencyAnalysis.graphInterpretation
 
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces.Failure
-import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.Program
 import viper.silver.dependencyAnalysis.{AssumptionType, JoinType}
@@ -119,12 +118,12 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
 	def getAssertionNodesWithFailures: Set[GeneralAssertionNode] =
 		getNonInternalAssertionNodes.filter(_.isInstanceOf[GeneralAssertionNode]).map(_.asInstanceOf[GeneralAssertionNode]).filter(_.hasFailed)
 
-	def exportGraph(program: ast.Program): Unit = {
-		if (Verifier.config.dependencyAnalysisExportPath.isEmpty) return
-		val directory = Paths.get(Verifier.config.dependencyAnalysisExportPath()).toFile
+	def exportGraph(program: ast.Program, exportPath: String): Unit = {
+		if (exportPath.isEmpty) return
+		val directory = Paths.get(exportPath).toFile
 		directory.mkdir()
-		dependencyGraph.exportGraph(Verifier.config.dependencyAnalysisExportPath() + "/" + name)
-		exportProgram(program, Verifier.config.dependencyAnalysisExportPath() + "/" + name)
+		dependencyGraph.exportGraph(exportPath + "/" + name)
+		exportProgram(program, exportPath + "/" + name)
 	}
 
 	private def exportProgram(program: Program, path: String): Unit = {

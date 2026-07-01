@@ -13,7 +13,7 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
   val EXECUTE_TEST = true
   override val EXPORT_PRUNED_PROGRAMS: Boolean = false
   val ignores: Seq[String] = Seq()
-	analysisCommandLineArguments = analysisCommandLineArguments ++ Seq("--executeDependencyAnalysisTests")
+	analysisCommandLineArguments = analysisCommandLineArguments ++ Seq("--dependencyAnalysisMode=test")
 	val testDirectories: Seq[String] = Seq(
     "dependencyAnalysisTests/all",
     "dependencyAnalysisTests/unitTests",

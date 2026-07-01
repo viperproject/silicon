@@ -692,6 +692,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+	val enableUnsatCores: ScallopOption[Boolean] = opt[Boolean]("enableUnsatCores",
+		descr = "Enables UNSAT cores",
+		default = Some(false),
+		noshort = true
+	)
+
   val startDebuggerAutomatically: ScallopOption[Boolean] = opt[Boolean]("startDebuggerAutomatically",
     descr = "Starts the debugging mode automatically after verification completes",
     default = Some(false),
@@ -722,53 +728,11 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val dependencyAnalysisExportPath: ScallopOption[String] = opt[String]("dependencyAnalysisExportPath",
-    descr = "Path to the directory where the dependency analysis graphs should be exported to",
-    default = None,
-    noshort = true
-  )
-
-  val startDependencyAnalysisTool: ScallopOption[Boolean] = opt[Boolean]("startDependencyAnalysisTool",
-    descr = "Starts the dependency analysis command line tool after verification",
-    default = Some(false),
-    noshort = true
-  )
-
-	val executeDependencyAnalysisTests: ScallopOption[Boolean] = opt[Boolean]("executeDependencyAnalysisTests",
-		descr = "Automatically executes dependency analysis tests",
-		default = Some(false),
+	val dependencyAnalysisMode: ScallopOption[String] = opt[String]("dependencyAnalysisMode",
+		descr = "",
+		default = None,
 		noshort = true
 	)
-
-  val enableUnsatCores: ScallopOption[Boolean] = opt[Boolean]("enableUnsatCores",
-    descr = "Enables UNSAT cores",
-    default = Some(false),
-    noshort = true
-  )
-
-  val pruneLines: ScallopOption[List[Int]] = opt[List[Int]]("pruneLines",
-    descr = "Line numbers to prune the program with respect to. Part of the dependency analysis tool.",
-    default = None,
-    noshort = true
-  )
-
-  val pruneExportFileName: ScallopOption[String] = opt[String]("pruneExportFileName",
-    descr = "Export file name for the pruned program (used with --pruneLines)",
-    default = Some("prunedExport.vpr"),
-    noshort = true
-  )
-  
-  val computeVerificationProgress: ScallopOption[Boolean] = opt[Boolean]("computeVerificationProgress",
-    descr = "Computes verification progress of the program",
-    default = Some(false),
-    noshort = true
-  )
-
-  val computeVerificationProgressFileName: ScallopOption[String] = opt[String]("computeVerificationProgressFileName",
-    descr = "Export file name for the verification progress output (used with --computeVerificationProgress)",
-    default = Some("progressExport.vpr"),
-    noshort = true
-  )
 
   /* Option validation (trailing file argument is validated by parent class) */
 
@@ -833,40 +797,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       Left(s"Option ${enableDependencyAnalysis.name} requires ${rawProverArgs.name} with \"proof=true unsat-core=true\"")
   }
 
-  validateOpt(dependencyAnalysisExportPath, enableDependencyAnalysis) {
+  validateOpt(dependencyAnalysisMode, enableDependencyAnalysis) {
     case (None, _) => Right(())
     case (Some(_), Some(true)) => Right(())
     case (Some(_), Some(false)) =>
-      Left(s"Option ${dependencyAnalysisExportPath.name} requires option ${enableDependencyAnalysis.name}")
+      Left(s"Option ${dependencyAnalysisMode.name} requires option ${enableDependencyAnalysis.name}")
   }
 
-	validateOpt(executeDependencyAnalysisTests, enableDependencyAnalysis) {
-		case (Some(false), _) => Right(())
-		case (_, Some(true)) => Right(())
-		case (_, _) =>
-			Left(s"Option ${executeDependencyAnalysisTests.name} requires option ${enableDependencyAnalysis.name}")
-	}
-
-  validateOpt(startDependencyAnalysisTool, enableDependencyAnalysis) {
-    case (Some(false), _) => Right(())
-    case (_, Some(true)) => Right(())
-    case (_, _) =>
-      Left(s"Option ${startDependencyAnalysisTool.name} requires option ${enableDependencyAnalysis.name}")
-  }
-
-  validateOpt(pruneLines, enableDependencyAnalysis) {
-    case (None, _) => Right(())
-    case (Some(_), Some(true)) => Right(())
-    case (Some(_), _) =>
-      Left(s"Option ${pruneLines.name} requires option ${enableDependencyAnalysis.name}")
-  }
-
-  validateOpt(computeVerificationProgress, enableDependencyAnalysis) {
-    case (Some(false), _) => Right(())
-    case (_, Some(true)) => Right(())
-    case (_, _) =>
-      Left(s"Option ${computeVerificationProgress.name} requires option ${enableDependencyAnalysis.name}")
-  }
 
   validateOpt(startDebuggerAutomatically, enableDebugging) {
     case (Some(false), _) => Right(())

@@ -19,61 +19,73 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
 		new BenchmarkDependencyAnalysisCliExtension(fullGraphInterpreter, program)
 	)
 
+	def run(commandStr: String): Unit = {
+		if (commandStr.equalsIgnoreCase("interactive"))
+			handleInteractiveMode()
+		else
+			handleCommand(commandStr)
+	}
+
   private val infoString = "Enter " +
     "\n\t'dep [line numbers]' to print the direct, explicit, and all dependencies of the given line numbers or" +
     "\n\t'allDeps [line numbers]' (short: 'ad') to print all dependencies of the given line numbers or" +
     "\n\t'downDep [line numbers]' to print the dependents of the given line numbers or" +
     "\n\t'cov [members]' to print proof coverage of given member or" +
     "\n\t'covL member [line numbers]' to print proof coverage of given lines of given member or" +
-    "\n\t'progress' (short: 'prog') to compute the verification progress of the program or" +
+    "\n\t'progress' to compute the verification progress of the program or" +
     "\n\t'guide' to compute verification guidance or" +
-    "\n\t'prune [line numbers]' to prune the program with respect to the given line numbers and export the new program or" +
+    "\n\t'prune [line numbers] > [file]' to prune the program with respect to the given line numbers and export the new program to file or" +
+    "\n\t'export > [folder]' to export the dependency graph to the given folder or" +
+    "\n\t'failures' to print the verification failures or" +
 		(if (extensions.nonEmpty) "\n\t" else "") +
 		extensions.map(_.getInfoString("\n\t")).mkString("\n\t") +
     "\n\t'q' to quit"
 
-  def run(): Unit = {
+  private def handleInteractiveMode(): Unit = {
     println("Dependency Analysis Tool started.")
     println(infoString)
-    runInternal()
-  }
+		if(verificationErrors.nonEmpty || fullGraphInterpreter.getAssertionNodesWithFailures.nonEmpty)
+			println("Program did not verify!")
 
-  def run(commandStr: String): Unit = {
-    handleUserInput(commandStr)
+    runInteractiveMode()
   }
 
   @tailrec
-  private def runInternal(): Unit = {
+  private def runInteractiveMode(): Unit = {
     try {
       val userInput = readLine()
       if (userInput.equalsIgnoreCase("q") || userInput.equalsIgnoreCase("quit")) {
         return
       }
       if (userInput.nonEmpty) {
-        handleUserInput(userInput)
+        handleCommand(userInput, isInteractive = true)
       } else {
         println(infoString)
       }
-    }catch {
-      case e: Exception => println("Error:\n" + e.getMessage)
+    } catch {
+      case e: Exception => println("ERROR:\n\t" + e.getMessage)
+      case e: AssertionError => println("ERROR:\n\t" + e.getMessage)
     }
-    runInternal()
+    runInteractiveMode()
   }
 
-  private def handleUserInput(userInput: String): Unit = {
-    val inputParts = userInput.split(" ").toSeq
-    if (inputParts.nonEmpty) {
-      inputParts.head.toLowerCase match {
+  private def handleCommand(cmd: String, isInteractive: Boolean = false): Unit = {
+		val exportFileName = cmd.split(">").tail.headOption.map(_.trim)
+    val cmdParts = cmd.takeWhile(_ != '>').split(" ").toSeq
+    if (cmdParts.nonEmpty) {
+      cmdParts.head.toLowerCase match {
 				case "help" => println(infoString)
-        case "dep" => handleDependencyQuery(inputParts.tail.toSet)
-        case "ad" | "alldeps" => handleAllDependenciesQuery(inputParts.tail.toSet)
-        case "downdep" => handleDependentsQuery(inputParts.tail.toSet)
-        case "coverage" | "cov" => handleProofCoverageQuery(inputParts.tail)
-        case "covlines" | "covl" => handleProofCoverageLineQuery(inputParts.tail)
-        case "progress" | "prog" => handleVerificationProgressQuery(inputParts.tail)
+        case "dep" => handleDependencyQuery(cmdParts.tail.toSet)
+        case "ad" | "alldeps" => handleAllDependenciesQuery(cmdParts.tail.toSet)
+        case "downdep" => handleDependentsQuery(cmdParts.tail.toSet)
+				case "export"  => fullGraphInterpreter.exportGraph(program, exportFileName.get)
+        case "coverage" | "cov" => handleProofCoverageQuery(cmdParts.tail)
+        case "covlines" | "covl" => handleProofCoverageLineQuery(cmdParts.tail)
+        case "progress" | "prog" => handleVerificationProgressQuery(cmdParts.tail, exportFileName)
         case "guidance" | "guide" => handleVerificationGuidanceQuery()
-        case "prune" => handlePruningRequest(inputParts.tail)
-        case _ => extensions.foreach(_.visit(inputParts))
+        case "prune" => handlePruningRequest(cmdParts.tail, exportFileName.get)
+        case "failures" => handleFailuresRequest()
+        case _ => extensions.foreach(_.visit(cmdParts))
       }
 			println("Done.")
     } else {
@@ -81,8 +93,15 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
     }
   }
 
+	private def handleFailuresRequest() = {
+		println("Reported verification failures:")
+		println(s"\t${verificationErrors.mkString("\n\t")}")
+		println(s"Dependency nodes of failures:")
+		println(s"\t${fullGraphInterpreter.getAssertionNodesWithFailures.map(_.sourceInfo).mkString("\n\t")}")
+	}
 
-  private def handleProofCoverageQuery(memberNames: Seq[String]): Unit = {
+
+	private def handleProofCoverageQuery(memberNames: Seq[String]): Unit = {
     println("Proof Coverage")
     memberInterpreters.filter(aa => aa.getMember.isDefined && aa.getMember.exists {
         case meth: Method => meth.body.isDefined && (memberNames.isEmpty || memberNames.contains(meth.name))
@@ -97,7 +116,6 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
           println(s"uncovered nodes:\n\t${uncoveredSources.mkString("\n\t")}")
           println(s"#uncovered nodes:\n\t${uncoveredSources.size}")
       })
-
   }
 
   private def handleProofCoverageLineQuery(memberNames: Seq[String]): Unit = {
@@ -123,7 +141,6 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
           println(s"uncovered nodes:\n\t${uncoveredSources.mkString("\n\t")}")
           println(s"#uncovered nodes:\n\t${uncoveredSources.size}")
       })
-
   }
 
   def handleVerificationProgressQuery(inputs: Seq[String], exportFileNameOpt: Option[String] = None): Unit = {
@@ -192,14 +209,9 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
 
   }
 
-  def handlePruningRequest(inputs: Seq[String], exportFileNameOpt: Option[String] = None): Unit = {
-		val exportFileName = exportFileNameOpt.getOrElse {
-			println("exportFileName: ")
-			readLine()
-		}
+  def handlePruningRequest(inputs: Seq[String], exportFileName: String): Unit = {
     val queriedNodes = getQueriedNodesFromInput(inputs.toSet)
 		fullGraphInterpreter.pruningSupporter.pruneProgramAndExport(queriedNodes, program, exportFileName)
-
   }
 
   private def handleVerificationGuidanceQuery(): Unit = {

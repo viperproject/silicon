@@ -3,7 +3,6 @@ package viper.silicon.dependencyAnalysis.cliTool
 import viper.silicon
 import viper.silicon.SiliconFrontend
 import viper.silicon.dependencyAnalysis._
-import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.SimpleIdentifier
 import viper.silicon.state.terms.sorts.Bool
@@ -20,62 +19,18 @@ object DependencyGraphImporter {
 
   private lazy val dummyLabelNode: LabelNode = LabelNode(dummyVar)
   lazy val dummyVar: Var = Var.actualCreate((SimpleIdentifier("a"), Bool, false))
-  lazy val frontend: SiliconFrontend = createFrontend(Seq.empty)
+	lazy val frontend: SiliconFrontend = createFrontend(Seq.empty)
 
-  /**
-   * This method processes command line arguments to import a dependency graph and execute queries on it.
-   *
-   * Expected command line arguments:
-   *  - `--graphFolder "[PATH_TO_GRAPH]"`: (Required) Specifies the path to the folder containing the dependency graph export files.
-   *  - `--cmds "[SEMICOLON_SEPARATED_LIST_OF_QUERIES]"`: (Optional) Specifies a series of commands separated by semicolons.
-   *    The supported commands correspond to the ones of the DependencyAnalysisUserTool.
-   *    If this argument is not provided, the interactive mode of the DependencyAnalysisUserTool will start instead.
-   *
-   * @throws IllegalArgumentException if the `--graphFolder` argument is not provided.
-   */
-
-  def main(args: Array[String]): Unit = {
-    val graphFolder = extractGraphFolderFromArgs(args)
-    val graph = importGraphFromCsv(graphFolder)
-
-    // TODO ake: doesn't fully work yet, because the exported program has a different line numbering than the program used for the analysis
-    val program = importProgram(graphFolder)
-
-    val interpreter = new DependencyGraphInterpreter[Final]("test", graph, List.empty, None)
-    val userTool = new DependencyAnalysisCliTool(interpreter, Seq.empty, program, List.empty)
-
-    runUserTool(args, userTool)
-  }
-
-  private def extractGraphFolderFromArgs(args: Array[String]): String = {
-    val idx = args.indexOf("--graphFolder")
-    if (0 <= idx && idx < args.length - 1)
-      args(idx + 1)
-    else
-        throw new IllegalArgumentException("Error: --graphFolder argument is required but not found.")
-  }
-
-  private def runUserTool(args: Array[String], userTool: DependencyAnalysisCliTool): Unit = {
-    val cmdsIndex = args.indexOf("--cmds")
-
-    val cmds = if (0 <= cmdsIndex && cmdsIndex < args.length - 1) Some(args(cmdsIndex + 1).split(";").map(_.trim)) else None
-
-    if (cmds.isEmpty)
-      userTool.run()
-    else
-      cmds.get foreach {c =>
-        println(s"\n--------\nProcessing command \"$c\"...")
-        userTool.run(c)
-      }
-  }
-
-
-  private def importGraphFromCsv(csvFilePath: String): ReadOnlyDependencyGraph[Final] = {
+  def importGraphFromCsv(csvFilePath: String): ReadOnlyDependencyGraph[Final] = {
     val graph = new DependencyGraph[Final]()
     createNodesFromCsv(graph, csvFilePath)
     createEdgesFromCsv(graph, csvFilePath)
     graph
   }
+
+	def importProgram(userInput: String): Program = {
+		loadProgram(userInput +"\\", "program.vpr", frontend)
+	}
 
   private def createNodesFromCsv(graph: DependencyGraph[Final], csvFilePath: String): Unit = {
 
@@ -131,11 +86,7 @@ object DependencyGraphImporter {
     bufferedSource.close()
   }
 
-  def importProgram(userInput: String): Program = {
-    loadProgram(userInput +"\\", "program.vpr", frontend)
-  }
-
-  def createFrontend(commandLineArgs: Seq[String]): SiliconFrontend = {
+  private def createFrontend(commandLineArgs: Seq[String]): SiliconFrontend = {
     val reporter = DependencyAnalysisReporter()
     val fe = new SiliconFrontend(reporter)
     val backend = fe.createVerifier("")
@@ -146,7 +97,7 @@ object DependencyGraphImporter {
     fe
   }
 
-  def loadProgram(filePrefix: String, fileName: String, frontend: SilFrontend): Program = {
+  private def loadProgram(filePrefix: String, fileName: String, frontend: SilFrontend): Program = {
     val testFile = Paths.get(filePrefix + fileName)
 
     frontend.reset(testFile)
@@ -171,8 +122,6 @@ object DependencyGraphImporter {
     case _ =>
       throw new IllegalArgumentException(s"Cannot parse position from string: $positionString")
   }
-
-
 }
 
 private case class DummyChunk() extends Chunk {
