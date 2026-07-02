@@ -23,8 +23,10 @@ object DependencyGraphImporter {
 
   def importGraphFromCsv(csvFilePath: String): ReadOnlyDependencyGraph[Final] = {
     val graph = new DependencyGraph[Final]()
-    createNodesFromCsv(graph, csvFilePath)
-    createEdgesFromCsv(graph, csvFilePath)
+
+		val path = Paths.get(csvFilePath)
+    createNodesFromCsv(graph, path.toString)
+    createEdgesFromCsv(graph, path.toString)
     graph
   }
 
@@ -35,7 +37,7 @@ object DependencyGraphImporter {
   private def createNodesFromCsv(graph: DependencyGraph[Final], csvFilePath: String): Unit = {
 
     val bufferedSource = Source.fromFile(csvFilePath + "/nodes.csv")
-    for (line <- bufferedSource.getLines().drop(1)) {
+    for (line <- bufferedSource.getLines().filter(_.nonEmpty).drop(1)) {
       val fields = line.split("#").map(_.trim)
       val nodeIdStr = fields(0)
       val nodeType = fields(1)
@@ -73,12 +75,13 @@ object DependencyGraphImporter {
   private def createEdgesFromCsv(graph: DependencyGraph[Final], csvFilePath: String): Unit = {
 
     val bufferedSource = Source.fromFile(csvFilePath + "/edges.csv")
-    for (line <- bufferedSource.getLines().drop(1)) {
+    for (line <- bufferedSource.getLines().filter(_.nonEmpty).drop(1)) {
       val Array(sourceId, targetId, tag) = line.split(",").map(_.trim)
 
       tag match {
         case "direct" => graph.addEdges(List(sourceId.toInt), targetId.toInt)
-        case "interprocedural" => graph.addEdgesConnectingMethodsDownwards(List(sourceId.toInt), targetId.toInt)
+        case "interprocedural downward" => graph.addEdgesConnectingMethodsDownwards(List(sourceId.toInt), targetId.toInt)
+        case "interprocedural upward" => graph.addEdgesConnectingMethodsUpwards(List(sourceId.toInt), targetId.toInt)
         case _ => throw new IllegalArgumentException(s"Unknown tag: $tag")
       }
 

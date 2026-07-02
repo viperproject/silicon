@@ -2,6 +2,8 @@ package viper.silicon.tests
 
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.dependencyAnalysis._
+import viper.silicon.dependencyAnalysis.cliTool.DependencyGraphImporter
+import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyGraphInterpreter, DependencyGraphTestSupporter}
 import viper.silver.ast._
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier
@@ -11,12 +13,14 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
 
   val CHECK_PRECISION = false
   val EXECUTE_TEST = true
+	val TEST_IMPORTER = false
   override val EXPORT_PRUNED_PROGRAMS: Boolean = false
   val ignores: Seq[String] = Seq()
-	analysisCommandLineArguments = analysisCommandLineArguments ++ Seq("--dependencyAnalysisMode=test")
+	val depAnalysisModeArg = if(TEST_IMPORTER) Seq("--dependencyAnalysisMode=export>testExports") else Seq()
+	analysisCommandLineArguments = analysisCommandLineArguments ++ depAnalysisModeArg
 	val testDirectories: Seq[String] = Seq(
     "dependencyAnalysisTests/all",
-    "dependencyAnalysisTests/unitTests",
+//    "dependencyAnalysisTests/unitTests", // TODO ake: remove obsolete tests and move interesting ones to all
     "dependencyAnalysisTests/real-world-examples",
     "dependencyAnalysisTests/verificationProgressTests",
     "dependencyAnalysisTests/guidance",
@@ -43,6 +47,7 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
   def executeTest(filePrefix: String,
                   fileName: String,
                   frontend: SilFrontend): Unit = {
+		println(s"$filePrefix/$fileName")
 
     val program: Program = tests.loadProgram(filePrefix, fileName, frontend)
     val result = frontend.verifier.verify(program)
@@ -51,17 +56,26 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
       return
     }
 
-    val dependencyGraphInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].dependencyGraphInterpretersPerMember
-    val joinedDependencyGraphInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter
+		val name = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter.map(_.getName).getOrElse("graph")
+
+		val (fullGraphInterpreter, dependencyGraphInterpreters) = if (TEST_IMPORTER) {
+			println("--------\nTesting via the graph importer.")
+			val importedGraph = DependencyGraphImporter.importGraphFromCsv(s"testExports/$name")
+			val interpreter = new DependencyGraphInterpreter[Final](name, importedGraph, List.empty, None)
+			(interpreter, List[DependencyGraphInterpreter[IntraProcedural]]())
+		} else {
+			(frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter.get, frontend.reporter.asInstanceOf[DependencyAnalysisReporter].dependencyGraphInterpretersPerMember)
+		}
+
+		val testSupporter = new DependencyGraphTestSupporter(fullGraphInterpreter)
+		testSupporter.testDependencies()
+		testSupporter.testNodeTypes()
+		new PruningTest(filePrefix + "/" + fileName, program, fullGraphInterpreter).execute()
 
     if (filePrefix.contains("verificationProgressTests")) {
-      new VerificationProgressTest(filePrefix + "/" + fileName, joinedDependencyGraphInterpreter.get).execute()
+      new VerificationProgressTest(filePrefix + "/" + fileName, fullGraphInterpreter).execute()
     } else if (filePrefix.contains("guidance")) {
-      new GuidanceTest(program, dependencyGraphInterpreters, joinedDependencyGraphInterpreter.get).execute()
-    } else {
-			// TODO ake: annotated tests can be removed once all tests are migrated to the new test annotations (TestSupporter)
-      new AnnotatedTest(program, dependencyGraphInterpreters, CHECK_PRECISION).execute()
-      new PruningTest(filePrefix + "/" + fileName, program, joinedDependencyGraphInterpreter.get).execute()
+      new GuidanceTest(program, dependencyGraphInterpreters, fullGraphInterpreter).execute()
     }
   }
 }

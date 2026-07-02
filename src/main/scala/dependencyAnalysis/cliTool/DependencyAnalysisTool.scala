@@ -45,7 +45,7 @@ object DependencyAnalysisTool {
 	}
 
 	def runDependencyAnalysisWorkflow(verificationResults: List[VerificationResult], program: ast.Program, inputFile: Option[String]): Option[DependencyAnalysisResult] = {
-		if (!Verifier.config.enableDependencyAnalysis() || Verifier.config.dependencyAnalysisMode.isEmpty) return None
+		if (!Verifier.config.enableDependencyAnalysis()) return None
 
 		val dependencyGraphInterpreters = verificationResults.filter(_.dependencyGraphInterpreter.isDefined).map(_.dependencyGraphInterpreter.get)
 		val verificationErrors: List[Failure] = (verificationResults filter (_.isInstanceOf[Failure])) map (_.asInstanceOf[Failure])
@@ -54,12 +54,14 @@ object DependencyAnalysisTool {
 		val result = DependencyAnalysisResult(inputFile.map(_.replaceAll("\\\\", "_").replaceAll("/", "_").replaceAll(".vpr", "")).getOrElse("joined"), program, dependencyGraphInterpreters.toSet)
 
 		val userTool = new DependencyAnalysisCliTool(result.getFullDependencyGraphInterpreter, result.dependencyGraphInterpreters.toList, result.program, verificationErrors)
-		runUserTool(Verifier.config.dependencyAnalysisMode(), userTool)
+		runUserTool(Verifier.config.dependencyAnalysisMode.getOrElse(""), userTool)
 
 		Some(result)
 	}
 
 	private def runUserTool(cmdStr: String, userTool: DependencyAnalysisCliTool): Unit = {
+		if (cmdStr.isEmpty) return
+
 		val cmds = cmdStr.split(";").map(_.trim)
 
 		cmds foreach {c =>

@@ -283,6 +283,7 @@ trait DependencyAnalysisTestFramework {
         assert(Math.abs(actualProgressLea - expected) <= epsilon,
           s"progress mismatch: expected $expected, got $actualProgressLea")
       }
+			println("Progress tests passed.")
     }
 
     // Finds a relevant metric line by prefix, extracts its metric value
