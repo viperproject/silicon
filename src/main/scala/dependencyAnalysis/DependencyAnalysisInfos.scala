@@ -4,6 +4,7 @@ import viper.silicon.SiliconRunner
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast._
+import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silver.dependencyAnalysis._
 
 /**
@@ -44,6 +45,12 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
 
 		this.copy(dependencyTypes = DependencyTypeInfo(dependencyType) +: dependencyTypes)
   }
+
+	def withDependencyType(assumptionType: AssumptionType): DependencyAnalysisInfos = {
+		if (!isAnalysisEnabled) return this
+
+		this.copy(dependencyTypes = DependencyTypeInfo(DependencyType.make(assumptionType)) +: dependencyTypes)
+	}
 
   def withSource(source: AnalysisSourceInfo): DependencyAnalysisInfos = {
 		if (!isAnalysisEnabled) return this

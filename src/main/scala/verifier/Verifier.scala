@@ -7,15 +7,15 @@
 package viper.silicon.verifier
 
 import com.typesafe.scalalogging.Logger
+import viper.silicon.Config
 import viper.silicon.decider.Decider
+import viper.silicon.logger.MemberSymbExLogger
 import viper.silicon.reporting.StateFormatter
-import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.rules.{HeapSupportRules, StateConsolidationRules, defaultHeapSupporter}
+import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.state.{Heap, IdentifierFactory, State, SymbolConverter}
 import viper.silicon.supporters.{QuantifierSupporter, SnapshotSupporter}
 import viper.silicon.utils.Counter
-import viper.silicon.Config
-import viper.silicon.logger.MemberSymbExLogger
 import viper.silver.ast
 import viper.silver.reporter.Reporter
 
@@ -23,6 +23,8 @@ import java.util.concurrent.atomic.AtomicInteger
 
 trait Verifier {
   def uniqueId: String
+
+	def config: Config
 
   def symbExLog: MemberSymbExLogger
   def openSymbExLogger(member: ast.Member): Unit
