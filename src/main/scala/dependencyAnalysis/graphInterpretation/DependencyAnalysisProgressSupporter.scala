@@ -11,7 +11,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 	private val dependencyGraph = interpreter.getGraph
 	private lazy val sourceToAssertionNodesMap: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = interpreter.getNonInternalAssertionNodes.groupBy(_.sourceInfo)
 
-	def computeVerificationProgress(enableDebugging: Boolean=false): (Double, Double)  = {
+	def computeVerificationProgress(enableDebugging: Boolean = false): (Double, Double) = {
 		computeVerificationProgressOptimized(enableDebugging)
 	}
 
@@ -82,7 +82,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 	}
 
 	private def toCompactUserLevelNodes(lowLevelNodes: Set[DependencyAnalysisNode]): Set[CompactUserLevelDependencyAnalysisNode] = {
-		lowLevelNodes.groupBy(_.sourceInfo).map{case (source, nodes) =>
+		lowLevelNodes.groupBy(_.sourceInfo).map { case (source, nodes) =>
 			val assertionNodes = nodes.filter(_.isInstanceOf[GeneralAssertionNode])
 			CompactUserLevelDependencyAnalysisNode(source,
 				nodes.filter(_.isInstanceOf[GeneralAssumptionNode]).map(_.assumptionType),
@@ -99,7 +99,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 	 */
 	private def computeAssertionQuality(allDependencies: Set[CompactUserLevelDependencyAnalysisNode], assertion: AnalysisSourceInfo): Option[Double] = {
 		val assertionNodes = sourceToAssertionNodesMap.getOrElse(assertion, Set.empty).filter(node => node.isInstanceOf[GeneralAssertionNode])
-		val failedAssertionNodes = assertionNodes.filter(node =>  node.asInstanceOf[GeneralAssertionNode].hasFailed || node.assumptionType.equals(AssumptionType.ExplicitPostcondition))
+		val failedAssertionNodes = assertionNodes.filter(node => node.asInstanceOf[GeneralAssertionNode].hasFailed || node.assumptionType.equals(AssumptionType.ExplicitPostcondition))
 		// assertions with failures have quality of 0.0
 		if (failedAssertionNodes.nonEmpty)
 			return Some(0.0)
@@ -123,7 +123,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 	 *         Proof quality is defined as the average assertion quality over all proof obligations.
 	 *         Assertion quality of an assertion a is the fraction of non-assumption dependencies over all dependencies of the assertion a.
 	 */
-	def computeVerificationProgressOptimized(enableDebugOutput: Boolean = false): (Double, Double)  = {
+	def computeVerificationProgressOptimized(enableDebugOutput: Boolean = false): (Double, Double) = {
 
 		// compute all dependencies of each proof obligation
 		val allAssertions = getAssertionsRelevantForProgress.keySet.toList
@@ -193,18 +193,18 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 
 		val relevantDependenciesPerAssertion = allAssertions
 			.map(ass => (ass, interpreter.toUserLevelNodes(interpreter.getAllNonInternalDependencies(ass.lowerLevelNodes.map(_.id))).diffBySource(Set(ass)))).toMap
-			.filter{case (assertion, assumptions) => assumptions.nonEmpty || assertion.hasFailures || assertion.assertionTypes.contains(AssumptionType.ExplicitPostcondition)}
+			.filter { case (assertion, assumptions) => assumptions.nonEmpty || assertion.hasFailures || assertion.assertionTypes.contains(AssumptionType.ExplicitPostcondition) }
 		val numAssertions = relevantDependenciesPerAssertion.size.toDouble
 
-		val assumptionImpacts= relevantDependenciesPerAssertion.toList.flatMap { case (_, assumptions) =>
+		val assumptionImpacts = relevantDependenciesPerAssertion.toList.flatMap { case (_, assumptions) =>
 			val explicitDeps = UserLevelDependencyAnalysisNode.extractByAssumptionType(assumptions, AssumptionType.explicitAssumptionTypes)
-			explicitDeps.map(node => (node.source, 1.0/assumptions.size/numAssertions)).toList
+			explicitDeps.map(node => (node.source, 1.0 / assumptions.size / numAssertions)).toList
 		}
 
-		val unverifiedAssertionImpacts = getAssertionsWithZeroQuality.map(assertion => (assertion, 1.0/numAssertions)).toList
+		val unverifiedAssertionImpacts = getAssertionsWithZeroQuality.map(assertion => (assertion, 1.0 / numAssertions)).toList
 
 		val totalImpacts1 = (assumptionImpacts ++ unverifiedAssertionImpacts).groupBy(_._1)
-		val totalImpacts = totalImpacts1.map{case (assumption, impacts) => (assumption.toString, impacts.map(_._2).sum)}.toList
+		val totalImpacts = totalImpacts1.map { case (assumption, impacts) => (assumption.toString, impacts.map(_._2).sum) }.toList
 
 		totalImpacts.sortBy(_._2).reverse
 	}
@@ -215,20 +215,20 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 	}
 
 	/**
-	 * Prints all uncovered source code statements and returns the number of uncovered source code statements.
+	 * Returns all uncovered source code statements.
 	 */
-	def computeUncoveredStatements(): Int = {
+	def computeUncoveredStatementsPerMember(): Map[String, List[AnalysisSourceInfo]] = {
 		val allAssertions = interpreter.toUserLevelNodes(getAssertionsRelevantForProgress.values.flatten)
-		val allDependencies = allAssertions.flatMap(ass => interpreter.toUserLevelNodes(interpreter.getAllNonInternalDependencies(ass.lowerLevelNodes.map(_.id))).diffBySource(Set(ass))).getSourceSet()
+		val allDependencies = allAssertions.flatMap(ass => interpreter.toUserLevelNodes(interpreter.getAllNonInternalDependencies(ass.lowerLevelNodes.map(_.id))).diffBySource(Set(ass))).getSourceMemberSet()
 
 		val explicitAssertions = interpreter.toUserLevelNodes(interpreter.getExplicitAssertionNodes)
 		val allNodes = interpreter.toUserLevelNodes(interpreter.getNonInternalAssumptionNodes)
-		val allSourceCodeStmts = allNodes.getSourceSet().diff(UserLevelDependencyAnalysisNode.extractByAssumptionType(allNodes,
-			AssumptionType.explicitAssumptionTypes ++ AssumptionType.verificationAnnotationTypes).getSourceSet()).diff(explicitAssertions.getSourceSet())
+		val allSourceCodeStmts = UserLevelDependencyAnalysisNode.extractByAssumptionType(allNodes, AssumptionType.sourceCodeTypes).getSourceMemberSet().diff(explicitAssertions.getSourceMemberSet())
+
 		val uncoveredSourceCodeStmts = allSourceCodeStmts.diff(allDependencies)
-		if (uncoveredSourceCodeStmts.nonEmpty)
-			println(s"${interpreter.getName}:\n\t${allSourceCodeStmts.diff(allDependencies).toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}")
-		uncoveredSourceCodeStmts.size
+		uncoveredSourceCodeStmts.groupBy(_._2).map { case (member, sources) =>
+			(member, sources.map(_._1).toList.sortBy(_.getLineNumber))
+		}
 	}
 }
 

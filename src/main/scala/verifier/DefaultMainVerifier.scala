@@ -345,7 +345,6 @@ class DefaultMainVerifier(config: Config,
 		val result = DependencyAnalysisTool.runDependencyAnalysisWorkflow(verificationResults, program, inputFile)
 		(reporter, result) match {
 			case (analysisReporter: DependencyAnalysisReporter, Some(res)) =>
-				analysisReporter.dependencyGraphInterpretersPerMember = res.dependencyGraphInterpreters.toList
 				analysisReporter.joinedDependencyGraphInterpreter = Some(res.getFullDependencyGraphInterpreter)
 			case _ =>
 		}

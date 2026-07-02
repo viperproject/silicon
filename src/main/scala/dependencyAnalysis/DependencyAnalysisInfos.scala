@@ -21,7 +21,7 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
     val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
     val newMergeInfos = mergeInfos ++ info.getUniqueInfo[DependencyAnalysisMergeInfo].toList
     val newJoinInfos = joinInfos ++ info.getUniqueInfo[DependencyAnalysisJoinInfo].toList
-    DependencyAnalysisInfos(newSourceInfos, newDependencyInfos, newMergeInfos, newJoinInfos, nodes ++ List(node))
+		this.copy(sourceInfos=newSourceInfos, dependencyTypes=newDependencyInfos, mergeInfos=newMergeInfos, joinInfos=newJoinInfos, nodes=nodes ++ List(node))
   }
 
   def addInfo(info: ast.Info): DependencyAnalysisInfos = {
@@ -31,7 +31,7 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
     val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
     val newMergeInfos = mergeInfos ++ info.getUniqueInfo[DependencyAnalysisMergeInfo].toList
     val newJoinInfos = joinInfos ++ info.getUniqueInfo[DependencyAnalysisJoinInfo].toList
-    DependencyAnalysisInfos(newSourceInfos, newDependencyInfos, newMergeInfos, newJoinInfos, nodes)
+		this.copy(sourceInfos=newSourceInfos, dependencyTypes=newDependencyInfos, mergeInfos=newMergeInfos, joinInfos=newJoinInfos)
   }
 
   def addInfo(infoString: String, pos: ast.Position, dependencyType: DependencyType): DependencyAnalysisInfos = {
@@ -82,7 +82,7 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
 		val dependencyTypeOpt = dependencyTypes.headOption.map(_.dependencyType)
 		if (dependencyTypeOpt.isDefined) {
 			dependencyTypeOpt.get
-		}else {
+		} else {
 			SiliconRunner.logger.warn(s"WARN: Missing dependency type for $getDebugInfo")
 			DependencyType.make(AssumptionType.Unknown)
 		}
@@ -133,4 +133,8 @@ object DependencyAnalysisInfos {
 
 	def createUnique(infoString: String, dependencyType: DependencyType): DependencyAnalysisInfos =
 		create(StringAnalysisSourceInfo(s"$infoString-${DependencyGraphHelper.nextId()}", NoPosition), dependencyType)
+}
+
+case class DependencyAnalysisAxiomInfo(analysisInfos: DependencyAnalysisInfos, memberStr: String) {
+
 }

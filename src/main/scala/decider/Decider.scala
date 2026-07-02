@@ -155,7 +155,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     override def initDependencyAnalyzer(member: Member, preambleNodes: Iterable[DependencyAnalysisNode]): Unit = {
       val isAnalysisEnabled = DependencyAnalyzer.extractEnableAnalysisFromInfo(member.info).getOrElse(Verifier.config.enableDependencyAnalysis())
       if (isAnalysisEnabled) {
-        dependencyAnalyzer = new DefaultDependencyAnalyzer(member)
+        dependencyAnalyzer = new DefaultDependencyAnalyzer(Some(member))
         dependencyAnalyzer.addNodes(preambleNodes)
       }else{
         removeDependencyAnalyzer()

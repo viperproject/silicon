@@ -54,9 +54,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     @unused private var program: ast.Program = _
     /*private*/ var functionData: Map[String, FunctionData] = Map.empty
-    private var emittedFunctionAxioms: Vector[(Term, DependencyAnalysisInfos)] = Vector.empty
+    private var emittedFunctionAxioms: Vector[(Term, DependencyAnalysisAxiomInfo)] = Vector.empty
     private var freshVars: Vector[Var] = Vector.empty
-    private var postConditionAxioms: Vector[(Term, DependencyAnalysisInfos)] = Vector.empty
+    private var postConditionAxioms: Vector[(Term, DependencyAnalysisAxiomInfo)] = Vector.empty
 
     private val expressionTranslator = {
       def resolutionFailureMessage(exp: ast.Positioned, data: FunctionData): String = (
@@ -187,7 +187,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         assertReadAccessOnly = !Verifier.config.respectFunctionPrePermAmounts())
 
 
-      val presAssertionNodeForJoin = function.pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(pc)), List(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up))))
+      val presAssertionNodeForJoin = function.pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(pc)), List(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up)), function.name))
       presAssertionNodeForJoin foreach v.decider.dependencyAnalyzer.addAssertionNode
 
 
@@ -312,7 +312,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       result
     }
 
-    private def emitAndRecordFunctionAxioms(axiom: (Term, DependencyAnalysisInfos)*): Unit = {
+    private def emitAndRecordFunctionAxioms(axiom: (Term, DependencyAnalysisAxiomInfo)*): Unit = {
       val cleanAxiom =
         if (!Verifier.config.enableDependencyAnalysis()) axiom
         else axiom.map(a => (a._1.transform{

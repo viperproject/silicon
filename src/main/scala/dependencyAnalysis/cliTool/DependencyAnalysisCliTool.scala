@@ -4,13 +4,12 @@ import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisProgressSupporter, DependencyGraphInterpreter}
 import viper.silicon.interfaces.Failure
 import viper.silver.ast
-import viper.silver.ast.Method
 
 import java.io.PrintWriter
 import scala.annotation.tailrec
 import scala.io.StdIn.readLine
 
-class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter[Final], memberInterpreters: Seq[DependencyGraphInterpreter[IntraProcedural]],
+class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter[Final],
 																program: ast.Program, verificationErrors: List[Failure]) extends AbstractDependencyAnalysisCliTool {
 
 	val extensions: List[DependencyAnalysisCliToolExtension] = List(
@@ -30,8 +29,6 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
     "\n\t'dep [line numbers]' to print the direct, explicit, and all dependencies of the given line numbers or" +
     "\n\t'allDeps [line numbers]' (short: 'ad') to print all dependencies of the given line numbers or" +
     "\n\t'downDep [line numbers]' to print the dependents of the given line numbers or" +
-    "\n\t'cov [members]' to print proof coverage of given member or" +
-    "\n\t'covL member [line numbers]' to print proof coverage of given lines of given member or" +
     "\n\t'progress' to compute the verification progress of the program or" +
     "\n\t'guide' to compute verification guidance or" +
     "\n\t'prune [line numbers] > [file]' to prune the program with respect to the given line numbers and export the new program to file or" +
@@ -79,10 +76,8 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
         case "ad" | "alldeps" => handleAllDependenciesQuery(cmdParts.tail.toSet)
         case "downdep" => handleDependentsQuery(cmdParts.tail.toSet)
 				case "export"  => fullGraphInterpreter.exportGraph(program, exportFileName.get)
-        case "coverage" | "cov" => handleProofCoverageQuery(cmdParts.tail)
-        case "covlines" | "covl" => handleProofCoverageLineQuery(cmdParts.tail)
         case "progress" | "prog" => handleVerificationProgressQuery(cmdParts.tail, exportFileName)
-        case "guidance" | "guide" => handleVerificationGuidanceQuery()
+        case "guidance" | "guide" => handleVerificationGuidanceQuery(cmdParts.tail)
         case "prune" => handlePruningRequest(cmdParts.tail, exportFileName.get)
         case "failures" => handleFailuresRequest()
         case _ => extensions.foreach(_.visit(cmdParts))
@@ -99,49 +94,6 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
 		println(s"Dependency nodes of failures:")
 		println(s"\t${fullGraphInterpreter.getAssertionNodesWithFailures.map(_.sourceInfo).mkString("\n\t")}")
 	}
-
-
-	private def handleProofCoverageQuery(memberNames: Seq[String]): Unit = {
-    println("Proof Coverage")
-    memberInterpreters.filter(aa => aa.getMember.isDefined && aa.getMember.exists {
-        case meth: Method => meth.body.isDefined && (memberNames.isEmpty || memberNames.contains(meth.name))
-        case func: ast.Function => func.body.isDefined && (memberNames.isEmpty || memberNames.contains(func.name))
-        case _ => false
-      })
-      .foreach(aa => {
-        val ((coverage, uncoveredSources), time) = measureTime(aa.computeProofCoverage())
-        println(s"${aa.getMember.map(_.name).getOrElse("")} (${time}ms)")
-        println(s"coverage: $coverage")
-        if (!coverage.equals(1.0))
-          println(s"uncovered nodes:\n\t${uncoveredSources.mkString("\n\t")}")
-          println(s"#uncovered nodes:\n\t${uncoveredSources.size}")
-      })
-  }
-
-  private def handleProofCoverageLineQuery(memberNames: Seq[String]): Unit = {
-    if (memberNames.isEmpty) return
-
-    println("Proof Coverage")
-    val lines = memberNames.tail.flatMap(_.toIntOption)
-    memberInterpreters.filter(aa => aa.getMember.isDefined && aa.getMember.exists {
-        case meth: Method => meth.body.isDefined && meth.name.equalsIgnoreCase(memberNames.head)
-        case func: ast.Function => func.body.isDefined && func.name.equalsIgnoreCase(memberNames.head)
-        case _ => false
-      })
-      .foreach(aa => {
-        val ((coverage, uncoveredSources), time) = if (lines.nonEmpty) {
-          val assertions = lines flatMap aa.getNodesByLine
-          measureTime(aa.computeProofCoverage(assertions.toSet))
-        } else {
-          measureTime(aa.computeProofCoverage())
-        }
-        println(s"${aa.getMember.map(_.name).getOrElse("")}  (${time}ms)")
-        println(s"coverage: $coverage")
-        if (!coverage.equals(1.0))
-          println(s"uncovered nodes:\n\t${uncoveredSources.mkString("\n\t")}")
-          println(s"#uncovered nodes:\n\t${uncoveredSources.size}")
-      })
-  }
 
   def handleVerificationProgressQuery(inputs: Seq[String], exportFileNameOpt: Option[String] = None): Unit = {
 		val enableDebugging = inputs.nonEmpty && inputs.head.equals("debug")
@@ -214,16 +166,21 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
 		fullGraphInterpreter.pruningSupporter.pruneProgramAndExport(queriedNodes, program, exportFileName)
   }
 
-  private def handleVerificationGuidanceQuery(): Unit = {
+  private def handleVerificationGuidanceQuery(inputs: Seq[String]): Unit = {
+		val enableDebugging = inputs.nonEmpty && inputs.head.equals("debug")
 
     val assumptionRanking = fullGraphInterpreter.progressSupporter.computeAssumptionRanking().filter(_._2 > 0.0)
     println(s"Assumptions/unverified assertions and the number of dependents:\n\t${assumptionRanking.mkString("\n\t")}\n")
 
     println("Uncovered source code per method: ")
-    val memberCoverageRanking = memberInterpreters.filter(mInterpreter => mInterpreter.getMember.isDefined && mInterpreter.getMember.get.isInstanceOf[Method])
-      .map(mInterpreter => (mInterpreter.getMember.get.name, new DependencyAnalysisProgressSupporter(mInterpreter).computeUncoveredStatements()))
-      .toList.filter(_._2 > 0).sortBy(_._2).reverse
-    println(s"\nMethods and the number of uncovered statements:\n\t${memberCoverageRanking.mkString("\n\t")}\n")
+		val uncoveredStatements = new DependencyAnalysisProgressSupporter(fullGraphInterpreter).computeUncoveredStatementsPerMember()
+
+		val memberCoverageRanking = uncoveredStatements.view.mapValues(_.size).toList.filter(_._2 > 0).sortBy(_._2).reverse
+		println(s"\nMethods and the number of uncovered statements:\n\t${memberCoverageRanking.mkString("\n\t")}\n")
+
+		if(enableDebugging)
+			println(s"\nUncovered statements by member:\n\t${uncoveredStatements.view.mapValues(v => (v, v.size)).toList.filter(_._2._2 > 0).sortBy(_._2._2).reverse}")
+
   }
 
 	override val interpreter: DependencyGraphInterpreter[Final] = fullGraphInterpreter

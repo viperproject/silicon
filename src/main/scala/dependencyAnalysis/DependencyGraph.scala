@@ -351,10 +351,15 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   private def exportNodes(fileName: String): Unit = {
     val sep = "#"
     def getNodeExportString(node: DependencyAnalysisNode): String = {
-      val parts = mutable.Seq(node.id.toString, node.getNodeType, node.assumptionType.toString, node.getNodeString, node.sourceInfo.toString, node.sourceInfo.getPositionString, node.mergeInfo.toString, node.sourceInfo.getDescription)
+			val hasFailed = node match {
+				case node: GeneralAssertionNode => node.hasFailed
+				case _ => false
+			}
+      val parts = mutable.Seq(node.id.toString, node.getNodeType, node.assumptionType.toString, node.getNodeString, node.sourceInfo.toString,
+				node.sourceInfo.getPositionString, node.mergeInfo.toString, node.sourceInfo.getDescription, node.memberStr, hasFailed.toString)
       parts.map(_.replace("#", "@")).mkString(sep)
     }
-    val headerParts = mutable.Seq("id", "node type", "assumption type", "node info", "source info", "position", "merge info", "description")
+    val headerParts = mutable.Seq("id", "node type", "assumption type", "node info", "source info", "position", "merge info", "description", "member name", "failed?")
     val builder = new StringBuilder()
     getNodes foreach (n => builder.append(getNodeExportString(n).replace("\n", " ") + "\n"))
 

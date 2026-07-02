@@ -13,7 +13,7 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
 
   val CHECK_PRECISION = false
   val EXECUTE_TEST = true
-	val TEST_IMPORTER = false
+	val TEST_IMPORTER = true
   override val EXPORT_PRUNED_PROGRAMS: Boolean = false
   val ignores: Seq[String] = Seq()
 	val depAnalysisModeArg = if(TEST_IMPORTER) Seq("--dependencyAnalysisMode=export>testExports") else Seq()
@@ -47,7 +47,7 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
   def executeTest(filePrefix: String,
                   fileName: String,
                   frontend: SilFrontend): Unit = {
-		println(s"$filePrefix/$fileName")
+		println(s"$filePrefix$fileName")
 
     val program: Program = tests.loadProgram(filePrefix, fileName, frontend)
     val result = frontend.verifier.verify(program)
@@ -58,13 +58,12 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
 
 		val name = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter.map(_.getName).getOrElse("graph")
 
-		val (fullGraphInterpreter, dependencyGraphInterpreters) = if (TEST_IMPORTER) {
+		val fullGraphInterpreter = if (TEST_IMPORTER) {
 			println("--------\nTesting via the graph importer.")
 			val importedGraph = DependencyGraphImporter.importGraphFromCsv(s"testExports/$name")
-			val interpreter = new DependencyGraphInterpreter[Final](name, importedGraph, List.empty, None)
-			(interpreter, List[DependencyGraphInterpreter[IntraProcedural]]())
+			new DependencyGraphInterpreter[Final](name, importedGraph, List.empty, None)
 		} else {
-			(frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter.get, frontend.reporter.asInstanceOf[DependencyAnalysisReporter].dependencyGraphInterpretersPerMember)
+			frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter.get
 		}
 
 		val testSupporter = new DependencyGraphTestSupporter(fullGraphInterpreter)
@@ -75,7 +74,7 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
     if (filePrefix.contains("verificationProgressTests")) {
       new VerificationProgressTest(filePrefix + "/" + fileName, fullGraphInterpreter).execute()
     } else if (filePrefix.contains("guidance")) {
-      new GuidanceTest(program, dependencyGraphInterpreters, fullGraphInterpreter).execute()
+      new GuidanceTest(program, fullGraphInterpreter).execute()
     }
   }
 }

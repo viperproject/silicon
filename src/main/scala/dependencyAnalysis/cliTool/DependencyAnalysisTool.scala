@@ -28,7 +28,7 @@ object DependencyAnalysisTool {
 		val program = importProgram(graphFolder)
 
 		val interpreter = new DependencyGraphInterpreter[Final]("test", graph, List.empty, None)
-		val userTool = new DependencyAnalysisCliTool(interpreter, Seq.empty, program, List.empty)
+		val userTool = new DependencyAnalysisCliTool(interpreter, program, List.empty)
 
 		val cmdsIndex = args.indexOf("--cmds")
 		val cmds = if (0 <= cmdsIndex && cmdsIndex < args.length - 1) args(cmdsIndex + 1) else ""
@@ -53,7 +53,7 @@ object DependencyAnalysisTool {
 		// TODO ake: make sure we can access the name of frontend programs (instead of naming it "joined")
 		val result = DependencyAnalysisResult(inputFile.map(_.replaceAll("\\\\", "_").replaceAll("/", "_").replaceAll(".vpr", "")).getOrElse("joined"), program, dependencyGraphInterpreters.toSet)
 
-		val userTool = new DependencyAnalysisCliTool(result.getFullDependencyGraphInterpreter, result.dependencyGraphInterpreters.toList, result.program, verificationErrors)
+		val userTool = new DependencyAnalysisCliTool(result.getFullDependencyGraphInterpreter, result.program, verificationErrors)
 		runUserTool(Verifier.config.dependencyAnalysisMode.getOrElse(""), userTool)
 
 		Some(result)
