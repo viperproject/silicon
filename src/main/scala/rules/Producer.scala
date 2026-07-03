@@ -153,10 +153,7 @@ object producer extends ProductionRules {
 
       val analysisInfos1 = v.decider.handleAndGetUpdatedAnalysisInfos(analysisInfos, a.info, a)
 			if (v.decider.isPathInfeasible) {
-				if (!Expressions.isKnownWellDefined(a, Some(s.program))) {
-					v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfos1)
-				}
-				v.decider.dependencyAnalyzer.addAssumption(True, analysisInfos1)
+				v.decider.handleInfeasiblePath(!Expressions.isKnownWellDefined(a, Some(s.program)), hasAssumptions=true, analysisInfos1)
 				return Q(s, v)
 			}
 
@@ -217,11 +214,7 @@ object producer extends ProductionRules {
                                : VerificationResult = {
 
     if (v.decider.isPathInfeasible) {
-      if (!Expressions.isKnownWellDefined(a, Some(s.program))) {
-        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfos)
-      }
-      v.decider.dependencyAnalyzer.addAssumption(True, analysisInfos)
-
+      v.decider.handleInfeasiblePath(!Expressions.isKnownWellDefined(a, Some(s.program)), hasAssumptions=true, analysisInfos)
       return Q(s, v)
     }
 

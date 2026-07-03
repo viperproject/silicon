@@ -1452,6 +1452,7 @@ object evaluator extends EvaluationRules {
     feasibleEntries match {
       case Seq() =>
         /* feasibility checks are disabled and all entries are infeasible, we can return any state and data */
+				v.decider.pcs.setPathInfeasible(true)
         v.decider.pcs.setCurrentInfeasibilityNode(entries.head.pathConditions.infeasibilityNodeId)
         (entries.head.s, entries.head.data)
       case Seq(entry) =>

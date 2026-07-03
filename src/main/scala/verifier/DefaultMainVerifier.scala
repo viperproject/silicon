@@ -11,8 +11,6 @@ import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.SiliconDebugger
 import viper.silicon.decider.SMTLib2PreambleReader
-import viper.silicon.dependencyAnalysis._
-import viper.silicon.dependencyAnalysis.cliTool.DependencyAnalysisTool
 import viper.silicon.extensions.ConditionalPermissionRewriter
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
@@ -48,6 +46,7 @@ trait MainVerifier extends Verifier {
   def nextUniqueVerifierId(): String
   def verificationPoolManager: VerificationPoolManager
   def rootSymbExLogger: SymbExLogger[_ <: MemberSymbExLogger]
+	def createWorkerVerifier(): WorkerVerifier
 }
 
 class DefaultMainVerifier(config: Config,
@@ -68,6 +67,8 @@ class DefaultMainVerifier(config: Config,
   override def openSymbExLogger(member: Member): Unit = {
     symbExLog = rootSymbExLogger.openMemberScope(member, decider.pcs)
   }
+
+	def createWorkerVerifier(): WorkerVerifier = new WorkerVerifier(this, nextUniqueVerifierId(), reporter, debugMode)
 
   protected val preambleReader = new SMTLib2PreambleReader
 
@@ -90,7 +91,7 @@ class DefaultMainVerifier(config: Config,
     fieldValueFunctionsContributor,
     predSnapGenerator, predicateAndWandSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
-    functionsSupporter, predicateSupporter,
+		functionsSupporter, predicateSupporter,
     _verificationPoolManager,
     MultiRunRecorders /* In lieu of a better place, include MultiRunRecorders singleton here */
   )
@@ -118,7 +119,7 @@ class DefaultMainVerifier(config: Config,
 
   /* Verifier orchestration */
 
-  private object allProvers extends ProverLike {
+  protected object allProvers extends ProverLike {
     def emit(content: String): Unit = {
       decider.prover.emit(content)
       _verificationPoolManager.pooledVerifiers.emit(content)
@@ -171,6 +172,10 @@ class DefaultMainVerifier(config: Config,
   }
 
   /* Program verification */
+
+	def verifyMember(doVerify: Unit => Seq[VerificationResult], v: Verifier, member: ast.Member): Seq[VerificationResult] = {
+		doVerify()
+	}
 
   def verify(originalProgram: ast.Program, cfgs: Seq[SilverCfg], inputFile: Option[String]): List[VerificationResult] = {
     /** Trigger computation is currently not thread-safe; hence, all triggers are computed
@@ -232,10 +237,8 @@ class DefaultMainVerifier(config: Config,
       val startTime = System.currentTimeMillis()
       var results: Seq[VerificationResult] = null
       try {
-        decider.initDependencyAnalyzer(function, allProvers.getPreambleAnalysisNodes ++ decider.prover.getPreambleAnalysisNodes)
-        results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
-          .flatMap(extractAllVerificationResults)
-        decider.removeDependencyAnalyzer()
+        results = verifyMember(_ => functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
+          .flatMap(extractAllVerificationResults), this, function)
       } catch {
         case e : Throwable =>
           logger error s"An exception was thrown while verifying function `${function.name}`."
@@ -251,10 +254,8 @@ class DefaultMainVerifier(config: Config,
       val startTime = System.currentTimeMillis()
       var results: Seq[VerificationResult] = null
       try {
-        decider.initDependencyAnalyzer(predicate, allProvers.getPreambleAnalysisNodes ++ decider.prover.getPreambleAnalysisNodes)
-        results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
-          .flatMap(extractAllVerificationResults)
-        decider.removeDependencyAnalyzer()
+        results = verifyMember(_ => predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
+          .flatMap(extractAllVerificationResults), this, predicate)
       } catch {
         case e: Throwable =>
           logger error s"An exception was thrown while verifying predicate `${predicate.name}`."
@@ -288,10 +289,7 @@ class DefaultMainVerifier(config: Config,
           val startTime = System.currentTimeMillis()
           var results: Seq[VerificationResult] = null
           try {
-            v.decider.initDependencyAnalyzer(method, allProvers.getPreambleAnalysisNodes ++ v.decider.prover.getPreambleAnalysisNodes)
-            results = v.methodSupporter.verify(s, method)
-              .flatMap(extractAllVerificationResults)
-            v.decider.removeDependencyAnalyzer()
+            results = verifyMember(_ => v.methodSupporter.verify(s, method).flatMap(extractAllVerificationResults), v, method)
           } catch {
             case e: Throwable =>
               logger error s"An exception was thrown while verifying method `${method.name}`."
@@ -342,20 +340,17 @@ class DefaultMainVerifier(config: Config,
       ++ predicateVerificationResults
       ++ methodVerificationResults)
 
-		val result = DependencyAnalysisTool.runDependencyAnalysisWorkflow(verificationResults, program, inputFile)
-		(reporter, result) match {
-			case (analysisReporter: DependencyAnalysisReporter, Some(res)) =>
-				analysisReporter.joinedDependencyGraphInterpreter = Some(res.getFullDependencyGraphInterpreter)
-			case _ =>
-		}
-
     if (Verifier.config.startDebuggerAutomatically()){
       val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
       debugger.startDebugger()
     }
 
+		afterVerification(verificationResults, program, inputFile)
+
     verificationResults
   }
+
+	def afterVerification(verificationResults: List[VerificationResult], program: ast.Program, inputFile: Option[String]): Unit = {}
 
     private def createInitialState(member: ast.Member,
                                  program: ast.Program,

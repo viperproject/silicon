@@ -262,7 +262,7 @@ class Z3ProverAPI(uniqueId: String,
   }
 
   def assume(term: Term, label: String): Unit = {
-    assume(term) // TODO ake
+    assume(term)
   }
 
   def assume(term: Term): Unit = {
@@ -405,7 +405,7 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
-  def getLastUnsatCore: String = "" // TODO ake
+  def getLastUnsatCore: String = ""
 
   def endPreamblePhase(): Unit =  {
     if (!preamblePhaseOver) {

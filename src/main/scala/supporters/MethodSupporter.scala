@@ -10,13 +10,11 @@ import com.typesafe.scalalogging.Logger
 import viper.silicon.Map
 import viper.silicon.decider.Decider
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos.DefaultDependencyAnalysisInfos
-import viper.silicon.dependencyAnalysis._
-import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
+import viper.silicon.dependencyAnalysis.NoDependencyAnalyzer
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
 import viper.silicon.state.State.OldHeaps
-import viper.silicon.state.terms.True
 import viper.silicon.state.{State, Store}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.{Verifier, VerifierComponent}
@@ -33,7 +31,11 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
   def logger: Logger
   def decider: Decider
 
-  object methodSupporter extends MethodVerificationUnit with StatefulComponent {
+	def methodSupporter: MethodSupporter = DefaultMethodSupporter
+
+	object DefaultMethodSupporter extends MethodSupporter
+
+  trait MethodSupporter extends MethodVerificationUnit with StatefulComponent {
     import consumer._
     import executor._
     import producer._
@@ -81,9 +83,6 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
           new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}.dot"))
       }
 
-      val presAssertionNodeForJoin = pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(pc)), List(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up)), method.name))
-      presAssertionNodeForJoin foreach v.decider.dependencyAnalyzer.addAssertionNode
-
       val analysisInfosPrecondition = DefaultDependencyAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Up))
       val analysisInfosPostcondition = DefaultDependencyAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))
 
@@ -106,19 +105,11 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
             && {
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {
                  val da = v3.decider.dependencyAnalyzer
-                 if (method.body.isEmpty) v3.decider.removeDependencyAnalyzer()
+                 if (method.body.isEmpty) v3.decider.dependencyAnalyzer = new NoDependencyAnalyzer()
                   exec(s3, body, v3)((s4, v4) => {
                     if (method.body.isEmpty) v3.decider.dependencyAnalyzer = da
                     consumes(s4, posts, false, postViolated, v4, analysisInfosPostcondition)((_, _, _) =>
                       Success())})}) }  )})})
-
-      if (method.body.isEmpty) {
-        v.decider.dependencyAnalyzer.addDependenciesForAbstractMembers(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts), DependencyAnalysisInfos.DefaultDependencyAnalysisInfos)
-      }
-
-      val allErrors = (result :: result.previous.toList).filter(_.isInstanceOf[Failure]).map(_.asInstanceOf[Failure])
-
-      result.dependencyGraphInterpreter = v.decider.dependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(method.name, _, allErrors, Some(method)))
 
       v.decider.resetProverOptions()
 

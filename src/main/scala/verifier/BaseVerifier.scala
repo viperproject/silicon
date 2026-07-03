@@ -52,8 +52,7 @@ abstract class BaseVerifier(val config: Config,
   val termConverter = new TermToSMTLib2Converter(/*bookkeeper*/)
   val domainTranslator = new DefaultDomainsTranslator()
   val identifierFactory = new DefaultIdentifierFactory(uniqueId)
-  // TODO ake: implement DependencyAwareBaseVerifier?
-  val chunkFactory = if(config.enableDependencyAnalysis()) new DependencyAwareChunkFactory(DependencyAnalysisAwareDecider) else new DefaultChunkFactory()
+  val chunkFactory: ChunkFactory = new DefaultChunkFactory()
   val triggerGenerator = new TriggerGenerator()
   val axiomRewriter = new AxiomRewriter(new utils.Counter()/*, bookkeeper.logfiles(s"axiomRewriter")*/, triggerGenerator)
   val quantifierSupporter = new DefaultQuantifierSupporter(triggerGenerator)
@@ -116,12 +115,4 @@ abstract class BaseVerifier(val config: Config,
     super.stop()
     statefulSubcomponents foreach (_.stop())
   }
-}
-
-// TODO ake
-abstract class DependencyAwareBaseVerifier(override val config: Config,
-																					 override val uniqueId: String) extends BaseVerifier(config, uniqueId) {
-
-	override def decider: DefaultDecider = DependencyAnalysisAwareDecider
-
 }

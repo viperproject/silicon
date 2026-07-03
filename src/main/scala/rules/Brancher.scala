@@ -47,7 +47,7 @@ object brancher extends BranchingRules {
 
     if (v.decider.isPathInfeasible) {
       val analysisInfos1 = v.decider.handleAndGetUpdatedAnalysisInfos(analysisInfos, conditionExp._1.info, conditionExp._1)
-      v.decider.dependencyAnalyzer.addAssumption(condition, analysisInfos1)
+      v.decider.handleInfeasiblePath(false, true, analysisInfos1)
       return fThen(s, v).combine(fElse(s, v))
     }
 

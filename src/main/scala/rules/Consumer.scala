@@ -200,7 +200,7 @@ object consumer extends ConsumptionRules {
      */
 
     if (v.decider.isPathInfeasible) {
-      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfos)
+      v.decider.handleInfeasiblePath(true, false, analysisInfos)
       return Q(s, h, Option.when(returnSnap)(Unit), v)
     }
 

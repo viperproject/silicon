@@ -89,7 +89,7 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
 
   private object workerVerifierPoolableObjectFactory extends BasePooledObjectFactory[WorkerVerifier] {
     def create(): WorkerVerifier = {
-      val worker = new WorkerVerifier(mainVerifier, mainVerifier.nextUniqueVerifierId(), mainVerifier.reporter, Verifier.config.enableDebugging())
+      val worker = mainVerifier.createWorkerVerifier()
       workerVerifiers = worker +: workerVerifiers
 
       worker

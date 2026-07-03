@@ -11,7 +11,6 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.Decider
 import viper.silicon.dependencyAnalysis._
-import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
@@ -44,7 +43,11 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
   private case class Phase1Data(sPre: State, bcsPre: Stack[Term], bcsPreExp: Stack[(ast.Exp, Option[ast.Exp])], pcsPre: InsertionOrderedSet[Term], pcsPreExp: Option[InsertionOrderedSet[DebugExp]])
 
-  object functionsSupporter
+	def functionsSupporter: FunctionsSupporter = DefaultFunctionsSupporter
+
+  object DefaultFunctionsSupporter extends FunctionsSupporter
+
+  trait FunctionsSupporter
       extends FunctionVerificationUnit[Sort, Decl, Term]
          with StatefulComponent {
 
@@ -54,7 +57,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     @unused private var program: ast.Program = _
     /*private*/ var functionData: Map[String, FunctionData] = Map.empty
-    private var emittedFunctionAxioms: Vector[(Term, DependencyAnalysisAxiomInfo)] = Vector.empty
+    protected var emittedFunctionAxioms: Vector[(Term, DependencyAnalysisAxiomInfo)] = Vector.empty
     private var freshVars: Vector[Var] = Vector.empty
     private var postConditionAxioms: Vector[(Term, DependencyAnalysisAxiomInfo)] = Vector.empty
 
@@ -172,32 +175,20 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       v.decider.resetProverOptions()
       symbExLog.closeMemberScope()
 
-      val allErrors = (res :: res.previous.toList).filter(_.isInstanceOf[Failure]).map(_.asInstanceOf[Failure])
-
-      res.dependencyGraphInterpreter = v.decider.dependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(function.name, _,
-        allErrors, Some(function)))
-
       Seq(res)
     }
 
-    private def handleFunction(sInit: State, function: ast.Function): VerificationResult = {
+    protected def handleFunction(sInit: State, function: ast.Function): VerificationResult = {
       val data = functionData(function.name)
       val s = sInit.copy(functionRecorder = ActualFunctionRecorder(Left(data)),
         conservingSnapshotGeneration = true,
         assertReadAccessOnly = !Verifier.config.respectFunctionPrePermAmounts())
 
-
-      val presAssertionNodeForJoin = function.pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(pc)), List(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up)), function.name))
-      presAssertionNodeForJoin foreach v.decider.dependencyAnalyzer.addAssertionNode
-
-
       /* Phase 1: Check well-definedness of the specifications */
       checkSpecificationWelldefinedness(s, function) match {
         case (result1: FatalResult, _) =>
           data.verificationFailures = data.verificationFailures :+ result1
-
           result1
-
         case (result1, phase1data) =>
           emitAndRecordFunctionAxioms(data.limitedAxiom)
           emitAndRecordFunctionAxioms(data.triggerAxiom)
@@ -206,8 +197,6 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom
 
           if (function.body.isEmpty) {
-            decider.dependencyAnalyzer.addNodes(v.decider.prover.getPreambleAnalysisNodes)
-            decider.dependencyAnalyzer.addDependenciesForAbstractMembers(function.pres.flatMap(_.topLevelConjuncts), function.posts.flatMap(_.topLevelConjuncts), DependencyAnalysisInfos.DefaultDependencyAnalysisInfos)
             result1
           } else {
             /* Phase 2: Verify the function's postcondition */
@@ -280,7 +269,6 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       var recorders: Seq[FunctionRecorder] = Vector.empty
       val wExp = evaluator.withExp
-      decider.dependencyAnalyzer.addNodes(v.decider.prover.getPreambleAnalysisNodes)
 
       val precondAnalysisSourceInfos = DependencyAnalysisInfos.create("preconditions", DependencyType.Internal)
       val analysisInfosPostcondition = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))
@@ -312,15 +300,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       result
     }
 
-    private def emitAndRecordFunctionAxioms(axiom: (Term, DependencyAnalysisAxiomInfo)*): Unit = {
-      val cleanAxiom =
-        if (!Verifier.config.enableDependencyAnalysis()) axiom
-        else axiom.map(a => (a._1.transform{
-          case Var(name, _, _) if name.name.startsWith(DependencyAnalyzer.analysisLabelName) => True // replace dependency analysis labels by True to avoid errors
-        }(), a._2))
-      decider.prover.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(cleanAxiom), "Function axioms")
-
-      emittedFunctionAxioms = emittedFunctionAxioms ++ cleanAxiom
+    protected def emitAndRecordFunctionAxioms(axiom: (Term, DependencyAnalysisAxiomInfo)*): Unit = {
+      decider.prover.assumeAxioms(InsertionOrderedSet(axiom.map(_._1)), "Function axioms")
+      emittedFunctionAxioms = emittedFunctionAxioms ++ axiom
     }
 
     private def generateFunctionSymbolsAfterVerification: Iterable[Either[String, Decl]] = {
@@ -355,7 +337,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     val axiomsAfterVerification: Iterable[Term] = emittedFunctionAxioms.map(_._1)
 
     def emitAxiomsAfterVerification(sink: ProverLike): Unit = {
-      sink.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(emittedFunctionAxioms), "Function axioms")
+      sink.assumeAxioms(InsertionOrderedSet(emittedFunctionAxioms.map(_._1)), "Function axioms")
     }
 
     /* Lifetime */

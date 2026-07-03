@@ -1,12 +1,13 @@
 package viper.silicon.state
 
 import viper.silicon
-import viper.silicon.decider.{Decider, DependencyAnalysisDeciderFeatures}
+import viper.silicon.decider.Decider
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
 import viper.silicon.interfaces.state.{GeneralChunk, NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon.resources.BaseID
 import viper.silicon.rules.InverseFunctions
 import viper.silicon.state.terms.{MagicWandSnapshot, Term, Var}
+import viper.silicon.verifier.DependencyAnalysisDeciderFeatures
 import viper.silver.ast
 import viper.silver.dependencyAnalysis.DependencyType
 

@@ -84,7 +84,6 @@ trait FunctionRecorderHandler {
         case other => sys.error(s"Unexpected permission map $other of type ${other.getClass.getSimpleName}")
       })
   }
-
 }
 
 class FunctionData(val programFunction: ast.Function,
