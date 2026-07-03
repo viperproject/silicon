@@ -31,7 +31,7 @@ trait ConsumptionRules extends SymbolicExecutionRules {
     * @param returnSnap Whether a snapshot should be returned or not.
     * @param pve The error to report in case the consumption fails.
     * @param v The verifier to use.
-    * @param dependencyType The assumption type used for dependency analysis and proof coverage
+    * @param analysisInfos Information for the dependency analysis.
     * @param Q The continuation to invoke if the consumption succeeded, with the following
     *          arguments: state (1st argument) and verifier (3rd argument) resulting from the
     *          consumption, and a heap snapshot (2bd argument )representing the values of the
@@ -54,7 +54,7 @@ trait ConsumptionRules extends SymbolicExecutionRules {
     * @param pvef The error to report in case a consumption fails. Given assertions `as`, an error
     *             `pvef(as_i)` will be reported if consuming assertion `as_i` fails.
     * @param v @see [[consume]]
-    * @param dependencyType @see [[consume]]
+    * @param analysisInfos @see [[consume]]
     * @param Q @see [[consume]]
     * @return @see [[consume]]
     */
@@ -381,7 +381,8 @@ object consumer extends ConsumptionRules {
               State.mergeHeap(
                 entry1.data._1, And(entry1.pathConditions.branchConditions), Option.when(withExp)(BigAnd(entry1.pathConditions.branchConditionExps.map(_._2.get))),
                 entry2.data._1, And(entry2.pathConditions.branchConditions), Option.when(withExp)(BigAnd(entry2.pathConditions.branchConditionExps.map(_._2.get))),
-                AnalysisInfo(v.decider, v.decider.dependencyAnalyzer, analysisInfos.withSource(StringAnalysisSourceInfo("conditional join", e0.pos)))
+								v1,
+								analysisInfos.withSource(StringAnalysisSourceInfo("conditional join", e0.pos))
               ),
               // Assume that entry1.pcs is inverse of entry2.pcs
               (entry1.data._2, entry2.data._2) match {

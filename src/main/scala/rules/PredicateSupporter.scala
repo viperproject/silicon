@@ -106,7 +106,7 @@ object predicateSupporter extends PredicateSupportRules {
       case PredicateLeafNode(h, assumptions) =>
         val debugExp = Option.when(withExp)(DebugExp.createInstance("Assumption from unfolded predicate body"))
         assumptions.foreach(a => v.decider.assume(a.replace(toReplace), debugExp, analysisInfos))
-        val substChunks = h.values.map(chunk => GeneralChunk.permScale(GeneralChunk.substitute(chunk.asInstanceOf[GeneralChunk], toReplace, v.decider.getAnalysisInfo(analysisInfos)), s.permissionScalingFactor, s.permissionScalingFactorExp, v.decider.getAnalysisInfo(analysisInfos)))
+        val substChunks = h.values.map(chunk => v.chunkFactory.permScale(v.chunkFactory.substitute(chunk.asInstanceOf[GeneralChunk], toReplace, analysisInfos), s.permissionScalingFactor, s.permissionScalingFactorExp, analysisInfos))
 
         val quantifiedResourceIdentifiers: Set[ChunkIdentifer] = s.qpPredicates.map(p => BasicChunkIdentifier(p.name)) ++ s.qpFields.map(f => BasicChunkIdentifier(f.name)) ++ s.qpMagicWands
 

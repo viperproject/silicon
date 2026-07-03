@@ -63,8 +63,6 @@ trait Decider {
 
 	def debuggerAssume(terms: Iterable[Term], de: DebugExp)
 
-  def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean): CH
-  def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH
   def wrapWithDependencyAnalysisLabel(term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term
   def isPathInfeasible: Boolean
 
@@ -118,7 +116,6 @@ trait Decider {
   var dependencyAnalyzer: DependencyAnalyzer
   def initDependencyAnalyzer(member: Member, preambleNodes: Iterable[DependencyAnalysisNode]): Unit
   def removeDependencyAnalyzer(): Unit
-  def getAnalysisInfo(daInfos: DependencyAnalysisInfos): AnalysisInfo
   def isDependencyAnalysisEnabled: Boolean
   def handleFailedAssertion(failedAssertion: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit
 }
@@ -159,7 +156,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def isDependencyAnalysisEnabled: Boolean = false
     override def initDependencyAnalyzer(member: Member, preambleNodes: Iterable[DependencyAnalysisNode]): Unit = {}
     override def removeDependencyAnalyzer(): Unit = {}
-    def getAnalysisInfo(analysisInfos: DependencyAnalysisInfos): AnalysisInfo = AnalysisInfo(this, dependencyAnalyzer, analysisInfos)
 
     def functionDecls: Set[FunctionDecl] = _declaredFreshFunctions
     def macroDecls: Vector[MacroDecl] = _declaredFreshMacros
@@ -302,10 +298,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         pathConditions.finishDebugSubExp(description)
       }
     }
-
-    def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean): CH = buildChunk(perm)
-
-    def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH = buildChunk(perm)
 
     def wrapWithDependencyAnalysisLabel(term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term = term
 
@@ -620,7 +612,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     override def clearModel(): Unit = prover.clearLastAssert()
   }
 
-	object DependencyAnalysisAwareDecider extends DefaultDecider {
+	object DependencyAnalysisAwareDecider extends DefaultDecider with DependencyAnalysisDeciderFeatures {
 
 		override def isDependencyAnalysisEnabled: Boolean = Verifier.config.enableDependencyAnalysis() && !dependencyAnalyzer.isInstanceOf[NoDependencyAnalyzer]
 
@@ -629,7 +621,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 			if (isAnalysisEnabled) {
 				dependencyAnalyzer = new DefaultDependencyAnalyzer(Some(member))
 				dependencyAnalyzer.addNodes(preambleNodes)
-			}else{
+			} else {
 				removeDependencyAnalyzer()
 			}
 		}
@@ -638,20 +630,20 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 			dependencyAnalyzer = new NoDependencyAnalyzer
 		}
 
-		override def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean): CH = {
-			registerDerivedChunk[CH](Set.empty, buildChunk, perm, analysisInfo, isExhale)
+		override def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfos: DependencyAnalysisInfos, isExhale: Boolean): CH = {
+			registerDerivedChunk(Set.empty, buildChunk, perm, analysisInfos, isExhale)
 		}
 
-		override def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH = {
+		override def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfos: DependencyAnalysisInfos, isExhale: Boolean, createLabel: Boolean = true): CH = {
 			if (!isDependencyAnalysisEnabled)
 				return buildChunk(perm)
 
 			val labelNodeOpt = getOrCreateAnalysisLabelNode()
 
 			if (isExhale)
-				dependencyAnalyzer.registerExhaleChunk(sourceChunks, buildChunk, perm, labelNodeOpt, analysisInfo)
+				dependencyAnalyzer.registerExhaleChunk(sourceChunks, buildChunk, perm, labelNodeOpt, analysisInfos)
 			else {
-				dependencyAnalyzer.registerInhaleChunk(sourceChunks, buildChunk, perm, labelNodeOpt, analysisInfo)
+				dependencyAnalyzer.registerInhaleChunk(sourceChunks, buildChunk, perm, labelNodeOpt, analysisInfos)
 			}
 		}
 
@@ -755,4 +747,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 			result
 		}
 	}
+}
+
+trait DependencyAnalysisDeciderFeatures {
+	def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfos: DependencyAnalysisInfos, isExhale: Boolean): CH
+
+	def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfos: DependencyAnalysisInfos, isExhale: Boolean, createLabel: Boolean = true): CH
 }

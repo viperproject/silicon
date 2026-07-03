@@ -206,8 +206,8 @@ object chunkSupporter extends ChunkSupportRules {
           val toTake = PermMin(ch.perm, perms)
           val toTakeExp = permsExp.map(pe => buildMinExp(Seq(ch.permExp.get, pe), ast.Perm))
           val newPermExp = permsExp.map(pe => ast.PermSub(ch.permExp.get, toTakeExp.get)(pe.pos, pe.info, pe.errT))
-          val newChunk = NonQuantifiedChunk.withPerm(ch, PermMinus(ch.perm, toTake), newPermExp, v.decider.getAnalysisInfo(analysisInfos))
-          val takenChunk = Some(NonQuantifiedChunk.withPerm(ch, toTake, toTakeExp, v.decider.getAnalysisInfo(analysisInfos), isExhale=true))
+          val newChunk = v.chunkFactory.withPermNonQuantifiedChunk(ch, PermMinus(ch.perm, toTake), newPermExp, analysisInfos)
+          val takenChunk = Some(v.chunkFactory.withPermNonQuantifiedChunk(ch, toTake, toTakeExp, analysisInfos, isExhale=true))
           var newHeap = h - ch
           if (!v.decider.check(newChunk.perm === NoPerm, Verifier.config.checkTimeout(), analysisInfos.withDependencyType(DependencyType.Internal))) {
             newHeap = newHeap + newChunk
@@ -220,8 +220,8 @@ object chunkSupporter extends ChunkSupportRules {
             val constraintExp = permsExp.map(pe => ast.PermLtCmp(pe, ch.permExp.get)(pe.pos, pe.info, pe.errT))
             v.decider.assume(PermLess(perms, ch.perm), Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)), analysisInfos)
             val newPermExp = permsExp.map(pe => ast.PermSub(ch.permExp.get, pe)(pe.pos, pe.info, pe.errT))
-            val newChunk = NonQuantifiedChunk.withPerm(ch, PermMinus(ch.perm, perms), newPermExp, v.decider.getAnalysisInfo(analysisInfos))
-            val takenChunk = NonQuantifiedChunk.withPerm(ch, perms, permsExp, v.decider.getAnalysisInfo(analysisInfos), isExhale=true)
+            val newChunk = v.chunkFactory.withPermNonQuantifiedChunk(ch, PermMinus(ch.perm, perms), newPermExp, analysisInfos)
+            val takenChunk = v.chunkFactory.withPermNonQuantifiedChunk(ch, perms, permsExp, analysisInfos, isExhale=true)
             val newHeap = h - ch + newChunk
             assumeProperties(newChunk, newHeap)
             (Complete(), s, newHeap, Some(takenChunk))

@@ -13,7 +13,6 @@ import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos.DefaultDependencyAnalysisInfos
 import viper.silicon.interfaces._
-import viper.silicon.interfaces.state.{NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -505,7 +504,6 @@ object executor extends ExecutionRules {
       case ast.MethodCall(methodName, _, _)
           if !Verifier.config.disableHavocHack407() && methodName.startsWith(hack407_method_name_prefix) =>
 
-        val analysisInfo = v.decider.getAnalysisInfo(analysisInfos)
         val resourceName = methodName.stripPrefix(hack407_method_name_prefix)
         val member = s.program.collectFirst {
           case m: ast.Field if m.name == resourceName => m
@@ -513,11 +511,11 @@ object executor extends ExecutionRules {
         }.getOrElse(sys.error(s"Found $methodName, but no matching field or predicate $resourceName"))
         val h1 = Heap(s.h.values.map {
           case bc: BasicChunk if bc.id.name == member.name =>
-            NonQuantifiedChunk.withSnap(bc, freshSnap(bc.snap.sort, v), None, analysisInfo)
+            v.chunkFactory.withSnap(bc, freshSnap(bc.snap.sort, v), None, analysisInfos)
           case qfc: QuantifiedFieldChunk if qfc.id.name == member.name =>
-            QuantifiedChunk.withSnapshotMap(qfc,freshSnap(qfc.fvf.sort, v), analysisInfo)
+            v.chunkFactory.withSnapshotMap(qfc,freshSnap(qfc.fvf.sort, v), analysisInfos)
           case qpc: QuantifiedPredicateChunk if qpc.id.name == member.name =>
-            QuantifiedChunk.withSnapshotMap(qpc, freshSnap(qpc.psf.sort, v), analysisInfo)
+            v.chunkFactory.withSnapshotMap(qpc, freshSnap(qpc.psf.sort, v), analysisInfos)
           case other =>
             other})
         Q(s.copy(h = h1), v)

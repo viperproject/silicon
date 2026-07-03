@@ -131,5 +131,5 @@ private case class DummyChunk() extends Chunk {
   val perm: Term = NoPerm
   val permExp: Option[ast.Exp] = None
 
-  override protected def substitute(terms: silicon.Map[Term, Term]): Chunk = this
+  override def substitute(terms: silicon.Map[Term, Term]): Chunk = this
 }

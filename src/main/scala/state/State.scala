@@ -8,23 +8,21 @@ package viper.silicon.state
 
 import viper.silicon.Config.JoinMode
 import viper.silicon.Config.JoinMode.JoinMode
-import viper.silicon.dependencyAnalysis.AnalysisInfo
-import viper.silver.ast
-import viper.silver.cfg.silver.SilverCfg
 import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
-import viper.silicon.interfaces.state.GeneralChunk
+import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
+import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.state.State.OldHeaps
-import viper.silicon.state.terms.{And, Ite, Term, True, Var}
-import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.predef.`?r`
-import viper.silicon.state.terms.{And, Ite}
+import viper.silicon.state.terms.{And, Ite, Term, Var}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, Stack}
+import viper.silver.ast
+import viper.silver.cfg.silver.SilverCfg
 import viper.silver.utility.Sanitizer
 
 final case class State(g: Store = Store(),
@@ -327,33 +325,32 @@ object State {
   }
 
   // Puts a collection of chunks under a condition.
-  private def conditionalizeChunks(h: Iterable[Chunk], cond: Term, condExp: Option[ast.Exp], analysisInfo: AnalysisInfo): Iterable[Chunk] = {
+  private def conditionalizeChunks(h: Iterable[Chunk], cond: Term, condExp: Option[ast.Exp], v: Verifier, analysisInfos: DependencyAnalysisInfos): Iterable[Chunk] = {
     h map (c => {
       c match {
-        case c: GeneralChunk =>
-          GeneralChunk.applyCondition(c, cond, condExp, analysisInfo)
+        case c: GeneralChunk => v.chunkFactory.applyCondition(c, cond, condExp, analysisInfos)
         case _ => sys.error("Chunk type not conditionalizable.")
       }
     })
   }
 
   // Puts a heap under a condition.
-  private def conditionalizeHeap(h: Heap, cond: Term, condExp: Option[ast.Exp], analysisInfo: AnalysisInfo): Heap = {
-    Heap(conditionalizeChunks(h.values, cond, condExp, analysisInfo))
+  private def conditionalizeHeap(h: Heap, cond: Term, condExp: Option[ast.Exp], v: Verifier, analysisInfos: DependencyAnalysisInfos): Heap = {
+    Heap(conditionalizeChunks(h.values, cond, condExp, v, analysisInfos))
   }
 
   // Merges two heaps together, by putting h1 under condition cond1,
   // and h2 under cond2.
   // Assumes that cond1 is the negation of cond2.
-  def mergeHeap(h1: Heap, cond1: Term, cond1Exp: Option[ast.Exp], h2: Heap, cond2: Term, cond2Exp: Option[ast.Exp], analysisInfo: AnalysisInfo): Heap = {
+  def mergeHeap(h1: Heap, cond1: Term, cond1Exp: Option[ast.Exp], h2: Heap, cond2: Term, cond2Exp: Option[ast.Exp], v: Verifier, analysisInfos: DependencyAnalysisInfos): Heap = {
     val (unconditionalHeapChunks, h1HeapChunksToConditionalize) = h1.values.partition(c1 => h2.values.exists(_ == c1))
     val h2HeapChunksToConditionalize = h2.values.filter(c2 => !unconditionalHeapChunks.exists(_ == c2))
-    val h1ConditionalizedHeapChunks = conditionalizeChunks(h1HeapChunksToConditionalize, cond1, cond1Exp, analysisInfo)
-    val h2ConditionalizedHeapChunks = conditionalizeChunks(h2HeapChunksToConditionalize, cond2, cond2Exp, analysisInfo)
+    val h1ConditionalizedHeapChunks = conditionalizeChunks(h1HeapChunksToConditionalize, cond1, cond1Exp, v, analysisInfos)
+    val h2ConditionalizedHeapChunks = conditionalizeChunks(h2HeapChunksToConditionalize, cond2, cond2Exp, v, analysisInfos)
     Heap(unconditionalHeapChunks) + Heap(h1ConditionalizedHeapChunks) + Heap(h2ConditionalizedHeapChunks)
   }
 
-  def merge(s1: State, pc1: RecordedPathConditions, s2: State, pc2: RecordedPathConditions, analysisInfo: AnalysisInfo): State = {
+  def merge(s1: State, pc1: RecordedPathConditions, s2: State, pc2: RecordedPathConditions, v: Verifier, analysisInfos: DependencyAnalysisInfos): State = {
     s1 match {
       /* Decompose state s1 */
       case State(g1, h1, program, member,
@@ -434,16 +431,17 @@ object State {
 
             val g3 = mergeStore(g1, g2)
 
-            val h3 = mergeHeap(h1, conditions1, conditions1Exp, h2, conditions2, conditions2Exp, analysisInfo)
+            val h3 = mergeHeap(h1, conditions1, conditions1Exp, h2, conditions2, conditions2Exp, v, analysisInfos)
 
             val partiallyConsumedHeap3 = (partiallyConsumedHeap1, partiallyConsumedHeap2) match {
               case (None, None) => None
-              case (Some(pch1), None) => Some(conditionalizeHeap(pch1, conditions1, conditions1Exp, analysisInfo))
-              case (None, Some(pch2)) => Some(conditionalizeHeap(pch2, conditions2, conditions2Exp, analysisInfo))
+              case (Some(pch1), None) => Some(conditionalizeHeap(pch1, conditions1, conditions1Exp, v, analysisInfos))
+              case (None, Some(pch2)) => Some(conditionalizeHeap(pch2, conditions2, conditions2Exp, v, analysisInfos))
               case (Some(pch1), Some(pch2)) => Some(mergeHeap(
                 pch1, conditions1, conditions1Exp,
                 pch2, conditions2, conditions2Exp,
-                analysisInfo
+								v,
+                analysisInfos
               ))
             }
 
@@ -452,18 +450,18 @@ object State {
               None
             })
             ((heap1, cond1, heap2, cond2) => {
-              Some(mergeHeap(heap1, cond1._1, cond1._2, heap2, cond2._1, cond2._2, analysisInfo))
+              Some(mergeHeap(heap1, cond1._1, cond1._2, heap2, cond2._1, cond2._2, v, analysisInfos))
             }))
 
             assert(invariantContexts1.length == invariantContexts2.length)
             val invariantContexts3 = invariantContexts1
               .zip(invariantContexts2)
-              .map({case (h1, h2) => mergeHeap(h1, conditions1, conditions1Exp, h2, conditions2, conditions2Exp, analysisInfo)})
+              .map({case (h1, h2) => mergeHeap(h1, conditions1, conditions1Exp, h2, conditions2, conditions2Exp, v, analysisInfos)})
 
             assert(reserveHeaps1.length == reserveHeaps2.length)
             val reserveHeaps3 = reserveHeaps1
               .zip(reserveHeaps2)
-              .map({case (h1, h2) => mergeHeap(h1, conditions1, conditions1Exp, h2, conditions2, conditions2Exp, analysisInfo)})
+              .map({case (h1, h2) => mergeHeap(h1, conditions1, conditions1Exp, h2, conditions2, conditions2Exp, v, analysisInfos)})
 
 
             assert(conservedPcs1.length == conservedPcs2.length)

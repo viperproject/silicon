@@ -12,8 +12,8 @@ import viper.silicon.decider.Decider
 import viper.silicon.logger.MemberSymbExLogger
 import viper.silicon.reporting.StateFormatter
 import viper.silicon.rules.{HeapSupportRules, StateConsolidationRules, defaultHeapSupporter}
+import viper.silicon.state._
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
-import viper.silicon.state.{Heap, IdentifierFactory, State, SymbolConverter}
 import viper.silicon.supporters.{QuantifierSupporter, SnapshotSupporter}
 import viper.silicon.utils.Counter
 import viper.silver.ast
@@ -36,6 +36,7 @@ trait Verifier {
   def symbolConverter: SymbolConverter
   def stateFormatter: StateFormatter
   def identifierFactory: IdentifierFactory
+	def chunkFactory: ChunkFactory
   def triggerGenerator: TriggerGenerator
   def axiomRewriter: AxiomRewriter
   def quantifierSupporter: QuantifierSupporter

@@ -11,7 +11,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces.VerificationResult
-import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk, QuantifiedChunk}
+import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.havocSupporter.{HavocHelperData, HavocOneData, HavocallData}
 import viper.silicon.rules.quantifiedChunkSupporter.freshSnapshotMap
@@ -249,7 +249,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val lhsSourceInfos = analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(ass.lhs))) // splitting lhs and rhs to make permission flow analysis more precise
       chunkSupporter.consume(s, s.h, field, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v, description, lhsSourceInfos)((s3, h3, _, v3) => {
         val id = BasicChunkIdentifier(field.name)
-        val newChunk = BasicChunk.apply(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tRhs, eRhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), v3.decider.getAnalysisInfo(lhsSourceInfos.withDependencyType(DependencyType.Internal)))
+        val newChunk = v3.chunkFactory.createBasicChunk(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tRhs, eRhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), lhsSourceInfos.withDependencyType(DependencyType.Internal))
         chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
           val s5 = s4.copy(h = h4)
           val (debugHeapName, _) = v4.getDebugOldLabel(s5, ass.lhs.pos, Some(magicWandSupporter.getEvalHeap(s5)))
@@ -515,7 +515,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
         case _ =>
           val chunkId = ChunkIdentifier(resource, s.program)
           val (resId, snap1) = if (resource.isInstanceOf[ast.Field]) (FieldID, tSnap) else (PredicateID, tSnap.convert(sorts.Snap))
-          val ch = BasicChunk.apply(resId, chunkId.asInstanceOf[BasicChunkIdentifier], tArgs, eArgs, snap1, eSnap, tPerm, ePerm, v.decider.getAnalysisInfo(analysisInfos))
+          val ch = v.chunkFactory.createBasicChunk(resId, chunkId.asInstanceOf[BasicChunkIdentifier], tArgs, eArgs, snap1, eSnap, tPerm, ePerm, analysisInfos)
           if (mergeAndTrigger) {
             chunkSupporter.produce(s, s.h, ch, v)((s2, h2, v2) => {
               if (resource.isInstanceOf[ast.Predicate] && Verifier.config.enablePredicateTriggersOnInhale() && s2.functionRecorder == NoopFunctionRecorder
@@ -740,12 +740,12 @@ class DefaultHeapSupportRules extends HeapSupportRules {
         val havockedSnap = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction, Option.when(withExp)(PUnknown()))
         val cond = replacementCond(lhs, ch.args, condInfo)
         val magicWandSnapshot = MagicWandSnapshot(Ite(cond, havockedSnap, ch.snap.mwsf))
-        NonQuantifiedChunk.withSnap(ch, magicWandSnapshot, None, v.decider.getAnalysisInfo(analysisInfos))
+        v.chunkFactory.withSnap(ch, magicWandSnapshot, None, analysisInfos)
 
       case ch =>
         val havockedSnap = freshSnap(ch.snap.sort, v)
         val cond = replacementCond(lhs, ch.args, condInfo)
-        NonQuantifiedChunk.withSnap(ch, Ite(cond, havockedSnap, ch.snap), None, v.decider.getAnalysisInfo(analysisInfos))
+        v.chunkFactory.withSnap(ch, Ite(cond, havockedSnap, ch.snap), None, analysisInfos)
     }
     Heap(otherChunks ++ newChunks)
   }
@@ -827,7 +827,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val debugExp = Option.when(withExp)(DebugExp.createInstance("havoc new axiom", isInternal_ = true))
       v.decider.assume(newAxiom, debugExp, analysisInfos)
 
-      QuantifiedChunk.withSnapshotMap(ch, newSm, v.decider.getAnalysisInfo(analysisInfos))
+      v.chunkFactory.withSnapshotMap(ch, newSm, analysisInfos)
     }
     Heap(newChunks ++ otherChunks)
   }

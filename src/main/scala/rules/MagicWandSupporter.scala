@@ -96,8 +96,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
                  : VerificationResult = {
     evaluateWandArguments(s, wand, pve, v, analysisInfos)((s1, ts, esNew, v1) => {
-      val newChunk = MagicWandChunk(MagicWandIdentifier(wand, s.program), s1.g.values, ts, esNew, snap, FullPerm,
-        Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), v.decider.getAnalysisInfo(analysisInfos))
+      val newChunk = v1.chunkFactory.createMagicWandChunk(MagicWandIdentifier(wand, s.program), s1.g.values, ts, esNew, snap, FullPerm,
+        Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), analysisInfos)
       Q(s1, newChunk, v1)
     })
   }
@@ -341,8 +341,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
           val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark).definitionsOnly
           (s2, ch, conservedPcs.flatMap(_.conditionalized), Option.when(withExp)(conservedPcs.flatMap(_.conditionalizedExp)), v2)
         } else {
-          val ch = MagicWandChunk.apply(MagicWandIdentifier(wand, s.program), s2.g.values, tArgs, eArgsNew, wandSnapshot, FullPerm,
-            Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), v.decider.getAnalysisInfo(analysisInfos))
+          val ch = v2.chunkFactory.createMagicWandChunk(MagicWandIdentifier(wand, s.program), s2.g.values, tArgs, eArgsNew, wandSnapshot, FullPerm,
+            Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), analysisInfos)
           val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark).definitionsOnly
           // Partition path conditions into a set which include the freshSnapRoot and those which do not
           val (pcsWithFreshSnapRoot, pcsWithoutFreshSnapRoot) = conservedPcs.flatMap(pcs => pcs.conditionalized).partition(_.contains(freshSnapRoot))

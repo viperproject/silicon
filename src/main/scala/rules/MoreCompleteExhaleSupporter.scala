@@ -396,8 +396,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm))
             pSumExp = eqExp.map(eq => ast.PermAdd(pSumExp.get, ast.CondExp(eq, ch.permExp.get, ast.NoPerm()())(eq.pos, eq.info, eq.errT))())
 
-            val newChunk = GeneralChunk.withPerm(ch, PermMinus(ch.perm, pTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT)), v.decider.getAnalysisInfo(analysisInfos)).asInstanceOf[NonQuantifiedChunk]
-            val _ = GeneralChunk.withPerm(ch, pTaken, None, v.decider.getAnalysisInfo(analysisInfos), isExhale=true)
+            val newChunk = v.chunkFactory.withPerm(ch, PermMinus(ch.perm, pTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT)), analysisInfos).asInstanceOf[NonQuantifiedChunk]
+            val _ = v.chunkFactory.withPerm(ch, pTaken, None, analysisInfos, isExhale=true)
             pNeeded = PermMinus(pNeeded, pTaken)
             pNeededExp = permsExp.map(pe => ast.PermSub(pNeededExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT))
 
@@ -489,7 +489,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     var newFr = s.functionRecorder
 
 
-    val updatedChunks =
+    val updatedChunks: ListBuffer[NonQuantifiedChunk] =
       relevantChunks map (ch => {
         val eqCmps = ch.args.zip(args).map { case (t1, t2) => t1 === t2 }
         val eq = And(eqCmps)
@@ -518,8 +518,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         newFr = newFr.recordPathSymbol(permTaken.applicable.asInstanceOf[Function]).recordConstraint(constraint)
 
         @unused // required in order to ensure a sound dependency analysis
-        val _ = GeneralChunk.withPerm(ch, permTaken, None, v.decider.getAnalysisInfo(analysisInfos), isExhale=true)
-        NonQuantifiedChunk.withPerm(ch, PermMinus(ch.perm, permTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, permTakenExp.get)(pe.pos, pe.info, pe.errT)), v.decider.getAnalysisInfo(analysisInfos))
+        val _ = v.chunkFactory.withPermNonQuantifiedChunk(ch, permTaken, None, analysisInfos, isExhale=true)
+        v.chunkFactory.withPermNonQuantifiedChunk(ch, PermMinus(ch.perm, permTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, permTakenExp.get)(pe.pos, pe.info, pe.errT)), analysisInfos)
       })
 
     val totalTakenBounds =

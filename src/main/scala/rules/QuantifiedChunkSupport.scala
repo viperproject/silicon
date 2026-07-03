@@ -449,7 +449,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         assert(optSingletonArguments.fold(true)(_.length == 1))
         assert(optSingletonArgumentsExp.fold(true)(_.length == 1))
 
-        QuantifiedFieldChunk(
+        v.chunkFactory.createQuantifiedFieldChunk(
           BasicChunkIdentifier(field.name),
           sm,
           condition,
@@ -460,11 +460,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           optSingletonArguments.map(_.head),
           optSingletonArgumentsExp.map(_.head),
           hints,
-          v.decider.getAnalysisInfo(analysisInfos),
+          analysisInfos,
           isExhale)
 
       case predicate: ast.Predicate =>
-        QuantifiedPredicateChunk(
+        v.chunkFactory.createQuantifiedPredicateChunk(
           BasicChunkIdentifier(predicate.name),
           codomainQVars,
           codomainQVarExps,
@@ -477,13 +477,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           optSingletonArguments,
           optSingletonArgumentsExp,
           hints,
-          v.decider.getAnalysisInfo(analysisInfos),
+          analysisInfos,
           isExhale)
 
       case wand: ast.MagicWand =>
         val conditionalizedPermissions = Ite(condition, permissions, NoPerm)
         val conditionalizedPermissionsExp = conditionExp.map(ce => ast.CondExp(ce, permissionsExp.get, ast.NoPerm()())(ce.pos, ce.info, ce.errT))
-        QuantifiedMagicWandChunk(
+        v.chunkFactory.createQuantifiedMagicWandChunk(
           MagicWandIdentifier(wand, program),
           codomainQVars,
           codomainQVarExps,
@@ -494,7 +494,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           optSingletonArguments,
           optSingletonArgumentsExp,
           hints,
-          v.decider.getAnalysisInfo(analysisInfos),
+          analysisInfos,
           isExhale)
 
       case other =>
@@ -1676,7 +1676,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
           v.decider.assume(permissionConstraint, permissionConstraintExp, permissionConstraintExp, analysisInfos)
           remainingChunks =
-            remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.getAnalysisInfo(analysisInfos))
+            remainingChunks :+ v.chunkFactory.permMinus(ithChunk, ithPTaken, ithPTakenExp, analysisInfos)
         } else {
           v.decider.prover.comment(s"Chunk depleted?")
           val chunkDepleted = v.decider.check(depletedCheck, Verifier.config.splitTimeout(), analysisInfos.withDependencyType(DependencyType.Internal))
@@ -1687,10 +1687,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               remainingChunks = remainingChunks :+ ithChunk
             } else {
               remainingChunks =
-                remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.getAnalysisInfo(analysisInfos))
+                remainingChunks :+ v.chunkFactory.permMinus(ithChunk, ithPTaken, ithPTakenExp, analysisInfos)
             }
           }else{
-            val _ = GeneralChunk.withPerm(ithChunk, ithPTaken, None, v.decider.getAnalysisInfo(analysisInfos), isExhale=true)
+            val _ = v.chunkFactory.withPerm(ithChunk, ithPTaken, None, analysisInfos, isExhale=true)
           }
         }
 
