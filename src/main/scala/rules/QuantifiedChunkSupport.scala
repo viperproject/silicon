@@ -669,7 +669,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                            v: Verifier)
                           : (Term, Term) = {
 
-    // Snapshot maps are also parameterized by packagingWandSnapshots, so that each apply of the wand gets its own LHS snapshot.
     val additionalSmArgs = s.packagingWandSnapshots.map(_._1) ++ s.relevantQuantifiedVariables(arguments).map(_._1)
     val sm = freshSnapshotMap(s, resource, additionalSmArgs, v)
     val smValueDef = BuiltinEquals(ResourceLookup(resource, sm, arguments, s.program), value)
@@ -1557,8 +1556,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     v.decider.prover.comment("Precomputing data for removing quantified permissions")
 
-    // Permission maps deliberately exclude packagingWandSnapshots (would break permission matching after a package).
-    val additionalArgs = (s.functionRecorderQuantifiedVariables() ++ s.quantifiedVariables).map(_._1)
+    val additionalArgs = (s.packagingWandSnapshots ++ s.functionRecorderQuantifiedVariables() ++ s.quantifiedVariables).map(_._1)
     var currentFunctionRecorder = s.functionRecorder
 
     val precomputedData = candidates map { ch =>

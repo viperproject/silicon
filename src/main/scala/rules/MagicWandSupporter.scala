@@ -314,10 +314,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val bodyVars = wand.subexpressionsToEvaluate(s.program)
 
       evals(s, bodyVars, _ => pve, v)((s2, tArgs, eArgsNew, v2) => {
-        // Partition the conserved PCs here, before the singleton-SM value def is assumed below, so that
+        // Partition the conserved PCs here, before any definitions about the new wand chunks are assumed below, so that
         // the ground value def is not bundled into (and trapped inside) the freshSnapRoot quantifier.
         val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark).definitionsOnly
-        // Partition path conditions into a set which include the freshSnapRoot and those which do not
+
         val (pcsWithFreshSnapRoot, pcsWithoutFreshSnapRoot) = conservedPcs.flatMap(pcs => pcs.conditionalized).partition(_.contains(freshSnapRoot))
         val pcsWithoutExp = Option.when(withExp)(filterDebugExpsWithoutSnapshot(conservedPcs.flatMap(pcs => pcs.conditionalizedExp), freshSnapRoot))
         // For all path conditions which include the freshSnapRoot, add those as part of the definition of the MWSF in the same forall quantifier
@@ -331,14 +331,11 @@ object magicWandSupporter extends SymbolicExecutionRules {
           Trigger(MWSFLookup(wandSnapshot.mwsf, freshSnapRoot)),
         )
 
-        // The quantified/non-quantified chunk distinction lives in the HeapSupporter; the quantified
-        // case additionally yields a ground singleton-SM value def, which is emitted outside the quantifier.
         val (ch, groundPcs, groundPcsExp) = v2.heapSupporter.createWandChunk(s2, wand, tArgs, eArgsNew, wandSnapshot, v2)
 
         val tPcs = (pcsQuantified +: pcsWithoutFreshSnapRoot) ++ groundPcs
         val ePcs = Option.when(withExp)(DebugExp.createInstance("MWSF definition path conditions", pcsQuantified, true) +: (pcsWithoutExp.get ++ groundPcsExp.get))
 
-        // The abstract LHS snapshot is no longer needed after packaging.
         val s3 = s2.copy(packagingWandSnapshots = s2.packagingWandSnapshots.filterNot(_._1 == freshSnapRoot))
         appendToResults(s3, ch, v2.decider.pcs.after(preMark), (tPcs, ePcs), v2)
         Success()
@@ -354,7 +351,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
        */
       val freshSnapRoot = freshSnap(sorts.Snap, v1)
 
-      // Record the abstract LHS snapshot so that snapshot maps created while packaging are parameterized by it
+      // Record the abstract LHS snapshot so that new declarations created while packaging are parameterized by it
       // (see State.packagingWandSnapshots); each apply of the resulting wand then gets its own LHS snapshot.
       val s1WithSnapRoot = s1.copy(packagingWandSnapshots = (freshSnapRoot, None) +: s1.packagingWandSnapshots)
 
