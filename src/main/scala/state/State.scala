@@ -171,7 +171,7 @@ final case class State(g: Store = Store(),
     functionRecorder.arguments.fold(Seq.empty[(Var, Option[ast.AbstractLocalVar])])(d => d)
 
   def relevantQuantifiedVariables(filterPredicate: Var => Boolean): Seq[(Var, Option[ast.AbstractLocalVar])] = (
-       functionRecorderQuantifiedVariables()
+       functionRecorderQuantifiedVariables() ++ packagingWandSnapshots.filter(x => filterPredicate(x._1))
     ++ quantifiedVariables.filter(x => filterPredicate(x._1))
   )
 
