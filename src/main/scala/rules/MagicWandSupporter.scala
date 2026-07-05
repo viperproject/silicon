@@ -353,7 +353,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
       // Record the abstract LHS snapshot so that new declarations created while packaging are parameterized by it
       // (see State.packagingWandSnapshots); each apply of the resulting wand then gets its own LHS snapshot.
-      val s1WithSnapRoot = s1.copy(packagingWandSnapshots = (freshSnapRoot, None) +: s1.packagingWandSnapshots)
+      val freshSnapshotRootVar = Option.when(withExp)(ast.LocalVar("LHS", ast.InternalType)())
+      val s1WithSnapRoot = s1.copy(packagingWandSnapshots = (freshSnapRoot, freshSnapshotRootVar) +: s1.packagingWandSnapshots)
 
       // Produce the wand's LHS.
       produce(s1WithSnapRoot.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1)((sLhs, v2) => {
