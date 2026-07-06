@@ -1,9 +1,9 @@
 package viper.silicon.dependencyAnalysis.siliconComponents
 
+import viper.silicon.state.chunks.{Chunk, GeneralChunk}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.{DefaultDeciderProvider, Mark, Z3ProverStdIO}
 import viper.silicon.dependencyAnalysis._
-import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.state.terms.{False, Term, True}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast

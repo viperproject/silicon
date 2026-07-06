@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.Config.JoinMode
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces.VerificationResult

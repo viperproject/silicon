@@ -1,15 +1,15 @@
 package viper.silicon.debugger
 
+import viper.silicon.state.chunks.Chunk
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.{Cvc5ProverStdIO, RecordedPathConditions, Z3ProverStdIO}
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
-import viper.silicon.interfaces.state.Chunk
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, Success, VerificationResult}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.evaluator
-import viper.silicon.state.Heap
+import viper.silicon.state.chunks._
 import viper.silicon.state.terms.{Term, True}
-import viper.silicon.state.{BasicChunk, IdentifierFactory, MagicWandChunk, QuantifiedFieldChunk, QuantifiedMagicWandChunk, QuantifiedPredicateChunk, State}
+import viper.silicon.state.{Heap, IdentifierFactory, State}
 import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.verifier.{MainVerifier, Verifier, WorkerVerifier}
 import viper.silver.ast

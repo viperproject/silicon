@@ -6,9 +6,9 @@
 
 package viper.silicon.logger.records.data
 
+import viper.silicon.state.chunks.{Chunk, NonQuantifiedChunk}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.PathConditionStack
-import viper.silicon.interfaces.state.{Chunk, NonQuantifiedChunk}
 import viper.silicon.state._
 import viper.silicon.state.terms.Term
 import viper.silver.ast

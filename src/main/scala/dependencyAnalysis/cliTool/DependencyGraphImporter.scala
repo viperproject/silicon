@@ -1,9 +1,9 @@
 package viper.silicon.dependencyAnalysis.cliTool
 
+import viper.silicon.state.chunks.Chunk
 import viper.silicon
 import viper.silicon.SiliconFrontend
 import viper.silicon.dependencyAnalysis._
-import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.SimpleIdentifier
 import viper.silicon.state.terms.sorts.Bool
 import viper.silicon.state.terms.{NoPerm, Term, True, Var}

@@ -6,7 +6,9 @@
 
 package viper.silicon.state
 
+import viper.silicon.state.chunks.QuantifiedBasicChunk
 import viper.silver.ast
+
 import scala.collection.immutable.HashMap
 import viper.silicon.rules.SnapshotMapDefinition
 import viper.silicon.state.terms.Term

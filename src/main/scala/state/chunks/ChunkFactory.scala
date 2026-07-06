@@ -1,8 +1,8 @@
-package viper.silicon.state
+package viper.silicon.state.chunks
 
+import viper.silicon.state.chunks.{GeneralChunk, NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
-import viper.silicon.interfaces.state.{GeneralChunk, NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon.resources.BaseID
 import viper.silicon.rules.InverseFunctions
 import viper.silicon.state.terms.{MagicWandSnapshot, Term, Var}

@@ -10,9 +10,9 @@ import viper.silver.ast.Method
 import viper.silver.dependencyAnalysis._
 
 trait DependencyAnalysisMethodVerification extends DefaultMethodVerificationUnitProvider { v: DependencyAnalysisAwareVerifier =>
-  override def methodSupporter: MethodSupporter = DependencyAwareMethodSupporter
+  override def methodSupporter: MethodSupporter = DependencyAnalysisAwareMethodSupporter
 
-  private object DependencyAwareMethodSupporter extends MethodSupporter {
+  private object DependencyAnalysisAwareMethodSupporter extends MethodSupporter {
 
     override def verify(sInit: State, method: Method): Seq[VerificationResult] = {
 

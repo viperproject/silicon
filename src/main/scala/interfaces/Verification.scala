@@ -6,11 +6,11 @@
 
 package viper.silicon.interfaces
 
+import viper.silicon.state.chunks.Chunk
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.{DebugAxiom, DebugExp}
 import viper.silicon.dependencyAnalysis.IntraProcedural
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
-import viper.silicon.interfaces.state.Chunk
 import viper.silicon.reporting._
 import viper.silicon.state.terms._
 import viper.silicon.state.{State, Store}

@@ -12,8 +12,8 @@ import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces._
-import viper.silicon.interfaces.state._
 import viper.silicon.state._
+import viper.silicon.state.chunks._
 import viper.silicon.state.terms._
 import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
@@ -85,7 +85,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
 //  }
 
   /**
-   * Evaluate the wand's arguments and create a [[viper.silicon.state.MagicWandChunk]] out of it.
+   * Evaluate the wand's arguments and create a [[MagicWandChunk]] out of it.
    */
   def createChunk(s: State,
                   wand: ast.MagicWand,

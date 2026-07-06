@@ -13,6 +13,7 @@ import viper.silicon.logger.MemberSymbExLogger
 import viper.silicon.reporting.StateFormatter
 import viper.silicon.rules.{HeapSupportRules, StateConsolidationRules, defaultHeapSupporter}
 import viper.silicon.state._
+import viper.silicon.state.chunks.ChunkFactory
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.supporters.{QuantifierSupporter, SnapshotSupporter}
 import viper.silicon.utils.Counter

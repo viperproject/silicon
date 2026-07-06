@@ -14,6 +14,7 @@ import viper.silicon.logger.{MemberSymbExLogger, NoopMemberSymbExLog}
 import viper.silicon.reporting.DefaultStateFormatter
 import viper.silicon.rules._
 import viper.silicon.state._
+import viper.silicon.state.chunks.{ChunkFactory, DefaultChunkFactory}
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.supporters._
 import viper.silicon.utils.Counter

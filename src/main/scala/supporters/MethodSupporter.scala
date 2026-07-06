@@ -32,7 +32,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
   def methodSupporter: MethodSupporter = DefaultMethodSupporter
 
-  object DefaultMethodSupporter extends MethodSupporter
+  private object DefaultMethodSupporter extends MethodSupporter
 
   trait MethodSupporter extends MethodVerificationUnit with StatefulComponent {
     import consumer._

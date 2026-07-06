@@ -6,13 +6,14 @@
 
 package viper.silicon.rules
 
+import viper.silicon.state.chunks.{Chunk, ChunkIdentifer, NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos.DefaultDependencyAnalysisInfos
-import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
+import viper.silicon.state.chunks._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.utils.ast.buildMinExp

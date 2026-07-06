@@ -1,9 +1,9 @@
 package viper.silicon.dependencyAnalysis
 
+import viper.silicon.state.chunks.{Chunk, GeneralChunk}
 import viper.silicon.decider.Decider
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.dependencyAnalysis.siliconComponents.DependencyAnalysisDeciderFeatures
-import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.state.terms.{Implies, NoPerm, _}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast

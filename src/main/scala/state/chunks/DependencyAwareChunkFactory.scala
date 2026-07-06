@@ -1,12 +1,12 @@
-package viper.silicon.dependencyAnalysis.siliconComponents
+package viper.silicon.state.chunks
 
+import viper.silicon.state.chunks.{GeneralChunk, NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon
 import viper.silicon.decider.Decider
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
-import viper.silicon.interfaces.state.{GeneralChunk, NonQuantifiedChunk, QuantifiedChunk}
+import viper.silicon.dependencyAnalysis.siliconComponents.DependencyAnalysisDeciderFeatures
 import viper.silicon.resources.BaseID
 import viper.silicon.rules.InverseFunctions
-import viper.silicon.state._
 import viper.silicon.state.terms.{MagicWandSnapshot, Term, Var}
 import viper.silver.ast
 import viper.silver.dependencyAnalysis.DependencyType
@@ -24,7 +24,7 @@ class DependencyAwareChunkFactory(decider: Decider with DependencyAnalysisDecide
                                 permExp: Option[ast.Exp],
                                 analysisInfos: DependencyAnalysisInfos,
                                 isExhale: Boolean = false): BasicChunk = {
-    decider.registerChunk({finalPerm =>
+    decider.registerChunk[BasicChunk]({finalPerm =>
       BasicChunk(resourceID, id, args, argsExp, snap, snapExp, finalPerm, permExp)
     },
       perm, analysisInfos, isExhale)

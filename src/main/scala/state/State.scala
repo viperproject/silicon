@@ -6,13 +6,13 @@
 
 package viper.silicon.state
 
+import viper.silicon.state.chunks.{Chunk, GeneralChunk, MagicWandIdentifier}
 import viper.silicon.Config.JoinMode
 import viper.silicon.Config.JoinMode.JoinMode
 import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
-import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.{And, Ite, Term, Var}

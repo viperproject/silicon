@@ -6,13 +6,13 @@
 
 package viper.silicon.rules
 
+import viper.silicon.state.chunks.{BasicChunk, BasicChunkIdentifier, ChunkIdentifer, GeneralChunk, MagicWandChunk, NonQuantifiedChunk}
 import viper.silicon
 import viper.silicon.Config.JoinMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
 import viper.silicon.interfaces.VerificationResult
-import viper.silicon.interfaces.state.{ChunkIdentifer, GeneralChunk, NonQuantifiedChunk}
 import viper.silicon.resources.FieldID
 import viper.silicon.state._
 import viper.silicon.state.terms._
