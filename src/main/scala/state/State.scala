@@ -440,7 +440,7 @@ object State {
               case (Some(pch1), Some(pch2)) => Some(mergeHeap(
                 pch1, conditions1, conditions1Exp,
                 pch2, conditions2, conditions2Exp,
-								v,
+                v,
                 analysisInfos
               ))
             }

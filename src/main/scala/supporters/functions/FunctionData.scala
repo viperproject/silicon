@@ -139,19 +139,19 @@ class FunctionData(val programFunction: ast.Function,
   val preconditionFunctionApplication = App(preconditionFunction, `?s` +: formalArgs.values.toSeq)
 
 
-	private val bodyAnalysisInfo: DependencyAnalysisAxiomInfo = {
-		val analysisInfos = if (programFunction.body.isDefined) {
-			DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.addInfo(programFunction.body.get.info, programFunction.body.get)
-				.withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(programFunction.body.get), JoinType.Sink, EdgeType.Down))
-				.withEnabled(isAnalysisEnabled)
-		} else
-			DependencyAnalysisInfos.create("unverified function body", DependencyType.Internal).withEnabled(isAnalysisEnabled)
+  private val bodyAnalysisInfo: DependencyAnalysisAxiomInfo = {
+    val analysisInfos = if (programFunction.body.isDefined) {
+      DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.addInfo(programFunction.body.get.info, programFunction.body.get)
+        .withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(programFunction.body.get), JoinType.Sink, EdgeType.Down))
+        .withEnabled(isAnalysisEnabled)
+    } else
+      DependencyAnalysisInfos.create("unverified function body", DependencyType.Internal).withEnabled(isAnalysisEnabled)
 
-		DependencyAnalysisAxiomInfo(analysisInfos, programFunction.name)
-	}
+    DependencyAnalysisAxiomInfo(analysisInfos, programFunction.name)
+  }
 
 
-	val limitedAxiom: (Quantification, DependencyAnalysisAxiomInfo) =
+  val limitedAxiom: (Quantification, DependencyAnalysisAxiomInfo) =
     (Forall(arguments,
            BuiltinEquals(limitedFunctionApplication, functionApplication),
            Trigger(functionApplication)),
@@ -255,7 +255,7 @@ class FunctionData(val programFunction: ast.Function,
           programFunction.posts.flatMap(_.topLevelConjuncts).map({p =>
             val terms = expressionTranslator.translatePostcondition(program, Seq(p), this)
             (And(Forall(arguments, wrapBody(Implies(pre, And(terms))), Trigger(limitedFunctionApplication)), True),
-							DependencyAnalysisAxiomInfo(analysisInfos.addInfo(p.info, p).withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(p), JoinType.Sink, EdgeType.Down)), programFunction.name))
+              DependencyAnalysisAxiomInfo(analysisInfos.addInfo(p.info, p).withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(p), JoinType.Sink, EdgeType.Down)), programFunction.name))
           })
       } else {
         val innermostBody = And(generateNestedDefinitionalAxioms ++ List(Implies(pre, And(translatedPosts))))

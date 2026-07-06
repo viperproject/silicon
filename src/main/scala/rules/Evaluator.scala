@@ -538,7 +538,7 @@ object evaluator extends EvaluationRules {
         }
         val name = s"prog.$posString"
         val s0 = s.copy(functionRecorder = s.functionRecorder.enterQuantifiedExp(sourceQuant))
-        evalQuantified(s0, qantOp, eQuant.variables, Nil, Seq(body), Some(eTriggers), name, pve, v, analysisInfos){
+        evalQuantified(s0, qantOp, eQuant.variables, Nil, Seq(body), Some(eTriggers), name, pve, v, analysisInfos) {
           case (s1, tVars, eVars, _, _, Some((Seq(tBody), bodyNew, tTriggers, (tAuxGlobal, tAux), auxExps)), v1) =>
             val tAuxHeapIndep = tAux.flatMap(v.quantifierSupporter.makeTriggersHeapIndependent(_, v1.decider.fresh))
             val auxGlobalsExp = auxExps.map(_._1)
@@ -573,9 +573,9 @@ object evaluator extends EvaluationRules {
             // This should not happen unless the current path is dead.
             if (v1.decider.checkSmoke(analysisInfos, isAssert = true)) {
               if (Verifier.config.disableInfeasibilityChecks()) {
-								val freshVar = v1.decider.fresh(v1.symbolConverter.toSort(sourceQuant.typ), None)
-								Q(s1, freshVar, None, v1)
-							} else Unreachable()
+                val freshVar = v1.decider.fresh(v1.symbolConverter.toSort(sourceQuant.typ), None)
+                Q(s1, freshVar, None, v1)
+              } else Unreachable()
             } else {
               val failure = createFailure(pve.dueTo(InternalReason(sourceQuant, "Quantifier evaluation failed.")), v1, s1, "quantifier could be evaluated")
               if (s1.retryLevel == 0) v1.decider.handleFailedAssertion(False, Option.when(withExp)(FalseLit()()), Option.when(withExp)(FalseLit()()), analysisInfos, v1.reportFurtherErrors())
@@ -586,20 +586,20 @@ object evaluator extends EvaluationRules {
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val func = s.program.findFunction(funcName)
-				val pres = func.pres.map(_.transform {
-					/* [Malte 2018-08-20] Two examples of the test suite, one of which is the regression
-					 * for Carbon issue #210, fail if the subsequent code that strips out triggers from
-					 * exhaled function preconditions, is commented. The code was originally a work-around
-					 * for Silicon issue #276. Removing triggers from function preconditions is OK-ish
-					 * because they are consumed (exhaled), i.e. asserted. However, the triggers are
-					 * also used to internally generated quantifiers, e.g. related to QPs. My hope is that
-					 * this hack is no longer needed once heap-dependent triggers are supported.
-					 */
-					case q: ast.Forall => q.copy(triggers = Nil)(q.pos, q.info, q.errT)
-				})
-				val fappSourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(fapp)
-				val presWithDAInfo = DependencyAnalysisMergeInfo.attachExpMergeInfo(pres.flatMap(_.topLevelConjuncts), Some(fappSourceInfo))
-				val eArgsWithDAInfO = DependencyAnalysisMergeInfo.attachExpMergeInfo(eArgs, None)
+        val pres = func.pres.map(_.transform {
+          /* [Malte 2018-08-20] Two examples of the test suite, one of which is the regression
+           * for Carbon issue #210, fail if the subsequent code that strips out triggers from
+           * exhaled function preconditions, is commented. The code was originally a work-around
+           * for Silicon issue #276. Removing triggers from function preconditions is OK-ish
+           * because they are consumed (exhaled), i.e. asserted. However, the triggers are
+           * also used to internally generated quantifiers, e.g. related to QPs. My hope is that
+           * this hack is no longer needed once heap-dependent triggers are supported.
+           */
+          case q: ast.Forall => q.copy(triggers = Nil)(q.pos, q.info, q.errT)
+        })
+        val fappSourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(fapp)
+        val presWithDAInfo = DependencyAnalysisMergeInfo.attachExpMergeInfo(pres.flatMap(_.topLevelConjuncts), Some(fappSourceInfo))
+        val eArgsWithDAInfO = DependencyAnalysisMergeInfo.attachExpMergeInfo(eArgs, None)
 
         evals2(s, eArgsWithDAInfO, Nil, _ => pve, v, analysisInfos)((s1, tArgs, eArgsNew, v1) => {
 //          bookkeeper.functionApplications += 1
@@ -709,11 +709,11 @@ object evaluator extends EvaluationRules {
              */
             })(join(func.typ, s"joined_${func.name}", joinFunctionArgs, joinExp, v1, analysisInfos))((s6, r, v4)
               => {
-									DependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(v4.decider, eArgsWithDAInfO, presWithDAInfo)
-									DependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(v4.decider, presWithDAInfo, Seq(DependencyAnalysisMergeInfo.attachExpMergeInfo(fapp, analysisInfos.getMergeInfo)))
-						Q(s6, r._1, r._2, v4)
-					})}
-				)
+                  DependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(v4.decider, eArgsWithDAInfO, presWithDAInfo)
+                  DependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(v4.decider, presWithDAInfo, Seq(DependencyAnalysisMergeInfo.attachExpMergeInfo(fapp, analysisInfos.getMergeInfo)))
+            Q(s6, r._1, r._2, v4)
+          })}
+        )
       case uf@ast.Unfolding(
               acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm),
               eIn) =>
@@ -802,7 +802,7 @@ object evaluator extends EvaluationRules {
                     Q(s12, r12._1, r12._2, v7)})
                 case false =>
                   v2.decider.finishDebugSubExp(s"unfolded(${predicate.name})")
-									val failure = createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2a, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))
+                  val failure = createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2a, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))
                   if (s2a.retryLevel == 0) v2.decider.handleFailedAssertion(False, Option.when(withExp)(FalseLit()()), Option.when(withExp)(FalseLit()()), analysisInfos, v2.reportFurtherErrors())
                   val freshVar = v2.decider.fresh(v2.symbolConverter.toSort(e.typ), None)
                   if (s2a.retryLevel == 0 && v2.reportFurtherErrors() && Verifier.config.disableInfeasibilityChecks()) failure combine Q(s2a, freshVar, None, v2) else failure
@@ -845,15 +845,15 @@ object evaluator extends EvaluationRules {
           if (s1.triggerExp) {
             Q(s1, SeqAt(t0, t1), eNew, v1)
           } else {
-						val isIndexInBoundsTerm = Less(t1, SeqLength(t0))
-						val isIndexInBoundsExp = Option.when(withExp)(ast.LtCmp(e1, ast.SeqLength(e0)())(e1.pos, e1.info, e1.errT))
-						val isIndexInBoundsNewExp = esNew.map(es => ast.LtCmp(es(1), ast.SeqLength(es.head)())(e1.pos, e1.info, e1.errT))
+            val isIndexInBoundsTerm = Less(t1, SeqLength(t0))
+            val isIndexInBoundsExp = Option.when(withExp)(ast.LtCmp(e1, ast.SeqLength(e0)())(e1.pos, e1.info, e1.errT))
+            val isIndexInBoundsNewExp = esNew.map(es => ast.LtCmp(es(1), ast.SeqLength(es.head)())(e1.pos, e1.info, e1.errT))
 
 
-						val indexGeZeroTerm = AtLeast(t1, IntLiteral(0))
-						val indexGeZeroExp = Option.when(withExp)(ast.GeCmp(e1, ast.IntLit(0)())(e1.pos, e1.info, e1.errT))
-						val indexGeZeroNewExp = Option.when(withExp)(ast.GeCmp(esNew.get(1), ast.IntLit(0)())(e1.pos, e1.info, e1.errT))
-						v1.decider.assert(indexGeZeroTerm, analysisInfos) {
+            val indexGeZeroTerm = AtLeast(t1, IntLiteral(0))
+            val indexGeZeroExp = Option.when(withExp)(ast.GeCmp(e1, ast.IntLit(0)())(e1.pos, e1.info, e1.errT))
+            val indexGeZeroNewExp = Option.when(withExp)(ast.GeCmp(esNew.get(1), ast.IntLit(0)())(e1.pos, e1.info, e1.errT))
+            v1.decider.assert(indexGeZeroTerm, analysisInfos) {
               case true =>
                 v1.decider.assert(isIndexInBoundsTerm, analysisInfos) {
                   case true =>
@@ -862,7 +862,7 @@ object evaluator extends EvaluationRules {
                     val failure = createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, isIndexInBoundsTerm, isIndexInBoundsNewExp)
                     if (s1.retryLevel == 0) v1.decider.handleFailedAssertion(isIndexInBoundsTerm, isIndexInBoundsExp, isIndexInBoundsNewExp, analysisInfos, v1.reportFurtherErrors())
                     if (s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine Q(s1, SeqAt(t0, t1), eNew, v1) else failure
-								}
+                }
               case false =>
                 val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1, indexGeZeroTerm, indexGeZeroNewExp)
                 if (s1.retryLevel == 0) v1.decider.handleFailedAssertion(indexGeZeroTerm, indexGeZeroExp, indexGeZeroNewExp, analysisInfos, v1.reportFurtherErrors())
@@ -874,9 +874,9 @@ object evaluator extends EvaluationRules {
                       val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, isIndexInBoundsTerm, isIndexInBoundsNewExp)
                       if (s1.retryLevel == 0) v1.decider.handleFailedAssertion(isIndexInBoundsTerm, isIndexInBoundsExp, isIndexInBoundsNewExp, analysisInfos, v1.reportFurtherErrors())
                       if (s1.retryLevel == 0 && v1.reportFurtherErrors()) failure2 combine Q(s1, SeqAt(t0, t1), eNew, v1) else failure2
-									}
+                  }
                 } else failure1
-						}}})
+            }}})
 
       case ast.SeqAppend(e0, e1) => evalBinOp(s, e0, e1, SeqAppend, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) =>
         Q(s1, t, e0New.map(e0p => ast.SeqAppend(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
@@ -896,14 +896,14 @@ object evaluator extends EvaluationRules {
           if (s1.triggerExp) {
             Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
           } else {
-						val indexGeZeroTerm = AtLeast(t1, IntLiteral(0))
+            val indexGeZeroTerm = AtLeast(t1, IntLiteral(0))
             val indexGeZeroExp = Option.when(withExp)(ast.GeCmp(e1, ast.IntLit(0)())(e1.pos, e1.info, e1.errT))
             val indexGeZeroTermExpNew = Option.when(withExp)(ast.GeCmp(esNew.get(1), ast.IntLit(0)())(e1.pos, e1.info, e1.errT))
 
-						val indexInBoundsTerm = Less(t1, SeqLength(t0))
-						val indexInBoundsExp = Option.when(withExp)(ast.LtCmp(e1, ast.SeqLength(e0)())(e1.pos, e1.info, e1.errT))
-						val indexInBoundsExpNew = Option.when(withExp)(ast.LtCmp(esNew.get(1), ast.SeqLength(esNew.get(0))())(e1.pos, e1.info, e1.errT))
-						v1.decider.assert(indexGeZeroTerm, analysisInfos) {
+            val indexInBoundsTerm = Less(t1, SeqLength(t0))
+            val indexInBoundsExp = Option.when(withExp)(ast.LtCmp(e1, ast.SeqLength(e0)())(e1.pos, e1.info, e1.errT))
+            val indexInBoundsExpNew = Option.when(withExp)(ast.LtCmp(esNew.get(1), ast.SeqLength(esNew.get(0))())(e1.pos, e1.info, e1.errT))
+            v1.decider.assert(indexGeZeroTerm, analysisInfos) {
               case true =>
                 v1.decider.assert(indexInBoundsTerm, analysisInfos) {
                   case true =>
@@ -912,7 +912,7 @@ object evaluator extends EvaluationRules {
                     val failure = createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, indexInBoundsTerm, indexInBoundsExpNew)
                     if (s1.retryLevel == 0) v1.decider.handleFailedAssertion(indexInBoundsTerm, indexInBoundsExp, indexInBoundsExpNew, analysisInfos, v1.reportFurtherErrors())
                     if (s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1) else failure
-								}
+                }
               case false =>
                 val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1, indexGeZeroTerm, indexGeZeroTermExpNew)
                 if (s1.retryLevel == 0) v1.decider.handleFailedAssertion(indexGeZeroTerm, indexGeZeroExp, indexGeZeroTermExpNew, analysisInfos, v1.reportFurtherErrors())
@@ -924,9 +924,9 @@ object evaluator extends EvaluationRules {
                       val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, indexInBoundsTerm, indexInBoundsExpNew)
                       if (s1.retryLevel == 0) v1.decider.handleFailedAssertion(indexInBoundsTerm, indexInBoundsExp, indexInBoundsExpNew, analysisInfos, v1.reportFurtherErrors())
                       if (v1.reportFurtherErrors()) failure2 combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1) else failure2
-									}
-								} else failure1
-						}}})
+                  }
+                } else failure1
+            }}})
 
       case seq@ast.ExplicitSeq(es) =>
         evals2(s, es, Nil, _ => pve, v, analysisInfos)((s1, tEs, esNew, v1) => {
@@ -1136,7 +1136,7 @@ object evaluator extends EvaluationRules {
           })})
         es2AndTriggerResult combine QB((finalState, ts1, es1New, es2AndTriggerTerms))
       })
-    }){
+    }) {
       case (s2, ts1, es1New1, Some((ts2, es2New1, tTriggers, (tAuxGlobal, tAux), eAuxExps, additionalPossibleTriggers))) =>
         val s3 = s.copy(possibleTriggers = s.possibleTriggers ++ additionalPossibleTriggers)
                 .preserveAfterLocalEvaluation(s2)
@@ -1266,13 +1266,13 @@ object evaluator extends EvaluationRules {
                              (Q: (State, Term, Verifier) => VerificationResult)
                              : VerificationResult = {
 
-    v.decider.assert(tDivisor !== tZero, analysisInfos){
+    v.decider.assert(tDivisor !== tZero, analysisInfos) {
       case true => Q(s, t, v)
       case false =>
         val (notZeroExp, notZeroExpNew) = if (withExp)
           (Some(ast.NeCmp(eDivisor, ast.IntLit(0)())(eDivisor.pos, eDivisor.info, eDivisor.errT)), Some(ast.NeCmp(eDivisorNew.get, ast.IntLit(0)())(eDivisor.pos, eDivisor.info, eDivisor.errT)))
          else
-					 (None, None)
+           (None, None)
         val failure = createFailure(pve dueTo DivisionByZero(eDivisor), v, s, tDivisor !== tZero, notZeroExpNew)
         if (s.retryLevel == 0) v.decider.handleFailedAssertion(tDivisor !== tZero, notZeroExp, notZeroExpNew, analysisInfos, assumeFailedAssertion=v.reportFurtherErrors())
         if (s.retryLevel == 0  && v.reportFurtherErrors()) failure combine Q(s, t, v) else failure
@@ -1421,7 +1421,7 @@ object evaluator extends EvaluationRules {
 
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
-				// TODO ake: wrap pcDelta with labels?
+        // TODO ake: wrap pcDelta with labels?
         v.decider.assume(pcDelta, Option.when(withExp)(DebugExp.createInstance("pcDeltaExp", children = pcDeltaExp)), enforceAssumption = false, analysisInfos.withDependencyType(DependencyType.Internal))
         Q(s.copy(functionRecorder = functionRecorder), cachedTriggerTerms ++ remainingTriggerTerms, v)
       case _ =>
@@ -1450,7 +1450,7 @@ object evaluator extends EvaluationRules {
     feasibleEntries match {
       case Seq() =>
         /* feasibility checks are disabled and all entries are infeasible, we can return any state and data */
-				v.decider.pcs.setPathInfeasible(true)
+        v.decider.pcs.setPathInfeasible(true)
         v.decider.pcs.setCurrentInfeasibilityNode(entries.head.pathConditions.infeasibilityNodeId)
         (entries.head.s, entries.head.data)
       case Seq(entry) =>

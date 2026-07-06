@@ -25,8 +25,8 @@ object permissionSupporter extends SymbolicExecutionRules {
         Q(s, v)
       case _ =>
         val termToAssert = perms.IsNonNegative(tPerm)
-				val debugExp = ePermNew.map(ep => perms.IsNonNegative(ep)(ep.pos, ep.info, ep.errT))
-				v.decider.assert(termToAssert, analysisInfos) {
+        val debugExp = ePermNew.map(ep => perms.IsNonNegative(ep)(ep.pos, ep.info, ep.errT))
+        v.decider.assert(termToAssert, analysisInfos) {
           case true => Q(s, v)
           case false =>
             val failure = createFailure(pve dueTo NegativePermission(ePerm), v, s, termToAssert, debugExp)
@@ -45,11 +45,11 @@ object permissionSupporter extends SymbolicExecutionRules {
         Q(s, v)
       case _ =>
         val termToAssert = perms.IsPositive(tPerm)
-				val debugExp = Option.when(withExp)(perms.IsPositive(ePerm)())
-				v.decider.assert(termToAssert, analysisInfos) {
+        val debugExp = Option.when(withExp)(perms.IsPositive(ePerm)())
+        v.decider.assert(termToAssert, analysisInfos) {
           case true => Q(s, v)
           case false =>
-						val failure = createFailure(pve dueTo NonPositivePermission(ePerm), v, s, termToAssert, debugExp)
+            val failure = createFailure(pve dueTo NonPositivePermission(ePerm), v, s, termToAssert, debugExp)
             if (s.retryLevel == 0) v.decider.handleFailedAssertion(termToAssert, debugExp, debugExp, analysisInfos, v.reportFurtherErrors())
             if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, v) else failure
         }

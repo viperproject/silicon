@@ -34,9 +34,9 @@ object UserLevelDependencyAnalysisNode {
       left.map(_.source)
     }
 
-		def getSourceMemberSet(): Set[(AnalysisSourceInfo, String)] = {
-			left.map(n => (n.source, n.member))
-		}
+    def getSourceMemberSet(): Set[(AnalysisSourceInfo, String)] = {
+      left.map(n => (n.source, n.member))
+    }
   }
 }
 

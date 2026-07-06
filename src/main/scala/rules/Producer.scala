@@ -152,10 +152,10 @@ object producer extends ProductionRules {
       val pve = pves.head
 
       val analysisInfos1 = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, analysisInfos, a.info, a)
-			if (v.decider.isPathInfeasible) {
-				v.decider.handleInfeasiblePath(!Expressions.isKnownWellDefined(a, Some(s.program)), hasAssumptions=true, analysisInfos1)
-				return Q(s, v)
-			}
+      if (v.decider.isPathInfeasible) {
+        v.decider.handleInfeasiblePath(!Expressions.isKnownWellDefined(a, Some(s.program)), hasAssumptions=true, analysisInfos1)
+        return Q(s, v)
+      }
 
       if (as.tail.isEmpty)
         wrappedProduceTlc(s, sf, a, pve, v, analysisInfos1)((s1, v1) => {

@@ -13,12 +13,12 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
 
   val CHECK_PRECISION = false
   val EXECUTE_TEST = true
-	val TEST_IMPORTER = true
+  val TEST_IMPORTER = false
   override val EXPORT_PRUNED_PROGRAMS: Boolean = false
   val ignores: Seq[String] = Seq()
-	val depAnalysisModeArg = if(TEST_IMPORTER) Seq("--dependencyAnalysisMode=export>testExports") else Seq()
-	analysisCommandLineArguments = analysisCommandLineArguments ++ depAnalysisModeArg
-	val testDirectories: Seq[String] = Seq(
+  val depAnalysisModeArg = if(TEST_IMPORTER) Seq("--dependencyAnalysisMode=export>testExports") else Seq()
+  analysisCommandLineArguments = analysisCommandLineArguments ++ depAnalysisModeArg
+  val testDirectories: Seq[String] = Seq(
     "dependencyAnalysisTests/all",
 //    "dependencyAnalysisTests/unitTests", // TODO ake: remove obsolete tests and move interesting ones to all
     "dependencyAnalysisTests/real-world-examples",
@@ -28,7 +28,7 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
 
   if (EXECUTE_TEST) {
     testDirectories foreach (dir => visitFiles(dir, createSingleTest))
-		// TODO ake: more complete exhale tests
+    // TODO ake: more complete exhale tests
 //    analysisCommandLineArguments = Seq("--enableMoreCompleteExhale") ++ analysisCommandLineArguments
 //    visitFiles("dependencyAnalysisTests/mce", createSingleTest)
   }
@@ -47,7 +47,7 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
   def executeTest(filePrefix: String,
                   fileName: String,
                   frontend: SilFrontend): Unit = {
-		println(s"$filePrefix$fileName")
+    println(s"$filePrefix$fileName")
 
     val program: Program = tests.loadProgram(filePrefix, fileName, frontend)
     val result = frontend.verifier.verify(program)
@@ -56,20 +56,20 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
       return
     }
 
-		val name = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter.map(_.getName).getOrElse("graph")
+    val name = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter.map(_.getName).getOrElse("graph")
 
-		val fullGraphInterpreter = if (TEST_IMPORTER) {
-			println("--------\nTesting via the graph importer.")
-			val importedGraph = DependencyGraphImporter.importGraphFromCsv(s"testExports/$name")
-			new DependencyGraphInterpreter[Final](name, importedGraph, List.empty, None)
-		} else {
-			frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter.get
-		}
+    val fullGraphInterpreter = if (TEST_IMPORTER) {
+      println("--------\nTesting via the graph importer.")
+      val importedGraph = DependencyGraphImporter.importGraphFromCsv(s"testExports/$name")
+      new DependencyGraphInterpreter[Final](name, importedGraph, List.empty, None)
+    } else {
+      frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter.get
+    }
 
-		val testSupporter = new DependencyGraphTestSupporter(fullGraphInterpreter)
-		testSupporter.testDependencies()
-		testSupporter.testNodeTypes()
-		new PruningTest(filePrefix + "/" + fileName, program, fullGraphInterpreter).execute()
+    val testSupporter = new DependencyGraphTestSupporter(fullGraphInterpreter)
+    testSupporter.testDependencies()
+    testSupporter.testNodeTypes()
+    new PruningTest(filePrefix + "/" + fileName, program, fullGraphInterpreter).execute()
 
     if (filePrefix.contains("verificationProgressTests")) {
       new VerificationProgressTest(filePrefix + "/" + fileName, fullGraphInterpreter).execute()

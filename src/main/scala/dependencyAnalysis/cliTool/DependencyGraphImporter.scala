@@ -17,20 +17,20 @@ import scala.io.Source
 
 object DependencyGraphImporter {
   lazy val dummyVar: Var = Var.actualCreate((SimpleIdentifier("a"), Bool, false))
-	lazy val frontend: SiliconFrontend = createFrontend(Seq.empty)
+  lazy val frontend: SiliconFrontend = createFrontend(Seq.empty)
 
   def importGraphFromCsv(csvFilePath: String): ReadOnlyDependencyGraph[Final] = {
     val graph = new DependencyGraph[Final]()
 
-		val path = Paths.get(csvFilePath)
+    val path = Paths.get(csvFilePath)
     createNodesFromCsv(graph, path.toString)
     createEdgesFromCsv(graph, path.toString)
     graph
   }
 
-	def importProgram(userInput: String): Program = {
-		loadProgram(userInput +"\\", "program.vpr", frontend)
-	}
+  def importProgram(userInput: String): Program = {
+    loadProgram(userInput +"\\", "program.vpr", frontend)
+  }
 
   private def createNodesFromCsv(graph: DependencyGraph[Final], csvFilePath: String): Unit = {
 
@@ -42,8 +42,8 @@ object DependencyGraphImporter {
       val assumptionType = AssumptionType.fromString(fields(2)).get
       val position = parsePositionString(fields(5))
       val sourceInfo = StringAnalysisSourceInfo(fields(7), position)
-			val memberStr: String = fields(8)
-			val hasFailed: Boolean = fields(9).toBoolean
+      val memberStr: String = fields(8)
+      val hasFailed: Boolean = fields(9).toBoolean
 
       // The following node properties are only relevant for graph construction, thus we can use dummy values while querying the graph.
       val term: Term = True

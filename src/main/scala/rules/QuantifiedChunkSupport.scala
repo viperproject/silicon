@@ -1538,9 +1538,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           }
           if (s.retryLevel == 0) v.decider.handleFailedAssertion(False, Option.when(withExp)(FalseLit()()), Option.when(withExp)(FalseLit()()), analysisInfos, v.reportFurtherErrors())
           if (s.retryLevel == 0 && v.reportFurtherErrors()) {
-						val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
-						failure combine Q(s, s.h, Some(snap), v)
-					} else failure
+            val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
+            failure combine Q(s, s.h, Some(snap), v)
+          } else failure
       }
     }
   }
@@ -1689,7 +1689,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               remainingChunks =
                 remainingChunks :+ v.chunkFactory.permMinus(ithChunk, ithPTaken, ithPTakenExp, analysisInfos)
             }
-          }else{
+          } else {
             val _ = v.chunkFactory.withPerm(ithChunk, ithPTaken, None, analysisInfos, isExhale=true)
           }
         }

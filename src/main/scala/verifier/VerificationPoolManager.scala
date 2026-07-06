@@ -24,11 +24,11 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
   /*private*/ var threadPool: ForkJoinPool = _
   /*private*/ var workerVerifierPool: ObjectPool[WorkerVerifier] = _
 
-	def pooledVerifiers: DefaultPooledVerifiers = _pooledVerifiers
+  def pooledVerifiers: DefaultPooledVerifiers = _pooledVerifiers
 
   private[verifier] object _pooledVerifiers extends DefaultPooledVerifiers
 
-	trait DefaultPooledVerifiers extends ProverLike {
+  trait DefaultPooledVerifiers extends ProverLike {
     def emit(content: String): Unit = workerVerifiers foreach (_.decider.prover.emit(content))
     override def emit(contents: Iterable[String]): Unit = workerVerifiers foreach (_.decider.prover.emit(contents))
     def assume(term: Term): Unit = workerVerifiers foreach (_.decider.prover.assume(term))

@@ -11,9 +11,9 @@ import scala.collection.mutable
 object DependencyGraphHelper {
   private val idCounter: AtomicInteger = new AtomicInteger(0)
 
-	/**
-	 * Helper function used to ensure uniqueness of all dependency node ids.
-	 */
+  /**
+   * Helper function used to ensure uniqueness of all dependency node ids.
+   */
   def nextId(): Int = {
     idCounter.getAndIncrement()
   }
@@ -29,70 +29,70 @@ trait ReadOnlyDependencyGraph[T <: DependencyGraphState] {
   def getAssumptionNodes: Set[GeneralAssumptionNode]
   def getAssertionNodes: Set[GeneralAssertionNode]
 
-	/**
-	 * @return a map from node to the set of direct dependencies in the intraprocedural low-level graph
-	 */
+  /**
+   * @return a map from node to the set of direct dependencies in the intraprocedural low-level graph
+   */
   def getDirectEdges: Map[Int, Set[Int]]
 
-	/**
-	 * @return all interprocedural downward edges in the graph as a map from node to all its direct downward dependencies.
-	 *         A downward edge connects a node representing the proof of a property to a node representing the assumption of
-	 *         said property in another verification component.
-	 *         For example, a downward edge may connect a postcondition with a corresponding method call.
-	 */
+  /**
+   * @return all interprocedural downward edges in the graph as a map from node to all its direct downward dependencies.
+   *         A downward edge connects a node representing the proof of a property to a node representing the assumption of
+   *         said property in another verification component.
+   *         For example, a downward edge may connect a postcondition with a corresponding method call.
+   */
   def getEdgesConnectingMethodsDownwards: Map[Int, Set[Int]]
 
-	/**
-	 * @return all interprocedural upwards edges in the graph as a map from node to all its direct upwards dependencies.
-	 *         An upwards edge connects a node justifying an assumption (by proving it) to a node representing the specification
-	 *         element depending on it in another verification component.
-	 *         For example, an upwards edge may connect a method call with a corresponding precondition.
-	 */
+  /**
+   * @return all interprocedural upwards edges in the graph as a map from node to all its direct upwards dependencies.
+   *         An upwards edge connects a node justifying an assumption (by proving it) to a node representing the specification
+   *         element depending on it in another verification component.
+   *         For example, an upwards edge may connect a method call with a corresponding precondition.
+   */
   def getEdgesConnectingMethodsUpwards: Map[Int, Set[Int]] // e.g. edges connecting PREconditions with method/function calls
   def getAllEdges: Map[Int, Set[Int]]
   def getAllEdges(includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Map[Int, Set[Int]]
 
-	/**
-	 * @param sources a set of node ids
-	 * @param includeInfeasibilityNodes if set to true, dependencies found via infeasibility nodes are included in the result
-	 * @param includeUpwardEdges if set to true, interprocedural upward edges are taken into account
-	 * @param includeDownwardEdges if set to true, interprocedural downward edges are taken into account
-	 * @return the set of dependencies of the provided sources
-	 */
+  /**
+   * @param sources a set of node ids
+   * @param includeInfeasibilityNodes if set to true, dependencies found via infeasibility nodes are included in the result
+   * @param includeUpwardEdges if set to true, interprocedural upward edges are taken into account
+   * @param includeDownwardEdges if set to true, interprocedural downward edges are taken into account
+   * @return the set of dependencies of the provided sources
+   */
   def getAllDependencies(sources: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int]
 
-	/**
-	 * @param sources a set of node ids
-	 * @param includeInfeasibilityNodes if set to true, dependents found via infeasibility nodes are included in the result
-	 * @param includeUpwardEdges if set to true, interprocedural upward edges are taken into account
-	 * @param includeDownwardEdges if set to true, interprocedural downward edges are taken into account
-	 * @return the set of dependents of the provided sources
-	 */
+  /**
+   * @param sources a set of node ids
+   * @param includeInfeasibilityNodes if set to true, dependents found via infeasibility nodes are included in the result
+   * @param includeUpwardEdges if set to true, interprocedural upward edges are taken into account
+   * @param includeDownwardEdges if set to true, interprocedural downward edges are taken into account
+   * @return the set of dependents of the provided sources
+   */
   def getAllDependents(sources: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int]
 
-	/**
-	 * @param targets a set of node ids
-	 * @param includeInfeasibilityNodes if set to true, dependencies found via infeasibility nodes are included in the result
-	 * @param includeUpwardEdges if set to true, interprocedural upward edges are taken into account
-	 * @param includeDownwardEdges if set to true, interprocedural downward edges are taken into account
-	 * @return the set of direct dependencies of the provided sources
-	 */
-	def getDirectDependenciesByNode(targets: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int]
+  /**
+   * @param targets a set of node ids
+   * @param includeInfeasibilityNodes if set to true, dependencies found via infeasibility nodes are included in the result
+   * @param includeUpwardEdges if set to true, interprocedural upward edges are taken into account
+   * @param includeDownwardEdges if set to true, interprocedural downward edges are taken into account
+   * @return the set of direct dependencies of the provided sources
+   */
+  def getDirectDependenciesByNode(targets: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int]
 
-	def getDirectDependenciesById(targets: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int]
+  def getDirectDependenciesById(targets: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int]
 
-	/**
-	 * @param targets a set of node ids
-	 * @param includeInfeasibilityNodes if set to true, dependents found via infeasibility nodes are included in the result
-	 * @param includeUpwardEdges if set to true, interprocedural upward edges are taken into account
-	 * @param includeDownwardEdges if set to true, interprocedural downward edges are taken into account
-	 * @return the set of direct dependents of the provided targets
-	 */
-	def getDirectDependents(targets: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int]
+  /**
+   * @param targets a set of node ids
+   * @param includeInfeasibilityNodes if set to true, dependents found via infeasibility nodes are included in the result
+   * @param includeUpwardEdges if set to true, interprocedural upward edges are taken into account
+   * @param includeDownwardEdges if set to true, interprocedural downward edges are taken into account
+   * @return the set of direct dependents of the provided targets
+   */
+  def getDirectDependents(targets: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int]
 
-	/**
-	 * Exports the graph to the folder 'dirName'.
-	 */
+  /**
+   * Exports the graph to the folder 'dirName'.
+   */
   def exportGraph(dirName: String): Unit
 }
 
@@ -102,7 +102,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   private val edges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
   private val edgesConnectingMethodsDownwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // e.g. edges connecting POSTcondition with method/function calls
   private val edgesConnectingMethodsUpwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // e.g. edges connecting PREconditions with method/function calls
-	private var vacuousProofs: mutable.Set[Int] = mutable.Set()
+  private var vacuousProofs: mutable.Set[Int] = mutable.Set()
 
   def getNodes: Set[DependencyAnalysisNode] = getAssumptionNodes ++ getAssertionNodes
   def getAssumptionNodes: Set[GeneralAssumptionNode] = assumptionNodes.toSet
@@ -218,16 +218,16 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
     vacuousProofs.add(assertionId)
   }
 
-	def getNodesByIds(targets: Set[Int]): Set[DependencyAnalysisNode] = {
-		getNodes.filter(n => targets.contains(n.id))
-	}
+  def getNodesByIds(targets: Set[Int]): Set[DependencyAnalysisNode] = {
+    getNodes.filter(n => targets.contains(n.id))
+  }
 
   def getAllDependencies(targets: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
     val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)
     var visited: Set[Int] = Set.empty
     var queue: List[Int] = targets.toList
     val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
-    while(queue.nonEmpty){
+    while(queue.nonEmpty) {
       val curr = queue.head
       val newVisits = allEdges.getOrElse(curr, Set()).diff(infeasibilityNodeIds)
       visited = visited ++ Set(curr)
@@ -236,38 +236,38 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
     visited
   }
 
-	def getDirectDependenciesByNode(targets: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
-		getDirectDependencies(targets.map(_.id).toList, targets, includeInfeasibilityNodes, includeUpwardEdges, includeDownwardEdges)
-	}
+  def getDirectDependenciesByNode(targets: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
+    getDirectDependencies(targets.map(_.id).toList, targets, includeInfeasibilityNodes, includeUpwardEdges, includeDownwardEdges)
+  }
 
-	def getDirectDependenciesById(targets: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
-		getDirectDependencies(targets.toList, getNodesByIds(targets), includeInfeasibilityNodes, includeUpwardEdges, includeDownwardEdges)
-	}
+  def getDirectDependenciesById(targets: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
+    getDirectDependencies(targets.toList, getNodesByIds(targets), includeInfeasibilityNodes, includeUpwardEdges, includeDownwardEdges)
+  }
 
-	private def getDirectDependencies(initQueue: List[Int], targetNodes: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
-		val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)
-		var visited: Set[Int] = initQueue.toSet
-		var result: Set[Int] = Set.empty
-		var queue: List[Int] = initQueue
-		val targetSourceInfos = targetNodes.map(_.sourceInfo)
-		val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
-		while (queue.nonEmpty) {
-			val curr = queue.head
-			val newVisits = allEdges.getOrElse(curr, Set()).diff(infeasibilityNodeIds).diff(visited)
-			val newQueues = getNodesByIds(newVisits).filter(n => targetSourceInfos.contains(n.sourceInfo)).map(_.id)
-			visited = visited ++ newVisits
-			result = result ++ newVisits.diff(newQueues)
-			queue = queue.tail ++ newQueues.diff(queue.toSet)
-		}
-		result
-	}
+  private def getDirectDependencies(initQueue: List[Int], targetNodes: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
+    val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)
+    var visited: Set[Int] = initQueue.toSet
+    var result: Set[Int] = Set.empty
+    var queue: List[Int] = initQueue
+    val targetSourceInfos = targetNodes.map(_.sourceInfo)
+    val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
+    while (queue.nonEmpty) {
+      val curr = queue.head
+      val newVisits = allEdges.getOrElse(curr, Set()).diff(infeasibilityNodeIds).diff(visited)
+      val newQueues = getNodesByIds(newVisits).filter(n => targetSourceInfos.contains(n.sourceInfo)).map(_.id)
+      visited = visited ++ newVisits
+      result = result ++ newVisits.diff(newQueues)
+      queue = queue.tail ++ newQueues.diff(queue.toSet)
+    }
+    result
+  }
 
   def getAllDependents(sources: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
     val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)
     var visited: Set[Int] = Set.empty
     var queue: Set[Int] = sources
     val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
-    while(queue.nonEmpty){
+    while(queue.nonEmpty) {
       val newVisits = allEdges.filter{ case (t, s) => s.intersect(queue).nonEmpty && !infeasibilityNodeIds.contains(t) }.keys.toSet
       visited = visited ++ queue
       queue = newVisits.diff(visited)
@@ -275,26 +275,26 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
     visited
   }
 
-	def getDirectDependents(sources: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
-		val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)
-		var visited: Set[Int] = sources
-		var result: Set[Int] = Set.empty
-		var queue: Set[Int] = sources
-		val sourceSourceInfos = getNodesByIds(sources).map(_.sourceInfo)
-		val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
-		while(queue.nonEmpty){
-			val newVisits = allEdges.filter{case (t, s) => s.intersect(queue).nonEmpty && !infeasibilityNodeIds.contains(t)}.keys.toSet.diff(visited)
-			val newQueues = getNodesByIds(newVisits).filter(n => sourceSourceInfos.contains(n.sourceInfo)).map(_.id)
-			visited = visited ++ newVisits
-			result = result ++ newVisits.diff(newQueues)
-			queue = newQueues.diff(visited)
-		}
-		result
-	}
+  def getDirectDependents(sources: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
+    val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)
+    var visited: Set[Int] = sources
+    var result: Set[Int] = Set.empty
+    var queue: Set[Int] = sources
+    val sourceSourceInfos = getNodesByIds(sources).map(_.sourceInfo)
+    val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
+    while(queue.nonEmpty) {
+      val newVisits = allEdges.filter{case (t, s) => s.intersect(queue).nonEmpty && !infeasibilityNodeIds.contains(t)}.keys.toSet.diff(visited)
+      val newQueues = getNodesByIds(newVisits).filter(n => sourceSourceInfos.contains(n.sourceInfo)).map(_.id)
+      visited = visited ++ newVisits
+      result = result ++ newVisits.diff(newQueues)
+      queue = newQueues.diff(visited)
+    }
+    result
+  }
 
-	/**
-	 * Removes the provided nodes while perceiving the transitive closure by adding edges between the predecessors and successors.
-	 */
+  /**
+   * Removes the provided nodes while perceiving the transitive closure by adding edges between the predecessors and successors.
+   */
   private def removeAllEdgesForNode(node: DependencyAnalysisNode): Unit = {
     val id = node.id
     val predecessors = (edges filter { case (_, t) => t.contains(id) }).keys
@@ -304,9 +304,9 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   }
 
 
-	/**
-	 * Removes all label nodes while perceiving the transitive closure by adding edges between the predecessors and successors.
-	 */
+  /**
+   * Removes all label nodes while perceiving the transitive closure by adding edges between the predecessors and successors.
+   */
   def removeLabelNodes(): Unit = {
     def filterCriteria(n: DependencyAnalysisNode) = n.isInstanceOf[LabelNode]
 
@@ -314,19 +314,19 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
     assumptionNodes = assumptionNodes filterNot filterCriteria
   }
 
-	/**
-	 * Removes internal nodes while perceiving the transitive closure by adding edges between the predecessors and successors.
-	 */
+  /**
+   * Removes internal nodes while perceiving the transitive closure by adding edges between the predecessors and successors.
+   */
   def removeInternalNodes(): Unit = {
     def filterCriteria(n: DependencyAnalysisNode) = {
-			AssumptionType.internalTypes.contains(n.assumptionType) && !n.isInstanceOf[InfeasibilityNode]
-		}
+      AssumptionType.internalTypes.contains(n.assumptionType) && !n.isInstanceOf[InfeasibilityNode]
+    }
 
     assumptionNodes filter filterCriteria foreach removeAllEdgesForNode
     assumptionNodes = assumptionNodes filterNot filterCriteria
 
-		assertionNodes filter filterCriteria foreach removeAllEdgesForNode
-		assertionNodes = assertionNodes filterNot filterCriteria
+    assertionNodes filter filterCriteria foreach removeAllEdgesForNode
+    assertionNodes = assertionNodes filterNot filterCriteria
   }
 
   def exportGraph(dirName: String): Unit = {
@@ -351,12 +351,12 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   private def exportNodes(fileName: String): Unit = {
     val sep = "#"
     def getNodeExportString(node: DependencyAnalysisNode): String = {
-			val hasFailed = node match {
-				case node: GeneralAssertionNode => node.hasFailed
-				case _ => false
-			}
+      val hasFailed = node match {
+        case node: GeneralAssertionNode => node.hasFailed
+        case _ => false
+      }
       val parts = mutable.Seq(node.id.toString, node.getNodeType, node.assumptionType.toString, node.getNodeString, node.sourceInfo.toString,
-				node.sourceInfo.getPositionString, node.mergeInfo.toString, node.sourceInfo.getDescription, node.memberStr, hasFailed.toString)
+        node.sourceInfo.getPositionString, node.mergeInfo.toString, node.sourceInfo.getDescription, node.memberStr, hasFailed.toString)
       parts.map(_.replace("#", "@")).mkString(sep)
     }
     val headerParts = mutable.Seq("id", "node type", "assumption type", "node info", "source info", "position", "merge info", "description", "member name", "failed?")

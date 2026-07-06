@@ -32,19 +32,19 @@ trait DependencyAnalyzer {
   def createAssertOrCheckNode(term: Term, analysisInfos: DependencyAnalysisInfos, isCheck: Boolean): Option[GeneralAssertionNode]
   def addAssertFalseNode(isCheck: Boolean, analysisInfos: DependencyAnalysisInfos): Option[Int]
   def addInfeasibilityNode(isCheck: Boolean, analysisInfos: DependencyAnalysisInfos): Option[Int]
-	def addAssertionFailedNode(failedAssertion: Term, analysisInfos: DependencyAnalysisInfos): Option[Int]
+  def addAssertionFailedNode(failedAssertion: Term, analysisInfos: DependencyAnalysisInfos): Option[Int]
 
-	/**
-	 * Adds a dependency between all pairs of source and dest node ids.
-	 */
+  /**
+   * Adds a dependency between all pairs of source and dest node ids.
+   */
   def addDependency(source: Option[Int], dest: Option[Int]): Unit
 
-	/**
-	 * @param dep The UNSAT core as reported by Z3.
-	 * @param assertionLabel the label of the assertion that was proven using the UNSAT core
+  /**
+   * @param dep The UNSAT core as reported by Z3.
+   * @param assertionLabel the label of the assertion that was proven using the UNSAT core
    *
-	 *  Parses the UNSAT core and adds all its components as dependencies of the provided assertion.
-	 */
+   *  Parses the UNSAT core and adds all its components as dependencies of the provided assertion.
+   */
   def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit
 
   /**
@@ -63,12 +63,12 @@ trait DependencyAnalyzer {
    */
   def buildFinalGraph(): Option[DependencyGraph[IntraProcedural]]
 
-	/**
-	 * Stores the information that all nodes having a merge info in sourceExps should be connected to all nodes having a
-	 * merge info in targetExps.
-	 * These edges are eventually added when building the final graph ([[viper.silicon.dependencyAnalysis.DependencyAnalyzer#buildFinalGraph]]).
-	 */
-	def addCustomDependenciesBetweenMergeInfos(sourceExps: Seq[Exp], targetExps: Seq[Exp]): Unit
+  /**
+   * Stores the information that all nodes having a merge info in sourceExps should be connected to all nodes having a
+   * merge info in targetExps.
+   * These edges are eventually added when building the final graph ([[viper.silicon.dependencyAnalysis.DependencyAnalyzer#buildFinalGraph]]).
+   */
+  def addCustomDependenciesBetweenMergeInfos(sourceExps: Seq[Exp], targetExps: Seq[Exp]): Unit
 }
 
 object DependencyAnalyzer {
@@ -107,40 +107,40 @@ object DependencyAnalyzer {
     label.split("_")(1).toInt
   }
 
-	def addAssumption(decider: Decider, assumption: Term, analysisInfos: DependencyAnalysisInfos, description: Option[String] = None): Option[Int] = decider match {
-		case daDecider: DependencyAnalysisDeciderFeatures => daDecider.getDependencyAnalyzer.addAssumption(assumption, analysisInfos, description)
-		case _ => None
-	}
+  def addAssumption(decider: Decider, assumption: Term, analysisInfos: DependencyAnalysisInfos, description: Option[String] = None): Option[Int] = decider match {
+    case daDecider: DependencyAnalysisDeciderFeatures => daDecider.getDependencyAnalyzer.addAssumption(assumption, analysisInfos, description)
+    case _ => None
+  }
 
-	def addCustomDependenciesBetweenMergeInfos(decider: Decider, sourceExps: Seq[Exp], targetExps: Seq[Exp]): Unit = decider match {
-		case daDecider: DependencyAnalysisDeciderFeatures => daDecider.getDependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(sourceExps, targetExps)
-		case _ =>
-	}
+  def addCustomDependenciesBetweenMergeInfos(decider: Decider, sourceExps: Seq[Exp], targetExps: Seq[Exp]): Unit = decider match {
+    case daDecider: DependencyAnalysisDeciderFeatures => daDecider.getDependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(sourceExps, targetExps)
+    case _ =>
+  }
 
 
-	def wrapWithDependencyAnalysisLabel(decider: Decider, term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term = decider match {
-		case daDecider: DependencyAnalysisDeciderFeatures =>
-			if (!daDecider.isDependencyAnalysisEnabled || term.equals(True) || sourceChunks.size + sourceTerms.size == 0)
-				return term
+  def wrapWithDependencyAnalysisLabel(decider: Decider, term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term = decider match {
+    case daDecider: DependencyAnalysisDeciderFeatures =>
+      if (!daDecider.isDependencyAnalysisEnabled || term.equals(True) || sourceChunks.size + sourceTerms.size == 0)
+        return term
 
-			val labelNode = daDecider.getOrCreateAnalysisLabelNode(sourceChunks, sourceTerms)
-			labelNode.map(n => Implies(n.term, term)).getOrElse(term)
-		case _ => term
-	}
+      val labelNode = daDecider.getOrCreateAnalysisLabelNode(sourceChunks, sourceTerms)
+      labelNode.map(n => Implies(n.term, term)).getOrElse(term)
+    case _ => term
+  }
 
-	def handleAndGetUpdatedAnalysisInfos(decider: Decider, analysisInfos: DependencyAnalysisInfos, info: Info, node: ast.Node): DependencyAnalysisInfos = decider match {
-		case daDecider: DependencyAnalysisDeciderFeatures =>
-			val newAnalysisInfos = analysisInfos.addInfo(info, node)
-			info.getAllInfos[AdditionalDependencyNodeInfo].foreach {
-				case AdditionalAssertionNode() => daDecider.getDependencyAnalyzer.createAssertOrCheckNode(True, newAnalysisInfos, isCheck = false).foreach(n => {
-					daDecider.getDependencyAnalyzer.addAssertionNode(n)
-					if (daDecider.isPathInfeasible) daDecider.getDependencyAnalyzer.addDependency(daDecider.pcs.getCurrentInfeasibilityNode, Some(n.id))
-				})
-				case AdditionalAssumptionNode() => daDecider.getDependencyAnalyzer.addAssumption(True, newAnalysisInfos)
-			}
-			newAnalysisInfos
-		case _ => analysisInfos
-	}
+  def handleAndGetUpdatedAnalysisInfos(decider: Decider, analysisInfos: DependencyAnalysisInfos, info: Info, node: ast.Node): DependencyAnalysisInfos = decider match {
+    case daDecider: DependencyAnalysisDeciderFeatures =>
+      val newAnalysisInfos = analysisInfos.addInfo(info, node)
+      info.getAllInfos[AdditionalDependencyNodeInfo].foreach {
+        case AdditionalAssertionNode() => daDecider.getDependencyAnalyzer.createAssertOrCheckNode(True, newAnalysisInfos, isCheck = false).foreach(n => {
+          daDecider.getDependencyAnalyzer.addAssertionNode(n)
+          if (daDecider.isPathInfeasible) daDecider.getDependencyAnalyzer.addDependency(daDecider.pcs.getCurrentInfeasibilityNode, Some(n.id))
+        })
+        case AdditionalAssumptionNode() => daDecider.getDependencyAnalyzer.addAssumption(True, newAnalysisInfos)
+      }
+      newAnalysisInfos
+    case _ => analysisInfos
+  }
   /**
    *
    * @param name Optional name for the result graph.
@@ -148,7 +148,7 @@ object DependencyAnalyzer {
    * @return A dependency graph interpreter operating on a new dependency graph that represents all input graphs and
    *         all dependencies between them.
    * The new graph is built by adding all existing nodes and edges of all input graphs and joining them
-	 * via the join information stored in each node.
+   * via the join information stored in each node.
    */
   def joinGraphsAndGetInterpreter(name: String, dependencyGraphInterpreters: Set[DependencyGraphInterpreter[IntraProcedural]]): DependencyGraphInterpreter[Final] = {
     val newGraph = new DependencyGraph[Final]
@@ -171,43 +171,43 @@ object DependencyAnalyzer {
     val sourceNodesByJoinInfo = getJoinNodesByJoinInfo(joinSourceNodes, JoinType.Source)
     val sinkNodesByJoinInfo = getJoinNodesByJoinInfo(joinSinkNodes, JoinType.Sink)
 
-		sinkNodesByJoinInfo.foreach{case (joinInfo, sinkNodes) =>
+    sinkNodesByJoinInfo.foreach{case (joinInfo, sinkNodes) =>
       val matchingSourceNodes = sourceNodesByJoinInfo.filter{case (sourceJoinInfo, _) => sourceJoinInfo.matches(joinInfo)}.values.flatten.toSet
-			addEdgesConnectingMethods(newGraph, joinInfo, matchingSourceNodes, sinkNodes)
+      addEdgesConnectingMethods(newGraph, joinInfo, matchingSourceNodes, sinkNodes)
     }
 
     val newInterpreter = new DependencyGraphInterpreter[Final](name, newGraph, dependencyGraphInterpreters.toList.flatMap(_.getErrors))
     newInterpreter
   }
 
-	private def addEdgesConnectingMethods(newGraph: DependencyGraph[Final], joinInfo: SimpleDependencyAnalysisJoin, sourceNodes: Set[DependencyAnalysisNode], sinkNodes: Set[DependencyAnalysisNode]): Unit = {
-		if (joinInfo.edgeType.equals(EdgeType.Up)) {
-			val directDepsOfSources = if(!Verifier.config.disableDependencyAnalysisJoinPrecisionOpt()) {
-				// Preconditions are connected to the dependencies required to prove them at all call sites. However, they do not depend on the calls themselves.
-				sourceNodes.groupBy(_.sourceInfo).flatMap(t => newGraph.getDirectDependenciesByNode(t._2, true, true, true))
-			} else {
-				// Connect preconditions directly to call and therefore, indirectly to all its dependencies -> imprecise but might be faster and
-				// more user-friendly since it becomes apparent which call introduced these indirect dependencies.
-				sourceNodes.map(_.id)
-			}
-			newGraph.addEdgesConnectingMethodsUpwards(directDepsOfSources, sinkNodes.map(_.id))
-		} else {
-			newGraph.addEdgesConnectingMethodsDownwards(sourceNodes.map(_.id), sinkNodes.map(_.id))
-		}
-	}
+  private def addEdgesConnectingMethods(newGraph: DependencyGraph[Final], joinInfo: SimpleDependencyAnalysisJoin, sourceNodes: Set[DependencyAnalysisNode], sinkNodes: Set[DependencyAnalysisNode]): Unit = {
+    if (joinInfo.edgeType.equals(EdgeType.Up)) {
+      val directDepsOfSources = if(!Verifier.config.disableDependencyAnalysisJoinPrecisionOpt()) {
+        // Preconditions are connected to the dependencies required to prove them at all call sites. However, they do not depend on the calls themselves.
+        sourceNodes.groupBy(_.sourceInfo).flatMap(t => newGraph.getDirectDependenciesByNode(t._2, true, true, true))
+      } else {
+        // Connect preconditions directly to call and therefore, indirectly to all its dependencies -> imprecise but might be faster and
+        // more user-friendly since it becomes apparent which call introduced these indirect dependencies.
+        sourceNodes.map(_.id)
+      }
+      newGraph.addEdgesConnectingMethodsUpwards(directDepsOfSources, sinkNodes.map(_.id))
+    } else {
+      newGraph.addEdgesConnectingMethodsDownwards(sourceNodes.map(_.id), sinkNodes.map(_.id))
+    }
+  }
 }
 
 class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAnalyzer {
-	protected var customMergeDependencies: Set[(Set[DependencyAnalysisMergeInfo], Set[DependencyAnalysisMergeInfo])] = Set.empty
+  protected var customMergeDependencies: Set[(Set[DependencyAnalysisMergeInfo], Set[DependencyAnalysisMergeInfo])] = Set.empty
 
   override def getMember: ast.Member = member.get
 
   override def getNodes: Iterable[DependencyAnalysisNode] = dependencyGraph.getNodes
 
   private def getNodeIdsByTerm(terms: Set[Term]): Set[Int] = {
-		dependencyGraph.getNodes
-			.filter(t => terms.contains(t.getTerm))
-			.map(_.id)
+    dependencyGraph.getNodes
+      .filter(t => terms.contains(t.getTerm))
+      .map(_.id)
   }
 
 
@@ -226,7 +226,7 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
   }
 
   override def addAxiom(assumption: Term, analysisAxiomInfo: DependencyAnalysisAxiomInfo, description: Option[String]): Option[Int] = {
-		val analysisInfos = analysisAxiomInfo.analysisInfos
+    val analysisInfos = analysisAxiomInfo.analysisInfos
     val node = AxiomAssumptionNode(assumption, description, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assumptionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo, analysisAxiomInfo.memberStr)
     addAssumptionNode(node)
     Some(node.id)
@@ -322,20 +322,20 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
     dependencyGraph.addEdges(sourceNodeIds, targetNodes)
   }
 
-	override def addCustomDependenciesBetweenMergeInfos(sourceExps: Seq[Exp], targetExps: Seq[Exp]): Unit = {
-		val sourceMergeInfos = sourceExps.flatMap(_.info.getUniqueInfo[DependencyAnalysisMergeInfo]).filter(_.isMerge).toSet
-		val targetMergeInfos = targetExps.flatMap(_.info.getUniqueInfo[DependencyAnalysisMergeInfo]).filter(_.isMerge).toSet
+  override def addCustomDependenciesBetweenMergeInfos(sourceExps: Seq[Exp], targetExps: Seq[Exp]): Unit = {
+    val sourceMergeInfos = sourceExps.flatMap(_.info.getUniqueInfo[DependencyAnalysisMergeInfo]).filter(_.isMerge).toSet
+    val targetMergeInfos = targetExps.flatMap(_.info.getUniqueInfo[DependencyAnalysisMergeInfo]).filter(_.isMerge).toSet
 
-		customMergeDependencies = Set((sourceMergeInfos, targetMergeInfos)) ++ customMergeDependencies
-	}
+    customMergeDependencies = Set((sourceMergeInfos, targetMergeInfos)) ++ customMergeDependencies
+  }
 
-	protected def addCustomMergeDependencies(mergedGraph: DependencyGraph[IntraProcedural]): Unit = {
-		customMergeDependencies.foreach{ case (sourceMergeInfos, targetMergeInfos) =>
-			val sourceNodes = mergedGraph.getNodes.filter(node => sourceMergeInfos.contains(node.mergeInfo)).map(_.id)
-			val targetNodes = mergedGraph.getNodes.filter(node => targetMergeInfos.contains(node.mergeInfo)).map(_.id)
-			mergedGraph.addEdges(sourceNodes, targetNodes)
-		}
-	}
+  protected def addCustomMergeDependencies(mergedGraph: DependencyGraph[IntraProcedural]): Unit = {
+    customMergeDependencies.foreach{ case (sourceMergeInfos, targetMergeInfos) =>
+      val sourceNodes = mergedGraph.getNodes.filter(node => sourceMergeInfos.contains(node.mergeInfo)).map(_.id)
+      val targetNodes = mergedGraph.getNodes.filter(node => targetMergeInfos.contains(node.mergeInfo)).map(_.id)
+      mergedGraph.addEdges(sourceNodes, targetNodes)
+    }
+  }
 
   /**
    *
@@ -352,11 +352,11 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
     Some(mergedGraph)
   }
 
-	/**
-	 * Adds edges between the nodes with identical merge info and the ones to be connected as given by the custom merge dependencies
-	 * to the merged graph. This step is necessary to ensure that the low-level graph is connected and encodes all direct
-	 * and indirect dependencies.
-	 */
+  /**
+   * Adds edges between the nodes with identical merge info and the ones to be connected as given by the custom merge dependencies
+   * to the merged graph. This step is necessary to ensure that the low-level graph is connected and encodes all direct
+   * and indirect dependencies.
+   */
   private def addTransitiveEdges(mergedGraph: DependencyGraph[IntraProcedural]): Unit = {
     val nodesPerSourceInfo = mergedGraph.getNodes.filter(_.mergeInfo.isMerge).groupBy(_.mergeInfo)
     nodesPerSourceInfo foreach {case (_, nodes) =>
@@ -368,7 +368,7 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
       mergedGraph.addEdges(checks.map(_.id), notChecks.map(_.id)) // TODO ake: why do we need this?
     }
 
-		addCustomMergeDependencies(mergedGraph)
+    addCustomMergeDependencies(mergedGraph)
   }
 
   /**
@@ -456,6 +456,6 @@ class NoDependencyAnalyzer extends DependencyAnalyzer {
 
   override def buildFinalGraph(): Option[DependencyGraph[IntraProcedural]] = None
 
-	override def addCustomDependenciesBetweenMergeInfos(sourceExps: Seq[Exp], targetExps: Seq[Exp]): Unit = {}
+  override def addCustomDependenciesBetweenMergeInfos(sourceExps: Seq[Exp], targetExps: Seq[Exp]): Unit = {}
 
 }

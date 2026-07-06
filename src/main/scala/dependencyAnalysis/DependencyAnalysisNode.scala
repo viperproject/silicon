@@ -29,23 +29,23 @@ trait DependencyAnalysisNode {
    */
   val assumptionType: AssumptionType
 
-	/**
-	 * The merge info determines which nodes should be "merged" when lifting the graph to the user level. In reality,
-	 * the nodes are connected by edges instead and are only partially merged.
-	 */
+  /**
+   * The merge info determines which nodes should be "merged" when lifting the graph to the user level. In reality,
+   * the nodes are connected by edges instead and are only partially merged.
+   */
   val mergeInfo: DependencyAnalysisMergeInfo
 
-	/**
-	 * The join infos specify how the node should be joined with nodes of other verification component's graphs.
-	 */
+  /**
+   * The join infos specify how the node should be joined with nodes of other verification component's graphs.
+   */
   val joinInfos: List[SimpleDependencyAnalysisJoin]
 
-	/**
-	 * The program member (method, function) that the node belongs to
-	 */
-	val memberStr: String
+  /**
+   * The program member (method, function) that the node belongs to
+   */
+  val memberStr: String
 
-	/**
+  /**
    * The assumes or asserted Silicon term. Currently, only used for debugging purposes.
    */
   val term: Term

@@ -381,8 +381,8 @@ object consumer extends ConsumptionRules {
               State.mergeHeap(
                 entry1.data._1, And(entry1.pathConditions.branchConditions), Option.when(withExp)(BigAnd(entry1.pathConditions.branchConditionExps.map(_._2.get))),
                 entry2.data._1, And(entry2.pathConditions.branchConditions), Option.when(withExp)(BigAnd(entry2.pathConditions.branchConditionExps.map(_._2.get))),
-								v1,
-								analysisInfos.withSource(StringAnalysisSourceInfo("conditional join", e0.pos))
+                v1,
+                analysisInfos.withSource(StringAnalysisSourceInfo("conditional join", e0.pos))
               ),
               // Assume that entry1.pcs is inverse of entry2.pcs
               (entry1.data._2, entry2.data._2) match {
@@ -438,7 +438,7 @@ object consumer extends ConsumptionRules {
             val failure = createFailure(pve dueTo AssertionFalse(e), v2, s3, termToAssert, eNew)
             if (s3.retryLevel == 0) v2.decider.handleFailedAssertion(t, Option.when(withExp)(e), eNew, analysisInfos, v2.reportFurtherErrors())
             if (s3.retryLevel == 0 && v2.reportFurtherErrors()) failure combine QS(s3, v2) else failure
-				}})
+        }})
     })((s4, v4) => {
       val s5 = s4.copy(h = s.h,
                        reserveHeaps = s.reserveHeaps,

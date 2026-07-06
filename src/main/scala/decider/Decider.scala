@@ -60,10 +60,10 @@ trait Decider {
 
   def startDebugSubExp(): Unit
 
-	def debuggerAssume(terms: Iterable[Term], de: DebugExp)
+  def debuggerAssume(terms: Iterable[Term], de: DebugExp)
 
   def isPathInfeasible: Boolean
-	def handleInfeasiblePath(hasAssertions: Boolean, hasAssumptions: Boolean, analysisInfos: DependencyAnalysisInfos): Unit
+  def handleInfeasiblePath(hasAssertions: Boolean, hasAssumptions: Boolean, analysisInfos: DependencyAnalysisInfos): Unit
 
   def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos): Unit
   def assume(t: Term, debugExp: Option[DebugExp], analysisInfos: DependencyAnalysisInfos): Unit
@@ -78,7 +78,7 @@ trait Decider {
    *         1. It passes State and Operations to the continuation
    *         2. The implementation reacts to a failing assertion by e.g. a state consolidation
    */
-	def assert(t: Term, analysisInfos: DependencyAnalysisInfos)(Q: Boolean => VerificationResult): VerificationResult
+  def assert(t: Term, analysisInfos: DependencyAnalysisInfos)(Q: Boolean => VerificationResult): VerificationResult
   def assert(t: Term, analysisInfos: DependencyAnalysisInfos, timeout: Option[Int])(Q: Boolean => VerificationResult): VerificationResult
 
   def fresh(id: String, sort: Sort, ptype: Option[PType]): Var
@@ -126,21 +126,21 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
      */
   def identifierFactory: IdentifierFactory
 
-	def decider: AbstractDecider = DefaultDecider
+  def decider: AbstractDecider = DefaultDecider
 
-	object DefaultDecider extends AbstractDecider
+  object DefaultDecider extends AbstractDecider
 
   trait AbstractDecider extends Decider with StatefulComponent {
     protected var _prover: Prover = _
-		protected var pathConditions: PathConditionStack = _
+    protected var pathConditions: PathConditionStack = _
 
-		protected var _declaredFreshFunctions: Set[FunctionDecl] = _ /* [BRANCH-PARALLELISATION] */
-		protected var _declaredFreshMacros: Vector[MacroDecl] = _
-		protected var _declaredFreshMacroNames: Set[String] = _ /* contains names of _declaredFreshMacros for faster lookup */
+    private var _declaredFreshFunctions: Set[FunctionDecl] = _ /* [BRANCH-PARALLELISATION] */
+    private var _declaredFreshMacros: Vector[MacroDecl] = _
+    private var _declaredFreshMacroNames: Set[String] = _ /* contains names of _declaredFreshMacros for faster lookup */
 
-		protected var _proverOptions: Map[String, String] = Map.empty
-		protected var _proverResetOptions: Map[String, String] = Map.empty
-		protected val _debuggerAssumedTerms: mutable.Set[Term] = mutable.Set.empty
+    private var _proverOptions: Map[String, String] = Map.empty
+    private var _proverResetOptions: Map[String, String] = Map.empty
+    private val _debuggerAssumedTerms: mutable.Set[Term] = mutable.Set.empty
 
     def functionDecls: Set[FunctionDecl] = _declaredFreshFunctions
     def macroDecls: Vector[MacroDecl] = _declaredFreshMacros
@@ -165,7 +165,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       })
     }
 
-		protected def getProver(prover: String): Prover = prover match {
+    protected def getProver(prover: String): Prover = prover match {
       case Z3ProverStdIO.name => new Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
       case Cvc5ProverStdIO.name => new Cvc5ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
       case Z3ProverAPI.name => new Z3ProverAPI(uniqueId, new TermToZ3APIConverter(), identifierFactory, reporter, triggerGenerator)
@@ -175,9 +175,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         getProver(Z3ProverStdIO.name)
     }
 
-		protected def initProver(proverName: String): Unit = {
-			_prover = getProver(proverName)
-		}
+    protected def initProver(proverName: String): Unit = {
+      _prover = getProver(proverName)
+    }
 
     def createProver(proverName: String, userArgsString: Option[String]): Option[DependencyNotFoundError] = {
       initProver(proverName)
@@ -290,7 +290,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def isPathInfeasible: Boolean = Verifier.config.disableInfeasibilityChecks() && pcs.isPathInfeasible
 
-		def handleInfeasiblePath(hasAssertions: Boolean, hasAssumptions: Boolean, analysisInfos: DependencyAnalysisInfos): Unit = {}
+    def handleInfeasiblePath(hasAssertions: Boolean, hasAssumptions: Boolean, analysisInfos: DependencyAnalysisInfos): Unit = {}
 
     def addDebugExp(e: DebugExp): Unit = {
       if (debugMode) {
@@ -398,15 +398,15 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     /* Asserting facts */
 
     def checkSmoke(analysisInfos: DependencyAnalysisInfos, isAssert: Boolean=false): Boolean = {
-			checkSmokeInternal(isAssert)
+      checkSmokeInternal(isAssert)
     }
 
-		protected def checkSmokeInternal(isAssert: Boolean=false, label: String=""): Boolean = {
-			val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
-			val result = prover.check(timeout, label) == Unsat
-			if(result) pcs.setPathInfeasible(true)
-			result
-		}
+    protected def checkSmokeInternal(isAssert: Boolean=false, label: String=""): Boolean = {
+      val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
+      val result = prover.check(timeout, label) == Unsat
+      if(result) pcs.setPathInfeasible(true)
+      result
+    }
 
     override def handleFailedAssertion(failedAssertion: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit = {
       if (assumeFailedAssertion) {
@@ -445,15 +445,15 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       val asserted = isKnownToBeTrue(t)
 
-			val result = deciderAssertInternal(asserted, t, timeout, analysisInfos, isCheck)
+      val result = deciderAssertInternal(asserted, t, timeout, analysisInfos, isCheck)
 
       symbExLog.closeScope(sepIdentifier)
       result
     }
 
-		protected def deciderAssertInternal(asserted: Boolean, t: Term, timeout: Option[Int], analysisInfos: DependencyAnalysisInfos, isCheck: Boolean, label: String="") = {
-			asserted || proverAssert(t, timeout, label)
-		}
+    protected def deciderAssertInternal(asserted: Boolean, t: Term, timeout: Option[Int], analysisInfos: DependencyAnalysisInfos, isCheck: Boolean, label: String="") = {
+      asserted || proverAssert(t, timeout, label)
+    }
 
     protected def isKnownToBeTrue(t: Term) = t match {
       case True => true

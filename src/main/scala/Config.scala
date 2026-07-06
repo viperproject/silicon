@@ -692,11 +692,11 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-	val enableUnsatCores: ScallopOption[Boolean] = opt[Boolean]("enableUnsatCores",
-		descr = "Enables UNSAT cores",
-		default = Some(false),
-		noshort = true
-	)
+  val enableUnsatCores: ScallopOption[Boolean] = opt[Boolean]("enableUnsatCores",
+    descr = "Enables UNSAT cores",
+    default = Some(false),
+    noshort = true
+  )
 
   val startDebuggerAutomatically: ScallopOption[Boolean] = opt[Boolean]("startDebuggerAutomatically",
     descr = "Starts the debugging mode automatically after verification completes",
@@ -710,11 +710,11 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-	val disableDependencyAnalysisJoinPrecisionOpt: ScallopOption[Boolean] = opt[Boolean]("disableDependencyAnalysisJoinPrecisionOpt",
-		descr = "Disables the precision optimizations regarding edges across method boundaries.",
-		default = Some(false),
-		noshort = true
-	)
+  val disableDependencyAnalysisJoinPrecisionOpt: ScallopOption[Boolean] = opt[Boolean]("disableDependencyAnalysisJoinPrecisionOpt",
+    descr = "Disables the precision optimizations regarding edges across method boundaries.",
+    default = Some(false),
+    noshort = true
+  )
 
   val enableDependencyAnalysisDebugging: ScallopOption[Boolean] = opt[Boolean]("enableDependencyAnalysisDebugging",
     descr = "Enable debugging for dependency analysis mode",
@@ -728,11 +728,11 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-	val dependencyAnalysisMode: ScallopOption[String] = opt[String]("dependencyAnalysisMode",
-		descr = "",
-		default = None,
-		noshort = true
-	)
+  val dependencyAnalysisMode: ScallopOption[String] = opt[String]("dependencyAnalysisMode",
+    descr = "",
+    default = None,
+    noshort = true
+  )
 
   /* Option validation (trailing file argument is validated by parent class) */
 

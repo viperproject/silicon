@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger
 trait Verifier {
   def uniqueId: String
 
-	def config: Config
+  def config: Config
 
   def symbExLog: MemberSymbExLogger
   def openSymbExLogger(member: ast.Member): Unit
@@ -36,7 +36,7 @@ trait Verifier {
   def symbolConverter: SymbolConverter
   def stateFormatter: StateFormatter
   def identifierFactory: IdentifierFactory
-	def chunkFactory: ChunkFactory
+  def chunkFactory: ChunkFactory
   def triggerGenerator: TriggerGenerator
   def axiomRewriter: AxiomRewriter
   def quantifierSupporter: QuantifierSupporter

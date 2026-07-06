@@ -192,7 +192,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                      (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
     if (v.decider.isPathInfeasible) {
-			v.decider.handleInfeasiblePath(true, true, analysisInfos)
+      v.decider.handleInfeasiblePath(true, true, analysisInfos)
       return Q(s, v)
     }
 
@@ -270,7 +270,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                      (Q: (State, Term, Verifier) => VerificationResult): VerificationResult =
     {
       if (v.decider.isPathInfeasible) {
-				v.decider.handleInfeasiblePath(true, false, analysisInfos)
+        v.decider.handleInfeasiblePath(true, false, analysisInfos)
         return Q(s, NoPerm, v)
       }
 
@@ -338,11 +338,11 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                      (Q: (State, Term, Verifier) => VerificationResult)
   : VerificationResult = {
     if (v.decider.isPathInfeasible) {
-			v.decider.handleInfeasiblePath(true, false, analysisInfos)
+      v.decider.handleInfeasiblePath(true, false, analysisInfos)
 
       val sort = v.symbolConverter.toSort(fa.field.typ)
       val newVar = v.decider.fresh(sort, None) // just make sure the returned term typechecks
-			val s2 = s.copy(functionRecorder = s.functionRecorder.recordConstrainedVar(newVar, True))
+      val s2 = s.copy(functionRecorder = s.functionRecorder.recordConstrainedVar(newVar, True))
       return Q(s2, newVar, v)
     }
 
@@ -374,7 +374,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             val toAssert = IsPositive(totalPermissions.replace(`?r`, tRcvr))
             v.decider.assert(toAssert, analysisInfos) {
               case false =>
-								val debugExp = Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)())())
+                val debugExp = Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)())())
                 val failure = createFailure(ve, v, s, toAssert, debugExp)
                 if (s.retryLevel == 0) v.decider.handleFailedAssertion(toAssert, debugExp, debugExp, analysisInfos, v.reportFurtherErrors())
                 val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(fa.field, s, v), Option.when(withExp)(PUnknown()))
@@ -546,7 +546,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                     analysisInfos: DependencyAnalysisInfos)
                    (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
     if (v.decider.isPathInfeasible) {
-			v.decider.handleInfeasiblePath(true, false, analysisInfos)
+      v.decider.handleInfeasiblePath(true, false, analysisInfos)
       return Q(s, h, Some(Unit), v)
     }
 
@@ -662,8 +662,8 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                         analysisInfos: DependencyAnalysisInfos)
                        (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
     if (v.decider.isPathInfeasible) {
-			v.decider.handleInfeasiblePath(true, false, analysisInfos)
-			return Q(s, h, Some(Unit), v)
+      v.decider.handleInfeasiblePath(true, false, analysisInfos)
+      return Q(s, h, Some(Unit), v)
     }
 
     quantifiedChunkSupporter.consume(

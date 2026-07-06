@@ -15,148 +15,148 @@ object DATraversalMode extends Enumeration {
 }
 
 class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, dependencyGraph: ReadOnlyDependencyGraph[T], errors: List[Failure], member: Option[ast.Member]=None) {
-	val pruningSupporter: DependencyAnalysisPruningSupporter[T] = new DependencyAnalysisPruningSupporter[T](this)
-	val progressSupporter: DependencyAnalysisProgressSupporter[T] = new DependencyAnalysisProgressSupporter[T](this)
+  val pruningSupporter: DependencyAnalysisPruningSupporter[T] = new DependencyAnalysisPruningSupporter[T](this)
+  val progressSupporter: DependencyAnalysisProgressSupporter[T] = new DependencyAnalysisProgressSupporter[T](this)
 
 
-	def getGraph: ReadOnlyDependencyGraph[T] = dependencyGraph
+  def getGraph: ReadOnlyDependencyGraph[T] = dependencyGraph
 
-	def getName: String = name
+  def getName: String = name
 
-	def getMember: Option[ast.Member] = member
+  def getMember: Option[ast.Member] = member
 
-	lazy val nodesMap: Map[Int, DependencyAnalysisNode] = getNodes.map(node => (node.id, node)).toMap
-	lazy val nonInternalAssumptionNodesMap: Map[Int, DependencyAnalysisNode] = getNonInternalAssumptionNodes(getNodes).map(node => (node.id, node)).toMap
-	lazy val assertionNodesMap: Map[Int, DependencyAnalysisNode] = getAssertionNodes.map(node => (node.id, node)).toMap
+  lazy val nodesMap: Map[Int, DependencyAnalysisNode] = getNodes.map(node => (node.id, node)).toMap
+  lazy val nonInternalAssumptionNodesMap: Map[Int, DependencyAnalysisNode] = getNonInternalAssumptionNodes(getNodes).map(node => (node.id, node)).toMap
+  lazy val assertionNodesMap: Map[Int, DependencyAnalysisNode] = getAssertionNodes.map(node => (node.id, node)).toMap
 
-	def getNodes: Set[DependencyAnalysisNode] = dependencyGraph.getNodes
+  def getNodes: Set[DependencyAnalysisNode] = dependencyGraph.getNodes
 
-	def getAssumptionNodes: Set[DependencyAnalysisNode] = dependencyGraph.getAssumptionNodes.toSet
+  def getAssumptionNodes: Set[DependencyAnalysisNode] = dependencyGraph.getAssumptionNodes.toSet
 
-	def getAssertionNodes: Set[DependencyAnalysisNode] = dependencyGraph.getAssertionNodes.toSet
+  def getAssertionNodes: Set[DependencyAnalysisNode] = dependencyGraph.getAssertionNodes.toSet
 
-	def getErrors: List[Failure] = errors
+  def getErrors: List[Failure] = errors
 
-	// TODO ake: join nodes are not needed for the final graph. Maybe we can outsource this to a dedicated intraprocedural graph interpreter class.
-	val joinSinkNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfos.exists(_.joinType.equals(JoinType.Sink)))
-	val joinSourceNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfos.exists(_.joinType.equals(JoinType.Source)))
+  // TODO ake: join nodes are not needed for the final graph. Maybe we can outsource this to a dedicated intraprocedural graph interpreter class.
+  val joinSinkNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfos.exists(_.joinType.equals(JoinType.Sink)))
+  val joinSourceNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfos.exists(_.joinType.equals(JoinType.Source)))
 
-	private def getJoinCandidateNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes.filter(node => node.joinInfos.nonEmpty)
+  private def getJoinCandidateNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes.filter(node => node.joinInfos.nonEmpty)
 
-	def toUserLevelNodes(nodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = UserLevelDependencyAnalysisNode.from(nodes)
+  def toUserLevelNodes(nodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = UserLevelDependencyAnalysisNode.from(nodes)
 
-	def getNodesByLine(line: Int): Set[DependencyAnalysisNode] =
-		getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line)
+  def getNodesByLine(line: Int): Set[DependencyAnalysisNode] =
+    getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line)
 
-	def getNodesByPosition(file: String, line: Int): Set[DependencyAnalysisNode] =
-		getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line && node.sourceInfo.getPositionString.startsWith(file + "."))
+  def getNodesByPosition(file: String, line: Int): Set[DependencyAnalysisNode] =
+    getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line && node.sourceInfo.getPositionString.startsWith(file + "."))
 
 
-	def getNodesByLabel(label: String): Set[DependencyAnalysisNode] = {
-		val fullAnnotation = ("""@label\(\s*"?""" + java.util.regex.Pattern.quote(label) + """"?\s*\)""").r
-		getNodes.filter(node => fullAnnotation.findFirstIn(node.toString).isDefined)
-	}
+  def getNodesByLabel(label: String): Set[DependencyAnalysisNode] = {
+    val fullAnnotation = ("""@label\(\s*"?""" + java.util.regex.Pattern.quote(label) + """"?\s*\)""").r
+    getNodes.filter(node => fullAnnotation.findFirstIn(node.toString).isDefined)
+  }
 
-	def getDirectDependencies(nodeIdsToAnalyze: Set[Int]): Set[DependencyAnalysisNode] = {
-		val result: Set[Int] = dependencyGraph.getDirectDependenciesById(nodeIdsToAnalyze, true, true, true)
-		getNonInternalAssumptionNodes.filter(node => result.contains(node.id))
-	}
+  def getDirectDependencies(nodeIdsToAnalyze: Set[Int]): Set[DependencyAnalysisNode] = {
+    val result: Set[Int] = dependencyGraph.getDirectDependenciesById(nodeIdsToAnalyze, true, true, true)
+    getNonInternalAssumptionNodes.filter(node => result.contains(node.id))
+  }
 
-	private def getAllDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true) = {
-		val allDependenciesUpwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
-		val allDependenciesDownwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze ++ allDependenciesUpwards, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
-		allDependenciesUpwards ++ allDependenciesDownwards
-	}
+  private def getAllDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true) = {
+    val allDependenciesUpwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
+    val allDependenciesDownwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze ++ allDependenciesUpwards, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
+    allDependenciesUpwards ++ allDependenciesDownwards
+  }
 
-	def getAllNonInternalDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-		getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes) flatMap nonInternalAssumptionNodesMap.get
-	}
+  def getAllNonInternalDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+    getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes) flatMap nonInternalAssumptionNodesMap.get
+  }
 
-	def getAllExplicitDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-		val allDeps = getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes)
-		getExplicitAssumptionNodes.filter(node => allDeps.contains(node.id))
-	}
+  def getAllExplicitDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+    val allDeps = getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes)
+    getExplicitAssumptionNodes.filter(node => allDeps.contains(node.id))
+  }
 
-	def getDirectDependents(nodeIdsToAnalyze: Set[Int]): Set[DependencyAnalysisNode] = {
-		val result: Set[Int] = dependencyGraph.getDirectDependents(nodeIdsToAnalyze, true, true, true)
-		getNonInternalAssertionNodes.filter(node => result.contains(node.id))
-	}
+  def getDirectDependents(nodeIdsToAnalyze: Set[Int]): Set[DependencyAnalysisNode] = {
+    val result: Set[Int] = dependencyGraph.getDirectDependents(nodeIdsToAnalyze, true, true, true)
+    getNonInternalAssertionNodes.filter(node => result.contains(node.id))
+  }
 
-	private def getAllDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true) = {
-		val allDependentsDownwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
-		val allDependentsUpwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze ++ allDependentsDownwards, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
-		allDependentsUpwards ++ allDependentsDownwards
-	}
+  private def getAllDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true) = {
+    val allDependentsDownwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
+    val allDependentsUpwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze ++ allDependentsDownwards, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
+    allDependentsUpwards ++ allDependentsDownwards
+  }
 
-	def getAllNonInternalDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-		val allDeps = getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes)
-		getNonInternalAssertionNodes.filter(node => allDeps.contains(node.id))
-	}
+  def getAllNonInternalDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+    val allDeps = getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes)
+    getNonInternalAssertionNodes.filter(node => allDeps.contains(node.id))
+  }
 
-	def getAllExplicitDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-		val allDeps = getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes)
-		getExplicitAssertionNodes.filter(node => allDeps.contains(node.id))
-	}
+  def getAllExplicitDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+    val allDeps = getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes)
+    getExplicitAssertionNodes.filter(node => allDeps.contains(node.id))
+  }
 
-	def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = nonInternalAssumptionNodesMap.values.toSet
+  def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = nonInternalAssumptionNodesMap.values.toSet
 
-	def getNonInternalAssumptionNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes filter (node =>
-		(node.isInstanceOf[GeneralAssumptionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
-			|| AssumptionType.postconditionTypes.contains(node.assumptionType) || node.joinInfos.nonEmpty // TODO ake: find a better way to include the join nodes
-		)
+  def getNonInternalAssumptionNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes filter (node =>
+    (node.isInstanceOf[GeneralAssumptionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
+      || AssumptionType.postconditionTypes.contains(node.assumptionType) || node.joinInfos.nonEmpty // TODO ake: find a better way to include the join nodes
+    )
 
-	def getExplicitAssumptionNodes: Set[DependencyAnalysisNode] = getNonInternalAssumptionNodes filter (node =>
-		node.isInstanceOf[GeneralAssumptionNode] && AssumptionType.explicitAssumptionTypes.contains(node.assumptionType)
-		)
+  def getExplicitAssumptionNodes: Set[DependencyAnalysisNode] = getNonInternalAssumptionNodes filter (node =>
+    node.isInstanceOf[GeneralAssumptionNode] && AssumptionType.explicitAssumptionTypes.contains(node.assumptionType)
+    )
 
-	def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] = getAssertionNodes filter (node =>
-		!AssumptionType.internalTypes.contains(node.assumptionType) || node.joinInfos.nonEmpty)
+  def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] = getAssertionNodes filter (node =>
+    !AssumptionType.internalTypes.contains(node.assumptionType) || node.joinInfos.nonEmpty)
 
-	def getExplicitAssertionNodes: Set[DependencyAnalysisNode] =
-		getNonInternalAssertionNodes.filter(node => AssumptionType.explicitAssertionTypes.contains(node.assumptionType))
+  def getExplicitAssertionNodes: Set[DependencyAnalysisNode] =
+    getNonInternalAssertionNodes.filter(node => AssumptionType.explicitAssertionTypes.contains(node.assumptionType))
 
-	def getAssertionNodesWithFailures: Set[GeneralAssertionNode] =
-		getNonInternalAssertionNodes.filter(_.isInstanceOf[GeneralAssertionNode]).map(_.asInstanceOf[GeneralAssertionNode]).filter(_.hasFailed)
+  def getAssertionNodesWithFailures: Set[GeneralAssertionNode] =
+    getNonInternalAssertionNodes.filter(_.isInstanceOf[GeneralAssertionNode]).map(_.asInstanceOf[GeneralAssertionNode]).filter(_.hasFailed)
 
-	def exportGraph(program: ast.Program, exportPath: String): Unit = {
-		if (exportPath.isEmpty) return
-		val directory = Paths.get(exportPath).toFile
-		directory.mkdir()
-		dependencyGraph.exportGraph(exportPath + "/" + name)
-		exportProgram(program, exportPath + "/" + name)
-	}
+  def exportGraph(program: ast.Program, exportPath: String): Unit = {
+    if (exportPath.isEmpty) return
+    val directory = Paths.get(exportPath).toFile
+    directory.mkdir()
+    dependencyGraph.exportGraph(exportPath)
+    exportProgram(program, exportPath)
+  }
 
-	private def exportProgram(program: Program, path: String): Unit = {
-		// TODO ake: we should copy the original source file in order to keep the line numbering!
-		val writer = new PrintWriter(path + "/program.vpr")
-		writer.println(program.toString())
-		writer.close()
-	}
+  private def exportProgram(program: Program, path: String): Unit = {
+    // TODO ake: we should copy the original source file in order to keep the line numbering!
+    val writer = new PrintWriter(path + "/program.vpr")
+    writer.println(program.toString())
+    writer.close()
+  }
 
-	private def getNodesWithIdenticalSource(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = {
-		val sourceInfos = nodes map (_.sourceInfo)
-		getNodes filter (node => sourceInfos.contains(node.sourceInfo))
-	}
+  private def getNodesWithIdenticalSource(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = {
+    val sourceInfos = nodes map (_.sourceInfo)
+    getNodes filter (node => sourceInfos.contains(node.sourceInfo))
+  }
 
-	// TODO ake: might be deprecated
-	def computeProofCoverage(): (Double, Set[String]) = {
-		val explicitAssertionNodes = getNodesWithIdenticalSource(getExplicitAssertionNodes)
-		computeProofCoverage(explicitAssertionNodes)
-	}
+  // TODO ake: might be deprecated
+  def computeProofCoverage(): (Double, Set[String]) = {
+    val explicitAssertionNodes = getNodesWithIdenticalSource(getExplicitAssertionNodes)
+    computeProofCoverage(explicitAssertionNodes)
+  }
 
-	// TODO ake: might be deprecated
-	def computeProofCoverage(assertionNodes: Set[DependencyAnalysisNode]): (Double, Set[String]) = {
-		val assertionNodeIds = assertionNodes map (_.id)
-		val dependencies = dependencyGraph.getAllDependencies(assertionNodeIds, includeInfeasibilityNodes = true, includeUpwardEdges = true, includeDownwardEdges = true)
-		val coveredNodes = dependencies ++ assertionNodeIds
+  // TODO ake: might be deprecated
+  def computeProofCoverage(assertionNodes: Set[DependencyAnalysisNode]): (Double, Set[String]) = {
+    val assertionNodeIds = assertionNodes map (_.id)
+    val dependencies = dependencyGraph.getAllDependencies(assertionNodeIds, includeInfeasibilityNodes = true, includeUpwardEdges = true, includeDownwardEdges = true)
+    val coveredNodes = dependencies ++ assertionNodeIds
 
-		val userLevelNodes = toUserLevelNodes(getNonInternalAssumptionNodes.filterNot(_.isInstanceOf[AxiomAssumptionNode]))
-		if (userLevelNodes.isEmpty) return (Double.NaN, Set())
+    val userLevelNodes = toUserLevelNodes(getNonInternalAssumptionNodes.filterNot(_.isInstanceOf[AxiomAssumptionNode]))
+    if (userLevelNodes.isEmpty) return (Double.NaN, Set())
 
-		val uncoveredUserLevelNodes = userLevelNodes filter (node =>
-			coveredNodes.intersect(node.lowerLevelNodes.map(_.id)).isEmpty
-			)
-		val proofCoverage = 1.0 - (uncoveredUserLevelNodes.size.toDouble / userLevelNodes.size.toDouble)
-		(proofCoverage, uncoveredUserLevelNodes.map(_.toString))
-	}
+    val uncoveredUserLevelNodes = userLevelNodes filter (node =>
+      coveredNodes.intersect(node.lowerLevelNodes.map(_.id)).isEmpty
+      )
+    val proofCoverage = 1.0 - (uncoveredUserLevelNodes.size.toDouble / userLevelNodes.size.toDouble)
+    (proofCoverage, uncoveredUserLevelNodes.map(_.toString))
+  }
 }

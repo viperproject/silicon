@@ -281,9 +281,9 @@ abstract class ProverStdIO(uniqueId: String,
     push()
     setTimeout(timeout)
 
-    if ((Verifier.config.enableDependencyAnalysis() && label.nonEmpty) || Verifier.config.enableUnsatCores()){
+    if ((Verifier.config.enableDependencyAnalysis() && label.nonEmpty) || Verifier.config.enableUnsatCores()) {
       writeLine("(assert (! (not " + goal + ") :named " + (if (label.nonEmpty) label else nextProverLabel()) + "))")
-    }else{
+    } else {
       writeLine("(assert (not " + goal + "))")
     }
 

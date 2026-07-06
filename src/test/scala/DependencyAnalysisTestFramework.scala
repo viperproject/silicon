@@ -81,18 +81,18 @@ trait DependencyAnalysisTestFramework {
    * Statements that are only required as a trigger need to be manually annotated with @trigger() by the user.
    */
   class PruningTest(fileName: String, program: Program, fullGraphInterpreter: DependencyGraphInterpreter[Final]) {
-		lazy val pruningSupporter = new DependencyAnalysisPruningSupporter(fullGraphInterpreter)
+    lazy val pruningSupporter = new DependencyAnalysisPruningSupporter(fullGraphInterpreter)
 
     def execute(): Unit = {
       val triggerNodeLines = fullGraphInterpreter.getNodes.filter(node => node.getUserLevelRepresentation.contains("@trigger()")).flatMap(_.sourceInfo.getLineNumber)
       var id: Int = 0
       // TODO ake: it would be better to work with position string instead of line numbers
       val testCases = fullGraphInterpreter.getExplicitAssertionNodes flatMap (_.sourceInfo.getLineNumber)
-			testCases foreach {line =>
+      testCases foreach {line =>
         pruneAndVerify(Set(line) ++ triggerNodeLines, "src/test/resources/" + fileName + s"_test$id.out")
         id += 1
       }
-			println(s"Passed all ${testCases.size} pruning tests.")
+      println(s"Pruning tests: Passed ${testCases.size}/${testCases.size} tests.")
     }
 
     protected def pruneAndVerify(relevantLines: Set[Int], exportFileName: String): Unit = {
@@ -102,7 +102,7 @@ trait DependencyAnalysisTestFramework {
 
       val crucialNodes = relevantNodes ++ dependencies
       val (newProgram, pruningFactor) = pruningSupporter.getPrunedProgram(crucialNodes, program)
-			resetBaselineFrontend()
+      resetBaselineFrontend()
       val result = baselineFrontend.verifier.verify(newProgram)
       if(EXPORT_PRUNED_PROGRAMS) exportPrunedProgram(exportFileName, newProgram, pruningFactor, result)
       assert(!result.isInstanceOf[verifier.Failure], s"Failed to verify new program. ${result.transformedResult()}\n${newProgram.toString()}")
@@ -159,7 +159,7 @@ trait DependencyAnalysisTestFramework {
         assert(Math.abs(actualProgressLea - expected) <= epsilon,
           s"progress mismatch: expected $expected, got $actualProgressLea")
       }
-			println("Progress tests passed.")
+      println("Progress test: Passed.")
     }
 
     // Finds a relevant metric line by prefix, extracts its metric value
@@ -235,8 +235,8 @@ trait DependencyAnalysisTestFramework {
       val actualAssumptionRanking = fullGraphInterpreter.progressSupporter.computeAssumptionRanking().filter(_._2 > 0.0)
       // Compute uncovered per method once, suppressing stdout side effect
       val actualUncoveredByMethod: Map[String, (Int, String)] = fullGraphInterpreter.progressSupporter
-				.computeUncoveredStatementsPerMember().map{ case (member, sources) =>
-					(member, (sources.size, s"$member\n\t${sources.mkString("\n\t")}"))}
+        .computeUncoveredStatementsPerMember().map{ case (member, sources) =>
+          (member, (sources.size, s"$member\n\t${sources.mkString("\n\t")}"))}
 
       val errorMsgs =
         checkAssumptionRanking(actualAssumptionRanking) ++
@@ -244,7 +244,7 @@ trait DependencyAnalysisTestFramework {
         checkMethodOrder(actualUncoveredByMethod)
 
       assert(errorMsgs.isEmpty, "\n" + errorMsgs.mkString("\n"))
-			println("Guidance tests passed.")
+      println("Guidance test: Passed.")
     }
 
     private def checkAssumptionRanking(actualRanking: List[(String, Double)]): Seq[String] = {
@@ -349,26 +349,26 @@ trait DependencyAnalysisTestFramework {
       lines.toList
     }
 
-		protected def extractAnnotatedStmts(annotationFilter: ast.AnnotationInfo => Boolean): Set[ast.Infoed] = {
-			var nodesWithAnnotation: Set[ast.Infoed] = Set.empty
-			@unused
-			val newP: ast.Program = ViperStrategy.Slim({
-				case s: ast.Seqn => s
-				case n: ast.Infoed =>
-					val annotationInfo = n.info.getUniqueInfo[ast.AnnotationInfo]
-						.filter(annotationFilter)
-					if (annotationInfo.isDefined)
-						nodesWithAnnotation += n
-					n
-			}).execute(program)
-			nodesWithAnnotation
-		}
+    protected def extractAnnotatedStmts(annotationFilter: ast.AnnotationInfo => Boolean): Set[ast.Infoed] = {
+      var nodesWithAnnotation: Set[ast.Infoed] = Set.empty
+      @unused
+      val newP: ast.Program = ViperStrategy.Slim({
+        case s: ast.Seqn => s
+        case n: ast.Infoed =>
+          val annotationInfo = n.info.getUniqueInfo[ast.AnnotationInfo]
+            .filter(annotationFilter)
+          if (annotationInfo.isDefined)
+            nodesWithAnnotation += n
+          n
+      }).execute(program)
+      nodesWithAnnotation
+    }
 
-		protected def extractSourceLine(pos: ast.Position): Int = {
-			pos match {
-				case column: ast.HasLineColumn => column.line
-				case _ => -1
-			}
-		}
-	}
+    protected def extractSourceLine(pos: ast.Position): Int = {
+      pos match {
+        case column: ast.HasLineColumn => column.line
+        case _ => -1
+      }
+    }
+  }
 }

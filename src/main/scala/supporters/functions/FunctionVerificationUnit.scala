@@ -43,7 +43,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
   private case class Phase1Data(sPre: State, bcsPre: Stack[Term], bcsPreExp: Stack[(ast.Exp, Option[ast.Exp])], pcsPre: InsertionOrderedSet[Term], pcsPreExp: Option[InsertionOrderedSet[DebugExp]])
 
-	def functionsSupporter: FunctionsSupporter = DefaultFunctionsSupporter
+  def functionsSupporter: FunctionsSupporter = DefaultFunctionsSupporter
 
   object DefaultFunctionsSupporter extends FunctionsSupporter
 

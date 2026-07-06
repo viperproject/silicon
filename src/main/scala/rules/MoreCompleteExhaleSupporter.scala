@@ -231,17 +231,17 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       }
     } else {
       summarise(s, relevantChunks, resource, args, argsExp, None, v)((s1, snap, permSum, permSumExp, v1) => {
-				val termToAssert = IsPositive(permSum)
-				val debugExp = permSumExp.map(IsPositive(_)())
-				v.decider.assert(termToAssert, analysisInfos) {
-					case true =>
-						Q(s1, snap, v1)
-					case false =>
-						val failure = createFailure(ve, v, s1, termToAssert, debugExp)
-						if (s1.retryLevel == 0) v1.decider.handleFailedAssertion(termToAssert, debugExp, debugExp, analysisInfos, v1.reportFurtherErrors())
-						if (s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine Q(s1, snap, v1) else failure
-				}
-			})
+        val termToAssert = IsPositive(permSum)
+        val debugExp = permSumExp.map(IsPositive(_)())
+        v.decider.assert(termToAssert, analysisInfos) {
+          case true =>
+            Q(s1, snap, v1)
+          case false =>
+            val failure = createFailure(ve, v, s1, termToAssert, debugExp)
+            if (s1.retryLevel == 0) v1.decider.handleFailedAssertion(termToAssert, debugExp, debugExp, analysisInfos, v1.reportFurtherErrors())
+            if (s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine Q(s1, snap, v1) else failure
+        }
+      })
     }
   }
 
@@ -283,26 +283,26 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     if (returnSnap) {
       summarise(s, relevantChunks, resource, args, argsExp, None, v)((s1, snap, permSum, permSumExp, v1) => {
-				val termToAssert = Implies(IsPositive(perm), IsPositive(permSum))
-				val debugExp = permSumExp.map(IsPositive(_)())
-				v.decider.assert(termToAssert, analysisInfos) {
-					case true =>
-						Q(s1, h, Some(snap), v1)
-					case false =>
-						val failure = createFailure(ve, v, s1, IsPositive(permSum), debugExp)
-						if (s1.retryLevel == 0) v1.decider.handleFailedAssertion(termToAssert, debugExp, debugExp, analysisInfos, v1.reportFurtherErrors())
-						if (s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine Q(s1, h, Some(snap), v1) else failure
-				}
-			})
+        val termToAssert = Implies(IsPositive(perm), IsPositive(permSum))
+        val debugExp = permSumExp.map(IsPositive(_)())
+        v.decider.assert(termToAssert, analysisInfos) {
+          case true =>
+            Q(s1, h, Some(snap), v1)
+          case false =>
+            val failure = createFailure(ve, v, s1, IsPositive(permSum), debugExp)
+            if (s1.retryLevel == 0) v1.decider.handleFailedAssertion(termToAssert, debugExp, debugExp, analysisInfos, v1.reportFurtherErrors())
+            if (s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine Q(s1, h, Some(snap), v1) else failure
+        }
+      })
     } else {
       val (s1, permSum, permSumExp) = permSummariseOnly(s, relevantChunks, resource, args, argsExp)
-			val termToAssert = Implies(IsPositive(perm), IsPositive(permSum))
-			val debugExp = permSumExp.map(IsPositive(_)())
-			v.decider.assert(termToAssert, analysisInfos) {
+      val termToAssert = Implies(IsPositive(perm), IsPositive(permSum))
+      val debugExp = permSumExp.map(IsPositive(_)())
+      v.decider.assert(termToAssert, analysisInfos) {
         case true =>
           Q(s1, h, None, v)
         case false =>
-					val failure = createFailure(ve, v, s1, IsPositive(permSum), debugExp)
+          val failure = createFailure(ve, v, s1, IsPositive(permSum), debugExp)
           if (s1.retryLevel == 0) v.decider.handleFailedAssertion(termToAssert, debugExp, debugExp, analysisInfos, v.reportFurtherErrors())
           if (s1.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s1, h, None, v) else failure
       }
@@ -337,7 +337,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         case true => Q(s, h, None, v)
         case false =>
           val debugExp = permsExp.map(pe => ast.EqCmp(pe, ast.NoPerm()())(pe.pos, pe.info, pe.errT))
-					val failure = createFailure(ve, v, s, perms === NoPerm, debugExp)
+          val failure = createFailure(ve, v, s, perms === NoPerm, debugExp)
           if (s.retryLevel == 0) v.decider.handleFailedAssertion(perms === NoPerm, debugExp, debugExp, analysisInfos, v.reportFurtherErrors())
           if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, h, None, v) else failure
       }
@@ -441,7 +441,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                 Q(s1, newHeap, condSnap, v1)
               case false =>
                 val debugExp = pNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT))
-								val failure = createFailure(ve, v1, s1, pNeeded === NoPerm, debugExp)
+                val failure = createFailure(ve, v1, s1, pNeeded === NoPerm, debugExp)
                 if (s1.retryLevel == 0) v1.decider.handleFailedAssertion(pNeeded === NoPerm, debugExp, debugExp, analysisInfos, v1.reportFurtherErrors())
                 if (s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine Q(s1, newHeap, condSnap, v1) else failure
             }
@@ -456,7 +456,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                 Q(s0, newHeap, None, v)
               case false =>
                 val debugExp = pNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT))
-								val failure = createFailure(ve, v, s0, pNeeded === NoPerm, debugExp)
+                val failure = createFailure(ve, v, s0, pNeeded === NoPerm, debugExp)
                 if (s0.retryLevel == 0) v.decider.handleFailedAssertion(pNeeded === NoPerm, debugExp, debugExp, analysisInfos, v.reportFurtherErrors())
                 if (s0.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s0, newHeap, None, v) else failure
             }
@@ -537,9 +537,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     val s1 = s.copy(functionRecorder = newFr)
 
-		val termToAssert = Implies(PermLess(NoPerm, perms), totalPermTaken !== NoPerm)
-		val debugExp = totalPermTakenExp.map(tpt => ast.NeCmp(tpt, ast.NoPerm()())())
-		v.decider.assert(termToAssert, analysisInfos) {
+    val termToAssert = Implies(PermLess(NoPerm, perms), totalPermTaken !== NoPerm)
+    val debugExp = totalPermTakenExp.map(tpt => ast.NeCmp(tpt, ast.NoPerm()())())
+    v.decider.assert(termToAssert, analysisInfos) {
       case true =>
         val constraintExp = permsExp.map(pe => ast.EqCmp(pe, totalPermTakenExp.get)())
         v.decider.assume(perms === totalPermTaken, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)), analysisInfos)
@@ -551,12 +551,12 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         }
       case false =>
         v.decider.finishDebugSubExp(s"consume permissions for ${resource.toString()}")
-				val failure = createFailure(ve, v, s, totalPermTaken !== NoPerm, debugExp)
+        val failure = createFailure(ve, v, s, totalPermTaken !== NoPerm, debugExp)
         if (s.retryLevel == 0) v.decider.handleFailedAssertion(termToAssert, debugExp, debugExp, analysisInfos, v.reportFurtherErrors())
-        if (s.retryLevel == 0 && v.reportFurtherErrors()){
+        if (s.retryLevel == 0 && v.reportFurtherErrors()) {
           val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
           failure combine Q(s1, updatedChunks, if (returnSnap) Some(snap) else None, v)
-        }else{
+        } else {
           failure
         }
     }

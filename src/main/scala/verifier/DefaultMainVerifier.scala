@@ -46,7 +46,7 @@ trait MainVerifier extends Verifier {
   def nextUniqueVerifierId(): String
   def verificationPoolManager: VerificationPoolManager
   def rootSymbExLogger: SymbExLogger[_ <: MemberSymbExLogger]
-	def createWorkerVerifier(): WorkerVerifier
+  def createWorkerVerifier(): WorkerVerifier
 }
 
 class DefaultMainVerifier(config: Config,
@@ -68,7 +68,7 @@ class DefaultMainVerifier(config: Config,
     symbExLog = rootSymbExLogger.openMemberScope(member, decider.pcs)
   }
 
-	def createWorkerVerifier(): WorkerVerifier = new WorkerVerifier(this, nextUniqueVerifierId(), reporter, debugMode)
+  def createWorkerVerifier(): WorkerVerifier = new WorkerVerifier(this, nextUniqueVerifierId(), reporter, debugMode)
 
   protected val preambleReader = new SMTLib2PreambleReader
 
@@ -91,7 +91,7 @@ class DefaultMainVerifier(config: Config,
     fieldValueFunctionsContributor,
     predSnapGenerator, predicateAndWandSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
-		functionsSupporter, predicateSupporter,
+    functionsSupporter, predicateSupporter,
     verificationPoolManager,
     MultiRunRecorders /* In lieu of a better place, include MultiRunRecorders singleton here */
   )
@@ -119,11 +119,11 @@ class DefaultMainVerifier(config: Config,
 
   /* Verifier orchestration */
 
-	def allProvers: AllProvers = DefaultAllProvers
+  def allProvers: AllProvers = DefaultAllProvers
 
   protected object DefaultAllProvers extends AllProvers
 
-	trait AllProvers extends ProverLike {
+  trait AllProvers extends ProverLike {
     def emit(content: String): Unit = {
       decider.prover.emit(content)
       _verificationPoolManager.pooledVerifiers.emit(content)
@@ -177,9 +177,9 @@ class DefaultMainVerifier(config: Config,
 
   /* Program verification */
 
-	def verifyMember(doVerify: Unit => Seq[VerificationResult], v: Verifier, member: ast.Member): Seq[VerificationResult] = {
-		doVerify()
-	}
+  def verifyMember(doVerify: Unit => Seq[VerificationResult], v: Verifier, member: ast.Member): Seq[VerificationResult] = {
+    doVerify()
+  }
 
   def verify(originalProgram: ast.Program, cfgs: Seq[SilverCfg], inputFile: Option[String]): List[VerificationResult] = {
     /** Trigger computation is currently not thread-safe; hence, all triggers are computed
@@ -349,12 +349,12 @@ class DefaultMainVerifier(config: Config,
       debugger.startDebugger()
     }
 
-		afterVerification(verificationResults, program, inputFile)
+    afterVerification(verificationResults, program, inputFile)
 
     verificationResults
   }
 
-	def afterVerification(verificationResults: List[VerificationResult], program: ast.Program, inputFile: Option[String]): Unit = {}
+  def afterVerification(verificationResults: List[VerificationResult], program: ast.Program, inputFile: Option[String]): Unit = {}
 
     private def createInitialState(member: ast.Member,
                                  program: ast.Program,

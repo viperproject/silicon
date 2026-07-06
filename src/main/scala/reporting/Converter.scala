@@ -761,8 +761,8 @@ case class DomainValueEntry(domain: String, id: String) extends ExtractedModelEn
   * result when using original as input for the function
   */
 case class ExtendedDomainValueEntry(original: DomainValueEntry, info: Map[ExtractedFunction, ExtractedModelEntry]) extends ExtractedModelEntry {
-	def asValueEntry: ValueEntry = original.asValueEntry
-	override def toString: String =
+  def asValueEntry: ValueEntry = original.asValueEntry
+  override def toString: String =
     original.toString ++" where " ++ info.map(infoEntryToString).mkString("{\n\t",";\n\t","\n\t}")
 
   private def infoEntryToString(entry: (ExtractedFunction, ExtractedModelEntry)): String =

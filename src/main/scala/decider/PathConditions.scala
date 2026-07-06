@@ -71,7 +71,7 @@ trait PathConditionStack extends RecordedPathConditions {
   def popScope(): Unit
   def mark(): Mark
   def popUntilMark(mark: Mark): Unit
-	def isPathInfeasible: Boolean
+  def isPathInfeasible: Boolean
   def setPathInfeasible(infeasible: Boolean): Unit
   def setCurrentInfeasibilityNode(node: Option[Int]): Unit
   def getCurrentInfeasibilityNode: Option[Int]
@@ -125,10 +125,10 @@ private class PathConditionStackLayer
   def declarations: InsertionOrderedSet[Decl] = _declarations
   def analysisLabels: InsertionOrderedSet[Term] = _analysisLabels
 
-	def isPathInfeasible: Boolean = _isPathInfeasible
-	def setPathInfeasible(infeasible: Boolean): Unit = {
-		_isPathInfeasible = infeasible
-	}
+  def isPathInfeasible: Boolean = _isPathInfeasible
+  def setPathInfeasible(infeasible: Boolean): Unit = {
+    _isPathInfeasible = infeasible
+  }
 
   def infeasibilityNodeId: Option[Int] = _infeasibilityNodeId
   def setInfeasibilityNodeId(id: Option[Int]): Unit = {
@@ -292,7 +292,7 @@ private trait LayeredPathConditionStackLike {
   protected def analysisLabels(layers: Stack[PathConditionStackLayer]): InsertionOrderedSet[Term] =
     InsertionOrderedSet(layers.flatMap(_.analysisLabels))
 
-	protected def isPathInfeasible(layers: Stack[PathConditionStackLayer]): Boolean = layers.exists(_.isPathInfeasible)
+  protected def isPathInfeasible(layers: Stack[PathConditionStackLayer]): Boolean = layers.exists(_.isPathInfeasible)
 
   protected def infeasibilityNodeId(layers: Stack[PathConditionStackLayer]): Option[Int] =
     layers.flatMap(_.infeasibilityNodeId).headOption
@@ -502,13 +502,13 @@ private[decider] class LayeredPathConditionStack
     layers.head.branchConditionExp = conditionExp
   }
 
-	def setPathInfeasible(isInfeasible: Boolean): Unit = {
-		layers.head.setPathInfeasible(isInfeasible)
-	}
+  def setPathInfeasible(isInfeasible: Boolean): Unit = {
+    layers.head.setPathInfeasible(isInfeasible)
+  }
 
-	def isPathInfeasible: Boolean = {
-		layers.exists(_.isPathInfeasible)
-	}
+  def isPathInfeasible: Boolean = {
+    layers.exists(_.isPathInfeasible)
+  }
 
   def setCurrentInfeasibilityNode(node: Option[Int]): Unit = {
     layers.head.setInfeasibilityNodeId(node)
