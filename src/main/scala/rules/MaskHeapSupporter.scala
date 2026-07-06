@@ -99,7 +99,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
       case None =>
         res match {
           case mwi: MagicWandIdentifier =>
-            val heapSort = if (s.qpMagicWands.contains(mwi)) PredHeapSort else WandHeapSort
+            val heapSort = PredHeapSort
             val newHeap = v.decider.fresh("mwHeap", heapSort, Option.when(withExp)(PUnknown()))
             val newChunk = BasicMaskHeapChunk(MagicWandID, mwi, PredZeroMask, newHeap)
             (h + newChunk, newChunk)

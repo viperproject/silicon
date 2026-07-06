@@ -310,9 +310,6 @@ object magicWandSupporter extends SymbolicExecutionRules {
                                        : VerificationResult = {
       val preMark = v.decider.setPathConditionMark()
 
-      v.decider.prover.comment(s"Create MagicWandSnapFunction for wand $wand")
-      val wandSnapshot = this.createMagicWandSnapshot(freshSnapRoot, snapRhs, v)
-
       val bodyVars = wand.subexpressionsToEvaluate(s.program)
 
       evals(s, bodyVars, _ => pve, v)((s2, tArgs, eArgsNew, v2) => {
@@ -340,31 +337,39 @@ object magicWandSupporter extends SymbolicExecutionRules {
           val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark).definitionsOnly
           (s2, ch, conservedPcs.flatMap(_.conditionalized), Option.when(withExp)(conservedPcs.flatMap(_.conditionalizedExp)), v2)
         } else {
-          val ch = if (Verifier.config.maskHeapMode()) {
+          val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark).definitionsOnly
+          if (Verifier.config.maskHeapMode()) {
+            // In maskHeapMode, store Combine(freshSnapRoot, snapRhs) in PredHeapSort, mirroring the old jar's
+            // approach. At apply time the sorts.Snap branch asserts snapLhs === First(lookup), pinning the
+            // package-time symbolic LHS to the actual apply-time value. This avoids the SMT define-fun
+            // scoping bug where the MWSF forall body would capture the outer constant instead of using its
+            // bound variable.
             val argTerm = toSnapTree(tArgs)
             val newMask = MaskAdd(PredZeroMask, argTerm, FullPerm)
-            val newHeap = HeapSingleton(argTerm, wandSnapshot, WandHeapSort)
+            val snapshotTerm = Combine(freshSnapRoot, snapRhs)
+            val newHeap = HeapSingleton(argTerm, snapshotTerm, PredHeapSort)
             val newChunk = BasicMaskHeapChunk(MagicWandID, MagicWandIdentifier(wand, s.program), newMask, newHeap)
-            newChunk
+            (s2, newChunk, conservedPcs.flatMap(_.conditionalized), Option.when(withExp)(conservedPcs.flatMap(_.conditionalizedExp)), v2)
           } else {
-            MagicWandChunk(MagicWandIdentifier(wand, s.program), s2.g.values, tArgs, eArgsNew, wandSnapshot, FullPerm,
+            v.decider.prover.comment(s"Create MagicWandSnapFunction for wand $wand")
+            val wandSnapshot = this.createMagicWandSnapshot(freshSnapRoot, snapRhs, v)
+            val wandChunk = MagicWandChunk(MagicWandIdentifier(wand, s.program), s2.g.values, tArgs, eArgsNew, wandSnapshot, FullPerm,
               Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)))
+            // Partition path conditions into a set which include the freshSnapRoot and those which do not
+            val (pcsWithFreshSnapRoot, pcsWithoutFreshSnapRoot) = conservedPcs.flatMap(pcs => pcs.conditionalized).partition(_.contains(freshSnapRoot))
+            val pcsWithoutExp = Option.when(withExp)(filterDebugExpsWithoutSnapshot(conservedPcs.flatMap(pcs => pcs.conditionalizedExp), freshSnapRoot))
+            // For all path conditions which include the freshSnapRoot, add those as part of the definition of the MWSF in the same forall quantifier
+            val pcsQuantified = Forall(
+              freshSnapRoot,
+              And(pcsWithFreshSnapRoot.map {
+                // Remove forall quantifiers with the same quantified variable
+                case Quantification(Forall, v :: Nil, body: Term, _, _, _, _) if v == freshSnapRoot => body
+                case p => p
+              }),
+              Trigger(MWSFLookup(wandSnapshot.mwsf, freshSnapRoot)),
+            )
+            (s2, wandChunk, pcsQuantified +: pcsWithoutFreshSnapRoot, Option.when(withExp)(DebugExp.createInstance("MWSF definition path conditions", pcsQuantified, true) +: pcsWithoutExp.get), v2)
           }
-          val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark).definitionsOnly
-          // Partition path conditions into a set which include the freshSnapRoot and those which do not
-          val (pcsWithFreshSnapRoot, pcsWithoutFreshSnapRoot) = conservedPcs.flatMap(pcs => pcs.conditionalized).partition(_.contains(freshSnapRoot))
-          val pcsWithoutExp = Option.when(withExp)(filterDebugExpsWithoutSnapshot(conservedPcs.flatMap(pcs => pcs.conditionalizedExp), freshSnapRoot))
-          // For all path conditions which include the freshSnapRoot, add those as part of the definition of the MWSF in the same forall quantifier
-          val pcsQuantified = Forall(
-            freshSnapRoot,
-            And(pcsWithFreshSnapRoot.map {
-              // Remove forall quantifiers with the same quantified variable
-              case Quantification(Forall, v :: Nil, body: Term, _, _, _, _) if v == freshSnapRoot => body
-              case p => p
-            }),
-            Trigger(MWSFLookup(wandSnapshot.mwsf, freshSnapRoot)),
-          )
-          (s2, ch, pcsQuantified +: pcsWithoutFreshSnapRoot, Option.when(withExp)(DebugExp.createInstance("MWSF definition path conditions", pcsQuantified, true) +: pcsWithoutExp.get), v2)
         }
         appendToResults(s3, ch, v3.decider.pcs.after(preMark), (tPcs, ePcs), v3)
         Success()

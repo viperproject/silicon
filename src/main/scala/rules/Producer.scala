@@ -17,7 +17,7 @@ import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.logger.records.data.{CondExpRecord, ImpliesRecord, ProduceRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort, WandHeapSort}
+import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast.Field
 import viper.silver.verifier.reasons.{NegativePermission, QPAssertionNotInjective}
@@ -147,7 +147,6 @@ object producer extends ProductionRules {
         val heapParts = snapParts.zip(resources).map(tpl => (tpl._2,
           v.decider.createAlias(SnapToHeap(tpl._1, tpl._2, tpl._2 match {
             case field: Field => HeapSort(v.symbolConverter.toSort(field.typ))
-            case mwi: MagicWandIdentifier if !s.qpMagicWands.contains(mwi) => WandHeapSort
             case _ => PredHeapSort
           }), s)))
         HeapMapTerm(immutable.ListMap.from(heapParts))
