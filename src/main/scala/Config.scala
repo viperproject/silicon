@@ -692,14 +692,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val enableUnsatCores: ScallopOption[Boolean] = opt[Boolean]("enableUnsatCores",
-    descr = "Enables UNSAT cores",
+  val startDebuggerAutomatically: ScallopOption[Boolean] = opt[Boolean]("startDebuggerAutomatically",
+    descr = "Starts the debugging mode automatically after verification completes",
     default = Some(false),
     noshort = true
   )
 
-  val startDebuggerAutomatically: ScallopOption[Boolean] = opt[Boolean]("startDebuggerAutomatically",
-    descr = "Starts the debugging mode automatically after verification completes",
+  val enableUnsatCores: ScallopOption[Boolean] = opt[Boolean]("enableUnsatCores",
+    descr = "Enables UNSAT cores",
     default = Some(false),
     noshort = true
   )
@@ -802,6 +802,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case (Some(_), Some(true)) => Right(())
     case (Some(_), Some(false)) =>
       Left(s"Option ${dependencyAnalysisMode.name} requires option ${enableDependencyAnalysis.name}")
+  }
+
+  validateOpt(prover, enableDependencyAnalysis) {
+    case (p, Some(true)) if p != Some(Z3ProverStdIO.name) =>
+      Left(s"Dependency analysis is only supported with ${Z3ProverStdIO.name}")
+    case _ => Right(())
   }
 
 

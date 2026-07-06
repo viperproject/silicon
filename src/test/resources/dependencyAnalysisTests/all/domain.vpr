@@ -1,0 +1,71 @@
+field f: Int
+field val: Int
+define access(a)
+  (forall j: Int :: 0 <= j && j < len(a) ==> acc(slot(a,j).val))
+
+
+domain IArray {
+  function slot(a: IArray, i: Int): Ref
+  function len(a: IArray): Int
+  function first(r: Ref): IArray
+  function second(r: Ref): Int
+
+
+  axiom all_diff {
+    @dependencyInfo("assumptionType:DomainAxiom, label:L1")(
+    forall a: IArray, i: Int :: { slot(a,i) }
+      first(slot(a,i)) == a && second(slot(a,i)) == i
+    )
+  }
+
+  axiom len_nonneg {
+    @dependencyInfo("assumptionType:DomainAxiom, label:L2")(
+    forall a: IArray :: { len(a) }
+      len(a) >= 0
+    )
+  }
+}
+
+method domain1()
+{
+  var a: IArray
+
+  @dependencyInfo("assertionType:Explicit, label:L3a, expectedDependencies:[L2]")
+  assert len(a) >= 0
+
+  @dependencyInfo("assumptionType:Explicit, label:L3")
+  inhale len(a) == 3
+
+  @dependencyInfo("assumptionType:Explicit, label:L4")
+  inhale access(a)
+
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L5a, expectedDependencies:[L3,L4]")
+  slot(a,0).val := 0
+
+  @dependencyInfo("assertionType:Explicit, label:L5b, expectedDependencies:[L3,L4,L5a,L1]")
+  assert slot(a,0).val == 0
+
+}
+
+method domain3()
+{
+  var a: IArray
+  @dependencyInfo("assumptionType:Explicit, label:L6")
+  inhale len(a) == 3
+  @dependencyInfo("assumptionType:Explicit, label:L7")
+  inhale access(a)
+
+  var i: Int
+  @dependencyInfo("assumptionType:SourceCode, label:L8")
+  i := 0
+  while (@dependencyInfo("assumptionType:PathCondition, label:L9")(i < len(a)))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L10, expectedDependencies:[L7]")(access(a))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L11, expectedDependencies:[L8, L14]")(0 <= i)
+    invariant @dependencyInfo("assumptionType:LoopInvariant, label:L12, expectedDependencies:[L6,L8,L9,L14]")(i <= len(a))
+  {
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L13, expectedDependencies:[L7,L10,L9,L11,L8,L14]")
+    slot(a,i).val := -i
+    @dependencyInfo("assumptionType:SourceCode, label:L14")
+    i := i + 1
+  }
+}

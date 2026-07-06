@@ -253,7 +253,7 @@ abstract class ProverStdIO(uniqueId: String,
 
     if ((Verifier.config.enableDependencyAnalysis() && label.nonEmpty) ||  Verifier.config.enableUnsatCores()) {
       writeLine("(assert (! " + term + " :named " + (if (label.nonEmpty) label else nextProverLabel()) + "))")
-    }else {
+    } else {
       writeLine("(assert " + term + ")")
     }
 
@@ -297,7 +297,7 @@ abstract class ProverStdIO(uniqueId: String,
     if (!result) {
       retrieveAndSaveModel()
       retrieveReasonUnknown()
-    }else if (Verifier.config.enableDependencyAnalysis()) {
+    } else if (Verifier.config.enableDependencyAnalysis()) {
       lastUnsatCore_ = extractUnsatCore()
     }
 

@@ -93,7 +93,7 @@ case class QuantifiedFieldChunk (id: BasicChunkIdentifier,
                                 invs: Option[InverseFunctions],
                                 singletonRcvr: Option[Term],
                                 singletonRcvrExp: Option[ast.Exp],
-                                hints: Seq[Term])
+                                hints: Seq[Term] = Nil)
     extends QuantifiedBasicChunk {
 
   require(fvf.sort.isInstanceOf[terms.sorts.FieldValueFunction],
@@ -151,7 +151,7 @@ case class QuantifiedPredicateChunk (id: BasicChunkIdentifier,
                                     invs: Option[InverseFunctions],
                                     singletonArgs: Option[Seq[Term]],
                                     singletonArgExps: Option[Seq[ast.Exp]],
-                                    hints: Seq[Term])
+                                    hints: Seq[Term] = Nil)
     extends QuantifiedBasicChunk {
 
   require(psf.sort.isInstanceOf[terms.sorts.PredicateSnapFunction], s"Quantified predicate chunk values must be of sort PredicateSnapFunction ($psf), but found ${psf.sort}")
@@ -197,7 +197,7 @@ case class QuantifiedMagicWandChunk (id: MagicWandIdentifier,
                                     invs: Option[InverseFunctions],
                                     singletonArgs: Option[Seq[Term]],
                                     singletonArgExps: Option[Seq[ast.Exp]],
-                                    hints: Seq[Term])
+                                    hints: Seq[Term] = Nil)
     extends QuantifiedBasicChunk {
 
   require(wsf.sort.isInstanceOf[terms.sorts.PredicateSnapFunction] && wsf.sort.asInstanceOf[terms.sorts.PredicateSnapFunction].codomainSort == sorts.Snap, s"Quantified magic wand chunk values must be of sort MagicWandSnapFunction ($wsf), but found ${wsf.sort}")

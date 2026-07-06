@@ -106,3 +106,13 @@ method infeasible_unfold(l1 : Ref)
     @dependencyInfo("assertionType:Explicit, label:L29, expectedDependencies:[L27]")
     assert l1.next == l1
   }
+
+
+method assumeFalse()
+{
+    var a: Int
+    assume @dependencyInfo("assumptionType:Explicit, label:L30")(false)
+
+    @dependencyInfo("assertionType:Explicit, label:L31, expectedDependencies:[L30]")
+    assert a == 2
+}

@@ -652,5 +652,4 @@ class DefaultMainVerifier(config: Config,
     */
   private def extractAllVerificationResults(res: VerificationResult): Seq[VerificationResult] =
     res :: res.previous.toList
-
 }

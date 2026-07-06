@@ -132,31 +132,4 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
     writer.println(program.toString())
     writer.close()
   }
-
-  private def getNodesWithIdenticalSource(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = {
-    val sourceInfos = nodes map (_.sourceInfo)
-    getNodes filter (node => sourceInfos.contains(node.sourceInfo))
-  }
-
-  // TODO ake: might be deprecated
-  def computeProofCoverage(): (Double, Set[String]) = {
-    val explicitAssertionNodes = getNodesWithIdenticalSource(getExplicitAssertionNodes)
-    computeProofCoverage(explicitAssertionNodes)
-  }
-
-  // TODO ake: might be deprecated
-  def computeProofCoverage(assertionNodes: Set[DependencyAnalysisNode]): (Double, Set[String]) = {
-    val assertionNodeIds = assertionNodes map (_.id)
-    val dependencies = dependencyGraph.getAllDependencies(assertionNodeIds, includeInfeasibilityNodes = true, includeUpwardEdges = true, includeDownwardEdges = true)
-    val coveredNodes = dependencies ++ assertionNodeIds
-
-    val userLevelNodes = toUserLevelNodes(getNonInternalAssumptionNodes.filterNot(_.isInstanceOf[AxiomAssumptionNode]))
-    if (userLevelNodes.isEmpty) return (Double.NaN, Set())
-
-    val uncoveredUserLevelNodes = userLevelNodes filter (node =>
-      coveredNodes.intersect(node.lowerLevelNodes.map(_.id)).isEmpty
-      )
-    val proofCoverage = 1.0 - (uncoveredUserLevelNodes.size.toDouble / userLevelNodes.size.toDouble)
-    (proofCoverage, uncoveredUserLevelNodes.map(_.toString))
-  }
 }
