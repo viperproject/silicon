@@ -1,12 +1,13 @@
-package viper.silicon.interfaces.decider
+package viper.silicon.dependencyAnalysis.siliconComponents
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugAxiom
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisAxiomInfo, DependencyAnalysisNode, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis.{DefaultDependencyAnalyzer, DependencyAnalysisAxiomInfo, DependencyAnalysisNode, DependencyAnalyzer}
+import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.terms.Term
 
 trait DependencyAnalysisProverFeatures extends ProverLike {
-  protected var preambleDependencyAnalyzer: DependencyAnalyzer
+  protected val preambleDependencyAnalyzer: DependencyAnalyzer = new DefaultDependencyAnalyzer(None)
 
   def getPreambleAnalysisNodes: Iterable[DependencyAnalysisNode] = preambleDependencyAnalyzer.getNodes
 

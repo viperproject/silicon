@@ -2,9 +2,10 @@ package viper.silicon.dependencyAnalysis
 
 import viper.silicon.decider.Decider
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
+import viper.silicon.dependencyAnalysis.siliconComponents.DependencyAnalysisDeciderFeatures
 import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.state.terms.{Implies, NoPerm, _}
-import viper.silicon.verifier.{DependencyAnalysisDeciderFeatures, Verifier}
+import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast._
 import viper.silver.dependencyAnalysis.JoinType.JoinType
@@ -184,7 +185,7 @@ object DependencyAnalyzer {
     if (joinInfo.edgeType.equals(EdgeType.Up)) {
       val directDepsOfSources = if(!Verifier.config.disableDependencyAnalysisJoinPrecisionOpt()) {
         // Preconditions are connected to the dependencies required to prove them at all call sites. However, they do not depend on the calls themselves.
-        sourceNodes.groupBy(_.sourceInfo).flatMap(t => newGraph.getDirectDependenciesByNode(t._2, true, true, true))
+        sourceNodes.groupBy(_.sourceInfo).flatMap(t => newGraph.getDirectDependenciesByNode(t._2, includeInfeasibilityNodes = true, includeUpwardEdges = true, includeDownwardEdges = true))
       } else {
         // Connect preconditions directly to call and therefore, indirectly to all its dependencies -> imprecise but might be faster and
         // more user-friendly since it becomes apparent which call introduced these indirect dependencies.

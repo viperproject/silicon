@@ -10,10 +10,11 @@ import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverStdIO}
+import viper.silicon.dependencyAnalysis.siliconComponents.DependencyAnalysisAwareMainVerifier
 import viper.silicon.interfaces.Failure
 import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
-import viper.silicon.verifier.{DefaultMainVerifier, DependencyAwareMainVerifier}
+import viper.silicon.verifier.DefaultMainVerifier
 import viper.silver.ast
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.frontend.{DefaultStates, MinimalViperFrontendAPI, SilFrontend, ViperFrontendAPI}
@@ -135,7 +136,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     setLogLevelsFromConfig()
 
-    verifier = if (config.enableDependencyAnalysis()) new DependencyAwareMainVerifier(config, reporter, symbExLog) else new DefaultMainVerifier(config, reporter, symbExLog)
+    verifier = if (config.enableDependencyAnalysis()) new DependencyAnalysisAwareMainVerifier(config, reporter, symbExLog) else new DefaultMainVerifier(config, reporter, symbExLog)
     verifier.start()
   }
 
