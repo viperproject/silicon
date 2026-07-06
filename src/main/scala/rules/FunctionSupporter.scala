@@ -34,4 +34,10 @@ object functionSupporter {
     val id = function.id.withSuffix("%", "frame")
     HeapDepFun(id, sorts.Snap +: function.argSorts.drop(nHeaps), function.resultSort)
   }
+
+  def preconditionFrameVersion(function: HeapDepFun, nHeaps: Int): HeapDepFun = {
+    assert(Verifier.config.maskHeapMode())
+    val id = function.id.withSuffix("%", "precondition%frame")
+    HeapDepFun(id, sorts.Snap +: function.argSorts.drop(nHeaps), terms.sorts.Bool)
+  }
 }

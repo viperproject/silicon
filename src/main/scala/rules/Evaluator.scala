@@ -1394,12 +1394,37 @@ object evaluator extends EvaluationRules {
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
         v.decider.assume(pcDelta, Option.when(withExp)(DebugExp.createInstance("pcDeltaExp", children = pcDeltaExp)), enforceAssumption = false)
-        Q(s, cachedTriggerTerms ++ remainingTriggerTerms, v)
+        Q(s, toTriggerForm(cachedTriggerTerms ++ remainingTriggerTerms, s), v)
       case _ =>
         for (e <- remainingTriggerExpressions)
           v.reporter.report(WarningsDuringVerification(Seq(
             VerifierWarning(s"Might not be able to use trigger $e, since it is not evaluated while evaluating the body of the quantifier", e.pos))))
-        Q(s, cachedTriggerTerms, v)
+        Q(s, toTriggerForm(cachedTriggerTerms, s), v)
+    }
+  }
+
+  private def toTriggerForm(terms: Seq[Term], s: State): Seq[Term] = {
+    if (Verifier.config.maskHeapMode()) {
+      terms.map(t => t.transform {
+        case App(hdf: HeapDepFun, args) =>
+          val (heapArgs, otherArgs) = args.partition(a => a.sort == sorts.PredHeapSort || a.sort.isInstanceOf[sorts.HeapSort])
+          if (heapArgs.isEmpty) App(hdf, args)
+          else {
+            val funcName = hdf.id match {
+              case SuffixedIdentifier(prefix, _, _) => prefix.name
+              case _ => hdf.id.name
+            }
+            s.program.findFunctionOptionally(funcName).flatMap(s.functionData.get) match {
+              case Some(fd) =>
+                val frameFunc = functionSupporter.frameVersion(hdf, heapArgs.length)
+                val frame = fd.getFrameVersion(otherArgs, heapArgs)
+                App(frameFunc, frame +: otherArgs)
+              case None => App(hdf, args)
+            }
+          }
+      }(_ => true))
+    } else {
+      terms
     }
   }
 

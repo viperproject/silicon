@@ -128,6 +128,14 @@ class FunctionData(val programFunction: ast.Function,
       null
     }
   }
+  val preconditionFrameFunction = {
+    if (Verifier.config.maskHeapMode()) {
+      val resources = maskHeapSupporter.getResourceSeq(programFunction.pres, program)
+      functionSupporter.preconditionFrameVersion(function, resources.size)
+    } else {
+      null
+    }
+  }
 
   val formalArgs: Map[ast.AbstractLocalVar, Var] = toMap(
     for (arg <- programFunction.formalArgs;
@@ -367,7 +375,16 @@ class FunctionData(val programFunction: ast.Function,
           case Some(a) if a.values.contains("opaque") => Seq()
           case _ => predicateTriggers.values.map(pt => pt match {
             case App(f, args) =>
-              Trigger(Seq(limitedFunctionApplication, App(f, args)))
+              // Prefer a Carbon-style pattern that does not constrain the shape of the
+              // application's heap: the definition materializes at the trigger's heap,
+              // and the frame axiom bridges to the application's heap via snapshot
+              // equality. Only usable if the pattern still covers all quantified vars.
+              val decoupled = Trigger(Seq(triggerFunctionApplication, App(f, args)))
+              val covered = decoupled.p.flatMap(_.freeVariables).toSet
+              if (arguments.forall(covered.contains))
+                decoupled
+              else
+                Trigger(Seq(limitedFunctionApplication, App(f, args)))
           }).toSeq
         }
         val predAxiom = Forall(arguments, body, predTriggers)
@@ -512,6 +529,25 @@ class FunctionData(val programFunction: ast.Function,
 
     val res = Forall(arguments, body, Trigger(limitedFunctionApplication))
     res
+  }
+
+  /* Like the value of the function, the truth of its precondition only depends on the
+   * footprint snapshot (preconditions are self-framing). This axiom transfers
+   * precondition facts assumed at a call site's heaps to any other heaps with equal
+   * footprint, in particular to the heap at which a predicate trigger materializes
+   * the definitional axiom.
+   * This axiom is only worth its instantiation cost (it creates a footprint-snapshot
+   * term per %precondition term, which can feed matching loops in user-level
+   * quantifiers) for functions whose definitional axiom actually uses predicate
+   * triggers; emit it only for those (see predicateTriggers.nonEmpty check at the
+   * emission site). */
+  lazy val preconditionFrameAxiom: Term = {
+    assert(Verifier.config.maskHeapMode())
+
+    val frameFuncApp = App(preconditionFrameFunction, funcFrame +: formalArgs.values.toSeq)
+    val body = BuiltinEquals(preconditionFunctionApplication, frameFuncApp)
+
+    Forall(arguments, body, Trigger(preconditionFunctionApplication))
   }
 
   lazy val qpFrameFunctionDecls: Seq[FunctionDecl] = {

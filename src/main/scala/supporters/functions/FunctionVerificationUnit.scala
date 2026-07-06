@@ -117,7 +117,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       Seq(Left("Declaring symbols related to program functions (from program analysis)"))
         ++ functionData.values.flatMap(data => {
           val alwaysUsed = Seq(data.function, data.limitedFunction, data.statelessFunction, data.preconditionFunction)
-          val frameFunc = if (Verifier.config.maskHeapMode()) Seq(data.frameFunction) else Seq()
+          val frameFunc = if (Verifier.config.maskHeapMode()) Seq(data.frameFunction, data.preconditionFrameFunction) else Seq()
           (alwaysUsed ++ frameFunc).map(FunctionDecl)
         }).map(Right(_))
       )
@@ -197,6 +197,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           if (Verifier.config.maskHeapMode()) {
             data.qpFrameFunctionDecls map decider.prover.declare
             emitAndRecordFunctionAxioms(data.frameAxiom)
+            if (data.predicateTriggers.nonEmpty)
+              emitAndRecordFunctionAxioms(data.preconditionFrameAxiom)
             emitAndRecordFunctionAxioms(data.qpFrameAxioms: _*)
           }
           emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
