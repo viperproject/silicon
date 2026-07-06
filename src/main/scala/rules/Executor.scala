@@ -10,8 +10,8 @@ import viper.silicon.Config.JoinMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos.DefaultDependencyAnalysisInfos
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
 import viper.silicon.state._
@@ -68,7 +68,7 @@ object executor extends ExecutionRules {
           val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
           val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
           val s1 = handleOutEdge(s, edge, v)
-          val analysisInfos = v.decider.handleAndGetUpdatedAnalysisInfos(DefaultDependencyAnalysisInfos, ce.condition.info, ce.condition)
+          val analysisInfos = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, DefaultDependencyAnalysisInfos, ce.condition.info, ce.condition)
           eval(s1, ce.condition, IfFailed(ce.condition), v, analysisInfos)((s2, tCond, condNew, v1) =>
             /* Using branch(...) here ensures that the edge condition is recorded
              * as a branch condition on the pathcondition stack.
@@ -148,7 +148,7 @@ object executor extends ExecutionRules {
           case _ => false
         })
 
-        val analysisInfos = v.decider.handleAndGetUpdatedAnalysisInfos(DefaultDependencyAnalysisInfos, cedge1.condition.info, cedge1.condition)
+        val analysisInfos = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, DefaultDependencyAnalysisInfos, cedge1.condition.info, cedge1.condition)
 
         eval(s, cedge1.condition, pvef(cedge1.condition), v, analysisInfos)((s1, t0, condNew, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
@@ -184,7 +184,7 @@ object executor extends ExecutionRules {
         if Verifier.config.parallelizeBranches() && cond2 == ast.Not(cond1)() =>
         val condEdgeRecord = new ConditionalEdgeRecord(thenEdge.condition, s, v.decider.pcs)
         val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
-        val analysisInfos = v.decider.handleAndGetUpdatedAnalysisInfos(DefaultDependencyAnalysisInfos, thenEdge.condition.info, thenEdge.condition)
+        val analysisInfos = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, DefaultDependencyAnalysisInfos, thenEdge.condition.info, thenEdge.condition)
         val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v, analysisInfos)((s2, tCond, eCondNew, v1) =>
           brancher.branch(s2, tCond, (thenEdge.condition, eCondNew), v1, analysisInfos)(
             (s3, v3) => {
@@ -294,7 +294,7 @@ object executor extends ExecutionRules {
                         v2.decider.declareAndRecordAsFreshMacros(fm1.filter(!v2.decider.freshMacros.contains(_)))  /* [BRANCH-PARALLELISATION] */
 												v2.decider.pcs.setPathInfeasible(v2.decider.pcs.isPathInfeasible || pcs.isPathInfeasible)
                         if (v2.decider.pcs.getCurrentInfeasibilityNode.isEmpty) v2.decider.pcs.setCurrentInfeasibilityNode(pcs.infeasibilityNodeId)
-                        v2.decider.assume(pcs.assumptions map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t))), Some(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, analysisInfosLoopInternal)
+                        v2.decider.assume(pcs.assumptions map (t => DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v.decider, t, Set.empty, Set(t))), Some(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, analysisInfosLoopInternal)
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
                         if (!Verifier.config.disableInfeasibilityChecks() && v2.decider.checkSmoke(analysisInfosLoopInternal))
                           Success()
@@ -341,7 +341,7 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
-    val analysisInfos = v.decider.handleAndGetUpdatedAnalysisInfos(DefaultDependencyAnalysisInfos, stmt.info, stmt)
+    val analysisInfos = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, DefaultDependencyAnalysisInfos, stmt.info, stmt)
     exec2(s, stmt, v, analysisInfos)((s1, v1) => {
       v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, v1)
@@ -444,7 +444,7 @@ object executor extends ExecutionRules {
         case _ =>
           produce(s, freshSnap, a, InhaleFailed(inhale), v, analysisInfos)((s1, v1) => {
             v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-            if (v1.decider.isDependencyAnalysisEnabled && a.isInstanceOf[ast.FalseLit]) v1.decider.checkSmoke(analysisInfos)
+            if (Verifier.config.disableInfeasibilityChecks() && a.isInstanceOf[ast.FalseLit]) v1.decider.checkSmoke(analysisInfos)
             Q(s1, v1)})
       }
 
@@ -535,7 +535,7 @@ object executor extends ExecutionRules {
         val pveCall = CallFailed(call)
         val pveCallTransformed = pveCall.withReasonNodeTransformed(reasonTransformer)
 
-        v.decider.dependencyAnalyzer.addAssumption(True, analysisInfos, None) // make sure method calls are represented as a node, even if there are no postconditions
+        DependencyAnalyzer.addAssumption(v.decider, True, analysisInfos, None) // make sure method calls are represented as a node, even if there are no postconditions
 
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
         val sepIdentifier = v.symbExLog.openScope(mcLog)
@@ -572,7 +572,7 @@ object executor extends ExecutionRules {
                            recordVisited = true)
 
 
-					val presWithDAInfo = if (!v1.decider.isDependencyAnalysisEnabled) meth.pres else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.pres.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
+					val presWithDAInfo = if (!Verifier.config.enableDependencyAnalysis()) meth.pres else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.pres.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
 
           consumes(s2, presWithDAInfo, false, _ => pvePre, v1, analysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Up)))((s3, _, v2) => {
             v2.symbExLog.closeScope(preCondId)
@@ -582,7 +582,7 @@ object executor extends ExecutionRules {
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
 
-						val postsWithDAInfo = if (!v1.decider.isDependencyAnalysisEnabled) meth.posts else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.posts.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
+						val postsWithDAInfo = if (!Verifier.config.enableDependencyAnalysis()) meth.posts else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.posts.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
 						// TODO ake: Assuming the postcondition should not introduce any proof obligations as they are guaranteed by the fact / assumption that the callee verifies. Hence, we mark them as internal assertions.
 						val analysisInfos2 = analysisInfos.copy(dependencyTypes = List(DependencyTypeInfo(DependencyType(analysisInfos.getDependencyType.assumptionType, AssumptionType.Internal)))).withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Down))
             produces(s4, freshSnap, postsWithDAInfo, _ => pveCallTransformed, v2, analysisInfos2)((s5, v3) => {
@@ -593,7 +593,7 @@ object executor extends ExecutionRules {
               val s6 = s5.copy(g = s1.g + gLhs,
                                oldHeaps = s1.oldHeaps,
                                recordVisited = s1.recordVisited)
-							v3.decider.dependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(presWithDAInfo, postsWithDAInfo)
+							DependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(v3.decider, presWithDAInfo, postsWithDAInfo)
               v3.symbExLog.closeScope(sepIdentifier)
               Q(s6, v3)})})})
 
@@ -702,7 +702,7 @@ object executor extends ExecutionRules {
 
    private def ssaifyRhs(rhs: Term, rhsExp: ast.Exp, rhsExpNew: Option[ast.Exp], name: String, typ: ast.Type, v: Verifier, s : State, analysisInfos: DependencyAnalysisInfos): (Term, Option[ast.Exp]) = {
      rhs match {
-       case _: Var | _: Literal if !v.decider.isDependencyAnalysisEnabled =>
+       case _: Var | _: Literal if !Verifier.config.enableDependencyAnalysis() =>
          (rhs, rhsExpNew)
 
        case _  =>

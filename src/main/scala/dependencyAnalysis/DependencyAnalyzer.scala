@@ -1,9 +1,10 @@
 package viper.silicon.dependencyAnalysis
 
+import viper.silicon.decider.Decider
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
-import viper.silicon.state.terms.{NoPerm, _}
-import viper.silicon.verifier.Verifier
+import viper.silicon.state.terms.{Implies, NoPerm, _}
+import viper.silicon.verifier.{DependencyAnalysisDeciderFeatures, Verifier}
 import viper.silver.ast
 import viper.silver.ast._
 import viper.silver.dependencyAnalysis.JoinType.JoinType
@@ -106,6 +107,40 @@ object DependencyAnalyzer {
     label.split("_")(1).toInt
   }
 
+	def addAssumption(decider: Decider, assumption: Term, analysisInfos: DependencyAnalysisInfos, description: Option[String] = None): Option[Int] = decider match {
+		case daDecider: DependencyAnalysisDeciderFeatures => daDecider.getDependencyAnalyzer.addAssumption(assumption, analysisInfos, description)
+		case _ => None
+	}
+
+	def addCustomDependenciesBetweenMergeInfos(decider: Decider, sourceExps: Seq[Exp], targetExps: Seq[Exp]): Unit = decider match {
+		case daDecider: DependencyAnalysisDeciderFeatures => daDecider.getDependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(sourceExps, targetExps)
+		case _ =>
+	}
+
+
+	def wrapWithDependencyAnalysisLabel(decider: Decider, term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term = decider match {
+		case daDecider: DependencyAnalysisDeciderFeatures =>
+			if (!daDecider.isDependencyAnalysisEnabled || term.equals(True) || sourceChunks.size + sourceTerms.size == 0)
+				return term
+
+			val labelNode = daDecider.getOrCreateAnalysisLabelNode(sourceChunks, sourceTerms)
+			labelNode.map(n => Implies(n.term, term)).getOrElse(term)
+		case _ => term
+	}
+
+	def handleAndGetUpdatedAnalysisInfos(decider: Decider, analysisInfos: DependencyAnalysisInfos, info: Info, node: ast.Node): DependencyAnalysisInfos = decider match {
+		case daDecider: DependencyAnalysisDeciderFeatures =>
+			val newAnalysisInfos = analysisInfos.addInfo(info, node)
+			info.getAllInfos[AdditionalDependencyNodeInfo].foreach {
+				case AdditionalAssertionNode() => daDecider.getDependencyAnalyzer.createAssertOrCheckNode(True, newAnalysisInfos, isCheck = false).foreach(n => {
+					daDecider.getDependencyAnalyzer.addAssertionNode(n)
+					if (daDecider.isPathInfeasible) daDecider.getDependencyAnalyzer.addDependency(daDecider.pcs.getCurrentInfeasibilityNode, Some(n.id))
+				})
+				case AdditionalAssumptionNode() => daDecider.getDependencyAnalyzer.addAssumption(True, newAnalysisInfos)
+			}
+			newAnalysisInfos
+		case _ => analysisInfos
+	}
   /**
    *
    * @param name Optional name for the result graph.

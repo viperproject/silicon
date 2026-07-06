@@ -103,7 +103,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         mergedChunks.filter(_.isInstanceOf[BasicChunk]) foreach { case ch: BasicChunk =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties(s.mayAssumeUpperBounds))
-          pathCond.foreach(p => v.decider.assume(v.decider.wrapWithDependencyAnalysisLabel(p._1, Set(ch)), Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), analysisInfos))
+          pathCond.foreach(p => v.decider.assume(DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v.decider, p._1, Set(ch)), Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), analysisInfos))
         }
 
         Resources.resourceDescriptions foreach { case (id, desc) =>
@@ -211,7 +211,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   private def mergeChunks(fr1: FunctionRecorder, chunk1: Chunk, chunk2: Chunk, qvars: Seq[Var], v: Verifier, analysisInfos: DependencyAnalysisInfos): Option[(FunctionRecorder, Chunk, Term)] = {
     val result = mergeChunks1(fr1, chunk1, chunk2, qvars, v, analysisInfos)
     result.map({case (fRec, ch, snapEq) =>
-      (fRec, ch, v.decider.wrapWithDependencyAnalysisLabel(snapEq, Set(chunk1, chunk2)))})
+      (fRec, ch, DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v.decider, snapEq, Set(chunk1, chunk2)))})
   }
 
   private def mergeChunks1(fr1: FunctionRecorder, chunk1: Chunk, chunk2: Chunk, qvars: Seq[Var], v: Verifier, analysisInfos: DependencyAnalysisInfos): Option[(FunctionRecorder, Chunk, Term)] = (chunk1, chunk2) match {

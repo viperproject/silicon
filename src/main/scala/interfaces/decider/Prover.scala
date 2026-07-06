@@ -9,7 +9,6 @@ package viper.silicon.interfaces.decider
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.config.Version
 import viper.silicon.debugger.DebugAxiom
-import viper.silicon.dependencyAnalysis._
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Config, Map}
@@ -25,9 +24,6 @@ object Unknown extends Result
 trait ProverLike {
   protected val debugMode = Verifier.config.enableDebugging()
   var preambleAssumptions: Seq[DebugAxiom] = Seq()
-  protected var preambleDependencyAnalyzer: DependencyAnalyzer =
-    if (Verifier.config.enableDependencyAnalysis()) new DefaultDependencyAnalyzer(None)
-    else new NoDependencyAnalyzer()
   def emit(content: String): Unit
   def emit(contents: Iterable[String]): Unit = { contents foreach emit }
   def emitSettings(contents: Iterable[String]): Unit
@@ -37,26 +33,6 @@ trait ProverLike {
     terms foreach assume
   }
 
-  def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, DependencyAnalysisAxiomInfo)], description: String): Unit = {
-    if (debugMode)
-      preambleAssumptions :+= new DebugAxiom(description, axioms.map(_._1))
-
-    if (Verifier.config.enableDependencyAnalysis()) {
-      axioms.foreach(axiom => {
-        val analysisAxiomInfo = axiom._2
-				if (analysisAxiomInfo.analysisInfos.analysisEnabled) {
-					val id = preambleDependencyAnalyzer.addAxiom(axiom._1, analysisAxiomInfo)
-					assume(axiom._1, DependencyAnalyzer.createAxiomLabel(id))
-				}else {
-					assume(axiom._1)
-				}
-      })
-    } else{
-      axioms.foreach(t => assume(t._1))
-    }
-  }
-
-  def getPreambleAnalysisNodes: Iterable[DependencyAnalysisNode] = preambleDependencyAnalyzer.getNodes
   def setOption(name: String, value: String): String
   def assume(term: Term): Unit
   def assume(term: Term, label: String): Unit

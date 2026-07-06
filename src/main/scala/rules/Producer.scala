@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.logger.records.data.{CondExpRecord, ImpliesRecord, ProduceRecord}
 import viper.silicon.state._
@@ -151,7 +151,7 @@ object producer extends ProductionRules {
       val a = as.head.whenInhaling
       val pve = pves.head
 
-      val analysisInfos1 = v.decider.handleAndGetUpdatedAnalysisInfos(analysisInfos, a.info, a)
+      val analysisInfos1 = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, analysisInfos, a.info, a)
 			if (v.decider.isPathInfeasible) {
 				v.decider.handleInfeasiblePath(!Expressions.isKnownWellDefined(a, Some(s.program)), hasAssumptions=true, analysisInfos1)
 				return Q(s, v)

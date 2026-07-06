@@ -2,18 +2,18 @@ package viper.silicon.verifier
 
 import viper.silicon.Config
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider.Mark
+import viper.silicon.decider.{DependencyAwareZ3ProverStdIO, Mark, Z3ProverStdIO}
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.cliTool.DependencyAnalysisTool
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
-import viper.silicon.interfaces.decider.ProverLike
+import viper.silicon.interfaces.decider.{DependencyAnalysisProverLikeFeatures, ProverLike}
 import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.state.terms._
 import viper.silicon.state.{ChunkFactory, DependencyAwareChunkFactory, State}
 import viper.silver.ast
-import viper.silver.ast.{Info, Member, Method}
+import viper.silver.ast.{Member, Method}
 import viper.silver.dependencyAnalysis._
 import viper.silver.reporter.Reporter
 
@@ -24,6 +24,27 @@ trait DependencyAnalysisAwareVerifier extends BaseVerifier {
 	object DADecider extends DependencyAnalysisAwareDecider
 
 	trait DependencyAnalysisAwareDecider extends AbstractDecider with DependencyAnalysisDeciderFeatures {
+
+		private var dependencyAnalyzer: DependencyAnalyzer = new NoDependencyAnalyzer()
+
+		override def getDependencyAnalyzer: DependencyAnalyzer = dependencyAnalyzer
+
+		protected var _daProver: DependencyAwareZ3ProverStdIO = _
+
+		override def prover: DependencyAwareZ3ProverStdIO = _daProver
+
+		override protected def initProver(proverName: String): Unit = {
+			_daProver = getProver(proverName)
+			_prover = _daProver
+		}
+
+		override protected def getProver(prover: String): DependencyAwareZ3ProverStdIO = prover match {
+			case Z3ProverStdIO.name => new DependencyAwareZ3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
+			case prover =>
+				val msg1 = s"Prover '$prover' not supported in combination with the dependency analysis. Defaulting to ${Z3ProverStdIO.name}."
+				logger warn msg1
+				getProver(Z3ProverStdIO.name)
+		}
 
 		override def handleInfeasiblePath(hasAssertions: Boolean, hasAssumptions: Boolean, analysisInfos: DependencyAnalysisInfos): Unit = {
 			if (!isPathInfeasible) return
@@ -69,7 +90,7 @@ trait DependencyAnalysisAwareVerifier extends BaseVerifier {
 			}
 		}
 
-		private def getOrCreateAnalysisLabelNode(sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Option[LabelNode] = {
+		override def getOrCreateAnalysisLabelNode(sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Option[LabelNode] = {
 			if (!isDependencyAnalysisEnabled)
 				return None
 
@@ -80,16 +101,13 @@ trait DependencyAnalysisAwareVerifier extends BaseVerifier {
 			labelNode
 		}
 
-		override def wrapWithDependencyAnalysisLabel(term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term = {
-			if (!isDependencyAnalysisEnabled || term.equals(True) || sourceChunks.size + sourceTerms.size == 0)
-				return term
-
-			val labelNode = getOrCreateAnalysisLabelNode(sourceChunks, sourceTerms)
-			labelNode.map(n => Implies(n.term, term)).getOrElse(term)
-		}
-
 		override protected def assumeWithoutSmokeChecks(termsWithLabel: InsertionOrderedSet[(Term, String)], analysisInfos: DependencyAnalysisInfos, isDefinition: Boolean = false): Unit = {
 			super.assumeWithoutSmokeChecks(addAssumptionLabels(termsWithLabel.map(_._1), analysisInfos), analysisInfos, isDefinition)
+		}
+
+		def assumeLabel(term: Term, assumptionLabel: String): Unit = {
+			pathConditions.addAnalysisLabel(term)
+			prover.assume(term, assumptionLabel)
 		}
 
 		private def addAssumptionLabels(filteredTerms: Iterable[Term], analysisInfos: DependencyAnalysisInfos) = {
@@ -128,18 +146,6 @@ trait DependencyAnalysisAwareVerifier extends BaseVerifier {
 			super.handleFailedAssertion(failedAssertion, e, finalExp, analysisInfos, assumeFailedAssertion)
 		}
 
-		override def handleAndGetUpdatedAnalysisInfos(analysisInfos: DependencyAnalysisInfos, info: Info, node: ast.Node): DependencyAnalysisInfos = {
-			val newAnalysisInfos = analysisInfos.addInfo(info, node)
-			info.getAllInfos[AdditionalDependencyNodeInfo].foreach {
-				case AdditionalAssertionNode() => dependencyAnalyzer.createAssertOrCheckNode(True, newAnalysisInfos, isCheck = false).foreach(n => {
-					dependencyAnalyzer.addAssertionNode(n)
-					if (isPathInfeasible) dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, Some(n.id))
-				})
-				case AdditionalAssumptionNode() => dependencyAnalyzer.addAssumption(True, newAnalysisInfos)
-			}
-			newAnalysisInfos
-		}
-
 		override protected def isKnownToBeTrue(t: Term) = t.equals(True)
 
 		override protected def deciderAssertInternal(asserted: Boolean, t: Term, timeout: Option[Int], analysisInfos: DependencyAnalysisInfos, isCheck: Boolean, label: String = "") = {
@@ -173,7 +179,19 @@ class DependencyAwareMainVerifier(config: Config,
 																	override val rootSymbExLogger: SymbExLogger[_ <: MemberSymbExLogger])
 	extends DefaultMainVerifier(config, reporter, rootSymbExLogger) with DependencyAnalysisAwareVerifier {
 
+	override protected lazy val _verificationPoolManager: DependencyAwareVerificationPoolManager = new DependencyAwareVerificationPoolManager(this)
+
+	override def verificationPoolManager: DependencyAwareVerificationPoolManager = _verificationPoolManager
+
 	override def createWorkerVerifier(): DependencyAwareWorkerVerifier = new DependencyAwareWorkerVerifier(this, nextUniqueVerifierId(), reporter, debugMode)
+
+	override def allProvers: AllProvers with DependencyAnalysisProverLikeFeatures = DependencyAwareAllProvers
+
+	object DependencyAwareAllProvers extends AllProvers with DependencyAnalysisProverLikeFeatures {
+
+		override protected var preambleDependencyAnalyzer: DependencyAnalyzer = new DefaultDependencyAnalyzer(None)
+	}
+
 
 	override def verifyMember(doVerify: Unit => Seq[VerificationResult], v: Verifier, member: ast.Member): Seq[VerificationResult] = {
 		v match {
@@ -202,17 +220,17 @@ class DependencyAwareMainVerifier(config: Config,
 		override protected def handleFunction(sInit: State, function: ast.Function): VerificationResult = {
 
 			val presAssertionNodeForJoin = function.pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(pc)), List(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up)), function.name))
-			presAssertionNodeForJoin foreach decider.dependencyAnalyzer.addAssertionNode
+			presAssertionNodeForJoin foreach decider.getDependencyAnalyzer.addAssertionNode
 
 			val result = super.handleFunction(sInit, function)
 
 			if (function.body.isEmpty) {
-				decider.dependencyAnalyzer.addNodes(decider.prover.getPreambleAnalysisNodes)
-				decider.dependencyAnalyzer.addDependenciesForAbstractMembers(function.pres.flatMap(_.topLevelConjuncts), function.posts.flatMap(_.topLevelConjuncts), DependencyAnalysisInfos.DefaultDependencyAnalysisInfos)
+				decider.getDependencyAnalyzer.addNodes(decider.prover.getPreambleAnalysisNodes)
+				decider.getDependencyAnalyzer.addDependenciesForAbstractMembers(function.pres.flatMap(_.topLevelConjuncts), function.posts.flatMap(_.topLevelConjuncts), DependencyAnalysisInfos.DefaultDependencyAnalysisInfos)
 			}
 
 			val allErrors = (result :: result.previous.toList).filter(_.isInstanceOf[Failure]).map(_.asInstanceOf[Failure])
-			result.dependencyGraphInterpreter = decider.dependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(function.name, _,
+			result.dependencyGraphInterpreter = decider.getDependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(function.name, _,
 				allErrors, Some(function)))
 
 			result
@@ -229,8 +247,10 @@ class DependencyAwareMainVerifier(config: Config,
 			emittedFunctionAxioms = emittedFunctionAxioms ++ cleanAxiom
 		}
 
-		override def emitAxiomsAfterVerification(sink: ProverLike): Unit = {
-			sink.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(emittedFunctionAxioms), "Function axioms")
+		override def emitAxiomsAfterVerification(sink: ProverLike): Unit = sink match {
+			case daSink: DependencyAnalysisProverLikeFeatures =>
+				daSink.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(emittedFunctionAxioms), "Function axioms")
+			case _ => super.emitAxiomsAfterVerification(sink)
 		}
 
 	}
@@ -248,16 +268,16 @@ class DependencyAwareWorkerVerifier(mainVerifier: DependencyAwareMainVerifier,
 		override def verify(sInit: State, method: Method): Seq[VerificationResult] = {
 
 			val presAssertionNodeForJoin = method.pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(pc)), List(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up)), method.name))
-			presAssertionNodeForJoin foreach decider.dependencyAnalyzer.addAssertionNode
+			presAssertionNodeForJoin foreach decider.getDependencyAnalyzer.addAssertionNode
 
 			val result = super.verify(sInit, method)
 
 			if (method.body.isEmpty)
-				decider.dependencyAnalyzer.addDependenciesForAbstractMembers(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts), DependencyAnalysisInfos.DefaultDependencyAnalysisInfos)
+				decider.getDependencyAnalyzer.addDependenciesForAbstractMembers(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts), DependencyAnalysisInfos.DefaultDependencyAnalysisInfos)
 
 			result foreach (r => {
 				val allErrors = (r :: r.previous.toList).filter(_.isInstanceOf[Failure]).map(_.asInstanceOf[Failure])
-				r.dependencyGraphInterpreter = decider.dependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(method.name, _, allErrors, Some(method)))
+				r.dependencyGraphInterpreter = decider.getDependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(method.name, _, allErrors, Some(method)))
 			})
 
 			result
@@ -266,6 +286,11 @@ class DependencyAwareWorkerVerifier(mainVerifier: DependencyAwareMainVerifier,
 }
 
 trait DependencyAnalysisDeciderFeatures {
+
+	def isDependencyAnalysisEnabled: Boolean
+
+	def getDependencyAnalyzer: DependencyAnalyzer
+
 	def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfos: DependencyAnalysisInfos, isExhale: Boolean): CH
 
 	def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfos: DependencyAnalysisInfos, isExhale: Boolean, createLabel: Boolean = true): CH
@@ -273,4 +298,5 @@ trait DependencyAnalysisDeciderFeatures {
 	def initDependencyAnalyzer(member: Member, preambleNodes: Iterable[DependencyAnalysisNode]): Unit
 	def resetDependencyAnalyzer(): Unit
 
+	def getOrCreateAnalysisLabelNode(sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Option[LabelNode]
 }

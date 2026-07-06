@@ -7,7 +7,7 @@
 package viper.silicon.resources
 
 import viper.silicon.Map
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces.state._
 import viper.silicon.state.terms.Term
 import viper.silicon.state.{QuantifiedBasicChunk, terms}
@@ -124,7 +124,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
     val conditionTerm = buildPathCondition(condition, info)._1
     if (verifier.decider.check(conditionTerm, Verifier.config.checkTimeout(), DependencyAnalysisInfos.create(s"property interpreter: ${conditionTerm.toString}", DependencyType.Internal))) {
       val (t, e) = buildPathCondition(thenDo, info)
-      (verifier.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(conditionTerm)), e) // TODO ake: causes imprecision!
+      (DependencyAnalyzer.wrapWithDependencyAnalysisLabel(verifier.decider, t, Set.empty, Set(conditionTerm)), e) // TODO ake: causes imprecision!
     } else {
       buildPathCondition(otherwise, info)
     }
@@ -155,14 +155,14 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
         case c +: Seq() => buildPathCondition(body, info.addMapping(c, chunk))
         case c +: tail => buildForEach(chunks, tail, body, info.addMapping(c, chunk))
       }
-      (verifier.decider.wrapWithDependencyAnalysisLabel(res._1, Set(chunk)), res._2)
+      (DependencyAnalyzer.wrapWithDependencyAnalysisLabel(verifier.decider, res._1, Set(chunk)), res._2)
     }
     val conds = chunks.flatMap { chunk =>
         // check that only distinct tuples are handled
         // TODO: Is it possible to get this behavior without having to check every tuple?
         if (!info.pm.values.exists(chunk eq _)) {
           val res = builder(chunk)
-          Some((verifier.decider.wrapWithDependencyAnalysisLabel(res._1, Set(chunk)), res._2))
+          Some((DependencyAnalyzer.wrapWithDependencyAnalysisLabel(verifier.decider, res._1, Set(chunk)), res._2))
         } else {
           None
         }

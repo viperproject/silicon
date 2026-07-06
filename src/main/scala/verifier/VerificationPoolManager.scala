@@ -10,7 +10,6 @@ import org.apache.commons.pool2.impl.{DefaultPooledObject, GenericObjectPool, Ge
 import org.apache.commons.pool2.{BasePooledObjectFactory, ObjectPool, PoolUtils, PooledObject}
 import viper.silicon.Config
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.dependencyAnalysis.DependencyAnalysisAxiomInfo
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.terms.{Decl, Term}
@@ -25,13 +24,16 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
   /*private*/ var threadPool: ForkJoinPool = _
   /*private*/ var workerVerifierPool: ObjectPool[WorkerVerifier] = _
 
-  private[verifier] object pooledVerifiers extends ProverLike {
+	def pooledVerifiers: DefaultPooledVerifiers = _pooledVerifiers
+
+  private[verifier] object _pooledVerifiers extends DefaultPooledVerifiers
+
+	trait DefaultPooledVerifiers extends ProverLike {
     def emit(content: String): Unit = workerVerifiers foreach (_.decider.prover.emit(content))
     override def emit(contents: Iterable[String]): Unit = workerVerifiers foreach (_.decider.prover.emit(contents))
     def assume(term: Term): Unit = workerVerifiers foreach (_.decider.prover.assume(term))
     def assume(term: Term, label: String): Unit = workerVerifiers foreach (_.decider.prover.assume(term, label))
     override def assumeAxioms(terms: InsertionOrderedSet[Term], description: String): Unit = workerVerifiers foreach (_.decider.prover.assumeAxioms(terms, description))
-    override def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, DependencyAnalysisAxiomInfo)], description: String): Unit = workerVerifiers foreach (_.decider.prover.assumeAxiomsWithAnalysisInfo(axioms, description))
     def declare(decl: Decl): Unit =  workerVerifiers foreach (_.decider.prover.declare(decl))
     def comment(content: String): Unit = workerVerifiers foreach (_.decider.prover.comment(content))
 

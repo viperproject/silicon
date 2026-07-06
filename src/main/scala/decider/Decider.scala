@@ -13,14 +13,13 @@ import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider._
-import viper.silicon.interfaces.state.Chunk
 import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Term, _}
 import viper.silicon.utils.ast.{extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silver.ast
-import viper.silver.ast.{Info, LocalVarWithVersion, NoPosition}
+import viper.silver.ast.{LocalVarWithVersion, NoPosition}
 import viper.silver.components.StatefulComponent
 import viper.silver.dependencyAnalysis._
 import viper.silver.parser.{PKw, PPrimitiv, PReserved, PType}
@@ -63,7 +62,6 @@ trait Decider {
 
 	def debuggerAssume(terms: Iterable[Term], de: DebugExp)
 
-  def wrapWithDependencyAnalysisLabel(term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term
   def isPathInfeasible: Boolean
 	def handleInfeasiblePath(hasAssertions: Boolean, hasAssumptions: Boolean, analysisInfos: DependencyAnalysisInfos): Unit
 
@@ -73,7 +71,6 @@ trait Decider {
   def assume(terms: Seq[Term], debugExps: Option[Seq[DebugExp]], analysisInfos: DependencyAnalysisInfos): Unit
   def assumeDefinition(t: Term, debugExp: Option[DebugExp], analysisInfos: DependencyAnalysisInfos): Unit
   def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean, analysisInfos: DependencyAnalysisInfos): Unit
-  def assumeLabel(term: Term, assumptionLabel: String): Unit
 
   def check(t: Term, timeout: Int, analysisInfos: DependencyAnalysisInfos): Boolean
 
@@ -81,9 +78,6 @@ trait Decider {
    *         1. It passes State and Operations to the continuation
    *         2. The implementation reacts to a failing assertion by e.g. a state consolidation
    */
-
-	def handleAndGetUpdatedAnalysisInfos(analysisInfos: DependencyAnalysisInfos, info: Info, node: ast.Node): DependencyAnalysisInfos
-
 	def assert(t: Term, analysisInfos: DependencyAnalysisInfos)(Q: Boolean => VerificationResult): VerificationResult
   def assert(t: Term, analysisInfos: DependencyAnalysisInfos, timeout: Option[Int])(Q: Boolean => VerificationResult): VerificationResult
 
@@ -114,8 +108,6 @@ trait Decider {
 
   def statistics(): Map[String, String]
 
-  var dependencyAnalyzer: DependencyAnalyzer
-  def isDependencyAnalysisEnabled: Boolean
   def handleFailedAssertion(failedAssertion: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit
 }
 
@@ -150,9 +142,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 		protected var _proverResetOptions: Map[String, String] = Map.empty
 		protected val _debuggerAssumedTerms: mutable.Set[Term] = mutable.Set.empty
 
-    var dependencyAnalyzer: DependencyAnalyzer = new NoDependencyAnalyzer()
-    def isDependencyAnalysisEnabled: Boolean = false
-
     def functionDecls: Set[FunctionDecl] = _declaredFreshFunctions
     def macroDecls: Vector[MacroDecl] = _declaredFreshMacros
 
@@ -186,8 +175,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         getProver(Z3ProverStdIO.name)
     }
 
+		protected def initProver(proverName: String): Unit = {
+			_prover = getProver(proverName)
+		}
+
     def createProver(proverName: String, userArgsString: Option[String]): Option[DependencyNotFoundError] = {
-      _prover = getProver(proverName)
+      initProver(proverName)
 
       _prover.start(userArgsString) /* Cannot query prover version otherwise */
 
@@ -295,10 +288,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
     }
 
-    def wrapWithDependencyAnalysisLabel(term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term = term
-
-		def handleAndGetUpdatedAnalysisInfos(analysisInfos: DependencyAnalysisInfos, info: Info, node: ast.Node): DependencyAnalysisInfos = analysisInfos
-
     def isPathInfeasible: Boolean = Verifier.config.disableInfeasibilityChecks() && pcs.isPathInfeasible
 
 		def handleInfeasiblePath(hasAssertions: Boolean, hasAssumptions: Boolean, analysisInfos: DependencyAnalysisInfos): Unit = {}
@@ -404,11 +393,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       termsWithLabel foreach { case (t, label) => prover.assume(t, label) }
 
       symbExLog.closeScope(sepIdentifier)
-    }
-
-    def assumeLabel(term: Term, assumptionLabel: String): Unit = {
-      pathConditions.addAnalysisLabel(term)
-      prover.assume(term, assumptionLabel)
     }
 
     /* Asserting facts */

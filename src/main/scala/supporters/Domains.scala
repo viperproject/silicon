@@ -10,7 +10,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.collections.immutable.MultiMap._
 import viper.silicon.dependencyAnalysis.{DependencyAnalysisAxiomInfo, DependencyAnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces.PreambleContributor
-import viper.silicon.interfaces.decider.ProverLike
+import viper.silicon.interfaces.decider.{DependencyAnalysisProverLikeFeatures, ProverLike}
 import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Term}
 import viper.silicon.state.{FunctionPreconditionTransformer, SymbolConverter, terms}
 import viper.silicon.toMap
@@ -125,9 +125,12 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
 
   def axiomsAfterAnalysis: Iterable[terms.Term] = collectedAxioms.map(_._1)
 
-  def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = {
-    sink.assumeAxiomsWithAnalysisInfo(collectedAxioms, "Domain axioms")
-  }
+	def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = sink match {
+		case daSink: DependencyAnalysisProverLikeFeatures =>
+			daSink.assumeAxiomsWithAnalysisInfo(collectedAxioms, "Domain axioms") // TODO ake
+		case _ =>
+			sink.assumeAxioms(collectedAxioms.map(_._1), "Domain axioms")
+	}
 
   def uniquenessAssumptionsAfterAnalysis: Iterable[Term] =
     uniqueSymbols.map.values map Distinct

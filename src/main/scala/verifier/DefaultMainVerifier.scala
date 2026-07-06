@@ -82,17 +82,17 @@ class DefaultMainVerifier(config: Config,
   protected val predicateAndWandSnapFunctionsContributor = new DefaultPredicateAndWandSnapFunctionsContributor(preambleReader, termConverter, predSnapGenerator, config)
   protected val magicWandSnapFunctionsContributor = new MagicWandSnapFunctionsContributor(preambleReader)
 
-  private val _verificationPoolManager: VerificationPoolManager = new VerificationPoolManager(this)
+  protected lazy val _verificationPoolManager: VerificationPoolManager = new VerificationPoolManager(this)
   def verificationPoolManager: VerificationPoolManager = _verificationPoolManager
 
-  private val statefulSubcomponents = List[StatefulComponent](
+  private lazy val statefulSubcomponents = List[StatefulComponent](
     uniqueIdCounter,
     sequencesContributor, setsContributor, multisetsContributor, mapsContributor, domainsContributor,
     fieldValueFunctionsContributor,
     predSnapGenerator, predicateAndWandSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
 		functionsSupporter, predicateSupporter,
-    _verificationPoolManager,
+    verificationPoolManager,
     MultiRunRecorders /* In lieu of a better place, include MultiRunRecorders singleton here */
   )
 
@@ -119,7 +119,11 @@ class DefaultMainVerifier(config: Config,
 
   /* Verifier orchestration */
 
-  protected object allProvers extends ProverLike {
+	def allProvers: AllProvers = DefaultAllProvers
+
+  protected object DefaultAllProvers extends AllProvers
+
+	trait AllProvers extends ProverLike {
     def emit(content: String): Unit = {
       decider.prover.emit(content)
       _verificationPoolManager.pooledVerifiers.emit(content)

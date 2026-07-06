@@ -10,7 +10,7 @@ import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
@@ -432,7 +432,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
     }
 
     // some of the analysis labels, introduced while verifying the package statement, might be needed later on -> reassume them
-    analysisLabels foreach (l => v.decider.assume(v.decider.wrapWithDependencyAnalysisLabel(l, Set.empty, Set(l)), None, analysisInfos.withDependencyType(DependencyType.Internal)))
+    analysisLabels foreach (l => v.decider.assume(DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v.decider, l, Set.empty, Set(l)), None, analysisInfos.withDependencyType(DependencyType.Internal)))
 
     recordedBranches.foldLeft(tempResult)((prevRes, recordedState) => {
       prevRes && {
@@ -447,10 +447,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
           val exp = viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_._1))
           val expNew = Option.when(withExp)(viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_._2.get)))
           // Set the branch conditions
-          v1.decider.setCurrentBranchCondition(And(branchConditions map (t => v1.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t)))), (exp, expNew), analysisInfos)
+          v1.decider.setCurrentBranchCondition(And(branchConditions map (t => DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v1.decider, t, Set.empty, Set(t)))), (exp, expNew), analysisInfos)
 
           // Recreate all path conditions in the Z3 proof script that we recorded for that branch
-          v1.decider.assume(conservedPcs._1 map (t => v1.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t))), conservedPcs._2, analysisInfos.withDependencyType(DependencyType.Internal))
+          v1.decider.assume(conservedPcs._1 map (t => DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v1.decider, t, Set.empty, Set(t))), conservedPcs._2, analysisInfos.withDependencyType(DependencyType.Internal))
 
           // Execute the continuation Q
           Q(s2, magicWandChunk, v1)

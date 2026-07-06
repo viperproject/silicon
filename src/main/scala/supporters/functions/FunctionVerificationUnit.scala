@@ -272,16 +272,16 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       val precondAnalysisSourceInfos = DependencyAnalysisInfos.create("preconditions", DependencyType.Internal)
       val analysisInfosPostcondition = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))
-      val analysisInfosBody = v.decider.handleAndGetUpdatedAnalysisInfos(DependencyAnalysisInfos.DefaultDependencyAnalysisInfos, body.info, body)
+      val analysisInfosBody = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, DependencyAnalysisInfos.DefaultDependencyAnalysisInfos, body.info, body)
         .withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(body), JoinType.Source, EdgeType.Down))
 
       val result = phase1data.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
         case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
-            val labelledBcsPre = terms.And(bcsPre map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t))))
+            val labelledBcsPre = terms.And(bcsPre map (t => DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v.decider, t, Set.empty, Set(t))))
             decider.setCurrentBranchCondition(labelledBcsPre, (BigAnd(bcsPreExp.map(_._1)), Option.when(wExp)(BigAnd(bcsPreExp.map(_._2.get)))), precondAnalysisSourceInfos)
-            val labelledPcsPre = pcsPre map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t)))
+            val labelledPcsPre = pcsPre map (t => DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v.decider, t, Set.empty, Set(t)))
             decider.assume(labelledPcsPre, pcsPreExp, s"precondition of ${function.name}", enforceAssumption=false, precondAnalysisSourceInfos)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             eval(s1, body, FunctionNotWellformed(function), v, analysisInfosBody)((s2, tBody, bodyNew, _) => {
