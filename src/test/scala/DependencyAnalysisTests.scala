@@ -11,16 +11,14 @@ import viper.silver.verifier
 
 class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFramework {
 
-  val CHECK_PRECISION = false
   val EXECUTE_TEST = true
-  val TEST_IMPORTER = false
+  val TEST_IMPORTER = false // if true, the tests are executed on the graph that got exported and then imported via the GraphImporter
   override val EXPORT_PRUNED_PROGRAMS: Boolean = false
   val ignores: Seq[String] = Seq()
   val depAnalysisModeArg = if(TEST_IMPORTER) Seq("--dependencyAnalysisMode=export>testExports") else Seq()
   analysisCommandLineArguments = analysisCommandLineArguments ++ depAnalysisModeArg
   val testDirectories: Seq[String] = Seq(
     "dependencyAnalysisTests/all",
-//    "dependencyAnalysisTests/unitTests", // TODO ake: remove obsolete tests and move interesting ones to all
     "dependencyAnalysisTests/real-world-examples",
     "dependencyAnalysisTests/verificationProgressTests",
     "dependencyAnalysisTests/guidance",
@@ -60,7 +58,7 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
 
     val fullGraphInterpreter = if (TEST_IMPORTER) {
       println("--------\nTesting via the graph importer.")
-      val importedGraph = DependencyGraphImporter.importGraphFromCsv(s"testExports/$name")
+      val importedGraph = DependencyGraphImporter.importGraphFromCsv(s"testExports")
       new DependencyGraphInterpreter[Final](name, importedGraph, List.empty, None)
     } else {
       frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter.get

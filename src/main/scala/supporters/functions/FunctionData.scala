@@ -8,6 +8,7 @@ package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos.DefaultDependencyAnalysisInfos
 import viper.silicon.dependencyAnalysis.{DependencyAnalysisAxiomInfo, DependencyAnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces.FatalResult
 import viper.silicon.rules.{InverseFunctions, PermMapDefinition, SnapshotMapDefinition, functionSupporter}
@@ -235,10 +236,18 @@ class FunctionData(val programFunction: ast.Function,
     expressionTranslator.translatePrecondition(program, programFunction.pres, this)
   }
 
+	def postConditionInfo(post: ast.Exp): DependencyAnalysisAxiomInfo =
+		DependencyAnalysisAxiomInfo(DefaultDependencyAnalysisInfos.withEnabled(isAnalysisEnabled).addInfo(post.info, post)
+			.withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(post), JoinType.Sink, EdgeType.Down)), programFunction.name)
+
   lazy val translatedPosts = {
+		translatedPostsWithInfo.map(_._1)
+	}
+
+  lazy val translatedPostsWithInfo: Seq[(Term, DependencyAnalysisAxiomInfo)] = {
     assert(phase == 1, s"Postcondition axiom must be generated in phase 1, current phase is $phase")
     if (programFunction.posts.nonEmpty) {
-      expressionTranslator.translatePostcondition(program, programFunction.posts, this)
+			programFunction.posts.flatMap(_.topLevelConjuncts) map (p => (expressionTranslator.translatePostcondition(program, Seq(p), this).head, postConditionInfo(p)))
     } else {
       Seq()
     }
@@ -256,10 +265,8 @@ class FunctionData(val programFunction: ast.Function,
 
       if (isAnalysisEnabled) {
         (Forall(arguments, wrapBody(And(generateNestedDefinitionalAxioms)), Trigger(limitedFunctionApplication)), bodyAnalysisInfo) +:
-          programFunction.posts.flatMap(_.topLevelConjuncts).map({p =>
-            val terms = expressionTranslator.translatePostcondition(program, Seq(p), this)
-            (And(Forall(arguments, wrapBody(Implies(pre, And(terms))), Trigger(limitedFunctionApplication)), True),
-              DependencyAnalysisAxiomInfo(analysisInfos.addInfo(p.info, p).withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(p), JoinType.Sink, EdgeType.Down)), programFunction.name))
+          translatedPostsWithInfo.map({p =>
+            (And(Forall(arguments, wrapBody(Implies(pre, p._1)), Trigger(limitedFunctionApplication)), True), p._2)
           })
       } else {
         val innermostBody = And(generateNestedDefinitionalAxioms ++ List(Implies(pre, And(translatedPosts))))
@@ -359,9 +366,8 @@ class FunctionData(val programFunction: ast.Function,
     val pre = preconditionFunctionApplication
     val postPreconditions = if (programFunction.posts.nonEmpty) {
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
-      val bodies = translatedPosts.map(tPost => Let(bodyBindings, Implies(pre, FunctionPreconditionTransformer.transform(tPost, program))))
-      bodies.map(b => (Forall(arguments, b, Seq(Trigger(limitedFunctionApplication))),
-        DependencyAnalysisAxiomInfo(DependencyAnalysisInfos.create("postPreconditionPropagationAxiom", DependencyType.Internal).withEnabled(isAnalysisEnabled), programFunction.name)))
+      val bodies = translatedPostsWithInfo.map(tPost => (Let(bodyBindings, Implies(pre, FunctionPreconditionTransformer.transform(tPost._1, program))), tPost._2))
+      bodies.map(b => (Forall(arguments, b._1, Seq(Trigger(limitedFunctionApplication))),b._2))
     } else Seq()
     postPreconditions
   }
