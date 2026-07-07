@@ -47,7 +47,7 @@ trait DependencyAnalysisCliCommand {
   val cmd: Seq[String] => Unit
   val description: String
 
-  def accept(inputs: Seq[String]): Boolean = inputs.nonEmpty && inputs.head.equals(cmdName)
+  def accept(inputs: Seq[String]): Boolean = inputs.nonEmpty && inputs.head.equalsIgnoreCase(cmdName)
 
   def visit(inputs: Seq[String]): Unit = if (accept(inputs)) cmd(inputs.tail)
 

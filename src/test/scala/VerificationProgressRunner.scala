@@ -63,7 +63,7 @@ object VerificationProgressRunner extends DependencyAnalysisTestFramework {
 
     val (progressPeter, progressLea) = new DependencyAnalysisProgressSupporter(joinedDependencyGraphInterpreter.get).computeVerificationProgress()
 
-    writer.println(f"$fileName\t$progressPeter%.3f\t$progressLea%.3f\t${!hasFailures}")
-    println(f"$fileName\t$progressPeter%.3f\t$progressLea%.3f\t${!hasFailures}")
+    writer.println(f"$fileName\t${progressPeter.progress}%.3f\t${progressLea.progress}%.3f\t${!hasFailures}")
+    println(f"$fileName\t${progressPeter.progress}%.3f\t${progressLea.progress}%.3f\t${!hasFailures}")
   }
 }

@@ -11,7 +11,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
   private val dependencyGraph = interpreter.getGraph
   private lazy val sourceToAssertionNodesMap: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = interpreter.getNonInternalAssertionNodes.groupBy(_.sourceInfo)
 
-  def computeVerificationProgress(enableDebugging: Boolean = false): (Double, Double) = {
+  def computeVerificationProgress(enableDebugging: Boolean = false): (VerificationProgress, VerificationProgress) = {
     computeVerificationProgressOptimized(enableDebugging)
   }
 
@@ -123,7 +123,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
    *         Proof quality is defined as the average assertion quality over all proof obligations.
    *         Assertion quality of an assertion a is the fraction of non-assumption dependencies over all dependencies of the assertion a.
    */
-  def computeVerificationProgressOptimized(enableDebugOutput: Boolean = false): (Double, Double) = {
+  def computeVerificationProgressOptimized(enableDebugOutput: Boolean = false): (VerificationProgress, VerificationProgress) = {
 
     // compute all dependencies of each proof obligation
     val allAssertions = getAssertionsRelevantForProgress.keySet.toList
@@ -158,7 +158,9 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
         s"proof quality (Lea): $assertionQualitiesSum / $numNonTrivialAssertions = $proofQualityLea\n"
     )
 
-    (specQuality * proofQualityPeter, specQuality * proofQualityLea)
+		val progressPeter = VerificationProgress(specQuality, proofQualityPeter)
+		val progressLea = VerificationProgress(specQuality, proofQualityLea)
+    (progressPeter, progressLea)
   }
 
 
@@ -243,4 +245,8 @@ case class DAMemo[A,B](f: A => B) extends (A => B) {
   def contains(a: A): Boolean = {
     cache.contains(a)
   }
+}
+
+case class VerificationProgress(specQuality: Double, proofQuality: Double) {
+	lazy val progress = specQuality * proofQuality
 }

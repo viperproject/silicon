@@ -100,12 +100,12 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
 
     val ((optProgressPeter, optProgressLea), optTime) = measureTime(fullGraphInterpreter.progressSupporter.computeVerificationProgress(enableDebugging))
 
-    val output = s"Peter: $optProgressPeter; Lea: $optProgressLea\nFinished in ${optTime}ms"
-    println(output)
+    println(s"Peter: ${optProgressPeter.progress}; Lea: ${optProgressLea.progress}\nFinished in ${optTime}ms")
 
     if (exportFileNameOpt.isDefined) {
       val writer = new PrintWriter(exportFileNameOpt.get)
-      writer.println(output)
+      writer.println("Spec Quality, Proof Quality (Peter), Progress (Peter), Proof Quality (Lea), Progress (Lea), Runtime [ms]")
+      writer.println(s"${optProgressLea.specQuality},${optProgressPeter.proofQuality},${optProgressPeter.progress},${optProgressLea.proofQuality},${optProgressLea.progress},$optTime")
       writer.close()
     }
   }
