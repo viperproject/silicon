@@ -44,12 +44,12 @@ trait DependencyAnalysisAwareFunctionVerification extends DefaultFunctionVerific
         }(), a._2))
       decider.prover.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(cleanAxiom), "Function axioms")
 
-      emittedFunctionAxioms = emittedFunctionAxioms ++ cleanAxiom
+      emittedFunctionAxiomsWithInfo = emittedFunctionAxiomsWithInfo ++ cleanAxiom
     }
 
     override def emitAxiomsAfterVerification(sink: ProverLike): Unit = sink match {
       case daSink: DependencyAnalysisProverFeatures =>
-        daSink.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(emittedFunctionAxioms), "Function axioms")
+        daSink.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(emittedFunctionAxiomsWithInfo), "Function axioms")
       case _ => super.emitAxiomsAfterVerification(sink)
     }
 

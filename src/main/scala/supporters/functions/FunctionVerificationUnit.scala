@@ -57,9 +57,11 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     @unused private var program: ast.Program = _
     /*private*/ var functionData: Map[String, FunctionData] = Map.empty
-    protected var emittedFunctionAxioms: Vector[(Term, DependencyAnalysisAxiomInfo)] = Vector.empty
+    protected var emittedFunctionAxiomsWithInfo: Vector[(Term, DependencyAnalysisAxiomInfo)] = Vector.empty
+		protected def emittedFunctionAxioms: Vector[Term] = emittedFunctionAxiomsWithInfo.map(_._1)
     private var freshVars: Vector[Var] = Vector.empty
-    private var postConditionAxioms: Vector[(Term, DependencyAnalysisAxiomInfo)] = Vector.empty
+    private var postConditionAxiomsWithInfo: Vector[(Term, DependencyAnalysisAxiomInfo)] = Vector.empty
+		private def postConditionAxioms: Vector[Term] = postConditionAxiomsWithInfo.map(_._1)
 
     private val expressionTranslator = {
       def resolutionFailureMessage(exp: ast.Positioned, data: FunctionData): String = (
@@ -152,7 +154,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     val axiomsAfterAnalysis: Iterable[Term] = Seq.empty
     def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = ()
 
-    def getPostConditionAxioms() = this.postConditionAxioms.map(_._1)
+    def getPostConditionAxioms() = this.postConditionAxioms
 
     /* Verification and subsequent preamble contribution */
 
@@ -189,11 +191,11 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           data.verificationFailures = data.verificationFailures :+ result1
           result1
         case (result1, phase1data) =>
-          emitAndRecordFunctionAxioms(data.limitedAxiom)
-          emitAndRecordFunctionAxioms(data.triggerAxiom)
-          emitAndRecordFunctionAxioms(data.postAxiom: _*)
-          emitAndRecordFunctionAxioms(data.postPreconditionPropagationAxiom: _*)
-          this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom
+          emitAndRecordFunctionAxioms(data.limitedAxiomWithInfo)
+          emitAndRecordFunctionAxioms(data.triggerAxiomWithInfo)
+          emitAndRecordFunctionAxioms(data.postAxiomWithInfo: _*)
+          emitAndRecordFunctionAxioms(data.postPreconditionPropagationAxiomWithInfo: _*)
+          this.postConditionAxiomsWithInfo = this.postConditionAxiomsWithInfo ++ data.postAxiomWithInfo
 
           if (function.body.isEmpty) {
             result1
@@ -205,8 +207,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
               case fatalResult: FatalResult =>
                 data.verificationFailures = data.verificationFailures :+ fatalResult
               case _ =>
-                emitAndRecordFunctionAxioms(data.definitionalAxiom.toSeq: _*)
-                emitAndRecordFunctionAxioms(data.bodyPreconditionPropagationAxiom: _*)
+                emitAndRecordFunctionAxioms(data.definitionalAxiomWithInfo.toSeq: _*)
+                emitAndRecordFunctionAxioms(data.bodyPreconditionPropagationAxiomWithInfo: _*)
             }
 
             result1 && result2
@@ -301,7 +303,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     protected def emitAndRecordFunctionAxioms(axiom: (Term, DependencyAnalysisAxiomInfo)*): Unit = {
       decider.prover.assumeAxioms(InsertionOrderedSet(axiom.map(_._1)), "Function axioms")
-      emittedFunctionAxioms = emittedFunctionAxioms ++ axiom
+      emittedFunctionAxiomsWithInfo = emittedFunctionAxiomsWithInfo ++ axiom
     }
 
     private def generateFunctionSymbolsAfterVerification: Iterable[Either[String, Decl]] = {
@@ -333,10 +335,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       freshVars foreach (x => sink.declare(ConstDecl(x)))
     }
 
-    val axiomsAfterVerification: Iterable[Term] = emittedFunctionAxioms.map(_._1)
+    val axiomsAfterVerification: Iterable[Term] = emittedFunctionAxioms
 
     def emitAxiomsAfterVerification(sink: ProverLike): Unit = {
-      sink.assumeAxioms(InsertionOrderedSet(emittedFunctionAxioms.map(_._1)), "Function axioms")
+      sink.assumeAxioms(InsertionOrderedSet(emittedFunctionAxioms), "Function axioms")
     }
 
     /* Lifetime */
@@ -346,7 +348,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     def reset(): Unit = {
       program = null
       functionData = Map.empty
-      emittedFunctionAxioms = Vector.empty
+      emittedFunctionAxiomsWithInfo = Vector.empty
       freshVars = Vector.empty
     }
 

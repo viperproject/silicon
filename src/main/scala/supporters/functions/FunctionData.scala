@@ -151,16 +151,20 @@ class FunctionData(val programFunction: ast.Function,
   }
 
 
-  val limitedAxiom: (Quantification, DependencyAnalysisAxiomInfo) =
+
+  val limitedAxiomWithInfo: (Quantification, DependencyAnalysisAxiomInfo) =
     (Forall(arguments,
            BuiltinEquals(limitedFunctionApplication, functionApplication),
            Trigger(functionApplication)),
       DependencyAnalysisAxiomInfo(DependencyAnalysisInfos.create("Limited Axiom", DependencyType.Internal).withEnabled(isAnalysisEnabled), programFunction.name))
 
-  val triggerAxiom: (Quantification, DependencyAnalysisAxiomInfo) =
+	val limitedAxiom: Quantification = limitedAxiomWithInfo._1
+
+  val triggerAxiomWithInfo: (Quantification, DependencyAnalysisAxiomInfo) =
     (Forall(arguments, triggerFunctionApplication, Trigger(limitedFunctionApplication)),
       DependencyAnalysisAxiomInfo(DependencyAnalysisInfos.create("Trigger Axiom", DependencyType.Trigger).withEnabled(isAnalysisEnabled), programFunction.name))
 
+	val triggerAxiom: Quantification = triggerAxiomWithInfo._1
 
   /*
    * Data collected during phases 1 (well-definedness checking) and 2 (verification)
@@ -240,7 +244,7 @@ class FunctionData(val programFunction: ast.Function,
     }
   }
 
-  lazy val postAxiom: Seq[(Term, DependencyAnalysisAxiomInfo)] = {
+  lazy val postAxiomWithInfo: Seq[(Term, DependencyAnalysisAxiomInfo)] = {
     assert(phase == 1, s"Postcondition axiom must be generated in phase 1, current phase is $phase")
 
     if (programFunction.posts.nonEmpty) {
@@ -264,6 +268,8 @@ class FunctionData(val programFunction: ast.Function,
     } else
       Seq.empty
   }
+
+	lazy val postAxiom: Seq[Term] = postAxiomWithInfo.map(_._1)
 
   /*
    * Properties resulting from phase 2 (verification)
@@ -316,7 +322,7 @@ class FunctionData(val programFunction: ast.Function,
     expressionTranslator.translate(program, programFunction, this)
   }
 
-  lazy val definitionalAxiom: Option[(Term, DependencyAnalysisAxiomInfo)] = {
+  lazy val definitionalAxiomWithInfo: Option[(Term, DependencyAnalysisAxiomInfo)] = {
     assert(phase == 2, s"Definitional axiom must be generated in phase 2, current phase is $phase")
 
     optBody.map(translatedBody => {
@@ -336,7 +342,9 @@ class FunctionData(val programFunction: ast.Function,
     })
   }
 
-  lazy val bodyPreconditionPropagationAxiom: Seq[(Term, DependencyAnalysisAxiomInfo)] = {
+	lazy val definitionalAxiom: Option[Term] = definitionalAxiomWithInfo.map(_._1)
+
+  lazy val bodyPreconditionPropagationAxiomWithInfo: Seq[(Term, DependencyAnalysisAxiomInfo)] = {
     val pre = preconditionFunctionApplication
     val bodyPreconditions = if (programFunction.body.isDefined) optBody.map(translatedBody => {
       val body = Implies(pre, FunctionPreconditionTransformer.transform(translatedBody, program))
@@ -345,7 +353,9 @@ class FunctionData(val programFunction: ast.Function,
     bodyPreconditions.toSeq
   }
 
-  lazy val postPreconditionPropagationAxiom: Seq[(Term, DependencyAnalysisAxiomInfo)] = {
+	lazy val bodyPreconditionPropagationAxiom: Seq[Term] = bodyPreconditionPropagationAxiomWithInfo.map(_._1)
+
+  lazy val postPreconditionPropagationAxiomWithInfo: Seq[(Term, DependencyAnalysisAxiomInfo)] = {
     val pre = preconditionFunctionApplication
     val postPreconditions = if (programFunction.posts.nonEmpty) {
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
@@ -355,4 +365,6 @@ class FunctionData(val programFunction: ast.Function,
     } else Seq()
     postPreconditions
   }
+
+	lazy val postPreconditionPropagationAxiom: Seq[Term] = postPreconditionPropagationAxiomWithInfo.map(_._1)
 }
