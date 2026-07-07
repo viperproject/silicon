@@ -729,7 +729,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val dependencyAnalysisMode: ScallopOption[String] = opt[String]("dependencyAnalysisMode",
-    descr = "",
+    descr = "Dependency analysis commands (separated by ;) to be executed after verification. Available are `interactive` and all commands supported by the interactive CLI tool",
     default = None,
     noshort = true
   )

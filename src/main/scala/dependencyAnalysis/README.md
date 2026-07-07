@@ -6,12 +6,15 @@
 Dependency Analysis is enabled thorough the following configuration options:
 `--enableDependencyAnalysis --disableInfeasibilityChecks --proverArgs "proof=true unsat-core=true"`
 
-Additionally, to retrieve the results and query the dependency graph, use:
-- `--startDependencyAnalysisTool` 
+Commands to be executed on the final dependency graph can be input via the `--dependencyAnalysisMode` config flag.
+Available commands are `interactive` and any command supported by the CLI tool. For example,
+- `--dependencyAnalysisMode=interactive` 
   - Automatically starts the command-line tool once verification terminates.
-- `--dependencyAnalysisExportPath [PATH TO EXPORT FOLDER]`
-  - e.g., `--dependencyAnalysisExportPath "graphExports"`
+- `--dependencyAnalysisMode=export>[folder]`
+  - e.g., `--dependencyAnalysisMode=export>graphExports`
   - Exports the graph to a folder named after the verified program under the given path (e.g. `graphExports/src_test_resources_andrea_quickTest` for input program `src/test/resources/andrea/quickTest.vpr`)
+- Several modes can be combined by `;`
+  - e.g. `--dependencyAnalysisMode=export>graphExports/viperTest;progress;interactive`
 
 For debugging dependency analysis results, the option `--enableDependencyAnalysisDebugging` can be used which disables the merging of nodes.
 As a result, the graph used for query computation and the exported graph contain all low-level details.
@@ -19,7 +22,7 @@ As a result, the graph used for query computation and the exported graph contain
 
 # Command-Line Tool
 
-Requires `--startDependencyAnalysisTool`.
+Requires `--dependencyAnalysisMode=interactive`.
 
 Example queries for program `src/test/resources/dependencyAnalysisTests/unitTests/B-permissions.vpr`:
 - `dep 99` 
@@ -33,12 +36,6 @@ Example queries for program `src/test/resources/dependencyAnalysisTests/unitTest
   - Returns all dependents of assumptions on line 14.
 - `hasDep 64 66 71` 
   - Returns true iff there is any dependency between any two queried lines and false otherwise.
-- `cov`
-  - Prints proof coverage and uncovered nodes of each method.
-- `cov perm5` 
-  - Prints proof coverage and uncovered nodes of method `perm5`.
-- `covL perm5 71` 
-  - Prints proof coverage (and uncovered nodes) of assertions on line 71 in method `perm5`.
 - `prune 66 71` 
   - Exports the program pruned with respect to lines 66 and 71.
   - exportFileName: path and file name for the pruned program (e.g. `prunedPrograms/test.vpr`
@@ -50,7 +47,7 @@ Example queries for program `src/test/resources/dependencyAnalysisTests/unitTest
 
 # Neo4j Scripts and Usage
 
-Graphs exported when using `--dependencyAnalysisExportPath [PATH TO EXPORT FOLDER]` can be imported to a [Neo4j database]({https://neo4j.com/) using the `neo4j_importer.py` script.
+Graphs exported when using `--dependencyAnalysisMode=export>[PATH TO EXPORT FOLDER]` can be imported to a [Neo4j database]({https://neo4j.com/) using the `neo4j_importer.py` script.
 
 Importing dependency graphs to Neo4j:
 
