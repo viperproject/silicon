@@ -839,8 +839,16 @@ object Quantification
     val rewrittenTriggers = {
       if (Verifier.config.useOldAxiomatization())
         triggers
-      else
-        triggers.flatMap(transformSeqTerms).filter(_.p.forall(triggerGenerator.isPossibleTrigger))
+      else {
+        val transformed = triggers.flatMap(transformSeqTerms)
+        // Only filter out invalid trigger sets in maskHeapMode (where e.g. lookups on
+        // interpreted heap terms can appear as candidate triggers); standard Silicon
+        // must keep all triggers verbatim.
+        if (Verifier.config.maskHeapMode())
+          transformed.filter(_.p.forall(triggerGenerator.isPossibleTrigger))
+        else
+          transformed
+      }
     }
 
 //    assert(vars.nonEmpty, s"Cannot construct quantifier $q with no quantified variable")

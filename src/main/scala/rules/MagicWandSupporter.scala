@@ -310,6 +310,17 @@ object magicWandSupporter extends SymbolicExecutionRules {
                                        : VerificationResult = {
       val preMark = v.decider.setPathConditionMark()
 
+      // The MWSF definition must be assumed before the path conditions since preMark are
+      // harvested into conservedPcs below; otherwise it is lost when the package scope is
+      // popped and the wand's snapshot is unconstrained at apply time.
+      val wandSnapshotOpt =
+        if (Verifier.config.maskHeapMode()) {
+          None
+        } else {
+          v.decider.prover.comment(s"Create MagicWandSnapFunction for wand $wand")
+          Some(this.createMagicWandSnapshot(freshSnapRoot, snapRhs, v))
+        }
+
       val bodyVars = wand.subexpressionsToEvaluate(s.program)
 
       evals(s, bodyVars, _ => pve, v)((s2, tArgs, eArgsNew, v2) => {
@@ -351,8 +362,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
             val newChunk = BasicMaskHeapChunk(MagicWandID, MagicWandIdentifier(wand, s.program), newMask, newHeap)
             (s2, newChunk, conservedPcs.flatMap(_.conditionalized), Option.when(withExp)(conservedPcs.flatMap(_.conditionalizedExp)), v2)
           } else {
-            v.decider.prover.comment(s"Create MagicWandSnapFunction for wand $wand")
-            val wandSnapshot = this.createMagicWandSnapshot(freshSnapRoot, snapRhs, v)
+            val wandSnapshot = wandSnapshotOpt.get
             val wandChunk = MagicWandChunk(MagicWandIdentifier(wand, s.program), s2.g.values, tArgs, eArgsNew, wandSnapshot, FullPerm,
               Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)))
             // Partition path conditions into a set which include the freshSnapRoot and those which do not
