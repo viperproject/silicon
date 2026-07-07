@@ -10,7 +10,8 @@ class DebugDependencyAnalysisCliExtension(override val interpreter: DependencyGr
   override val commands: List[DependencyAnalysisCliCommand] = List(
                                                                 new AssumptionTypesCommand,
                                                                 new AssertionTypesCommand,
-                                                                new LowLevelNodesCommand
+                                                                new LowLevelNodesCommand,
+                                                                new WeirdNodesCommand
                                                               )
 
   class AssumptionTypesCommand extends DependencyAnalysisCliCommand {
@@ -23,14 +24,14 @@ class DebugDependencyAnalysisCliExtension(override val interpreter: DependencyGr
     }
     override val description: String = s"'$cmdName [line numbers]' to print the assumption types of all nodes or just the provided lines"
 
-    def getAssumptionTypesByLine(line: Int): Set[AssumptionType] = {
+    private def getAssumptionTypesByLine(line: Int): Set[AssumptionType] = {
       interpreter.getNodesByLine(line).filter(_.isInstanceOf[GeneralAssumptionNode]).map(_.assumptionType)
     }
 
-    def getAssumptionTypesPerNode(): Map[AnalysisSourceInfo, Set[AssumptionType]] =
+    private def getAssumptionTypesPerNode(): Map[AnalysisSourceInfo, Set[AssumptionType]] =
       getAssumptionTypesPerNode(interpreter.getAssumptionNodes)
 
-    def getAssumptionTypesPerNode(nodes: Set[DependencyAnalysisNode]): Map[AnalysisSourceInfo, Set[AssumptionType]] =
+    private def getAssumptionTypesPerNode(nodes: Set[DependencyAnalysisNode]): Map[AnalysisSourceInfo, Set[AssumptionType]] =
       nodes.groupBy(_.sourceInfo).view.mapValues(_.map(_.assumptionType)).toMap
   }
 
@@ -44,14 +45,14 @@ class DebugDependencyAnalysisCliExtension(override val interpreter: DependencyGr
     }
     override val description: String = s"'$cmdName [line numbers]' to print the assertion types of all nodes or just the provided lines"
 
-    def getAssertionTypesByLine(line: Int): Set[AssumptionType] = {
+    private def getAssertionTypesByLine(line: Int): Set[AssumptionType] = {
       interpreter.getNodesByLine(line).filter(_.isInstanceOf[GeneralAssertionNode]).map(_.assumptionType)
     }
 
-    def getAssertionTypesPerNode(): Map[AnalysisSourceInfo, Set[AssumptionType]] =
+    private def getAssertionTypesPerNode(): Map[AnalysisSourceInfo, Set[AssumptionType]] =
       getAssertionTypesPerNode(interpreter.getAssertionNodes)
 
-    def getAssertionTypesPerNode(nodes: Set[DependencyAnalysisNode]): Map[AnalysisSourceInfo, Set[AssumptionType]] =
+    private def getAssertionTypesPerNode(nodes: Set[DependencyAnalysisNode]): Map[AnalysisSourceInfo, Set[AssumptionType]] =
       nodes.groupBy(_.sourceInfo).view.mapValues(_.map(_.assumptionType)).toMap
   }
 
@@ -63,8 +64,22 @@ class DebugDependencyAnalysisCliExtension(override val interpreter: DependencyGr
 
     override def accept(inputs: Seq[String]): Boolean = super.accept(inputs) && inputs.tail.nonEmpty
 
-    def getLowLevelNodesByLine(line: Int): List[DependencyAnalysisNode] = {
+    private def getLowLevelNodesByLine(line: Int): List[DependencyAnalysisNode] = {
       interpreter.getNodesByLine(line).toList.sortBy(_.id)
+    }
+  }
+
+  class WeirdNodesCommand extends DependencyAnalysisCliCommand {
+    override val cmdName: String = "weirdNodes"
+    override val cmd: Seq[String] => Unit = _ => printWeirdNodes()
+    override val description: String = s"'$cmdName' to print weird nodes"
+    private val weirdNodePattern = """\b(function|func|method|domain|if|else|while|for|match|interface|struct|package|import|type)\b""".r
+
+    private def printWeirdNodes(): Unit = {
+      interpreter.getNodes.groupBy(_.sourceInfo)
+        .filter{case (sourceInfo, _) => weirdNodePattern.findFirstIn(sourceInfo.toString).isDefined}
+				.foreach{case (sourceInfo, nodes) => println(s"\n-- ${sourceInfo.toString}\n\t${nodes.map(_.getNodeString).mkString("\n\t")}\n--")}
+
     }
   }
 }
