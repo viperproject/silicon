@@ -811,18 +811,18 @@ object evaluator extends EvaluationRules {
         /* Note the reversed order of the arguments! */
 
       case ast.SeqIndex(e0, e1) =>
-				evals2(s, Seq(e0, e1), Nil, _ => pve, v)({case (s1, Seq(t0, t1), esNew, v1) =>
+        evals2(s, Seq(e0, e1), Nil, _ => pve, v)({case (s1, Seq(t0, t1), esNew, v1) =>
           val eNew = esNew.map(es => ast.SeqIndex(es.head, es(1))(e.pos, e.info, e.errT))
           if (s1.triggerExp) {
             Q(s1, SeqAt(t0, t1), eNew, v1)
           } else {
-						assertSeqIndexBounds(t1, t0, e1, e0, esNew, pve, s1, v1) match {
-							case Success() => Q(s1, SeqAt(t0, t1), eNew, v1)
-							case failure: VerificationResult if s1.retryLevel == 0 && v1.reportFurtherErrors() =>
-								failure combine	Q(s1, SeqAt(t0, t1), eNew, v1)
-							case failure: VerificationResult => failure
-						}
-					}})
+            assertSeqIndexBounds(t1, t0, e1, e0, esNew, pve, s1, v1) match {
+              case Success() => Q(s1, SeqAt(t0, t1), eNew, v1)
+              case failure: VerificationResult if s1.retryLevel == 0 && v1.reportFurtherErrors() =>
+                failure combine Q(s1, SeqAt(t0, t1), eNew, v1)
+              case failure: VerificationResult => failure
+            }
+          }})
 
       case ast.SeqAppend(e0, e1) => evalBinOp(s, e0, e1, SeqAppend, pve, v)((s1, t, e0New, e1New, v1) =>
         Q(s1, t, e0New.map(e0p => ast.SeqAppend(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
@@ -841,14 +841,14 @@ object evaluator extends EvaluationRules {
           val eNew = esNew.map(es => ast.SeqUpdate(es.head, es(1), es(2))(e.pos, e.info, e.errT))
           if (s1.triggerExp) {
             Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
-					} else {
-						assertSeqIndexBounds(t1, t0, e1, e0, esNew, pve, s1, v1) match {
-							case Success() => Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
-							case failure: VerificationResult if s1.retryLevel == 0 && v1.reportFurtherErrors() =>
-								failure combine	Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
-							case failure: VerificationResult => failure
-						}
-					}})
+          } else {
+            assertSeqIndexBounds(t1, t0, e1, e0, esNew, pve, s1, v1) match {
+              case Success() => Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
+              case failure: VerificationResult if s1.retryLevel == 0 && v1.reportFurtherErrors() =>
+                failure combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
+              case failure: VerificationResult => failure
+            }
+          }})
 
       case seq@ast.ExplicitSeq(es) =>
         evals2(s, es, Nil, _ => pve, v)((s1, tEs, esNew, v1) => {
@@ -1002,36 +1002,36 @@ object evaluator extends EvaluationRules {
   }
 
 
-	private def assertSeqIndexBounds(tIndex: Term, tSeq: Term, eIndex: ast.Exp, eSeq: ast.Exp, expNew: Option[Seq[ast.Exp]], pve: PartialVerificationError, s: State, v: Verifier): VerificationResult = {
+  private def assertSeqIndexBounds(tIndex: Term, tSeq: Term, eIndex: ast.Exp, eSeq: ast.Exp, expNew: Option[Seq[ast.Exp]], pve: PartialVerificationError, s: State, v: Verifier): VerificationResult = {
 
-		def assertLtSeqLength(): VerificationResult = {
-			val indexInBoundsTerm = Less(tIndex, SeqLength(tSeq))
-			val indexInBoundsExp = Option.when(withExp)(ast.LtCmp(eIndex, ast.SeqLength(eSeq)())(eIndex.pos, eIndex.info, eIndex.errT))
-			val indexInBoundsExpNew = Option.when(withExp)(ast.LtCmp(expNew.get(1), ast.SeqLength(expNew.get(0))())(eIndex.pos, eIndex.info, eIndex.errT))
-			v.decider.assert(indexInBoundsTerm) {
-				case true => Success()
-				case false =>
-					if (s.retryLevel == 0 && v.reportFurtherErrors()) v.decider.assume(indexInBoundsTerm, indexInBoundsExp, indexInBoundsExpNew)
-					createFailure(pve dueTo SeqIndexExceedsLength(eSeq, eIndex), v, s, indexInBoundsTerm, indexInBoundsExpNew)
-			}
-		}
+    def assertLtSeqLength(): VerificationResult = {
+      val indexInBoundsTerm = Less(tIndex, SeqLength(tSeq))
+      val indexInBoundsExp = Option.when(withExp)(ast.LtCmp(eIndex, ast.SeqLength(eSeq)())(eIndex.pos, eIndex.info, eIndex.errT))
+      val indexInBoundsExpNew = Option.when(withExp)(ast.LtCmp(expNew.get(1), ast.SeqLength(expNew.get(0))())(eIndex.pos, eIndex.info, eIndex.errT))
+      v.decider.assert(indexInBoundsTerm) {
+        case true => Success()
+        case false =>
+          if (s.retryLevel == 0 && v.reportFurtherErrors()) v.decider.assume(indexInBoundsTerm, indexInBoundsExp, indexInBoundsExpNew)
+          createFailure(pve dueTo SeqIndexExceedsLength(eSeq, eIndex), v, s, indexInBoundsTerm, indexInBoundsExpNew)
+      }
+    }
 
-		val indexGeZeroTerm = AtLeast(tIndex, IntLiteral(0))
-		val indexGeZeroExp = Option.when(withExp)(ast.GeCmp(eIndex, ast.IntLit(0)())(eIndex.pos, eIndex.info, eIndex.errT))
-		val indexGeZeroExpNew = Option.when(withExp)(ast.GeCmp(expNew.get(1), ast.IntLit(0)())(eIndex.pos, eIndex.info, eIndex.errT))
-		val failureIdxNeg = createFailure(pve dueTo SeqIndexNegative(eSeq, eIndex), v, s, indexGeZeroTerm, indexGeZeroExpNew)
-		v.decider.assert(indexGeZeroTerm) {
-			case true => assertLtSeqLength()
-			case false if s.retryLevel == 0 && v.reportFurtherErrors() =>
-				v.decider.assume(indexGeZeroTerm, indexGeZeroExp, indexGeZeroExpNew)
-				assertLtSeqLength() match {
-					case Success() => failureIdxNeg
-					case failureIdxGeLen: VerificationResult =>
-						failureIdxNeg combine failureIdxGeLen
-				}
-			case false => failureIdxNeg
-		}
-	}
+    val indexGeZeroTerm = AtLeast(tIndex, IntLiteral(0))
+    val indexGeZeroExp = Option.when(withExp)(ast.GeCmp(eIndex, ast.IntLit(0)())(eIndex.pos, eIndex.info, eIndex.errT))
+    val indexGeZeroExpNew = Option.when(withExp)(ast.GeCmp(expNew.get(1), ast.IntLit(0)())(eIndex.pos, eIndex.info, eIndex.errT))
+    val failureIdxNeg = createFailure(pve dueTo SeqIndexNegative(eSeq, eIndex), v, s, indexGeZeroTerm, indexGeZeroExpNew)
+    v.decider.assert(indexGeZeroTerm) {
+      case true => assertLtSeqLength()
+      case false if s.retryLevel == 0 && v.reportFurtherErrors() =>
+        v.decider.assume(indexGeZeroTerm, indexGeZeroExp, indexGeZeroExpNew)
+        assertLtSeqLength() match {
+          case Success() => failureIdxNeg
+          case failureIdxGeLen: VerificationResult =>
+            failureIdxNeg combine failureIdxGeLen
+        }
+      case false => failureIdxNeg
+    }
+  }
 
   def evalQuantified(s: State,
                      quant: Quantifier,
