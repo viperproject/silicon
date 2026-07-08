@@ -1,9 +1,9 @@
-package viper.silicon.dependencyAnalysis.siliconComponents
+package viper.silicon.verifier
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.decider.DependencyAnalysisProverFeatures
 import viper.silicon.dependencyAnalysis.DependencyAnalysisAxiomInfo
 import viper.silicon.state.terms.Term
-import viper.silicon.verifier.{MainVerifier, VerificationPoolManager}
 
 class DependencyAnalysisAwareVerificationPoolManager(mainVerifier: MainVerifier) extends VerificationPoolManager(mainVerifier) {
 

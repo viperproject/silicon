@@ -1,11 +1,11 @@
-package viper.silicon.dependencyAnalysis.siliconComponents
+package viper.silicon.supporters
 
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, SimpleAssertionNode}
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.state.State
 import viper.silicon.state.terms.True
-import viper.silicon.supporters.DefaultMethodVerificationUnitProvider
+import viper.silicon.verifier.DependencyAnalysisAwareVerifier
 import viper.silver.ast.Method
 import viper.silver.dependencyAnalysis._
 

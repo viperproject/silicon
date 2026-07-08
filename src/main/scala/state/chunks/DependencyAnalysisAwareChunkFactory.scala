@@ -1,9 +1,8 @@
 package viper.silicon.state.chunks
 
 import viper.silicon
-import viper.silicon.decider.Decider
+import viper.silicon.decider.{Decider, DependencyAnalysisDeciderFeatures}
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
-import viper.silicon.dependencyAnalysis.siliconComponents.DependencyAnalysisDeciderFeatures
 import viper.silicon.resources.BaseID
 import viper.silicon.rules.InverseFunctions
 import viper.silicon.state.terms.{MagicWandSnapshot, Term, Var}

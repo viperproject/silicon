@@ -1,14 +1,14 @@
-package viper.silicon.dependencyAnalysis.siliconComponents
+package viper.silicon.supporters.functions
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.decider.DependencyAnalysisProverFeatures
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.dependencyAnalysis.{DependencyAnalysisAxiomInfo, DependencyAnalysisInfos, DependencyAnalyzer, SimpleAssertionNode}
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.state.State
 import viper.silicon.state.terms.{Term, True, Var}
-import viper.silicon.supporters.functions.DefaultFunctionVerificationUnitProvider
-import viper.silicon.verifier.Verifier
+import viper.silicon.verifier.{DependencyAnalysisAwareVerifier, Verifier}
 import viper.silver.ast
 import viper.silver.dependencyAnalysis._
 

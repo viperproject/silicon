@@ -10,11 +10,10 @@ import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverStdIO}
-import viper.silicon.dependencyAnalysis.siliconComponents.DependencyAnalysisAwareMainVerifier
 import viper.silicon.interfaces.Failure
 import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
-import viper.silicon.verifier.DefaultMainVerifier
+import viper.silicon.verifier.{DefaultMainVerifier, DependencyAnalysisAwareMainVerifier}
 import viper.silver.ast
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.frontend.{DefaultStates, MinimalViperFrontendAPI, SilFrontend, ViperFrontendAPI}

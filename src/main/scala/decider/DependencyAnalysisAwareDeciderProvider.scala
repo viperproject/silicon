@@ -1,11 +1,10 @@
-package viper.silicon.dependencyAnalysis.siliconComponents
+package viper.silicon.decider
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider.{DefaultDeciderProvider, Mark, Z3ProverStdIO}
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.state.chunks.{Chunk, GeneralChunk}
 import viper.silicon.state.terms.{False, Term, True}
-import viper.silicon.verifier.Verifier
+import viper.silicon.verifier.{DependencyAnalysisAwareVerifier, Verifier}
 import viper.silver.ast
 import viper.silver.ast.Member
 
@@ -26,7 +25,7 @@ trait DependencyAnalysisDeciderFeatures {
 trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v: DependencyAnalysisAwareVerifier =>
   override def decider: DependencyAnalysisAwareDecider = DADecider
 
-  private object DADecider extends DependencyAnalysisAwareDecider
+  protected object DADecider extends DependencyAnalysisAwareDecider
 
   trait DependencyAnalysisAwareDecider extends AbstractDecider with DependencyAnalysisDeciderFeatures {
 

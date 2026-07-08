@@ -1,12 +1,14 @@
-package viper.silicon.dependencyAnalysis.siliconComponents
+package viper.silicon.verifier
 
 import viper.silicon.Config
+import viper.silicon.decider.{DependencyAnalysisAwareDeciderProvider, DependencyAnalysisProverFeatures}
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.cliTool.DependencyAnalysisTool
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.state.chunks._
-import viper.silicon.verifier.{BaseVerifier, DefaultMainVerifier, Verifier, WorkerVerifier}
+import viper.silicon.supporters.DependencyAnalysisAwareMethodVerificationUnitProvider
+import viper.silicon.supporters.functions.DependencyAnalysisAwareFunctionVerificationUnitProvider
 import viper.silver.ast
 import viper.silver.reporter.Reporter
 

@@ -8,7 +8,7 @@ package viper.silicon.supporters
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.collections.immutable.MultiMap._
-import viper.silicon.dependencyAnalysis.siliconComponents.DependencyAnalysisProverFeatures
+import viper.silicon.decider.DependencyAnalysisProverFeatures
 import viper.silicon.dependencyAnalysis.{DependencyAnalysisAxiomInfo, DependencyAnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
