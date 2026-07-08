@@ -435,7 +435,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
     analysisLabels foreach (l => v.decider.assume(DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v.decider, l, Set.empty, Set(l)), None, analysisInfos.withDependencyType(DependencyType.Internal)))
 
     recordedBranches.foldLeft(tempResult)((prevRes, recordedState) => {
-      prevRes && {
+      prevRes combine {
         val (state, branchConditions, branchConditionsExp, conservedPcs, magicWandChunk) = recordedState
         val s1 = state.copy(
           reserveHeaps = state.reserveHeaps.drop(3),

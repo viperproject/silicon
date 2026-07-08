@@ -8,6 +8,13 @@ package viper.silicon.rules
 
 import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.Config.JoinMode
+import viper.silicon.debugger.DebugExp
+
+import scala.collection.mutable
+import viper.silver.ast
+import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.reasons._
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.logger.records.data.{CondExpRecord, ConsumeRecord, ImpliesRecord}
@@ -427,7 +434,8 @@ object consumer extends ConsumptionRules {
         val termToAssert = t match {
           case Quantification(q, vars, body, trgs, name, isGlob, weight) =>
             val transformed = FunctionPreconditionTransformer.transform(body, s3.program)
-            v2.decider.assume(Quantification(q, vars, transformed, trgs, name+"_precondition", isGlob, weight), Option.when(withExp)(e), eNew, analysisInfos)
+            v2.decider.assume(Quantification(q, vars, transformed, trgs, name+"_precondition", isGlob, weight),
+              Option.when(withExp)(DebugExp.createInstance("Function preconditions hold in quantifier " + eNew.toString, true)), analysisInfos)
             Quantification(q, vars, Implies(transformed, body), trgs, name, isGlob, weight)
           case _ => t
         }
