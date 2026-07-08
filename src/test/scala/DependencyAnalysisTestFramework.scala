@@ -136,28 +136,23 @@ trait DependencyAnalysisTestFramework {
 
     def execute(): Unit = {
       val (expectedSpecQuality, expectedProofQualityLea, expectedProgress) = readExpectedValues()
-      val baos = new java.io.ByteArrayOutputStream()
-      val (_, actualProgressLea) = Console.withOut(baos) {
-        new DependencyAnalysisProgressSupporter(fullGraphInterpreter).computeVerificationProgressOptimized()
-      }
-      val output = baos.toString
+      val (_, actualProgressLea) = new DependencyAnalysisProgressSupporter(fullGraphInterpreter).computeVerificationProgressOptimized()
 
       // If a metric type does not exist, it is ignored 
       expectedSpecQuality.foreach { expected =>
-        val actual = parseLine(output, "specQuality = ")
-          .getOrElse(throw new AssertionError(s"Could not parse specQuality from output:\n$output"))
+        val actual = actualProgressLea.specQuality
         assert(Math.abs(actual - expected) <= epsilon,
           s"specQuality mismatch: expected $expected, got $actual")
       }
       expectedProofQualityLea.foreach { expected =>
-        val actual = parseLine(output, "proof quality (Lea)")
-          .getOrElse(throw new AssertionError(s"Could not parse proofQualityLea from output:\n$output"))
+        val actual = actualProgressLea.proofQuality
         assert(Math.abs(actual - expected) <= epsilon,
           s"proofQualityLea mismatch: expected $expected, got $actual")
       }
       expectedProgress.foreach { expected =>
-        assert(Math.abs(actualProgressLea - expected) <= epsilon,
-          s"progress mismatch: expected $expected, got $actualProgressLea")
+				val actual = actualProgressLea.progress
+        assert(Math.abs(actual - expected) <= epsilon,
+          s"progress mismatch: expected $expected, got ${actual}")
       }
       println("Progress test: Passed.")
     }
