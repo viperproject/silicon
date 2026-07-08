@@ -217,6 +217,15 @@ object predicateSupporter extends PredicateSupportRules {
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
     val s1 = s.scalePermissionFactor(tPerm, ePerm)
 
+    // The predicate trigger must be assumed with the heap as it is *before* the unfold:
+    // only there does the lookup at the instance's key yield the snapshot being unfolded
+    // (after the consume, the entry is havoc'd). This mirrors Carbon, which assumes
+    // pred#trigger(Heap, ...) before removing the permission.
+    val preUnfoldHeap = if (Verifier.config.maskHeapMode())
+      Some(s1.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk].heap)
+    else
+      None
+
     v.heapSupporter.consumeSingle(s1, s1.h, pa, tArgs, eArgs, tPerm, ePerm, true, pve, v)((s2, h2, snap, v1) => {
       val s3 = s2.copy(g = gIns, h = h2)
         .setConstrainable(constrainableWildcards, false)
@@ -227,8 +236,7 @@ object predicateSupporter extends PredicateSupportRules {
           v4.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val snapArg = if (Verifier.config.maskHeapMode()) {
-              val chunk = s4.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk]
-              chunk.heap
+              preUnfoldHeap.get
             } else {
               snap.get.convert(sorts.Snap)
             }
@@ -260,8 +268,7 @@ object predicateSupporter extends PredicateSupportRules {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val snapArg = if (Verifier.config.maskHeapMode()) {
-              val chunk = s4.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk]
-              chunk.heap
+              preUnfoldHeap.get
             } else {
               snap.get.convert(sorts.Snap)
             }
