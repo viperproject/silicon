@@ -9,7 +9,7 @@ import viper.silicon.state.terms.Term
 import viper.silver.reporter.Reporter
 
 class DependencyAnalysisAwareZ3ProverStdIO(uniqueId: String, termConverter: TermToSMTLib2Converter, identifierFactory: IdentifierFactory, reporter: Reporter)
-	extends Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter) with DependencyAnalysisProverFeatures
+  extends Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter) with DependencyAnalysisProverFeatures
 
 trait DependencyAnalysisProverFeatures extends ProverLike {
   protected val preambleDependencyAnalyzer: DependencyAnalyzer = new DefaultDependencyAnalyzer(None)

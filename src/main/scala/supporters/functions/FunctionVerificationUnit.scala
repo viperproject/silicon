@@ -58,10 +58,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     @unused private var program: ast.Program = _
     /*private*/ var functionData: Map[String, FunctionData] = Map.empty
     protected var emittedFunctionAxiomsWithInfo: Vector[(Term, DependencyAnalysisAxiomInfo)] = Vector.empty
-		protected def emittedFunctionAxioms: Vector[Term] = emittedFunctionAxiomsWithInfo.map(_._1)
+    protected def emittedFunctionAxioms: Vector[Term] = emittedFunctionAxiomsWithInfo.map(_._1)
     private var freshVars: Vector[Var] = Vector.empty
     private var postConditionAxiomsWithInfo: Vector[(Term, DependencyAnalysisAxiomInfo)] = Vector.empty
-		private def postConditionAxioms: Vector[Term] = postConditionAxiomsWithInfo.map(_._1)
+  	private def postConditionAxioms: Vector[Term] = postConditionAxiomsWithInfo.map(_._1)
 
     private val expressionTranslator = {
       def resolutionFailureMessage(exp: ast.Positioned, data: FunctionData): String = (

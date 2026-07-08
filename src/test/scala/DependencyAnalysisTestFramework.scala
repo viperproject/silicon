@@ -150,7 +150,7 @@ trait DependencyAnalysisTestFramework {
           s"proofQualityLea mismatch: expected $expected, got $actual")
       }
       expectedProgress.foreach { expected =>
-				val actual = actualProgressLea.progress
+        val actual = actualProgressLea.progress
         assert(Math.abs(actual - expected) <= epsilon,
           s"progress mismatch: expected $expected, got ${actual}")
       }

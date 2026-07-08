@@ -845,7 +845,7 @@ object evaluator extends EvaluationRules {
           if (s1.triggerExp) {
             Q(s1, SeqAt(t0, t1), eNew, v1)
           } else {
-            assertSeqIndexBounds(t1, t0, e1, e0, esNew, pve, s1, v1) match {
+            assertSeqIndexBounds(t1, t0, e1, e0, esNew, pve, s1, v1, analysisInfos) match {
               case Success() => Q(s1, SeqAt(t0, t1), eNew, v1)
               case failure: VerificationResult if s1.retryLevel == 0 && v1.reportFurtherErrors() =>
                 failure combine Q(s1, SeqAt(t0, t1), eNew, v1)
@@ -871,7 +871,7 @@ object evaluator extends EvaluationRules {
           if (s1.triggerExp) {
             Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
           } else {
-            assertSeqIndexBounds(t1, t0, e1, e0, esNew, pve, s1, v1) match {
+            assertSeqIndexBounds(t1, t0, e1, e0, esNew, pve, s1, v1, analysisInfos) match {
               case Success() => Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
               case failure: VerificationResult if s1.retryLevel == 0 && v1.reportFurtherErrors() =>
                 failure combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
@@ -1027,16 +1027,16 @@ object evaluator extends EvaluationRules {
   }
 
 
-  private def assertSeqIndexBounds(tIndex: Term, tSeq: Term, eIndex: ast.Exp, eSeq: ast.Exp, expNew: Option[Seq[ast.Exp]], pve: PartialVerificationError, s: State, v: Verifier): VerificationResult = {
+  private def assertSeqIndexBounds(tIndex: Term, tSeq: Term, eIndex: ast.Exp, eSeq: ast.Exp, expNew: Option[Seq[ast.Exp]], pve: PartialVerificationError, s: State, v: Verifier, analysisInfos: DependencyAnalysisInfos): VerificationResult = {
 
     def assertLtSeqLength(): VerificationResult = {
       val indexInBoundsTerm = Less(tIndex, SeqLength(tSeq))
       val indexInBoundsExp = Option.when(withExp)(ast.LtCmp(eIndex, ast.SeqLength(eSeq)())(eIndex.pos, eIndex.info, eIndex.errT))
       val indexInBoundsExpNew = Option.when(withExp)(ast.LtCmp(expNew.get(1), ast.SeqLength(expNew.get(0))())(eIndex.pos, eIndex.info, eIndex.errT))
-      v.decider.assert(indexInBoundsTerm) {
+      v.decider.assert(indexInBoundsTerm, analysisInfos) {
         case true => Success()
         case false =>
-          if (s.retryLevel == 0 && v.reportFurtherErrors()) v.decider.assume(indexInBoundsTerm, indexInBoundsExp, indexInBoundsExpNew)
+          if (s.retryLevel == 0) v.decider.handleFailedAssertion(indexInBoundsTerm, indexInBoundsExp, indexInBoundsExpNew, analysisInfos, assumeFailedAssertion=v.reportFurtherErrors())
           createFailure(pve dueTo SeqIndexExceedsLength(eSeq, eIndex), v, s, indexInBoundsTerm, indexInBoundsExpNew)
       }
     }
@@ -1045,15 +1045,17 @@ object evaluator extends EvaluationRules {
     val indexGeZeroExp = Option.when(withExp)(ast.GeCmp(eIndex, ast.IntLit(0)())(eIndex.pos, eIndex.info, eIndex.errT))
     val indexGeZeroExpNew = Option.when(withExp)(ast.GeCmp(expNew.get(1), ast.IntLit(0)())(eIndex.pos, eIndex.info, eIndex.errT))
     val failureIdxNeg = createFailure(pve dueTo SeqIndexNegative(eSeq, eIndex), v, s, indexGeZeroTerm, indexGeZeroExpNew)
-    v.decider.assert(indexGeZeroTerm) {
+    v.decider.assert(indexGeZeroTerm, analysisInfos) {
       case true => assertLtSeqLength()
-      case false if s.retryLevel == 0 && v.reportFurtherErrors() =>
-        v.decider.assume(indexGeZeroTerm, indexGeZeroExp, indexGeZeroExpNew)
-        assertLtSeqLength() match {
-          case Success() => failureIdxNeg
-          case failureIdxGeLen: VerificationResult =>
-            failureIdxNeg combine failureIdxGeLen
-        }
+      case false if s.retryLevel == 0 =>
+        v.decider.handleFailedAssertion(indexGeZeroTerm, indexGeZeroExp, indexGeZeroExpNew, analysisInfos, assumeFailedAssertion=v.reportFurtherErrors())
+        if(v.reportFurtherErrors())
+          assertLtSeqLength() match {
+            case Success() => failureIdxNeg
+            case failureIdxGeLen: VerificationResult =>
+              failureIdxNeg combine failureIdxGeLen
+          }
+        else failureIdxNeg
       case false => failureIdxNeg
     }
   }

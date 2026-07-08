@@ -57,7 +57,7 @@ class DependencyAnalysisAwareMainVerifier(config: Config,
 }
 
 class DependencyAnalysisAwareWorkerVerifier(mainVerifier: DependencyAnalysisAwareMainVerifier,
-																						uniqueId: String,
+              															uniqueId: String,
 																						override val reporter: Reporter,
 																						override val debugMode: Boolean)
   extends WorkerVerifier(mainVerifier, uniqueId, reporter, debugMode)

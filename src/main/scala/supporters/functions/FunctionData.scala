@@ -159,13 +159,13 @@ class FunctionData(val programFunction: ast.Function,
            Trigger(functionApplication)),
       DependencyAnalysisAxiomInfo(DependencyAnalysisInfos.create("Limited Axiom", DependencyType.Internal).withEnabled(isAnalysisEnabled), programFunction.name))
 
-	val limitedAxiom: Quantification = limitedAxiomWithInfo._1
+  val limitedAxiom: Quantification = limitedAxiomWithInfo._1
 
   val triggerAxiomWithInfo: (Quantification, DependencyAnalysisAxiomInfo) =
     (Forall(arguments, triggerFunctionApplication, Trigger(limitedFunctionApplication)),
       DependencyAnalysisAxiomInfo(DependencyAnalysisInfos.create("Trigger Axiom", DependencyType.Trigger).withEnabled(isAnalysisEnabled), programFunction.name))
 
-	val triggerAxiom: Quantification = triggerAxiomWithInfo._1
+  val triggerAxiom: Quantification = triggerAxiomWithInfo._1
 
   /*
    * Data collected during phases 1 (well-definedness checking) and 2 (verification)
@@ -236,8 +236,8 @@ class FunctionData(val programFunction: ast.Function,
     expressionTranslator.translatePrecondition(program, programFunction.pres, this)
   }
 
-	def postConditionInfo(post: ast.Exp): DependencyAnalysisAxiomInfo =
-		DependencyAnalysisAxiomInfo(DefaultDependencyAnalysisInfos.withEnabled(isAnalysisEnabled).addInfo(post.info, post)
+  def postConditionInfo(post: ast.Exp): DependencyAnalysisAxiomInfo =
+  	DependencyAnalysisAxiomInfo(DefaultDependencyAnalysisInfos.withEnabled(isAnalysisEnabled).addInfo(post.info, post)
 			.withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(post), JoinType.Sink, EdgeType.Down)), programFunction.name)
 
   lazy val translatedPosts = {
