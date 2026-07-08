@@ -178,7 +178,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
        *           sequence of destination chunks
        */
       val analysisInfos = DependencyAnalysisInfos.createUnique("state_consolidation", DependencyType.Internal)
-      val res = findMatchingChunk(accMergedChunks, nextChunk, v, analysisInfos) match {
+      findMatchingChunk(accMergedChunks, nextChunk, v, analysisInfos) match {
         case Some(ch) =>
           val resMerge = mergeChunks(fr1, ch, nextChunk, qvars, v, analysisInfos)
 
@@ -191,7 +191,6 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         case None =>
           (fr1, nextChunk +: accMergedChunks, nextChunk +: accNewChunks, accSnapEqs)
       }
-      res
     }
     v.symbExLog.closeScope(sepIdentifier)
     result

@@ -675,7 +675,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                v: Verifier)
                               : (PermMapDefinition, PmCache) = {
     val analysisInfos = DependencyAnalysisInfos.createUnique("summarizing heap", DependencyType.Internal)
-    val res = Verifier.config.mapCache(s.pmCache.get(resource, relevantChunks)) match {
+    Verifier.config.mapCache(s.pmCache.get(resource, relevantChunks)) match {
       case Some(pmDef) =>
         v.decider.assume(pmDef.valueDefinitions, Option.when(withExp)(DebugExp.createInstance("value definitions", isInternal_ = true)), enforceAssumption = false, analysisInfos=analysisInfos)
         (pmDef, s.pmCache)
@@ -686,7 +686,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v.decider.assume(valueDef, Option.when(withExp)(DebugExp.createInstance("value definitions", isInternal_ = true)), enforceAssumption = false, analysisInfos=analysisInfos)
         (pmDef, s.pmCache + ((resource, relevantChunks) -> pmDef))
     }
-    res
   }
 
   /* Snapshots */

@@ -693,7 +693,7 @@ object evaluator extends EvaluationRules {
                 s4.functionRecorder.changeDepthBy(-1)
                                    .recordSnapshot(fapp, v3.decider.pcs.branchConditions, snap1)
               val s5 = s4.copy(g = s2.g,
-                               h = s2.h, // possibleTriggers = newPossibleTriggers,
+                               h = s2.h,
                                recordVisited = s2.recordVisited,
                                functionRecorder = fr5,
                                smDomainNeeded = s2.smDomainNeeded,
