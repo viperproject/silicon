@@ -1,0 +1,110 @@
+field elem: Int
+field next: Ref
+
+predicate list(this: Ref) {
+  acc(this.elem) && acc(this.next) &&
+  (this.next != null ==> list(this.next))
+}
+
+function listLength(l:Ref) : Int
+  requires list(l)
+  ensures  result > 0
+{ 
+  unfolding list(l) in l.next == null ? 1 : 1 + listLength(l.next) 
+}
+
+method appendList1(this: Ref, e: Int)
+  requires @irrelevant("Precondition")(list(this))
+  requires @irrelevant("Precondition")(0 <= e && e < 100)
+  ensures  list(this)
+{
+  @irrelevant("Rewrite")
+  unfold list(this)
+  @irrelevant("Explicit")
+  assume 0 <= this.elem && this.elem < 100
+
+  if (@irrelevant("PathCondition")(this.next == null)) {
+    var n: Ref
+
+    @dependency("SourceCode")
+    n := new(elem, next)
+    @irrelevant("SourceCode")
+    n.elem := e
+    @dependency("SourceCode")
+    n.next := null
+    @irrelevant("SourceCode")
+    this.next := n
+    @testAssertion("Implicit")
+    fold list(n)
+  } else {
+    var l_next: Ref := this.next
+    appendList1(l_next, e)
+  }
+
+  fold list(this)
+}
+
+method appendList2(this: Ref, e: Int)
+  requires @dependency("Precondition")(list(this))
+  requires @dependency("Precondition")(0 <= e && e < 100)
+  ensures  list(this)
+{
+  @dependency("Rewrite")
+  unfold list(this)
+  @irrelevant("Explicit")
+  assume 0 <= this.elem && this.elem < 100
+
+  if (@dependency("PathCondition")(this.next == null)) {
+    var n: Ref
+
+    @irrelevant("SourceCode")
+    n := new(elem, next)
+    @irrelevant("SourceCode")
+    n.elem := e
+    @irrelevant("SourceCode")
+    n.next := null
+    @irrelevant("SourceCode")
+    this.next := n
+    @irrelevant("Rewrite")
+    fold list(n)
+  } else {
+    var l_next: Ref := this.next
+    @testAssertion("Implicit")
+    appendList2(l_next, e)
+  }
+
+  fold list(this)
+}
+
+method appendListFull(this: Ref, e: Int)
+  requires @dependency("Precondition")(list(this))
+  requires @dependency("Precondition")(0 <= e && e < 100)
+  ensures  list(this)
+{
+  @dependency("Rewrite")
+  unfold list(this)
+  @irrelevant("Explicit")
+  assume 0 <= this.elem && this.elem < 100
+
+  if (@dependency("PathCondition")(this.next == null)) {
+    var n: Ref
+
+    @dependency("SourceCode")
+    n := new(elem, next)
+    @irrelevant("SourceCode")
+    n.elem := e
+    @dependency("SourceCode")
+    n.next := null
+    @dependency("SourceCode")
+    this.next := n
+    @dependency("Rewrite")
+    fold list(n)
+  } else {
+    var l_next: Ref := this.next
+    @dependency("MethodCall")
+    appendListFull(l_next, e)
+  }
+
+  @testAssertion("Implicit")
+  fold list(this)
+}

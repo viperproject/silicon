@@ -1,0 +1,42 @@
+field f: Int
+
+method stateConsolidation(x: Ref, y: Ref, z: Ref)
+  requires @dependencyInfo("assumptionType:Precondition, label:L2")((acc(x.f, 1/2)))
+  requires @dependencyInfo("assumptionType:Precondition, label:L3")((acc(y.f, 1/2)))
+  requires @dependencyInfo("assumptionType:Precondition, label:L4")((acc(z.f, 1/2)))
+{
+  var a: Ref
+  inhale @dependencyInfo("assumptionType:Explicit, label:L5")(acc(a.f, 1/2))
+
+  assume @dependencyInfo("assumptionType:Explicit, label:L6")(a == x)
+
+  @dependencyInfo("assertionType:Explicit, label:L7, expectedDependencies:[L2,L3,L5,L6]")
+  assert a != y  // triggers state consolidation
+
+  @dependencyInfo("assertionType:Explicit, label:L13, expectedDependencies:[L2,L5,L6]")
+  assert perm(x.f) == write
+}
+
+
+method stateConsolidation3(x: Ref, y: Ref, z: Ref)
+  requires @dependencyInfo("assumptionType:Precondition, label:L14")((acc(x.f, 1/2)))
+  requires @dependencyInfo("assumptionType:Precondition, label:L15")((acc(y.f, 1/2)))
+  requires @dependencyInfo("assumptionType:Precondition, label:L16")((acc(z.f, 1/2)))
+{
+  var a: Ref
+  inhale @dependencyInfo("assumptionType:Explicit, label:L17")(acc(x.f, 1/2))
+
+  @dependencyInfo("assertionType:Explicit, label:L18, expectedDependencies:[L14,L17]")
+  assert perm(x.f) == write
+}
+
+
+method noAlias(a: Ref, b: Ref, c: Ref)
+    requires @dependencyInfo("assumptionType:Precondition, label:L19")((acc(a.f)))
+    requires @dependencyInfo("assumptionType:Precondition, label:L20")((acc(b.f, 1/2)))
+    requires @dependencyInfo("assumptionType:Precondition, label:L21")((acc(c.f, 1/2)))
+{
+
+    @dependencyInfo("assertionType:Explicit, label:L22, expectedDependencies:[L19,L20]")
+    assert a != b
+}

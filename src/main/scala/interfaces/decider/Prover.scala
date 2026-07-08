@@ -6,13 +6,13 @@
 
 package viper.silicon.interfaces.decider
 
-import viper.silicon.debugger.DebugAxiom
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.config.Version
-import viper.silver.components.StatefulComponent
-import viper.silicon.{Config, Map}
+import viper.silicon.debugger.DebugAxiom
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
+import viper.silicon.{Config, Map}
+import viper.silver.components.StatefulComponent
 import viper.silver.verifier.Model
 
 sealed abstract class Result
@@ -32,8 +32,10 @@ trait ProverLike {
       preambleAssumptions :+= new DebugAxiom(description, terms)
     terms foreach assume
   }
+
   def setOption(name: String, value: String): String
   def assume(term: Term): Unit
+  def assume(term: Term, label: String): Unit
   def declare(decl: Decl): Unit
   def comment(content: String): Unit
   def saturate(timeout: Int, comment: String): Unit
@@ -42,8 +44,9 @@ trait ProverLike {
 
 trait Prover extends ProverLike with StatefulComponent {
   def start(userArgsString: Option[String]): Unit
-  def assert(goal: Term, timeout: Option[Int] = None): Boolean
-  def check(timeout: Option[Int] = None): Result
+  def assert(goal: Term, timeout: Option[Int] = None, label: String = ""): Boolean
+  def check(timeout: Option[Int] = None, label: String = ""): Result
+  def getLastUnsatCore: String
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
   def statistics(): Map[String, String]
   def hasModel(): Boolean

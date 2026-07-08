@@ -6,17 +6,18 @@
 
 package viper.silicon.state.terms
 
-import java.util.concurrent.atomic.AtomicInteger
-import scala.annotation.tailrec
-import scala.reflect.ClassTag
-import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.{Map, Stack, state, toMap}
-import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier, SortBasedIdentifier}
+import viper.silicon.state.chunks.{MagicWandChunk, MagicWandIdentifier}
+import viper.silicon.state.{Identifier, SortBasedIdentifier}
 import viper.silicon.verifier.Verifier
+import viper.silicon.{Map, Stack, state, toMap}
+import viper.silver.ast
 import viper.silver.utility.Common.Rational
 
+import java.util.concurrent.atomic.AtomicInteger
+import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
+import scala.reflect.ClassTag
 
 sealed trait Node {
   def toString: String
@@ -874,7 +875,7 @@ class Times(val p0: Term, val p1: Term) extends ArithmeticTerm
 }
 
 object Times extends CondFlyweightTermFactory[(Term, Term), Times] {
-  import predef.{Zero, One}
+  import predef.{One, Zero}
 
   override def apply(v0: (Term, Term)) =v0 match {
     case (_, Zero) => Zero
@@ -1331,7 +1332,7 @@ class IntPermTimes private[terms] (val p0: Term, val p1: Term)
 }
 
 object IntPermTimes extends CondFlyweightTermFactory[(Term, Term), IntPermTimes] {
-  import predef.{Zero, One}
+  import predef.{One, Zero}
 
   override def apply(v0: (Term, Term)) = v0 match {
     case (Zero, _) => NoPerm

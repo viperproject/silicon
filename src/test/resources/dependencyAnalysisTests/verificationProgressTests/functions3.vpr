@@ -1,0 +1,35 @@
+// Spec quality: 1
+// Proof quality: 0.663492
+// Progress: 0.663492
+
+function div(x: Int, y: Int) : Int
+    requires x > 0 && y > 0
+    ensures result >= 0 // PQ: 5/7
+{
+    x / y // PQ: 2/3
+}
+
+
+method client1()
+{
+    var a: Int
+    assume a > 0
+    var b: Int := 100
+
+    var res: Int
+    res := div(a, b) // PQ: 1/2
+
+    assert res == a / 100 // PQ: 4/5
+}
+
+method client2()
+{
+    var a: Int := 100
+    var b: Int
+    assume b > 0
+
+    var res: Int
+    res := div(a, b) // PQ: 1/2
+
+    assert res == 100 / b // PQ: 4/5
+}

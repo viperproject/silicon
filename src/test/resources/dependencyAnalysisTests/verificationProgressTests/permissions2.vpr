@@ -1,0 +1,25 @@
+// Spec quality: 1
+// Proof quality: 14/45
+// Progress: 14/45
+
+field f: Int
+
+method permissions(x: Ref)
+    requires acc(x.f, 1/2)
+    ensures acc(x.f, 3/4)       // PQ: 1/3
+{
+    inhale acc(x.f, 1/4)
+}
+
+method client()
+{
+    var y: Ref
+    inhale acc(y.f, 1/2)
+
+    inhale true
+    exhale true
+
+    permissions(y)              // PQ: 0/1
+
+    assert perm(y.f) >= 3/4     // PQ: 3/5
+}

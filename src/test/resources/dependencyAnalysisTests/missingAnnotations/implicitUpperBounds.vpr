@@ -1,0 +1,45 @@
+field f: Int
+
+method implicitUpperBounds(x: Ref, y: Ref)
+  requires @dependencyInfo("assumptionType:Precondition, label:L2")((acc(x.f)))
+  requires @dependencyInfo("assumptionType:Precondition, label:L3")((acc(y.f, wildcard)))
+{
+  var z: Ref
+  inhale @dependencyInfo("assumptionType:Explicit, label:L4")(true --* acc(z.f))
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L5")
+  apply true --* acc(z.f)
+
+
+  @dependencyInfo("assertionType:Explicit, label:L6, expectedDependencies:[]")
+  assert x != y
+}
+
+method implicitUpperBounds_quantified(gen_xs: Seq[Ref], y: Ref)
+  requires @dependencyInfo("assumptionType:Precondition, label:L7")((|gen_xs|> 2))
+  requires @dependencyInfo("assumptionType:Precondition, label:L8")((forall gen_xi: Ref :: gen_xi in gen_xs ==> acc(gen_xi.f)))
+  requires @dependencyInfo("assumptionType:Precondition, label:L9")((acc(y.f, wildcard)))
+{
+  var z: Ref
+  inhale @dependencyInfo("assumptionType:Explicit, label:L10")(true --* acc(z.f))
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L11")
+  apply true --* acc(z.f)
+
+
+  @dependencyInfo("assertionType:Explicit, label:L12, expectedDependencies:[]")
+  assert gen_xs[0] != y
+}
+
+method implicitUpperBounds_quantified_2(gen_xs: Seq[Ref], y: Ref)
+  requires @dependencyInfo("assumptionType:Precondition, label:L13")((|gen_xs|> 2))
+  requires @dependencyInfo("assumptionType:Precondition, label:L14")((forall gen_xi: Ref :: gen_xi in gen_xs ==> acc(gen_xi.f)))
+  requires @dependencyInfo("assumptionType:Precondition, label:L15")((acc(y.f, 1/2)))
+{
+  var z: Ref
+  inhale @dependencyInfo("assumptionType:Explicit, label:L16")(true --* acc(z.f))
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L17")
+  apply true --* acc(z.f)
+
+
+  @dependencyInfo("assertionType:Explicit, label:L18, expectedDependencies:[]")
+  assert gen_xs[0] != y
+}

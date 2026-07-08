@@ -6,15 +6,16 @@
 
 package viper.silicon
 
-import java.nio.file.{Files, Path, Paths}
-import scala.collection.immutable.ArraySeq
-import scala.util.matching.Regex
-import scala.util.Properties._
 import org.rogach.scallop._
 import viper.silicon.Config.JoinMode.JoinMode
 import viper.silicon.Config.StateConsolidationMode.StateConsolidationMode
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverAPI, Z3ProverStdIO}
 import viper.silver.frontend.SilFrontendConfig
+
+import java.nio.file.{Files, Path, Paths}
+import scala.collection.immutable.ArraySeq
+import scala.util.Properties._
+import scala.util.matching.Regex
 
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   import Config._
@@ -691,6 +692,48 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val startDebuggerAutomatically: ScallopOption[Boolean] = opt[Boolean]("startDebuggerAutomatically",
+    descr = "Starts the debugging mode automatically after verification completes",
+    default = Some(false),
+    noshort = true
+  )
+
+  val enableUnsatCores: ScallopOption[Boolean] = opt[Boolean]("enableUnsatCores",
+    descr = "Enables UNSAT cores",
+    default = Some(false),
+    noshort = true
+  )
+
+  val enableDependencyAnalysis: ScallopOption[Boolean] = opt[Boolean]("enableDependencyAnalysis",
+    descr = "Enable dependency analysis mode",
+    default = Some(false),
+    noshort = true
+  )
+
+  val disableDependencyAnalysisJoinPrecisionOpt: ScallopOption[Boolean] = opt[Boolean]("disableDependencyAnalysisJoinPrecisionOpt",
+    descr = "Disables the precision optimizations regarding edges across method boundaries.",
+    default = Some(false),
+    noshort = true
+  )
+
+  val enableDependencyAnalysisDebugging: ScallopOption[Boolean] = opt[Boolean]("enableDependencyAnalysisDebugging",
+    descr = "Enable debugging for dependency analysis mode",
+    default = Some(false),
+    noshort = true
+  )
+
+  val disableInfeasibilityChecks: ScallopOption[Boolean] = opt[Boolean]("disableInfeasibilityChecks",
+    descr = "Disable infeasibility checks. As a consequence all paths will be explored to the end. (Potentially) huge performance overhead!",
+    default = Some(false),
+    noshort = true
+  )
+
+  val dependencyAnalysisMode: ScallopOption[String] = opt[String]("dependencyAnalysisMode",
+    descr = "Dependency analysis commands (separated by ;) to be executed after verification. Available are `interactive` and all commands supported by the interactive CLI tool",
+    default = None,
+    noshort = true
+  )
+
   /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(prover) {
@@ -737,6 +780,45 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   validateFileOpt(setAxiomatizationFile)
   validateFileOpt(multisetAxiomatizationFile)
   validateFileOpt(sequenceAxiomatizationFile)
+
+  validateOpt(enableDependencyAnalysis, parallelizeBranches) {
+    case (Some(false), _) => Right(())
+    case (_, Some(false)) => Right(())
+    case (Some(true), Some(true)) =>
+      Left(s"Option ${enableDependencyAnalysis.name} is not supported in combination with ${parallelizeBranches.name}")
+    case other =>
+      sys.error(s"Unexpected combination: $other")
+  }
+
+  validateOpt(rawProverArgs, enableDependencyAnalysis) {
+    case (_, Some(false)) => Right(())
+    case (Some(args), Some(true)) if args.contains("proof=true") && args.contains("unsat-core=true") => Right(())
+    case (_, _) =>
+      Left(s"Option ${enableDependencyAnalysis.name} requires ${rawProverArgs.name} with \"proof=true unsat-core=true\"")
+  }
+
+  validateOpt(dependencyAnalysisMode, enableDependencyAnalysis) {
+    case (None, _) => Right(())
+    case (Some(_), Some(true)) => Right(())
+    case (Some(_), Some(false)) =>
+      Left(s"Option ${dependencyAnalysisMode.name} requires option ${enableDependencyAnalysis.name}")
+  }
+
+  validateOpt(prover, enableDependencyAnalysis) {
+    case (p, Some(true)) if p != Some(Z3ProverStdIO.name) =>
+      Left(s"Dependency analysis is only supported with ${Z3ProverStdIO.name}")
+    case _ => Right(())
+  }
+
+
+  validateOpt(startDebuggerAutomatically, enableDebugging) {
+    case (Some(false), _) => Right(())
+    case (Some(true), Some(true)) => Right(())
+    case (Some(true), Some(false)) =>
+      Left(s"Option ${startDebuggerAutomatically.name} requires option ${enableDebugging.name}")
+    case other =>
+      sys.error(s"Unexpected combination: $other")
+  }
 
   /* Finalise configuration */
 

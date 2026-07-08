@@ -6,14 +6,16 @@
 
 package viper.silicon.supporters
 
-import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.collections.immutable.MultiMap._
-import viper.silicon.toMap
+import viper.silicon.decider.DependencyAnalysisProverFeatures
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisAxiomInfo, DependencyAnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
-import viper.silicon.state.{FunctionPreconditionTransformer, SymbolConverter, terms}
 import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Term}
+import viper.silicon.state.{FunctionPreconditionTransformer, SymbolConverter, terms}
+import viper.silicon.toMap
+import viper.silver.ast
 import viper.silver.ast.NamedDomainAxiom
 
 trait DomainsContributor[SO, SY, AX, UA] extends PreambleContributor[SO, SY, AX] {
@@ -27,7 +29,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
 
   private var collectedSorts = InsertionOrderedSet[Sort]()
   private var collectedFunctions = InsertionOrderedSet[terms.DomainFun]()
-  private var collectedAxioms = InsertionOrderedSet[Term]()
+  private var collectedAxioms = InsertionOrderedSet[(Term, DependencyAnalysisAxiomInfo)]()
   private var uniqueSymbols = MultiMap.empty[Sort, DomainFun]
 
   /* Lifetime */
@@ -98,10 +100,14 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
         }
       })
 
+      val isAnalysisForDomainEnabled = DependencyAnalyzer.extractEnableAnalysisFromInfo(domain.info).getOrElse(true)
+
       domain.axioms foreach (axiom => {
         val tAx = domainTranslator.translateAxiom(axiom, symbolConverter.toSort)
         val tAxPres = FunctionPreconditionTransformer.transform(tAx, program)
-        collectedAxioms += terms.And(tAxPres, tAx)
+        val enableAnalysis = DependencyAnalyzer.extractEnableAnalysisFromInfo(axiom.info).getOrElse(isAnalysisForDomainEnabled)
+        collectedAxioms = collectedAxioms.incl((terms.And(tAxPres, tAx),
+          DependencyAnalysisAxiomInfo(DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.addInfo(axiom.exp.info, axiom.exp).withEnabled(enableAnalysis), domain.name)))
       })
     })
   }
@@ -118,10 +124,13 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
     collectedFunctions foreach (f => sink.declare(terms.FunctionDecl(f)))
   }
 
-  def axiomsAfterAnalysis: Iterable[terms.Term] = collectedAxioms
+  def axiomsAfterAnalysis: Iterable[terms.Term] = collectedAxioms.map(_._1)
 
-  def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = {
-    sink.assumeAxioms(collectedAxioms, "Domain axioms")
+  def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = sink match {
+    case daSink: DependencyAnalysisProverFeatures =>
+      daSink.assumeAxiomsWithAnalysisInfo(collectedAxioms, "Domain axioms") // TODO ake
+    case _ =>
+      sink.assumeAxioms(collectedAxioms.map(_._1), "Domain axioms")
   }
 
   def uniquenessAssumptionsAfterAnalysis: Iterable[Term] =

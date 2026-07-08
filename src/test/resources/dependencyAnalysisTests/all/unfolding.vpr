@@ -1,0 +1,41 @@
+field f: Int
+
+predicate pred(x: Ref)
+{
+  acc(x.f) && x.f > 0
+}
+
+ method foo(x: Ref) returns(res: Int)
+   requires  @dependencyInfo("assumptionType:Precondition, label:L3, expectedDependencies:[L9,L10,L11]")((pred(x)))
+   ensures  @dependencyInfo("assertionType:ImplicitPostcondition, label:L4, expectedDependencies:[L9,L10,L11,L3,L6,L8]")((pred(x)))
+   ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L5, expectedDependencies:[L9,L10,L11,L3,L6,L7]")((res > 0))
+  {
+   @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L6, expectedDependencies:[L9,L10,L11,L3]")
+   unfold  pred(x)
+   @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L7, expectedDependencies:[L9,L10,L11,L3,L6]")
+   res := x.f
+   @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L8, expectedDependencies:[L9,L10,L11,L3,L6]")
+   fold  pred(x)
+  }
+
+
+method client1(x: Ref)
+{
+  var b: Int
+  inhale @dependencyInfo("assumptionType:Explicit, label:L9")((acc(x.f)))
+  inhale @dependencyInfo("assumptionType:Explicit, assertionType:Implicit, label:L10, expectedDependencies:[L9]")((x.f > 0))
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L11, expectedDependencies:[L9,L10]")
+  fold pred(x)
+
+  @dependencyInfo("assumptionType:MethodCall, label:L12, expectedDependencies:[L9,L10,L11]")
+  b := foo(x)
+
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L13, expectedDependencies:[L9,L10,L11,L3,L6,L8,L12]")
+  b := unfolding pred(x) in x.f
+
+  @dependencyInfo("assertionType:Explicit, label:L14, expectedDependencies:[L9,L10,L11,L3,L6,L8,L12,L13]")
+  assert b > 0
+
+  @dependencyInfo("assertionType:Explicit, label:L15, expectedDependencies:[L9,L10,L11,L3,L6,L8,L12]")
+  exhale pred(x)
+ }

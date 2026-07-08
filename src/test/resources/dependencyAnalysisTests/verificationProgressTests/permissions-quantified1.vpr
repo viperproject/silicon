@@ -1,0 +1,14 @@
+// Spec quality: 1/2
+// Proof quality: 1/2
+// Progress: 1/4
+
+field f: Int
+
+method quantifiedPerm() {
+  var xs: Seq[Ref]
+  xs := Seq(null, null, null, null, null)
+  
+  assume forall x: Ref :: x in xs ==> acc(x.f)  // only used in line 14
+
+  xs[0].f := 10   // PQ: 1/2
+}

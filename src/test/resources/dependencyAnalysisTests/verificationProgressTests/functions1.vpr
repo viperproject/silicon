@@ -1,0 +1,19 @@
+// Spec quality: 0
+// Proof quality: 3/10
+// Progress: 0
+
+function sum(x: Int, y: Int): Int
+  requires x >= 0 && y >= 0
+  ensures result >= 0       // PQ: 3/5
+{
+    x + y
+}
+
+method client()
+{
+    var x: Int, y: Int
+    assume x > 10
+    assume y > 0
+
+    x := sum(x, y)          // PQ: 0/2
+}

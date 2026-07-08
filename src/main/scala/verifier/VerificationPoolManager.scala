@@ -6,15 +6,16 @@
 
 package viper.silicon.verifier
 
-import java.util.concurrent._
-import org.apache.commons.pool2.{BasePooledObjectFactory, ObjectPool, PoolUtils, PooledObject}
 import org.apache.commons.pool2.impl.{DefaultPooledObject, GenericObjectPool, GenericObjectPoolConfig}
+import org.apache.commons.pool2.{BasePooledObjectFactory, ObjectPool, PoolUtils, PooledObject}
 import viper.silicon.Config
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
-import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.terms.{Decl, Term}
+import viper.silver.components.StatefulComponent
+
+import java.util.concurrent._
 
 class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulComponent {
   private val numberOfWorkers: Int = Verifier.config.numberOfParallelVerifiers()
@@ -23,10 +24,15 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
   /*private*/ var threadPool: ForkJoinPool = _
   /*private*/ var workerVerifierPool: ObjectPool[WorkerVerifier] = _
 
-  private[verifier] object pooledVerifiers extends ProverLike {
+  def pooledVerifiers: DefaultPooledVerifiers = _pooledVerifiers
+
+  private[verifier] object _pooledVerifiers extends DefaultPooledVerifiers
+
+  trait DefaultPooledVerifiers extends ProverLike {
     def emit(content: String): Unit = workerVerifiers foreach (_.decider.prover.emit(content))
     override def emit(contents: Iterable[String]): Unit = workerVerifiers foreach (_.decider.prover.emit(contents))
     def assume(term: Term): Unit = workerVerifiers foreach (_.decider.prover.assume(term))
+    def assume(term: Term, label: String): Unit = workerVerifiers foreach (_.decider.prover.assume(term, label))
     override def assumeAxioms(terms: InsertionOrderedSet[Term], description: String): Unit = workerVerifiers foreach (_.decider.prover.assumeAxioms(terms, description))
     def declare(decl: Decl): Unit =  workerVerifiers foreach (_.decider.prover.declare(decl))
     def comment(content: String): Unit = workerVerifiers foreach (_.decider.prover.comment(content))
@@ -85,7 +91,7 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
 
   private object workerVerifierPoolableObjectFactory extends BasePooledObjectFactory[WorkerVerifier] {
     def create(): WorkerVerifier = {
-      val worker = new WorkerVerifier(mainVerifier, mainVerifier.nextUniqueVerifierId(), mainVerifier.reporter, Verifier.config.enableDebugging())
+      val worker = mainVerifier.createWorkerVerifier()
       workerVerifiers = worker +: workerVerifiers
 
       worker

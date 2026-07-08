@@ -1,0 +1,17 @@
+// Spec quality: 1
+// Proof quality: 2/3
+// Progress: 2/3
+
+predicate greater0(n: Int){
+  n > 0
+}
+
+method foldP(n: Int)
+    requires n > 10
+{
+    var x: Int, y: Int 
+    x := 1
+    assume y == 1
+
+    fold greater0(x + y + n)      // PQ: 2/3
+}
