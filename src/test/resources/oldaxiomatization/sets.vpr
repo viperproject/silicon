@@ -1,0 +1,20 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+method t1(x: Int, xs: Set[Int]) {
+    var n: Set[Int] := Set[Int]()
+    assert |n| == 0
+    assert n != Set(x)
+    assert |Set(1)| == 1
+}
+
+method t2() {
+    assert 1 in Set(1,2,3)
+    var a: Set[Int] := Set(1)
+    var b: Set[Int] := Set(2)
+    assert (a union b) == Set(1,2)
+    assert ((Set(1)) union (Set(1))) == Set(1)
+
+    assert 1 in ((Set(1,2)) intersection (Set(100,1)))
+}

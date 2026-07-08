@@ -73,26 +73,8 @@ abstract class BaseVerifier(val config: Config,
 
     val mode = s.currentMember match {
       case Some(member) =>
-        member.info.getUniqueInfo[ast.AnnotationInfo] match {
-          case Some(ai) if ai.values.contains("stateConsolidationMode") =>
-            val modeAnnotation = ai.values("stateConsolidationMode")
-            try {
-              modeAnnotation match {
-                case Seq("minimal") => Minimal
-                case Seq("default") => Default
-                case Seq("retrying") => Retrying
-                case Seq("minimalRetrying") => MinimalRetrying
-                case Seq("moreCompleteExhale") => MoreCompleteExhale
-                case Seq("lastRetry") => LastRetry
-                case Seq("retryingFailOnly") => RetryingFailOnly
-                case Seq("lastRetryFailOnly") => LastRetryFailOnly
-                case Seq(v) => StateConsolidationMode(v.toInt)
-              }
-            } catch {
-              case _ =>
-                reporter report AnnotationWarning(s"Member ${member.name} has invalid stateConsolidationMode annotation value. Annotation will be ignored.")
-                config.stateConsolidationMode()
-            }
+        AnnotationSupporter.getStateConsolidationMode(member, reporter) match {
+          case Some(mode) => mode
           case _ => config.stateConsolidationMode()
         }
       case None => config.stateConsolidationMode()

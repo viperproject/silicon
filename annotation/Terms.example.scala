@@ -885,7 +885,7 @@ object FractionPerm extends ((Term, Term) => Permissions) {
 }
 
 @flyweight
-class IsValidPermVar(val v: Var) extends BooleanTerm {
+class IsValidPermVal(val t: Term) extends BooleanTerm {
   override lazy val toString = s"PVar($v)"
 }
 

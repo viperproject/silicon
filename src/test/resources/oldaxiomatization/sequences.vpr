@@ -1,0 +1,100 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method t1(x: Int, xs: Seq[Int]) {
+    var n: Seq[Int] := Seq[Int]()
+    assert |n| == 0
+    assert n != Seq(x)
+    assert |Seq(1)| == 1
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert |Seq(0)| == 0
+}
+
+method t2() {
+    assert 1 in Seq(1,2,3)
+    assert |[-1..10)| == 11
+    assert Seq(1) ++ Seq(2) == Seq(1,2)
+
+    var a: Seq[Int] := Seq(0,1,-11,22)
+    assert a[2] == -11
+
+    assert a[..1] == Seq(0)
+    assert a[1..] == Seq(1,-11,22)
+    assert a[1..2] == Seq(1)
+
+    assert a[1 := 22] == (a[1 := -1][1 := 22])
+    assert a[1 := 22] == Seq(0,22,-11,22)
+    assert |a[1 := 22]| == 4
+    assert a[1 := 22][1] == 22
+    assert a[1 := 22][2] == -11
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert a[1 := 22][0] == 22
+}
+
+method test3() {
+  var xs: Seq[Int] := Seq(0, 1, 2, 3, 4, 5, 6, 7)
+  var bs: Seq[Bool] := Seq(true, true, false, true) ++ Seq(false, true)
+
+  assert |xs[1..][..6]| == |bs|
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert |xs[1..]| == |xs|
+}
+
+method test4(s:Seq[Int], i : Int, j:Int) 
+  requires 0 <= i
+  requires i <= j
+{
+  assert s == s[..i] ++ s[i..]
+  assert s == s[..i] ++ s[i..j] ++ s[j..]
+  assert (s[..i] ++ s[i..j]) ++ s[j..] == s[..i] ++ (s[i..j] ++ s[j..])
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert |s[j..]| == |s| - j
+}
+
+method test5(s:Seq[Int], i : Int, j:Int) 
+{
+  assert s == s[..i] ++ s[i..]
+}
+
+method test6() {
+  assert Seq(3,4,5,6)[0] == 3
+  assert Seq(3,4,5,6)[1] == 4
+  assert Seq(3,4,5,6)[2] == 5
+  assert Seq(3,4,5,6)[3] == 6
+    //:: ExpectedOutput(assert.failed:assertion.false)
+  assert Seq(3,4,5,6)[3] == 5
+}
+
+function trivial(i:Int) : Bool { true }
+
+method test_index_definedness_small(i : Int) 
+  requires i < 4
+{
+  //:: ExpectedOutput(assert.failed:seq.index.negative)  
+  assert trivial(Seq(3,4,5,6)[i])
+}
+
+method test_index_definedness_large(i : Int) 
+  requires i >= 0
+{ 
+  //:: ExpectedOutput(assert.failed:seq.index.length)  
+  assert trivial(Seq(3,4,5,6)[i])
+}
+
+method test_build_index_definedness_small(i : Int) 
+  requires i < 4
+{
+  //:: ExpectedOutput(assert.failed:seq.index.negative)
+  //:: MissingOutput(assert.failed:seq.index.negative, /carbon/issue/232/)
+  assert trivial(Seq(3,4,5,6)[i := 3][0])
+}
+
+method test_build_index_definedness_large(i : Int) 
+  requires i >= 0
+{    
+  //:: ExpectedOutput(assignment.failed:seq.index.length)
+  //:: MissingOutput(assignment.failed:seq.index.length, /carbon/issue/232/)
+  var s : Seq[Int] := Seq(3,4,5,6)[i := 3]
+  assert trivial(s[0])
+}
+

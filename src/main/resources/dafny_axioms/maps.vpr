@@ -12,39 +12,39 @@ domain $Map[K, V] {
 
   /* ** Cardinality */
 
-  axiom {
+  axiom Map_card_nonneg {
     forall m : $Map[K, V] :: { Map_card(m) } 0 <= Map_card(m)
   }
 
   /* added second trigger set */
-  axiom {
+  axiom Map_domain_card {
     forall m : $Map[K, V] :: { |Map_domain(m)| } {Map_card(m)} |Map_domain(m)| == Map_card(m)
   }
 
   /* ** Disjointness */
 
   /* split in both directions */
-  axiom {
+  axiom Map_disjoint_def1 {
     forall m1 : $Map[K, V], m2 : $Map[K, V] :: { Map_disjoint(m1, m2) }
       Map_disjoint(m1, m2) ==>
         (forall k : K :: { k in Map_domain(m1) } {k in Map_domain(m2) }
           !(k in Map_domain(m1)) || !(k in Map_domain(m2)))
   }
 
-  axiom {
+  axiom Map_disjoint_def2 {
     forall m1 : $Map[K, V], m2 : $Map[K, V] :: { Map_disjoint(m1, m2) }
       !Map_disjoint(m1, m2) ==>
         (exists k : K :: (k in Map_domain(m1)) && (k in Map_domain(m2)))
   }
 
   /* ** Empty */
-  axiom {
+  axiom Map_empty_domain {
     forall k : K :: { k in Map_domain((Map_empty() : $Map[K, V])) }
       !(k in Map_domain((Map_empty() : $Map[K, V])))
   }
 
   /* split last part in both directions */
-  axiom {
+  axiom Map_card_zero {
     forall m : $Map[K, V] :: { Map_card(m) }
       (Map_card(m) == 0 <==> m == Map_empty()) &&
       (Map_card(m) != 0 ==> exists u : K :: u in Map_domain(m)) &&
@@ -53,14 +53,14 @@ domain $Map[K, V] {
 
   /* Equality */
   // this axiom is only needed in one direction; the other is implied by the next axiom
-    axiom {
+    axiom Map_equal_def {
       forall m1 : $Map[K, V], m2 : $Map[K, V] :: { Map_equal(m1, m2) }
           ((forall k : K :: { k in Map_domain(m1) } { k in Map_domain(m2) } k in Map_domain(m1) <==> k in Map_domain(m2)) &&
            (forall k : K :: { Map_apply(m1, k) } { Map_apply(m2, k) } k in Map_domain(m1) ==> Map_apply(m1, k) == Map_apply(m2, k)))
              ==>  Map_equal(m1, m2)
     }
 
-  axiom {
+  axiom Map_equal_ext {
     forall m1 : $Map[K, V], m2 : $Map[K, V] :: { Map_equal(m1, m2) }
       Map_equal(m1, m2) ==> m1 == m2
   }
@@ -69,7 +69,7 @@ domain $Map[K, V] {
 
 /* added second trigger set (cf. example3 test case, test3)
 /* could also add {Map_update(m,k1,v), Map_apply(m,k1)} as another alternative trigger, but seems subsumed given that we need to know k2 is in a domain */
-  axiom {
+  axiom Map_update_domain {
     forall m : $Map[K, V], k1 : K, k2 : K, v : V ::
       { k2 in Map_domain(Map_update(m, k1, v)) } {k2 in Map_domain(m), Map_update(m, k1, v)} { Map_apply(Map_update(m, k1, v), k2) }
         (k1 == k2 ==> k2 in Map_domain(Map_update(m, k1, v)) && Map_apply(Map_update(m, k1, v), k2) == v) &&
@@ -77,7 +77,7 @@ domain $Map[K, V] {
   }
 
 /* added second trigger set (not sure of a test case needing it, though) */
-  axiom {
+  axiom Map_update_card {
     forall m : $Map[K, V], k : K, v : V :: { Map_card(Map_update(m, k, v)) } { Map_card(m), Map_update(m, k, v)}
       (k in Map_domain(m) ==> Map_card(Map_update(m, k, v)) == Map_card(m)) &&
       (!(k in Map_domain(m)) ==> Map_card(Map_update(m, k, v)) == Map_card(m) + 1)
@@ -91,20 +91,20 @@ domain $Map[K, V] {
 //        exists k : K :: { k in Map_domain(m) } { Map_apply(m, k) }
 //          k in Map_domain(m) && v == Map_apply(m, k)
 //  }
-  axiom {
+  axiom Map_values_contains {
     forall m : $Map[K, V], v : V :: { v in Map_values(m) }
       v in Map_values(m) ==>
           Map_range_domain_skolem(m,v) in Map_domain(m) && v == Map_apply(m, Map_range_domain_skolem(m,v))
   }
 
-  axiom {
+  axiom Map_values_nonempty {
     forall m : $Map[K, V], k : K :: { Map_apply(m, k) } { k in Map_domain(m) }
        (k in Map_domain(m)
           ==> |Map_values(m)| > 0) // weaker than the axiom below, but with weaker triggering
   }
 
   /* no need for an "in" term to match this one; cf. example3 test case test5 */
-  axiom {
+  axiom Map_values_contains {
     forall m : $Map[K, V], k : K :: { Map_apply(m, k) } // { k in Map_domain(m) }  // REMOVED trigger - this can create issues if several maps share the domain
        (k in Map_domain(m)
           ==> Map_apply(m, k) in Map_values(m))

@@ -26,9 +26,9 @@ import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
-import viper.silicon.supporters._
-import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
+import viper.silicon.supporters.{AnnotationSupporter, DefaultDomainsContributor, DefaultMapsContributor, DefaultMultisetsContributor, DefaultPredicateVerificationUnitProvider, DefaultSequencesContributor, DefaultSetsContributor, MagicWandSnapFunctionsContributor, PredicateData}
 import viper.silicon.supporters.qps._
+import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
 import viper.silicon.utils.Counter
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.{BackendType, Member}
@@ -191,7 +191,7 @@ class DefaultMainVerifier(config: Config,
     // TODO: Autotrigger for cfgs.
 
     if (config.conditionalizePermissions()) {
-      program = new ConditionalPermissionRewriter().rewrite(program).asInstanceOf[ast.Program]
+      program = new ConditionalPermissionRewriter().rewrite(program, !config.respectFunctionPrePermAmounts()).asInstanceOf[ast.Program]
     }
 
     if (config.printTranslatedProgram()) {
@@ -223,8 +223,15 @@ class DefaultMainVerifier(config: Config,
      */
     val functionVerificationResults = functionsSupporter.units.toList flatMap (function => {
       val startTime = System.currentTimeMillis()
-      val results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
-        .flatMap(extractAllVerificationResults)
+      var results: Seq[VerificationResult] = null
+      try {
+        results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
+          .flatMap(extractAllVerificationResults)
+      } catch {
+        case e : Throwable =>
+          logger error s"An exception was thrown while verifying function `${function.name}`."
+          throw e
+      }
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of function `${function.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -233,8 +240,15 @@ class DefaultMainVerifier(config: Config,
 
     val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate => {
       val startTime = System.currentTimeMillis()
-      val results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
-        .flatMap(extractAllVerificationResults)
+      var results: Seq[VerificationResult] = null
+      try {
+        results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
+          .flatMap(extractAllVerificationResults)
+      } catch {
+        case e: Throwable =>
+          logger error s"An exception was thrown while verifying predicate `${predicate.name}`."
+          throw e
+      }
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -256,14 +270,20 @@ class DefaultMainVerifier(config: Config,
 
     val verificationTaskFutures: Seq[Future[Seq[VerificationResult]]] =
       program.methods.filterNot(excludeMethod).map(method => {
-
         val s = createInitialState(method, program, functionData, predicateData).copy(parallelizeBranches =
           Verifier.config.parallelizeBranches()) /* [BRANCH-PARALLELISATION] */
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
-          val results = v.methodSupporter.verify(s, method)
-            .flatMap(extractAllVerificationResults)
+          var results: Seq[VerificationResult] = null
+          try {
+            results = v.methodSupporter.verify(s, method)
+              .flatMap(extractAllVerificationResults)
+          } catch {
+            case e: Throwable =>
+              logger error s"An exception was thrown while verifying method `${method.name}`."
+              throw e
+          }
           val elapsed = System.currentTimeMillis() - startTime
 
           reporter report VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results))
@@ -276,8 +296,16 @@ class DefaultMainVerifier(config: Config,
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
-          val results = v.cfgSupporter.verify(s, cfg)
-            .flatMap(extractAllVerificationResults)
+
+          var results: Seq[VerificationResult] = null
+          try {
+            results = v.cfgSupporter.verify(s, cfg)
+              .flatMap(extractAllVerificationResults)
+          } catch {
+            case e: Throwable =>
+              logger error s"An exception was thrown while verifying a cfg."
+              throw e
+          }
           val elapsed = System.currentTimeMillis() - startTime
 
           reporter report VerificationResultMessage(s"silicon"/*, cfg*/, elapsed, condenseToViperResult(results))
@@ -311,8 +339,8 @@ class DefaultMainVerifier(config: Config,
 
     private def createInitialState(member: ast.Member,
                                  program: ast.Program,
-                                 functionData: Map[ast.Function, FunctionData],
-                                 predicateData: Map[ast.Predicate, PredicateData]): State = {
+                                 functionData: Map[String, FunctionData],
+                                 predicateData: Map[String, PredicateData]): State = {
     val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
     val quantifiedPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
     val quantifiedMagicWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(member, program)).map(MagicWandIdentifier(_, program))
@@ -321,40 +349,15 @@ class DefaultMainVerifier(config: Config,
       case r => r
     }
 
-    val mce = member.info.getUniqueInfo[ast.AnnotationInfo] match {
-      case Some(ai) if ai.values.contains("exhaleMode") =>
-        ai.values("exhaleMode") match {
-          case Seq("0") | Seq("greedy") | Seq("2") | Seq("mceOnDemand") =>
-            if (Verifier.config.counterexample.isSupplied)
-              reporter report AnnotationWarning(s"Member ${member.name} has exhaleMode annotation that may interfere with counterexample generation.")
-            false
-          case Seq("1") | Seq("mce") | Seq("moreCompleteExhale") => true
-          case v =>
-            reporter report AnnotationWarning(s"Member ${member.name} has invalid exhaleMode annotation value $v. Annotation will be ignored.")
-            Verifier.config.exhaleMode == ExhaleMode.MoreComplete
-        }
-      case _ => Verifier.config.exhaleMode == ExhaleMode.MoreComplete
+    val mce = AnnotationSupporter.getExhaleMode(member, reporter) match {
+      case Some(ExhaleMode.MoreComplete) => true
+      case Some(ExhaleMode.Greedy) | Some(ExhaleMode.MoreCompleteOnDemand) =>
+        if (Verifier.config.counterexample.isSupplied)
+          reporter report AnnotationWarning(s"Member ${member.name} has exhaleMode annotation that may interfere with counterexample generation.")
+        false
+      case None => Verifier.config.exhaleMode == ExhaleMode.MoreComplete
     }
-    val moreJoinsAnnotated = member.info.getUniqueInfo[ast.AnnotationInfo] match {
-      case Some(ai) if ai.values.contains("moreJoins") =>
-        ai.values("moreJoins") match {
-          case Seq() | Seq("all") => Some(JoinMode.All)
-          case Seq("off") => Some(JoinMode.Off)
-          case Seq("impure") => Some(JoinMode.Impure)
-          case Seq(vl) =>
-            try {
-              Some(JoinMode(vl.toInt))
-            } catch {
-              case _: NumberFormatException =>
-                reporter report AnnotationWarning(s"Member ${member.name} has invalid moreJoins annotation value $vl. Annotation will be ignored.")
-                None
-            }
-          case v =>
-            reporter report AnnotationWarning(s"Member ${member.name} has invalid moreJoins annotation value $v. Annotation will be ignored.")
-            None
-        }
-      case _ => None
-    }
+    val moreJoinsAnnotated = AnnotationSupporter.getJoinMode(member, reporter)
     val moreJoins = if (member.isInstanceOf[ast.Method]) {
       moreJoinsAnnotated.getOrElse(Verifier.config.moreJoins.getOrElse(JoinMode.Off))
     } else {
@@ -409,8 +412,8 @@ class DefaultMainVerifier(config: Config,
 
   private def createInitialState(@unused cfg: SilverCfg,
                                  program: ast.Program,
-                                 functionData: Map[ast.Function, FunctionData],
-                                 predicateData: Map[ast.Predicate, PredicateData]): State = {
+                                 functionData: Map[String, FunctionData],
+                                 predicateData: Map[String, PredicateData]): State = {
     val quantifiedFields = InsertionOrderedSet(program.fields)
     val quantifiedPredicates = InsertionOrderedSet(program.predicates)
     val quantifiedMagicWands = InsertionOrderedSet[MagicWandIdentifier]() // TODO: Implement support for quantified magic wands.
@@ -439,8 +442,8 @@ class DefaultMainVerifier(config: Config,
     sink.comment(s"\n; ${decider.prover.staticPreamble}")
     preambleReader.emitPreamble(decider.prover.staticPreamble, sink, true)
 
-    if (config.proverRandomizeSeeds) {
-      sink.comment(s"\n; Randomise seeds [--${config.rawProverRandomizeSeeds.name}]")
+    if (config.proverRandomizeSeeds()) {
+      sink.comment(s"\n; Randomise seeds [--${config.proverRandomizeSeeds.name}]")
       val options = decider.prover.randomizeSeedsOptions
         .map (key => s"(set-option :$key ${Random.nextInt(10000)})")
 
@@ -448,11 +451,11 @@ class DefaultMainVerifier(config: Config,
     }
 
     val smt2ConfigOptions =
-      config.proverConfigArgs.map { case (k, v) => s"(set-option :$k $v)" }
+      config.proverConfigArgs().map { case (k, v) => s"(set-option :$k $v)" }
 
     if (smt2ConfigOptions.nonEmpty) {
       // One can pass options to the prover. This allows to check whether they have been received.
-      val msg = s"Additional prover configuration options are '${config.proverConfigArgs}'"
+      val msg = s"Additional prover configuration options are '${config.proverConfigArgs().mkString(", ")}'"
       reporter report ConfigurationConfirmation(msg)
       logger info msg
       preambleReader.emitPreamble(smt2ConfigOptions, sink, true)

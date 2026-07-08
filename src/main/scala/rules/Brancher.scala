@@ -88,10 +88,10 @@ object brancher extends BranchingRules {
     val uidBranchPoint = v.symbExLog.insertBranchPoint(2, Some(condition), Some(conditionExp._1))
     var functionsOfCurrentDecider: Set[FunctionDecl] = null
     var macrosOfCurrentDecider: Vector[MacroDecl] = null
-    var proverArgsOfCurrentDecider: viper.silicon.Map[String, String] = null
+    var proverConfigArgsOfCurrentDecider: viper.silicon.Map[String, String] = null
     var wasElseExecutedOnDifferentVerifier = false
     var functionsOfElseBranchDecider: Set[FunctionDecl] = null
-    var proverArgsOfElseBranchDecider: viper.silicon.Map[String, String] = null
+    var proverConfigArgsOfElseBranchDecider: viper.silicon.Map[String, String] = null
     var macrosOfElseBranchDecider: Seq[MacroDecl] = null
     var pcsForElseBranch: PathConditionStack = null
     var noOfErrors = 0
@@ -109,7 +109,7 @@ object brancher extends BranchingRules {
         if (parallelizeElseBranch){
           functionsOfCurrentDecider = v.decider.freshFunctions
           macrosOfCurrentDecider = v.decider.freshMacros
-          proverArgsOfCurrentDecider = v.decider.getProverOptions()
+          proverConfigArgsOfCurrentDecider = v.decider.getProverOptions()
           pcsForElseBranch = v.decider.pcs.duplicate()
           noOfErrors = v.errorsReportedSoFar.get()
         }
@@ -127,9 +127,9 @@ object brancher extends BranchingRules {
             val newMacros = macrosOfCurrentDecider.filter(m => !v0FreshMacros.contains(m))
 
             v0.decider.prover.comment(s"[Shifting execution from ${v.uniqueId} to ${v0.uniqueId}]")
-            proverArgsOfElseBranchDecider = v0.decider.getProverOptions()
+            proverConfigArgsOfElseBranchDecider = v0.decider.getProverOptions()
             v0.decider.resetProverOptions()
-            v0.decider.setProverOptions(proverArgsOfCurrentDecider)
+            v0.decider.setProverOptions(proverConfigArgsOfCurrentDecider)
             v0.decider.prover.comment(s"Bulk-declaring functions")
             v0.decider.declareAndRecordAsFreshFunctions(newFunctions)
             v0.decider.prover.comment(s"Bulk-declaring macros")
@@ -159,7 +159,7 @@ object brancher extends BranchingRules {
             val result = fElse(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
             if (wasElseExecutedOnDifferentVerifier) {
               v1.decider.resetProverOptions()
-              v1.decider.setProverOptions(proverArgsOfElseBranchDecider)
+              v1.decider.setProverOptions(proverConfigArgsOfElseBranchDecider)
               if (s.underJoin) {
                 functionsOfElseBranchDecider = v1.decider.freshFunctions -- functionsOfElseBranchdDeciderBefore
                 macrosOfElseBranchDecider = v1.decider.freshMacros.drop(nMacrosOfElseBranchDeciderBefore)
@@ -226,7 +226,7 @@ object brancher extends BranchingRules {
             v.errorsReportedSoFar.set(noOfErrorsAfterThenBranch)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             v.decider.resetProverOptions()
-            v.decider.setProverOptions(proverArgsOfCurrentDecider)
+            v.decider.setProverOptions(proverConfigArgsOfCurrentDecider)
           }
         } else {
           rs = elseBranchFuture.get()

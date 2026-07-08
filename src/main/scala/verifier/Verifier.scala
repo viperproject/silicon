@@ -10,7 +10,7 @@ import com.typesafe.scalalogging.Logger
 import viper.silicon.decider.Decider
 import viper.silicon.reporting.StateFormatter
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
-import viper.silicon.rules.StateConsolidationRules
+import viper.silicon.rules.{HeapSupportRules, StateConsolidationRules, defaultHeapSupporter}
 import viper.silicon.state.{Heap, IdentifierFactory, State, SymbolConverter}
 import viper.silicon.supporters.{QuantifierSupporter, SnapshotSupporter}
 import viper.silicon.utils.Counter
@@ -40,6 +40,8 @@ trait Verifier {
   def snapshotSupporter: SnapshotSupporter
   def stateConsolidator(s: State): StateConsolidationRules
 
+  val heapSupporter: HeapSupportRules = defaultHeapSupporter
+
   def verificationPoolManager: VerificationPoolManager
 
   val errorsReportedSoFar = new AtomicInteger(0);
@@ -59,7 +61,7 @@ trait Verifier {
     */
   def getDebugOldLabel(s: State, pos: ast.Position, h: Option[Heap] = None): (String, String) = {
     val posString = pos match {
-      case column: ast.HasLineColumn => s"l:${column.line + 1}.${column.column + 1}"
+      case column: ast.HasLineColumn => s"l:${column.line}.${column.column}"
       case _ => s"l:unknown"
     }
     val heap = h match {

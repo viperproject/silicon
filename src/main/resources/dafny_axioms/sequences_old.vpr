@@ -277,20 +277,20 @@ domain $Seq[E] {
 
   function Seq_range(min: Int, max: Int): $Seq[Int]
 
-  axiom ranged_seq_length {
+  axiom Seq_range_length {
     forall min: Int, max: Int :: {Seq_length(Seq_range(min, max))}
       min < max
         ? Seq_length(Seq_range(min, max)) == max - min
         : Seq_length(Seq_range(min, max)) == 0
   }
 
-  axiom ranged_seq_index {
+  axiom Seq_range_index {
     forall min: Int, max: Int, i: Int :: {Seq_index(Seq_range(min, max), i)}
       0 <= i && i < max - min ==>
         Seq_index(Seq_range(min, max), i) == min + i
   }
 
-  axiom ranged_seq_contains {
+  axiom Seq_range_contains {
     forall min: Int, max: Int, e: Int :: {Seq_contains(Seq_range(min, max), e)}
       Seq_contains(Seq_range(min, max), e)
         <==> // Two implications in the Dafny version

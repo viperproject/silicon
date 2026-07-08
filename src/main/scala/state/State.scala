@@ -17,6 +17,7 @@ import viper.silicon.interfaces.state.GeneralChunk
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms.{Term, Var}
 import viper.silicon.interfaces.state.Chunk
+import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.{And, Ite}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
@@ -29,8 +30,8 @@ final case class State(g: Store = Store(),
                        h: Heap = Heap(),
                        program: ast.Program,
                        currentMember: Option[ast.Member],
-                       predicateData: Map[ast.Predicate, PredicateData],
-                       functionData: Map[ast.Function, FunctionData],
+                       predicateData: Map[String, PredicateData],
+                       functionData: Map[String, FunctionData],
                        oldHeaps: OldHeaps = Map.empty,
 
                        parallelizeBranches: Boolean = false,
@@ -62,6 +63,7 @@ final case class State(g: Store = Store(),
                        conservedPcs: Stack[Vector[RecordedPathConditions]] = Stack(),
                        recordPcs: Boolean = false,
                        exhaleExt: Boolean = false,
+                       isInPackage: Boolean = false,
 
                        ssCache: SsCache = Map.empty,
                        assertReadAccessOnly: Boolean = false,
@@ -74,8 +76,8 @@ final case class State(g: Store = Store(),
                        pmCache: PmCache = Map.empty,
                        smDomainNeeded: Boolean = false,
                        /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
-                       predicateSnapMap: Map[ast.Predicate, terms.Sort] = Map.empty,
-                       predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]] = Map.empty,
+                       predicateSnapMap: Map[String, terms.Sort] = Map.empty,
+                       predicateFormalVarMap: Map[String, Seq[terms.Var]] = Map.empty,
                        retryLevel: Int = 0,
                        /* ast.Field, ast.Predicate, or MagicWandIdentifier */
                        heapDependentTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet.empty,
@@ -86,6 +88,42 @@ final case class State(g: Store = Store(),
   val isMethodVerification: Boolean = {
     // currentMember being None means we're verifying a CFG; this should behave like verifying a method.
     currentMember.isEmpty || currentMember.get.isInstanceOf[ast.Method]
+  }
+
+  def isUsedAsTrigger(res: ast.Resource): Boolean = {
+    val identifier = res match {
+      case mw: ast.MagicWand => MagicWandIdentifier(mw, program)
+      case _ => res
+    }
+    heapDependentTriggers.contains(identifier)
+  }
+
+  def isQuantifiedResource(res: ast.Resource): Boolean = {
+    res match {
+      case f: ast.Field => qpFields.contains(f)
+      case p: ast.Predicate => qpPredicates.contains(p)
+      case mw: ast.MagicWand => qpMagicWands.contains(MagicWandIdentifier(mw, program))
+    }
+  }
+
+  def getFormalArgVars(res: ast.Resource, v: Verifier): Seq[Var] = {
+    res match {
+      case _: ast.Field => Seq(`?r`)
+      case p: ast.Predicate => predicateFormalVarMap(p.name)
+      case w: ast.MagicWand =>
+        val bodyVars = w.subexpressionsToEvaluate(program)
+        bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
+    }
+  }
+
+  def getFormalArgDecls(res: ast.Resource): Seq[ast.LocalVarDecl] = {
+    res match {
+      case _: ast.Field => Seq(ast.LocalVarDecl("r", ast.Ref)())
+      case p: ast.Predicate => p.formalArgs
+      case w: ast.MagicWand =>
+        val bodyVars = w.subexpressionsToEvaluate(program)
+        bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)())
+    }
   }
 
   val mayAssumeUpperBounds: Boolean = {
@@ -129,7 +167,7 @@ final case class State(g: Store = Store(),
     State.preserveAfterLocalEvaluation(this, post)
 
   def functionRecorderQuantifiedVariables(): Seq[(Var, Option[ast.AbstractLocalVar])] =
-    functionRecorder.data.fold(Seq.empty[(Var, Option[ast.AbstractLocalVar])])(d => d.arguments.zip(d.argumentExps))
+    functionRecorder.arguments.fold(Seq.empty[(Var, Option[ast.AbstractLocalVar])])(d => d)
 
   def relevantQuantifiedVariables(filterPredicate: Var => Boolean): Seq[(Var, Option[ast.AbstractLocalVar])] = (
        functionRecorderQuantifiedVariables()
@@ -175,7 +213,7 @@ object State {
                  triggerExp1,
                  partiallyConsumedHeap1,
                  permissionScalingFactor1, permissionScalingFactorExp1, isEvalInOld,
-                 reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
+                 reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1, isInPackage1,
                  ssCache1, assertReadAccessOnly1,
                  qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
@@ -186,7 +224,7 @@ object State {
           case State(`g1`, `h1`,
                      `program`, `member`,
                      `predicateData`, `functionData`,
-                     `oldHeaps1`,
+                     oldHeaps2,
                      `parallelizeBranches1`,
                      `recordVisited1`, `visited1`,
                      `methodCfg1`, `invariantContexts1`,
@@ -200,12 +238,13 @@ object State {
                      triggerExp2,
                      `partiallyConsumedHeap1`,
                      `permissionScalingFactor1`, `permissionScalingFactorExp1`, `isEvalInOld`,
-                     `reserveHeaps1`, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`,
+                     `reserveHeaps1`, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`, `isInPackage1`,
                      ssCache2, `assertReadAccessOnly1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
                      moreCompleteExhale2, `moreJoins`) =>
 
+            val oldHeaps3 = oldHeaps1 ++ oldHeaps2
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
@@ -223,7 +262,8 @@ object State {
               .zip(conservedPcs1)
               .map({ case (pcs1, pcs2) => (pcs1 ++ pcs2).distinct })
 
-            s1.copy(functionRecorder = functionRecorder3,
+            s1.copy(oldHeaps = oldHeaps3,
+                    functionRecorder = functionRecorder3,
                     possibleTriggers = possibleTriggers3,
                     triggerExp = triggerExp3,
                     constrainableARPs = constrainableARPs3,
@@ -331,7 +371,7 @@ object State {
       triggerExp1,
       partiallyConsumedHeap1,
       permissionScalingFactor1, permissionScalingFactorExp1, isEvalInOld,
-      reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
+      reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1, isInPackage1,
       ssCache1, assertReadAccessOnly1,
       qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
       predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
@@ -355,7 +395,7 @@ object State {
           triggerExp2,
           partiallyConsumedHeap2,
           `permissionScalingFactor1`, `permissionScalingFactorExp1`, `isEvalInOld`,
-          reserveHeaps2, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`,
+          reserveHeaps2, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`, `isInPackage1`,
           ssCache2, `assertReadAccessOnly1`,
           `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, smDomainNeeded2,
           `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,

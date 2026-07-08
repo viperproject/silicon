@@ -19,7 +19,7 @@ import viper.silicon.utils.ast.{BigAnd, buildMinExp, removeKnownToBeTrueExp, rep
 import viper.silicon.verifier.Verifier
 import viper.silicon.{MList, MMap}
 import viper.silver.ast
-import viper.silver.parser.{PKw, PPrimitiv, PReserved}
+import viper.silver.parser.PUnknown
 import viper.silver.verifier.VerificationError
 
 import scala.collection.mutable.ListBuffer
@@ -130,7 +130,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                 case Some(v) =>
                   ReusedSummarisingSnapshot(v)
                 case None =>
-                  val ss = v.decider.appliedFresh("ss", sort, s.functionRecorderQuantifiedVariables().map(_._1))
+                  val ss = v.decider.appliedFresh("ss", sort, s.functionRecorderQuantifiedVariables().map(_._1) ++ s.quantifiedVariables.map(_._1))
                   FreshSummarisingSnapshot(ss)
               }
           }
@@ -165,10 +165,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     // the counterexample might be wrong.
     if (relevantChunks.size == 1 &&  !Verifier.config.counterexample.isDefined) {
       val chunk = relevantChunks.head
-      if (v.decider.check(And(chunk.args.zip(args).map { case (t1, t2) => t1 === t2 }), Verifier.config.checkTimeout())) {
+      val argsEqual = And(chunk.args.zip(args).map { case (t1, t2) => t1 === t2 })
+      if (v.decider.check(argsEqual, Verifier.config.checkTimeout())) {
         return Q(s, chunk.snap, chunk.perm, chunk.permExp, v)
-      } else {
-        return Q(s, chunk.snap, NoPerm, Option.when(withExp)(ast.NoPerm()()), v)
       }
     }
 
@@ -205,7 +204,12 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     if (relevantChunks.isEmpty) {
       if (v.decider.checkSmoke(true)) {
-        Success() // TODO: Mark branch as dead?
+        if (s.isInPackage) {
+          val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
+          Q(s, snap, v)
+        } else {
+          Success() // TODO: Mark branch as dead?
+        }
       } else {
         createFailure(ve, v, s, False, "branch is dead")
       }
@@ -445,15 +449,15 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val eqCmps = ch.args.zip(args).map { case (t1, t2) => t1 === t2 }
         val eq = And(eqCmps)
         val eqExp = permsExp.map(pe => BigAnd(removeKnownToBeTrueExp(ch.argsExp.get.zip(argsExp.get).map{ case (t1, t2) => ast.EqCmp(t1, t2)(pe.pos, pe.info, pe.errT) }.toList, eqCmps.toList)))
-        val permTaken = v.decider.fresh("p", sorts.Perm, Option.when(withExp)(PPrimitiv(PReserved(PKw.Perm)((ast.NoPosition, ast.NoPosition)))()))
-        val permTakenExp = permsExp.map(pe => ast.LocalVar(simplifyVariableName(permTaken.id.name), ast.Perm)(pe.pos, pe.info, pe.errT))
+        val permTaken = v.decider.appliedFresh("p", sorts.Perm, s.functionRecorderQuantifiedVariables().map(_._1) ++ s.quantifiedVariables.map(_._1))
+        val permTakenExp = permsExp.map(pe => ast.LocalVar(simplifyVariableName(permTaken.applicable.id.name), ast.Perm)(pe.pos, pe.info, pe.errT))
 
         totalPermSum = PermPlus(totalPermSum, Ite(eq, ch.perm, NoPerm))
         totalPermSumExp = totalPermSumExp.map(tps => ast.PermAdd(tps, ast.CondExp(eqExp.get, ch.permExp.get, ast.NoPerm()())(eqExp.get.pos, eqExp.get.info, eqExp.get.errT))(permsExp.get.pos, permsExp.get.info, permsExp.get.errT))
         totalPermTaken = PermPlus(totalPermTaken, permTaken)
         totalPermTakenExp = totalPermTakenExp.map(tpt => ast.PermAdd(tpt, permTakenExp.get)(permsExp.get.pos, permsExp.get.info, permsExp.get.errT))
 
-        val constraint = And(IsValidPermVar(permTaken),
+        val constraint = And(IsValidPermVal(permTaken),
           PermAtMost(permTaken, ch.perm),
           Implies(Not(eq), permTaken === NoPerm),
           Implies(And(eq, IsPositive(ch.perm)), PermLess(permTaken, ch.perm))
@@ -465,7 +469,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
 
         v.decider.assume(constraint, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)))
-        newFr = newFr.recordConstrainedVar(permTaken, constraint)
+
+        newFr = newFr.recordPathSymbol(permTaken.applicable.asInstanceOf[Function]).recordConstraint(constraint)
 
         ch.withPerm(PermMinus(ch.perm, permTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, permTakenExp.get)(pe.pos, pe.info, pe.errT)))
       })
@@ -485,7 +490,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     val s1 = s.copy(functionRecorder = newFr)
 
-    v.decider.assert(totalPermTaken !== NoPerm) {
+    v.decider.assert(Implies(PermLess(NoPerm, perms), totalPermTaken !== NoPerm)) {
       case true =>
         val constraintExp = permsExp.map(pe => ast.EqCmp(pe, totalPermTakenExp.get)())
         v.decider.assume(perms === totalPermTaken, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)))
