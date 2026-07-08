@@ -1,6 +1,5 @@
 package viper.silicon.state.chunks
 
-import viper.silicon.state.chunks.{GeneralChunk, NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
 import viper.silicon.resources.BaseID

@@ -9,7 +9,7 @@ import viper.silicon.supporters.DefaultMethodVerificationUnitProvider
 import viper.silver.ast.Method
 import viper.silver.dependencyAnalysis._
 
-trait DependencyAnalysisMethodVerification extends DefaultMethodVerificationUnitProvider { v: DependencyAnalysisAwareVerifier =>
+trait DependencyAnalysisAwareMethodVerificationUnitProvider extends DefaultMethodVerificationUnitProvider { v: DependencyAnalysisAwareVerifier =>
   override def methodSupporter: MethodSupporter = DependencyAnalysisAwareMethodSupporter
 
   private object DependencyAnalysisAwareMethodSupporter extends MethodSupporter {

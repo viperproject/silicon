@@ -12,11 +12,11 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.dependencyAnalysis._
 
-trait DependencyAnalysisAwareFunctionVerification extends DefaultFunctionVerificationUnitProvider { v: DependencyAnalysisAwareVerifier =>
+trait DependencyAnalysisAwareFunctionVerificationUnitProvider extends DefaultFunctionVerificationUnitProvider { v: DependencyAnalysisAwareVerifier =>
 
-  override def functionsSupporter: FunctionsSupporter = DependencyAwareFunctionSupporter
+  override def functionsSupporter: FunctionsSupporter = DependencyAnalysisAwareFunctionSupporter
 
-  object DependencyAwareFunctionSupporter extends FunctionsSupporter {
+  object DependencyAnalysisAwareFunctionSupporter extends FunctionsSupporter {
     override protected def handleFunction(sInit: State, function: ast.Function): VerificationResult = {
 
       val presAssertionNodeForJoin = function.pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(pc)), List(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up)), function.name))

@@ -10,9 +10,9 @@ import viper.silicon.verifier.{BaseVerifier, DefaultMainVerifier, Verifier, Work
 import viper.silver.ast
 import viper.silver.reporter.Reporter
 
-trait DependencyAnalysisAwareVerifier extends BaseVerifier with DependencyAnalysisDeciderProvider {
+trait DependencyAnalysisAwareVerifier extends BaseVerifier with DependencyAnalysisAwareDeciderProvider {
 
-  override val chunkFactory: ChunkFactory = new DependencyAwareChunkFactory(DADecider)
+  override val chunkFactory: ChunkFactory = new DependencyAnalysisAwareChunkFactory(DADecider)
 
 }
 
@@ -21,17 +21,17 @@ class DependencyAnalysisAwareMainVerifier(config: Config,
                                           override val rootSymbExLogger: SymbExLogger[_ <: MemberSymbExLogger])
   extends DefaultMainVerifier(config, reporter, rootSymbExLogger)
     with DependencyAnalysisAwareVerifier
-    with DependencyAnalysisAwareFunctionVerification {
+    with DependencyAnalysisAwareFunctionVerificationUnitProvider {
 
-  override protected lazy val _verificationPoolManager: DependencyAwareVerificationPoolManager = new DependencyAwareVerificationPoolManager(this)
+  override protected lazy val _verificationPoolManager: DependencyAnalysisAwareVerificationPoolManager = new DependencyAnalysisAwareVerificationPoolManager(this)
 
-  override def verificationPoolManager: DependencyAwareVerificationPoolManager = _verificationPoolManager
+  override def verificationPoolManager: DependencyAnalysisAwareVerificationPoolManager = _verificationPoolManager
 
   override def createWorkerVerifier(): DependencyAnalysisAwareWorkerVerifier = new DependencyAnalysisAwareWorkerVerifier(this, nextUniqueVerifierId(), reporter, debugMode)
 
   override def allProvers: AllProvers with DependencyAnalysisProverFeatures = DependencyAnalysisAwareAllProvers
 
-  object DependencyAnalysisAwareAllProvers extends AllProvers with DependencyAnalysisProverFeatures
+  private object DependencyAnalysisAwareAllProvers extends AllProvers with DependencyAnalysisProverFeatures
 
   override def verifyMember(doVerify: Unit => Seq[VerificationResult], v: Verifier, member: ast.Member): Seq[VerificationResult] = {
     v match {
@@ -55,8 +55,8 @@ class DependencyAnalysisAwareMainVerifier(config: Config,
 }
 
 class DependencyAnalysisAwareWorkerVerifier(mainVerifier: DependencyAnalysisAwareMainVerifier,
-                                            uniqueId: String,
-                                            override val reporter: Reporter,
-                                            override val debugMode: Boolean)
+																						uniqueId: String,
+																						override val reporter: Reporter,
+																						override val debugMode: Boolean)
   extends WorkerVerifier(mainVerifier, uniqueId, reporter, debugMode)
-    with DependencyAnalysisAwareVerifier with DependencyAnalysisMethodVerification
+    with DependencyAnalysisAwareVerifier with DependencyAnalysisAwareMethodVerificationUnitProvider

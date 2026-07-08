@@ -1,6 +1,5 @@
 package viper.silicon.state.chunks
 
-import viper.silicon.state.chunks.{GeneralChunk, NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon
 import viper.silicon.decider.Decider
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
@@ -13,7 +12,7 @@ import viper.silver.dependencyAnalysis.DependencyType
 
 import scala.annotation.unused
 
-class DependencyAwareChunkFactory(decider: Decider with DependencyAnalysisDeciderFeatures) extends ChunkFactory {
+class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalysisDeciderFeatures) extends ChunkFactory {
   override def createBasicChunk(resourceID: BaseID,
                                 id: BasicChunkIdentifier,
                                 args: Seq[Term],

@@ -1,9 +1,9 @@
 package viper.silicon.dependencyAnalysis.siliconComponents
 
-import viper.silicon.state.chunks.{Chunk, GeneralChunk}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.{DefaultDeciderProvider, Mark, Z3ProverStdIO}
 import viper.silicon.dependencyAnalysis._
+import viper.silicon.state.chunks.{Chunk, GeneralChunk}
 import viper.silicon.state.terms.{False, Term, True}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -23,25 +23,25 @@ trait DependencyAnalysisDeciderFeatures {
   def getOrCreateAnalysisLabelNode(sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Option[LabelNode]
 }
 
-trait DependencyAnalysisDeciderProvider extends DefaultDeciderProvider { v: DependencyAnalysisAwareVerifier =>
+trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v: DependencyAnalysisAwareVerifier =>
   override def decider: DependencyAnalysisAwareDecider = DADecider
 
-  object DADecider extends DependencyAnalysisAwareDecider
+  private object DADecider extends DependencyAnalysisAwareDecider
 
   trait DependencyAnalysisAwareDecider extends AbstractDecider with DependencyAnalysisDeciderFeatures {
 
     override def isDependencyAnalysisEnabled: Boolean = Verifier.config.enableDependencyAnalysis() && !dependencyAnalyzer.isInstanceOf[NoDependencyAnalyzer]
 
-    protected var _daProver: DependencyAwareZ3ProverStdIO = _
-    override def prover: DependencyAwareZ3ProverStdIO = _daProver
+    protected var _daProver: DependencyAnalysisAwareZ3ProverStdIO = _
+    override def prover: DependencyAnalysisAwareZ3ProverStdIO = _daProver
 
     override protected def initProver(proverName: String): Unit = {
       _daProver = getProver(proverName)
       _prover = _daProver
     }
 
-    override protected def getProver(prover: String): DependencyAwareZ3ProverStdIO = prover match {
-      case Z3ProverStdIO.name => new DependencyAwareZ3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
+    override protected def getProver(prover: String): DependencyAnalysisAwareZ3ProverStdIO = prover match {
+      case Z3ProverStdIO.name => new DependencyAnalysisAwareZ3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
       case prover =>
         val msg1 = s"Prover '$prover' not supported in combination with the dependency analysis. Defaulting to ${Z3ProverStdIO.name}."
         logger warn msg1
