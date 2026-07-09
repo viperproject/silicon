@@ -8,7 +8,11 @@ package viper.silicon.tests
 
 import viper.silicon.SiliconFrontend
 import viper.silicon.dependencyAnalysis._
-import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisProgressSupporter, DependencyAnalysisPruningSupporter, DependencyGraphInterpreter}
+import viper.silicon.dependencyAnalysis.graphInterpretation.{
+  DependencyAnalysisProgressSupporter,
+  DependencyAnalysisPruningSupporter,
+  DependencyGraphInterpreter
+}
 import viper.silver.ast.Program
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.verifier.VerificationResult
@@ -28,7 +32,7 @@ trait DependencyAnalysisTestFramework {
   val ignores: Seq[String]
   var baseCommandLineArguments: Seq[String] = Seq("--timeout", "300" /* seconds */)
   var analysisCommandLineArguments: Seq[String] =
-    baseCommandLineArguments ++ Seq("--enableDependencyAnalysis", "--disableInfeasibilityChecks", "--proverArgs", "proof=true unsat-core=true")
+    baseCommandLineArguments ++ Seq("--enableDependencyAnalysis", "--analyzeInfeasiblePaths", "--proverArgs", "proof=true unsat-core=true")
 
   def visitFiles(dirName: String, function: (String, String) => Unit): Unit = {
     val path = Paths.get(getClass.getClassLoader.getResource(dirName).toURI)

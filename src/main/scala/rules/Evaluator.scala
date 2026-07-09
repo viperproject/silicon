@@ -10,9 +10,16 @@ import viper.silicon
 import viper.silicon.Config.JoinMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis.{
+  DependencyAnalysisInfos,
+  DependencyAnalyzer
+}
 import viper.silicon.interfaces._
-import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
+import viper.silicon.logger.records.data.{
+  CondExpRecord,
+  EvaluateRecord,
+  ImpliesRecord
+}
 import viper.silicon.state._
 import viper.silicon.state.chunks._
 import viper.silicon.state.terms._
@@ -23,13 +30,25 @@ import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silver.ast
-import viper.silver.ast.{AnnotationInfo, FalseLit, LocalVarWithVersion, WeightedQuantifier}
+import viper.silver.ast.{
+  AnnotationInfo,
+  FalseLit,
+  LocalVarWithVersion,
+  WeightedQuantifier
+}
 import viper.silver.dependencyAnalysis._
 import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
 import viper.silver.utility.Common.Rational
-import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
+import viper.silver.verifier.errors.{
+  ErrorWrapperWithExampleTransformer,
+  PreconditionInAppFalse
+}
 import viper.silver.verifier.reasons._
-import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, VerifierWarning}
+import viper.silver.verifier.{
+  CounterexampleTransformer,
+  PartialVerificationError,
+  VerifierWarning
+}
 
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
@@ -572,7 +591,7 @@ object evaluator extends EvaluationRules {
           case (s1, _, _, _, _, None, v1) =>
             // This should not happen unless the current path is dead.
             if (v1.decider.checkSmoke(analysisInfos, isAssert = true)) {
-              if (Verifier.config.disableInfeasibilityChecks()) {
+              if (Verifier.config.analyzeInfeasiblePaths()) {
                 val freshVar = v1.decider.fresh(v1.symbolConverter.toSort(sourceQuant.typ), None)
                 Q(s1, freshVar, None, v1)
               } else Unreachable()
@@ -805,7 +824,7 @@ object evaluator extends EvaluationRules {
                   val failure = createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2a, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))
                   if (s2a.retryLevel == 0) v2.decider.handleFailedAssertion(False, Option.when(withExp)(FalseLit()()), Option.when(withExp)(FalseLit()()), analysisInfos, v2.reportFurtherErrors())
                   val freshVar = v2.decider.fresh(v2.symbolConverter.toSort(e.typ), None)
-                  if (s2a.retryLevel == 0 && v2.reportFurtherErrors() && Verifier.config.disableInfeasibilityChecks()) failure combine Q(s2a, freshVar, None, v2) else failure
+                  if (s2a.retryLevel == 0 && v2.reportFurtherErrors() && Verifier.config.analyzeInfeasiblePaths()) failure combine Q(s2a, freshVar, None, v2) else failure
               }}))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables.map(_._1))
@@ -1427,12 +1446,12 @@ object evaluator extends EvaluationRules {
     assert(entries.nonEmpty, "Expected at least one join data entry")
 
     // join entries coming from feasible paths only!
-    val feasibleEntries = entries filter (!Verifier.config.disableInfeasibilityChecks() || _.pathConditions.infeasibilityNodeId.isEmpty)
+    val feasibleEntries = entries filter (!Verifier.config.analyzeInfeasiblePaths() || _.pathConditions.infeasibilityNodeId.isEmpty)
 
     feasibleEntries match {
       case Seq() =>
         /* feasibility checks are disabled and all entries are infeasible, we can return any state and data */
-        v.decider.pcs.setPathInfeasible(true)
+        v.decider.pcs.markPathInfeasible(true)
         v.decider.pcs.setCurrentInfeasibilityNode(entries.head.pathConditions.infeasibilityNodeId)
         (entries.head.s, entries.head.data)
       case Seq(entry) =>

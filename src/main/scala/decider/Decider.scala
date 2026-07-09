@@ -13,7 +13,11 @@ import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider._
-import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
+import viper.silicon.logger.records.data.{
+  DeciderAssertRecord,
+  DeciderAssumeRecord,
+  ProverAssertRecord
+}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Term, _}
 import viper.silicon.utils.ast.{extractPTypeFromExp, simplifyVariableName}
@@ -62,7 +66,7 @@ trait Decider {
 
   def debuggerAssume(terms: Iterable[Term], de: DebugExp)
 
-  def isPathInfeasible: Boolean
+  def isPathMarkedInfeasible: Boolean
   def handleInfeasiblePath(hasAssertions: Boolean, hasAssumptions: Boolean, analysisInfos: DependencyAnalysisInfos): Unit
 
   def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos): Unit
@@ -270,7 +274,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp]), analysisInfos: DependencyAnalysisInfos): Unit = {
-      if (isPathInfeasible) return
+      if (isPathMarkedInfeasible) return
 
       pathConditions.setCurrentBranchCondition(t, te)
       assume(t, Option.when(te._2.isDefined)(te._1), te._2, analysisInfos)
@@ -292,7 +296,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
     }
 
-    def isPathInfeasible: Boolean = Verifier.config.disableInfeasibilityChecks() && pcs.isPathInfeasible
+    def isPathMarkedInfeasible: Boolean = Verifier.config.analyzeInfeasiblePaths() && pcs.isPathMarkedInfeasible
 
     def handleInfeasiblePath(hasAssertions: Boolean, hasAssumptions: Boolean, analysisInfos: DependencyAnalysisInfos): Unit = {}
 
@@ -380,7 +384,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     protected def assumeWithoutSmokeChecks(termsWithLabel: InsertionOrderedSet[(Term, String)], analysisInfos: DependencyAnalysisInfos, isDefinition: Boolean = false): Unit = {
-      if (isPathInfeasible) return
+      if (isPathMarkedInfeasible) return
 
       val terms = termsWithLabel map (_._1)
       val assumeRecord = new DeciderAssumeRecord(terms)
@@ -408,7 +412,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     protected def checkSmokeInternal(isAssert: Boolean=false, label: String=""): Boolean = {
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
       val result = prover.check(timeout, label) == Unsat
-      if(result) pcs.setPathInfeasible(true)
+      if(result) pcs.markPathInfeasible(true)
       result
     }
 
@@ -471,7 +475,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val assertRecord = new ProverAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
-      val result = isPathInfeasible || prover.assert(t, timeout, label)
+      val result = isPathMarkedInfeasible || prover.assert(t, timeout, label)
 
       symbExLog.whenEnabled {
         assertRecord.statistics = Some(symbExLog.deltaStatistics(prover.statistics()))

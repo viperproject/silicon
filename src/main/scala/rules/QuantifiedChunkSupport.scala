@@ -13,24 +13,38 @@ import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.logger.records.data.CommentRecord
-import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, QuantifiedPropertyInterpreter, Resources}
+import viper.silicon.resources.{
+  NonQuantifiedPropertyInterpreter,
+  QuantifiedPropertyInterpreter,
+  Resources
+}
 import viper.silicon.state._
 import viper.silicon.state.chunks._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{BigPermSum, IsPositive}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.utils.consumeExactRead
-import viper.silicon.supporters.functions.{FunctionRecorder, NoopFunctionRecorder}
+import viper.silicon.supporters.functions.{
+  FunctionRecorder,
+  NoopFunctionRecorder
+}
 import viper.silicon.utils.ast.{BigAnd, buildMinExp}
 import viper.silicon.utils.freshSnap
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.{FalseLit, NoPosition}
-import viper.silver.dependencyAnalysis.{DependencyType, NoDependencyAnalysisMerge, StringAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{
+  DependencyType,
+  NoDependencyAnalysisMerge,
+  StringAnalysisSourceInfo
+}
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.InternalWarningMessage
-import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
+import viper.silver.verifier.reasons.{
+  InsufficientPermission,
+  MagicWandChunkNotFound
+}
 import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 
 import scala.collection.immutable.ArraySeq
@@ -1381,7 +1395,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 case (Incomplete(_, _), s2, _) =>
                   val failure = createFailure(pve dueTo insufficientPermissionReason, v, s2, "QP consume")
                   if (s2.retryLevel == 0) v.decider.handleFailedAssertion(False, Option.when(withExp)(FalseLit()()), Option.when(withExp)(FalseLit()()), analysisInfos, v.reportFurtherErrors())
-                  if (s2.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.disableInfeasibilityChecks()) failure combine Q(s2, s2.h, None, v) else failure
+                  if (s2.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.analyzeInfeasiblePaths()) failure combine Q(s2, s2.h, None, v) else failure
               }
             }
           case false =>

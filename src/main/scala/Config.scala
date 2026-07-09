@@ -692,44 +692,38 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val startDebuggerAutomatically: ScallopOption[Boolean] = opt[Boolean]("startDebuggerAutomatically",
-    descr = "Starts the debugging mode automatically after verification completes",
-    default = Some(false),
-    noshort = true
-  )
-
   val enableUnsatCores: ScallopOption[Boolean] = opt[Boolean]("enableUnsatCores",
-    descr = "Enables UNSAT cores",
+    descr = "Enable UNSAT cores",
     default = Some(false),
     noshort = true
   )
 
   val enableDependencyAnalysis: ScallopOption[Boolean] = opt[Boolean]("enableDependencyAnalysis",
-    descr = "Enable dependency analysis mode",
+    descr = "Enable the verification dependency analysis",
     default = Some(false),
     noshort = true
   )
 
   val disableDependencyAnalysisJoinPrecisionOpt: ScallopOption[Boolean] = opt[Boolean]("disableDependencyAnalysisJoinPrecisionOpt",
-    descr = "Disables the precision optimizations regarding edges across method boundaries.",
+    descr = "Disable the precision optimizations regarding edges across method boundaries.",
     default = Some(false),
     noshort = true
   )
 
   val enableDependencyAnalysisDebugging: ScallopOption[Boolean] = opt[Boolean]("enableDependencyAnalysisDebugging",
-    descr = "Enable debugging for dependency analysis mode",
+    descr = "Enable debugging for the verification dependency analysis mode",
     default = Some(false),
     noshort = true
   )
 
-  val disableInfeasibilityChecks: ScallopOption[Boolean] = opt[Boolean]("disableInfeasibilityChecks",
-    descr = "Disable infeasibility checks. As a consequence all paths will be explored to the end. (Potentially) huge performance overhead!",
+  val analyzeInfeasiblePaths: ScallopOption[Boolean] = opt[Boolean]("analyzeInfeasiblePaths",
+    descr = "Enable analysis of infeasible paths by making the verification step through all paths (even if provably infeasible)",
     default = Some(false),
     noshort = true
   )
 
   val dependencyAnalysisMode: ScallopOption[String] = opt[String]("dependencyAnalysisMode",
-    descr = "Dependency analysis commands (separated by ;) to be executed after verification. Available are `interactive` and all commands supported by the interactive CLI tool",
+    descr = "Set verification dependency analysis commands (separated by ;) to be executed after verification. Available are `interactive` and all commands supported by the interactive CLI tool",
     default = None,
     noshort = true
   )
@@ -792,7 +786,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   validateOpt(rawProverArgs, enableDependencyAnalysis) {
     case (_, Some(false)) => Right(())
-    case (Some(args), Some(true)) if args.contains("proof=true") && args.contains("unsat-core=true") => Right(())
+    case (Some(args), Some(true)) if args.toLowerCase.contains("proof=true") && args.toLowerCase.contains("unsat-core=true") => Right(())
     case (_, _) =>
       Left(s"Option ${enableDependencyAnalysis.name} requires ${rawProverArgs.name} with \"proof=true unsat-core=true\"")
   }
@@ -808,16 +802,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case (p, Some(true)) if p != Some(Z3ProverStdIO.name) =>
       Left(s"Dependency analysis is only supported with ${Z3ProverStdIO.name}")
     case _ => Right(())
-  }
-
-
-  validateOpt(startDebuggerAutomatically, enableDebugging) {
-    case (Some(false), _) => Right(())
-    case (Some(true), Some(true)) => Right(())
-    case (Some(true), Some(false)) =>
-      Left(s"Option ${startDebuggerAutomatically.name} requires option ${enableDebugging.name}")
-    case other =>
-      sys.error(s"Unexpected combination: $other")
   }
 
   /* Finalise configuration */

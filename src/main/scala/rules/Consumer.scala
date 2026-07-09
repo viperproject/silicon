@@ -6,25 +6,26 @@
 
 package viper.silicon.rules
 
-import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.Config.JoinMode
 import viper.silicon.debugger.DebugExp
-
-import scala.collection.mutable
-import viper.silver.ast
-import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons._
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces.VerificationResult
-import viper.silicon.logger.records.data.{CondExpRecord, ConsumeRecord, ImpliesRecord}
+import viper.silicon.logger.records.data.{
+  CondExpRecord,
+  ConsumeRecord,
+  ImpliesRecord
+}
 import viper.silicon.state._
+import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.state.terms._
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silver.dependencyAnalysis.{DependencyType, StringAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{
+  DependencyType,
+  StringAnalysisSourceInfo
+}
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons._
 
@@ -207,7 +208,7 @@ object consumer extends ConsumptionRules {
      * time permissions have been consumed.
      */
 
-    if (v.decider.isPathInfeasible) {
+    if (v.decider.isPathMarkedInfeasible) {
       v.decider.handleInfeasiblePath(true, false, analysisInfos)
       return Q(s, h, Option.when(returnSnap)(Unit), v)
     }

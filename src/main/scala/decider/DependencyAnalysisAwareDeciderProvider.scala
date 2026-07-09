@@ -107,7 +107,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
 
     override protected def proverAssert(t: Term, timeout: Option[Mark], label: String): Boolean = {
       val result = super.proverAssert(t, timeout, label)
-      if (isPathInfeasible)
+      if (isPathMarkedInfeasible)
         dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, Some(DependencyAnalyzer.getIdFromLabel(label)))
       else if (result)
         dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
@@ -118,7 +118,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       val checkNode = dependencyAnalyzer.createAssertOrCheckNode(False, analysisInfos, !isAssert)
       val label = DependencyAnalyzer.createAssertionLabel(checkNode.map(_.id))
 
-      if (isPathInfeasible) {
+      if (isPathMarkedInfeasible) {
         checkNode foreach dependencyAnalyzer.addAssertionNode
         dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, checkNode.map(_.id))
         return true
@@ -144,7 +144,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
     }
 
     override def handleInfeasiblePath(hasAssertions: Boolean, hasAssumptions: Boolean, analysisInfos: DependencyAnalysisInfos): Unit = {
-      if (!isPathInfeasible) return
+      if (!isPathMarkedInfeasible) return
       super.handleInfeasiblePath(hasAssertions, hasAssumptions, analysisInfos)
       if (hasAssertions) {
         dependencyAnalyzer.addAssertionWithDepToInfeasNode(pcs.getCurrentInfeasibilityNode, analysisInfos)

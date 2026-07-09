@@ -33,7 +33,7 @@ trait RecordedPathConditions {
   def declarations: InsertionOrderedSet[Decl]
   def analysisLabels: InsertionOrderedSet[Term]
   def infeasibilityNodeId: Option[Int]
-  def isPathInfeasible: Boolean
+  def isPathMarkedInfeasible: Boolean
 
   def definitionsOnly: RecordedPathConditions
 
@@ -71,8 +71,8 @@ trait PathConditionStack extends RecordedPathConditions {
   def popScope(): Unit
   def mark(): Mark
   def popUntilMark(mark: Mark): Unit
-  def isPathInfeasible: Boolean
-  def setPathInfeasible(infeasible: Boolean): Unit
+  def isPathMarkedInfeasible: Boolean
+  def markPathInfeasible(infeasible: Boolean): Unit
   def setCurrentInfeasibilityNode(node: Option[Int]): Unit
   def getCurrentInfeasibilityNode: Option[Int]
   def addAnalysisLabel(assumption: Term): Unit
@@ -99,7 +99,7 @@ private class PathConditionStackLayer
 
   private var _branchCondition: Option[Term] = None
   private var _branchConditionExp: Option[(ast.Exp, Option[ast.Exp])] = None
-  private var _isPathInfeasible: Boolean = false
+  private var _isPathMarkedInfeasible: Boolean = false
   private var _infeasibilityNodeId: Option[Int] = None
   private var _globalAssumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
   private var _nonGlobalAssumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
@@ -125,9 +125,9 @@ private class PathConditionStackLayer
   def declarations: InsertionOrderedSet[Decl] = _declarations
   def analysisLabels: InsertionOrderedSet[Term] = _analysisLabels
 
-  def isPathInfeasible: Boolean = _isPathInfeasible
-  def setPathInfeasible(infeasible: Boolean): Unit = {
-    _isPathInfeasible = infeasible
+  def isPathMarkedInfeasible: Boolean = _isPathMarkedInfeasible
+  def markPathInfeasible(infeasible: Boolean): Unit = {
+    _isPathMarkedInfeasible = infeasible
   }
 
   def infeasibilityNodeId: Option[Int] = _infeasibilityNodeId
@@ -292,7 +292,7 @@ private trait LayeredPathConditionStackLike {
   protected def analysisLabels(layers: Stack[PathConditionStackLayer]): InsertionOrderedSet[Term] =
     InsertionOrderedSet(layers.flatMap(_.analysisLabels))
 
-  protected def isPathInfeasible(layers: Stack[PathConditionStackLayer]): Boolean = layers.exists(_.isPathInfeasible)
+  protected def isPathMarkedInfeasible(layers: Stack[PathConditionStackLayer]): Boolean = layers.exists(_.isPathMarkedInfeasible)
 
   protected def infeasibilityNodeId(layers: Stack[PathConditionStackLayer]): Option[Int] =
     layers.flatMap(_.infeasibilityNodeId).headOption
@@ -444,7 +444,7 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
   val declarations: InsertionOrderedSet[Decl] = declarations(from)
   val analysisLabels: InsertionOrderedSet[Term] = analysisLabels(from)
   val infeasibilityNodeId: Option[Int] = infeasibilityNodeId(from)
-  val isPathInfeasible: Boolean = isPathInfeasible(from)
+  val isPathMarkedInfeasible: Boolean = isPathMarkedInfeasible(from)
 
   def contains(assumption: Term): Boolean = contains(from, assumption)
 
@@ -502,12 +502,12 @@ private[decider] class LayeredPathConditionStack
     layers.head.branchConditionExp = conditionExp
   }
 
-  def setPathInfeasible(isInfeasible: Boolean): Unit = {
-    layers.head.setPathInfeasible(isInfeasible)
+  def markPathInfeasible(isInfeasible: Boolean): Unit = {
+    layers.head.markPathInfeasible(isInfeasible)
   }
 
-  def isPathInfeasible: Boolean = {
-    layers.exists(_.isPathInfeasible)
+  def isPathMarkedInfeasible: Boolean = {
+    layers.exists(_.isPathMarkedInfeasible)
   }
 
   def setCurrentInfeasibilityNode(node: Option[Int]): Unit = {

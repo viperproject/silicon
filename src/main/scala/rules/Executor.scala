@@ -10,13 +10,25 @@ import viper.silicon.Config.JoinMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis.{
+  DependencyAnalysisInfos,
+  DependencyAnalyzer
+}
 import viper.silicon.interfaces._
-import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
+import viper.silicon.logger.records.data.{
+  CommentRecord,
+  ConditionalEdgeRecord,
+  ExecuteRecord,
+  MethodCallRecord
+}
 import viper.silicon.state._
 import viper.silicon.state.chunks._
 import viper.silicon.state.terms._
-import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableName}
+import viper.silicon.utils.ast.{
+  BigAnd,
+  extractPTypeFromExp,
+  simplifyVariableName
+}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast.{FalseLit, NoPosition}
@@ -26,7 +38,11 @@ import viper.silver.cfg.{ConditionalEdge, StatementBlock}
 import viper.silver.dependencyAnalysis._
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
-import viper.silver.verifier.{CounterexampleTransformer, NullPartialVerificationError, PartialVerificationError}
+import viper.silver.verifier.{
+  CounterexampleTransformer,
+  NullPartialVerificationError,
+  PartialVerificationError
+}
 import viper.silver.{ast, cfg}
 
 import scala.annotation.unused
@@ -93,7 +109,7 @@ object executor extends ExecutionRules {
 
   def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
     edge.kind match {
-      case cfg.Kind.Out if !v.decider.isPathInfeasible =>
+      case cfg.Kind.Out if !v.decider.isPathMarkedInfeasible =>
         val analysisInfos = v.decider.defaultAnalysisInfos
         val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, s.invariantContexts.head, v, analysisInfos)
         val s1 = s.copy(functionRecorder = fr1, h = h1,
@@ -133,9 +149,9 @@ object executor extends ExecutionRules {
           // as opposed to a loop head block.
           edge1.source.isInstanceOf[StatementBlock[ast.Stmt, ast.Exp]] &&
           edge2.source.isInstanceOf[StatementBlock[ast.Stmt, ast.Exp]]) ||
-          v.decider.isPathInfeasible =>
+          v.decider.isPathMarkedInfeasible =>
 
-        val isPathInfeasibleBefore = v.decider.isPathInfeasible
+        val isPathMarkedInfeasibleBefore = v.decider.isPathMarkedInfeasible
         assert(edge1.source == edge2.source)
 
         val cedge1 = edge1.asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]]
@@ -162,7 +178,7 @@ object executor extends ExecutionRules {
             val s2 = entries match {
               case Seq(entry) => // One branch is dead
                 entry.s
-              case Seq(entry1, _) if isPathInfeasibleBefore => // no need to merge since path is dead anyway
+              case Seq(entry1, _) if isPathMarkedInfeasibleBefore => // no need to merge since path is dead anyway
                 entry1.s
               case Seq(entry1, entry2) => // Both branches are alive
                 entry1.pathConditionAwareMerge(entry2, v1)
@@ -292,11 +308,11 @@ object executor extends ExecutionRules {
                       intermediateResult combine executionFlowController.locally(s2, v1)((s3, v2) => {
                         v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
                         v2.decider.declareAndRecordAsFreshMacros(fm1.filter(!v2.decider.freshMacros.contains(_)))  /* [BRANCH-PARALLELISATION] */
-                        v2.decider.pcs.setPathInfeasible(v2.decider.pcs.isPathInfeasible || pcs.isPathInfeasible)
+                        v2.decider.pcs.markPathInfeasible(v2.decider.pcs.isPathMarkedInfeasible || pcs.isPathMarkedInfeasible)
                         if (v2.decider.pcs.getCurrentInfeasibilityNode.isEmpty) v2.decider.pcs.setCurrentInfeasibilityNode(pcs.infeasibilityNodeId)
                         v2.decider.assume(pcs.assumptions map (t => DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v.decider, t, Set.empty, Set(t))), Some(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, analysisInfosLoopInternal)
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-                        if (!Verifier.config.disableInfeasibilityChecks() && v2.decider.checkSmoke(analysisInfosLoopInternal))
+                        if (!Verifier.config.analyzeInfeasiblePaths() && v2.decider.checkSmoke(analysisInfosLoopInternal))
                           Success()
                         else {
                           execs(s3, stmts, v2)((s4, v3) => {
@@ -436,7 +452,7 @@ object executor extends ExecutionRules {
         })
 
       case inhale @ ast.Inhale(a) => a match {
-        case _: ast.FalseLit if !Verifier.config.disableInfeasibilityChecks() =>
+        case _: ast.FalseLit if !Verifier.config.analyzeInfeasiblePaths() =>
           /* We're done */
           Success()
         case _: ast.TrueLit =>
@@ -444,7 +460,7 @@ object executor extends ExecutionRules {
         case _ =>
           produce(s, freshSnap, a, InhaleFailed(inhale), v, analysisInfos)((s1, v1) => {
             v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-            if (Verifier.config.disableInfeasibilityChecks() && a.isInstanceOf[ast.FalseLit]) v1.decider.checkSmoke(analysisInfos)
+            if (Verifier.config.analyzeInfeasiblePaths() && a.isInstanceOf[ast.FalseLit]) v1.decider.checkSmoke(analysisInfos)
             Q(s1, v1)})
       }
 
@@ -465,7 +481,7 @@ object executor extends ExecutionRules {
             if (s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine QS(s1, v1) else failure
           }
         })((s2, v2) =>
-          if (Verifier.config.disableInfeasibilityChecks())
+          if (Verifier.config.analyzeInfeasiblePaths())
             Q(s2, v2)
           else
             Success()

@@ -9,10 +9,19 @@ package viper.silicon.rules
 import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
 import viper.silicon.interfaces.{Success, VerificationResult}
-import viper.silicon.resources.{FieldID, NonQuantifiedPropertyInterpreter, Resources}
+import viper.silicon.resources.{
+  FieldID,
+  NonQuantifiedPropertyInterpreter,
+  Resources
+}
 import viper.silicon.rules.chunkSupporter.findChunksWithID
 import viper.silicon.state._
-import viper.silicon.state.chunks.{BasicChunk, Chunk, ChunkIdentifier, NonQuantifiedChunk}
+import viper.silicon.state.chunks.{
+  BasicChunk,
+  Chunk,
+  ChunkIdentifier,
+  NonQuantifiedChunk
+}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{IsNonPositive, IsPositive}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
@@ -21,7 +30,10 @@ import viper.silicon.verifier.Verifier
 import viper.silicon.{MList, MMap}
 import viper.silver.ast
 import viper.silver.ast.FalseLit
-import viper.silver.dependencyAnalysis.{DependencyType, StringAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{
+  DependencyType,
+  StringAnalysisSourceInfo
+}
 import viper.silver.parser.PUnknown
 import viper.silver.verifier.VerificationError
 
@@ -213,7 +225,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     if (relevantChunks.isEmpty) {
       if (v.decider.checkSmoke(analysisInfos, isAssert = true)) {
-        if (s.isInPackage || Verifier.config.disableInfeasibilityChecks()) {
+        if (s.isInPackage || Verifier.config.analyzeInfeasiblePaths()) {
           val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
           Q(s, snap, v)
         } else {
@@ -222,7 +234,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       } else {
         val failure = createFailure(ve, v, s, False, "branch is dead")
         if (s.retryLevel == 0) v.decider.handleFailedAssertion(False, Option.when(withExp)(FalseLit()()), Option.when(withExp)(FalseLit()()), analysisInfos, v.reportFurtherErrors())
-        if (s.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.disableInfeasibilityChecks()) {
+        if (s.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.analyzeInfeasiblePaths()) {
           val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
           failure combine Q(s, snap, v)
         } else {

@@ -140,7 +140,7 @@ object DependencyAnalyzer {
       info.getAllInfos[AdditionalDependencyNodeInfo].foreach {
         case AdditionalAssertionNode() => daDecider.getDependencyAnalyzer.createAssertOrCheckNode(True, newAnalysisInfos, isCheck = false).foreach(n => {
           daDecider.getDependencyAnalyzer.addAssertionNode(n)
-          if (daDecider.isPathInfeasible) daDecider.getDependencyAnalyzer.addDependency(daDecider.pcs.getCurrentInfeasibilityNode, Some(n.id))
+          if (daDecider.isPathMarkedInfeasible) daDecider.getDependencyAnalyzer.addDependency(daDecider.pcs.getCurrentInfeasibilityNode, Some(n.id))
         })
         case AdditionalAssumptionNode() => daDecider.getDependencyAnalyzer.addAssumption(True, newAnalysisInfos)
       }

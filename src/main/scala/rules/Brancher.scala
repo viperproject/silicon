@@ -8,14 +8,20 @@ package viper.silicon.rules
 
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis.{
+  DependencyAnalysisInfos,
+  DependencyAnalyzer
+}
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.state.State
 import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.dependencyAnalysis.{DependencyType, NoDependencyAnalysisMerge}
+import viper.silver.dependencyAnalysis.{
+  DependencyType,
+  NoDependencyAnalysisMerge
+}
 import viper.silver.reporter.BranchFailureMessage
 import viper.silver.verifier.Failure
 
@@ -45,7 +51,7 @@ object brancher extends BranchingRules {
              fElse: (State, Verifier) => VerificationResult)
             : VerificationResult = {
 
-    if (v.decider.isPathInfeasible) {
+    if (v.decider.isPathMarkedInfeasible) {
       val analysisInfos1 = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, analysisInfos, conditionExp._1.info, conditionExp._1)
       v.decider.handleInfeasiblePath(false, true, analysisInfos1)
       return fThen(s, v).combine(fElse(s, v))
@@ -109,7 +115,7 @@ object brancher extends BranchingRules {
     var noOfErrors = 0
 
     val elseBranchVerificationTask: Verifier => VerificationResult =
-      if (executeElseBranch || Verifier.config.disableInfeasibilityChecks()) {
+      if (executeElseBranch || Verifier.config.analyzeInfeasiblePaths()) {
         /* [BRANCH-PARALLELISATION] */
         /* Compute the following sets
          *   1. only if the else-branch needs to be explored
@@ -186,7 +192,7 @@ object brancher extends BranchingRules {
       }
 
     val elseBranchFuture: Future[Seq[VerificationResult]] =
-      if (executeElseBranch || Verifier.config.disableInfeasibilityChecks()) {
+      if (executeElseBranch || Verifier.config.analyzeInfeasiblePaths()) {
         if (parallelizeElseBranch) {
           /* [BRANCH-PARALLELISATION] */
           v.verificationPoolManager.queueVerificationTask(v0 => {
@@ -202,7 +208,7 @@ object brancher extends BranchingRules {
       }
 
     val res = {
-      val thenRes = if (executeThenBranch || Verifier.config.disableInfeasibilityChecks()) {
+      val thenRes = if (executeThenBranch || Verifier.config.analyzeInfeasiblePaths()) {
           v.symbExLog.markReachable(uidBranchPoint)
           executionFlowController.locally(s, v)((s1, v1) => {
             v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")

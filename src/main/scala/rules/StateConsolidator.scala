@@ -20,7 +20,10 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.FunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.dependencyAnalysis.{DependencyType, StringAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{
+  DependencyType,
+  StringAnalysisSourceInfo
+}
 
 import scala.annotation.unused
 
@@ -59,7 +62,7 @@ class MinimalStateConsolidator extends StateConsolidationRules {
   */
 class DefaultStateConsolidator(protected val config: Config) extends StateConsolidationRules {
   def consolidate(s: State, v: Verifier): State = {
-    if (v.decider.isPathInfeasible) return s
+    if (v.decider.isPathMarkedInfeasible) return s
 
     val comLog = new CommentRecord("state consolidation", s, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(comLog)
@@ -132,7 +135,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   }
 
   def merge(fr1: FunctionRecorder, s: State, h: Heap, newH: Heap, v: Verifier, analysisInfos: DependencyAnalysisInfos): (FunctionRecorder, Heap) = {
-    if (v.decider.isPathInfeasible) return (fr1, h)
+    if (v.decider.isPathMarkedInfeasible) return (fr1, h)
 
     val analysisInfos1 = analysisInfos.addInfo("merge", ast.NoPosition, DependencyType.Internal)
 

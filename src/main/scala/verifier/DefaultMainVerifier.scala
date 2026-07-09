@@ -20,7 +20,10 @@ import viper.silicon.state._
 import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
 import viper.silicon.supporters._
-import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
+import viper.silicon.supporters.functions.{
+  DefaultFunctionVerificationUnitProvider,
+  FunctionData
+}
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
 import viper.silver.ast
@@ -345,7 +348,7 @@ class DefaultMainVerifier(config: Config,
       ++ predicateVerificationResults
       ++ methodVerificationResults)
 
-    if (Verifier.config.startDebuggerAutomatically()){
+    if (Verifier.config.enableDebugging()){
       val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
       debugger.startDebugger()
     }

@@ -12,7 +12,11 @@ import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.rules.havocSupporter.{HavocHelperData, HavocOneData, HavocallData}
+import viper.silicon.rules.havocSupporter.{
+  HavocHelperData,
+  HavocOneData,
+  HavocallData
+}
 import viper.silicon.rules.quantifiedChunkSupporter.freshSnapshotMap
 import viper.silicon.state._
 import viper.silicon.state.chunks._
@@ -25,10 +29,21 @@ import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.FalseLit
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, DependencyType, SimpleDependencyAnalysisMerge}
+import viper.silver.dependencyAnalysis.{
+  AnalysisSourceInfo,
+  DependencyType,
+  SimpleDependencyAnalysisMerge
+}
 import viper.silver.parser.PUnknown
-import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
-import viper.silver.verifier.{ErrorReason, PartialVerificationError, VerificationError}
+import viper.silver.verifier.reasons.{
+  InsufficientPermission,
+  MagicWandChunkNotFound
+}
+import viper.silver.verifier.{
+  ErrorReason,
+  PartialVerificationError,
+  VerificationError
+}
 
 
 trait HeapSupportRules extends SymbolicExecutionRules {
@@ -191,7 +206,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                       analysisInfos: DependencyAnalysisInfos)
                      (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
-    if (v.decider.isPathInfeasible) {
+    if (v.decider.isPathMarkedInfeasible) {
       v.decider.handleInfeasiblePath(true, true, analysisInfos)
       return Q(s, v)
     }
@@ -269,7 +284,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                       analysisInfos: DependencyAnalysisInfos)
                      (Q: (State, Term, Verifier) => VerificationResult): VerificationResult =
     {
-      if (v.decider.isPathInfeasible) {
+      if (v.decider.isPathMarkedInfeasible) {
         v.decider.handleInfeasiblePath(true, false, analysisInfos)
         return Q(s, NoPerm, v)
       }
@@ -337,7 +352,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                       analysisInfos: DependencyAnalysisInfos)
                      (Q: (State, Term, Verifier) => VerificationResult)
   : VerificationResult = {
-    if (v.decider.isPathInfeasible) {
+    if (v.decider.isPathMarkedInfeasible) {
       v.decider.handleInfeasiblePath(true, false, analysisInfos)
 
       val sort = v.symbolConverter.toSort(fa.field.typ)
@@ -545,7 +560,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                     v: Verifier,
                     analysisInfos: DependencyAnalysisInfos)
                    (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
-    if (v.decider.isPathInfeasible) {
+    if (v.decider.isPathMarkedInfeasible) {
       v.decider.handleInfeasiblePath(true, false, analysisInfos)
       return Q(s, h, Some(Unit), v)
     }
@@ -661,7 +676,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                         v: Verifier,
                         analysisInfos: DependencyAnalysisInfos)
                        (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
-    if (v.decider.isPathInfeasible) {
+    if (v.decider.isPathMarkedInfeasible) {
       v.decider.handleInfeasiblePath(true, false, analysisInfos)
       return Q(s, h, Some(Unit), v)
     }
