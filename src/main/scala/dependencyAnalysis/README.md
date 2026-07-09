@@ -4,7 +4,7 @@
 # Running Silicon with Dependency Analysis
 
 Dependency Analysis is enabled thorough the following configuration options:
-`--enableDependencyAnalysis --disableInfeasibilityChecks --proverArgs "proof=true unsat-core=true"`
+`--enableDependencyAnalysis --analyzeInfeasiblePaths --proverArgs "proof=true unsat-core=true"`
 
 Commands to be executed on the final dependency graph can be input via the `--dependencyAnalysisMode` config flag.
 Available commands are `interactive` and any command supported by the CLI tool. For example,
