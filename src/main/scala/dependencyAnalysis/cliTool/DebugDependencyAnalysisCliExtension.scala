@@ -8,6 +8,7 @@ package viper.silicon.dependencyAnalysis.cliTool
 
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
+import viper.silicon.verifier.Verifier
 import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType}
 
@@ -84,8 +85,15 @@ class DebugDependencyAnalysisCliExtension(override val interpreter: DependencyGr
     private def printWeirdNodes(): Unit = {
       interpreter.getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).groupBy(_.sourceInfo)
         .filter{case (sourceInfo, _) => weirdNodePattern.findFirstIn(sourceInfo.toString).isDefined}
-				.foreach{case (sourceInfo, nodes) => println(s"\n-- ${sourceInfo.toString}\n\t${nodes.map(n => s"${n.getNodeString} | ${n.assumptionType}").mkString("\n\t")}\n--")}
+				.foreach (printSingleNode)
+    }
 
+    private def printSingleNode(infoAndNodes: (AnalysisSourceInfo, Set[DependencyAnalysisNode])): Unit = {
+      val (sourceInfo, nodes) = infoAndNodes
+      val lowLevelNodesStr = if(Verifier.config.enableDependencyAnalysisDebugging())
+        s"\n\t${nodes.map(n => s"${n.getNodeString} | ${n.assumptionType}").mkString("\n\t")}"
+        else ""
+      println(s"\n--\n${sourceInfo.toString}$lowLevelNodesStr\n--")
     }
   }
 }
