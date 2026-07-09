@@ -37,6 +37,8 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
 
     override def isDependencyAnalysisEnabled: Boolean = Verifier.config.enableDependencyAnalysis() && !dependencyAnalyzer.isInstanceOf[NoDependencyAnalyzer]
 
+    override def defaultAnalysisInfos: DependencyAnalysisInfos = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withEnabled(isDependencyAnalysisEnabled)
+
     protected var _daProver: DependencyAnalysisAwareZ3ProverStdIO = _
     override def prover: DependencyAnalysisAwareZ3ProverStdIO = _daProver
 

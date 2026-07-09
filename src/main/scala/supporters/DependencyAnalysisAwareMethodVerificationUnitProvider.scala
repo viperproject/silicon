@@ -6,8 +6,8 @@
 
 package viper.silicon.supporters
 
+import viper.silicon.dependencyAnalysis.SimpleAssertionNode
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, SimpleAssertionNode}
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.state.State
 import viper.silicon.state.terms.True
@@ -28,7 +28,7 @@ trait DependencyAnalysisAwareMethodVerificationUnitProvider extends DefaultMetho
       val result = super.verify(sInit, method)
 
       if (method.body.isEmpty)
-        decider.getDependencyAnalyzer.addDependenciesForAbstractMembers(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts), DependencyAnalysisInfos.DefaultDependencyAnalysisInfos)
+        decider.getDependencyAnalyzer.addDependenciesForAbstractMembers(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts), decider.defaultAnalysisInfos)
 
       result foreach (r => {
         val allErrors = (r :: r.previous.toList).filter(_.isInstanceOf[Failure]).map(_.asInstanceOf[Failure])

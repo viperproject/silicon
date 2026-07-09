@@ -9,7 +9,7 @@ package viper.silicon.supporters.functions
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.DependencyAnalysisProverFeatures
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisAxiomInfo, DependencyAnalysisInfos, DependencyAnalyzer, SimpleAssertionNode}
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisAxiomInfo, DependencyAnalyzer, SimpleAssertionNode}
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.state.State
@@ -32,7 +32,7 @@ trait DependencyAnalysisAwareFunctionVerificationUnitProvider extends DefaultFun
 
       if (function.body.isEmpty) {
         decider.getDependencyAnalyzer.addNodes(decider.prover.getPreambleAnalysisNodes)
-        decider.getDependencyAnalyzer.addDependenciesForAbstractMembers(function.pres.flatMap(_.topLevelConjuncts), function.posts.flatMap(_.topLevelConjuncts), DependencyAnalysisInfos.DefaultDependencyAnalysisInfos)
+        decider.getDependencyAnalyzer.addDependenciesForAbstractMembers(function.pres.flatMap(_.topLevelConjuncts), function.posts.flatMap(_.topLevelConjuncts), decider.defaultAnalysisInfos)
       }
 
       val allErrors = (result :: result.previous.toList).filter(_.isInstanceOf[Failure]).map(_.asInstanceOf[Failure])

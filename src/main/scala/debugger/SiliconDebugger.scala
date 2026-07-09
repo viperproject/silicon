@@ -1,6 +1,5 @@
 package viper.silicon.debugger
 
-import viper.silicon.state.chunks.Chunk
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.{Cvc5ProverStdIO, RecordedPathConditions, Z3ProverStdIO}
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
@@ -431,7 +430,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       var resE: ast.Exp = null
       var resV: Verifier = null
       val pve: PartialVerificationError = PartialVerificationError(r => ContractNotWellformed(assertionE, r))
-      val verificationResult = evaluator.eval3(obl.s, assertionE, pve, obl.v, DependencyAnalysisInfos.DefaultDependencyAnalysisInfos)((_, t, newE, newV) => {
+      val verificationResult = evaluator.eval3(obl.s, assertionE, pve, obl.v, DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withEnabled(false))((_, t, newE, newV) => {
         resT = t
         resE = newE.get
         resV = newV
@@ -498,7 +497,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     var evalPcs: RecordedPathConditions = null
     val pve: PartialVerificationError = PartialVerificationError(r => ContractNotWellformed(e, r))
     val beforeEval = v.decider.setPathConditionMark()
-    val verificationResult = evaluator.eval3(obl.s, e, pve, v, DependencyAnalysisInfos.DefaultDependencyAnalysisInfos)((newS, t, newE, newV) => {
+    val verificationResult = evaluator.eval3(obl.s, e, pve, v, v.decider.defaultAnalysisInfos)((newS, t, newE, newV) => {
       resS = newS
       resT = t
       resE = newE.get

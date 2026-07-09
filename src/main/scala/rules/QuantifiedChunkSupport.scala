@@ -10,7 +10,6 @@ import viper.silicon
 import viper.silicon.Map
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos.DefaultDependencyAnalysisInfos
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.logger.records.data.CommentRecord
@@ -1005,7 +1004,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               )
               v.decider.assume(pcsForChunk, pcsForChunkExp, pcsForChunkExp, analysisInfos.withDependencyType(DependencyType.Internal))
             })
-            val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v, DefaultDependencyAnalysisInfos)
+            val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v, v.decider.defaultAnalysisInfos)
 
             val (smCache1, fr2) = if (s.isUsedAsTrigger(resource)){
               // TODO: Why not formalQVars? Used as codomainVars, see above.
@@ -1080,7 +1079,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalQVars, formalQVarsExp, resource, tArgs, eArgs, tPerm, ePerm, sm, s.program, v, analysisInfos, isExhale=false)
 
     val s1 = if (mergeAndTrigger) {
-      val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v, DefaultDependencyAnalysisInfos)
+      val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v, v.decider.defaultAnalysisInfos)
 
       val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
       val resourceDescription = Resources.resourceDescriptions(ch.resourceID)

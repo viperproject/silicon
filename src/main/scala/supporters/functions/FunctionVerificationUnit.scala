@@ -232,8 +232,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val g = Store(argsStore + (function.result -> (data.formalResult, data.valFormalResultExp)))
       val s = sInit.copy(g = g, h = v.heapSupporter.getEmptyHeap(sInit.program), oldHeaps = OldHeaps())
 
-      val analysisInfosPrecondition = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Up))
-      val analysisInfosPostcondition = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))
+      val analysisInfosPrecondition = v.decider.defaultAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Up))
+      val analysisInfosPostcondition = v.decider.defaultAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))
 
       var phase1Data: Seq[Phase1Data] = Vector.empty
       var recorders: Seq[FunctionRecorder] = Vector.empty
@@ -271,9 +271,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       var recorders: Seq[FunctionRecorder] = Vector.empty
       val wExp = evaluator.withExp
 
-      val precondAnalysisSourceInfos = DependencyAnalysisInfos.create("preconditions", DependencyType.Internal)
-      val analysisInfosPostcondition = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))
-      val analysisInfosBody = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, DependencyAnalysisInfos.DefaultDependencyAnalysisInfos, body.info, body)
+      val precondAnalysisSourceInfos = v.decider.defaultAnalysisInfos.withSource(StringAnalysisSourceInfo("preconditions", NoPosition)).withDependencyType(DependencyType.Internal)
+      val analysisInfosPostcondition = v.decider.defaultAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))
+      val analysisInfosBody = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, v.decider.defaultAnalysisInfos, body.info, body)
         .withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(body), JoinType.Source, EdgeType.Down))
 
       val result = phase1data.foldLeft(Success(): VerificationResult) {

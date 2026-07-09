@@ -109,6 +109,8 @@ trait Decider {
   def statistics(): Map[String, String]
 
   def handleFailedAssertion(failedAssertion: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit
+
+  def defaultAnalysisInfos: DependencyAnalysisInfos
 }
 
 /*
@@ -150,6 +152,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def pcs: PathConditionStack = pathConditions
 
     var debugVariableTypes : Map[String, PType] = Map.empty
+
+    override def defaultAnalysisInfos: DependencyAnalysisInfos = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withEnabled(false)
 
     def setPcs(other: PathConditionStack) = {
       /* [BRANCH-PARALLELISATION] */

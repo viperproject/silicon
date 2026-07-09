@@ -6,10 +6,8 @@
 
 package viper.silicon.rules
 
-import viper.silicon.state.chunks.{Chunk, ChunkIdentifer, NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos.DefaultDependencyAnalysisInfos
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
@@ -242,7 +240,7 @@ object chunkSupporter extends ChunkSupportRules {
   def produce(s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier)
              (Q: (State, Heap, Verifier) => VerificationResult)
              : VerificationResult = {
-    val analysisInfos = DefaultDependencyAnalysisInfos.withSource(StringAnalysisSourceInfo("produce", ast.NoPosition)).withDependencyType(DependencyType.Internal)
+    val analysisInfos = v.decider.defaultAnalysisInfos.withSource(StringAnalysisSourceInfo("produce", ast.NoPosition)).withDependencyType(DependencyType.Internal)
     // Try to merge the chunk into the heap by finding an alias.
     // In any case, property assumptions are added after the merge step.
     val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, h, ch, v, analysisInfos)

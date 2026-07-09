@@ -10,7 +10,6 @@ import viper.silicon.Config.JoinMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos.DefaultDependencyAnalysisInfos
 import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
@@ -69,7 +68,7 @@ object executor extends ExecutionRules {
           val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
           val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
           val s1 = handleOutEdge(s, edge, v)
-          val analysisInfos = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, DefaultDependencyAnalysisInfos, ce.condition.info, ce.condition)
+          val analysisInfos = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, v.decider.defaultAnalysisInfos, ce.condition.info, ce.condition)
           eval(s1, ce.condition, IfFailed(ce.condition), v, analysisInfos)((s2, tCond, condNew, v1) =>
             /* Using branch(...) here ensures that the edge condition is recorded
              * as a branch condition on the pathcondition stack.
@@ -95,7 +94,7 @@ object executor extends ExecutionRules {
   def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
     edge.kind match {
       case cfg.Kind.Out if !v.decider.isPathInfeasible =>
-        val analysisInfos = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos
+        val analysisInfos = v.decider.defaultAnalysisInfos
         val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, s.invariantContexts.head, v, analysisInfos)
         val s1 = s.copy(functionRecorder = fr1, h = h1,
           invariantContexts = s.invariantContexts.tail)
@@ -149,7 +148,7 @@ object executor extends ExecutionRules {
           case _ => false
         })
 
-        val analysisInfos = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, DefaultDependencyAnalysisInfos, cedge1.condition.info, cedge1.condition)
+        val analysisInfos = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, v.decider.defaultAnalysisInfos, cedge1.condition.info, cedge1.condition)
 
         eval(s, cedge1.condition, pvef(cedge1.condition), v, analysisInfos)((s1, t0, condNew, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
@@ -185,7 +184,7 @@ object executor extends ExecutionRules {
         if Verifier.config.parallelizeBranches() && cond2 == ast.Not(cond1)() =>
         val condEdgeRecord = new ConditionalEdgeRecord(thenEdge.condition, s, v.decider.pcs)
         val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
-        val analysisInfos = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, DefaultDependencyAnalysisInfos, thenEdge.condition.info, thenEdge.condition)
+        val analysisInfos = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, v.decider.defaultAnalysisInfos, thenEdge.condition.info, thenEdge.condition)
         val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v, analysisInfos)((s2, tCond, eCondNew, v1) =>
           brancher.branch(s2, tCond, (thenEdge.condition, eCondNew), v1, analysisInfos)(
             (s3, v3) => {
@@ -260,7 +259,7 @@ object executor extends ExecutionRules {
               map.updated(x, xNew)}))
             val sBody = s.copy(g = gBody, h = v.heapSupporter.getEmptyHeap(s.program))
 
-            val analysisInfosInv = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos
+            val analysisInfosInv = v.decider.defaultAnalysisInfos
             val analysisInfosLoopInternal = DependencyAnalysisInfos.create(s"Loop ${block.id}\"", DependencyType.Internal)
 
             val edges = s.methodCfg.outEdges(block)
@@ -307,7 +306,7 @@ object executor extends ExecutionRules {
                                 case (result, _) if !result.continueVerification => result
                                 case (intermediateResult, eCond) =>
                                   intermediateResult combine executionFlowController.locally(s4, v3)((s5, v4) => {
-                                    eval(s5, eCond, WhileFailed(eCond), v4, DependencyAnalysisInfos.DefaultDependencyAnalysisInfos)((_, _, _, _) =>
+                                    eval(s5, eCond, WhileFailed(eCond), v4, v4.decider.defaultAnalysisInfos)((_, _, _, _) =>
                                       Success())
                                   })
                               }
@@ -321,7 +320,7 @@ object executor extends ExecutionRules {
              * attempting to re-establish the invariant.
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
-            val analysisInfosInv = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos
+            val analysisInfosInv = v.decider.defaultAnalysisInfos
             consumes(s, invs, false, e => LoopInvariantNotPreserved(e), v, analysisInfosInv)((_, _, _) =>
               Success())
         }
@@ -342,7 +341,7 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
-    val analysisInfos = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, DefaultDependencyAnalysisInfos, stmt.info, stmt)
+    val analysisInfos = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, v.decider.defaultAnalysisInfos, stmt.info, stmt)
     exec2(s, stmt, v, analysisInfos)((s1, v1) => {
       v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, v1)
