@@ -85,7 +85,7 @@ class DebugDependencyAnalysisCliExtension(override val interpreter: DependencyGr
     private def printWeirdNodes(): Unit = {
       interpreter.getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).groupBy(_.sourceInfo)
         .filter{case (sourceInfo, _) => weirdNodePattern.findFirstIn(sourceInfo.toString).isDefined}
-				.foreach (printSingleNode)
+        .foreach (printSingleNode)
     }
 
     private def printSingleNode(infoAndNodes: (AnalysisSourceInfo, Set[DependencyAnalysisNode])): Unit = {

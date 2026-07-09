@@ -26,8 +26,8 @@ import viper.silicon.utils.freshSnap
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.FalseLit
-import viper.silver.dependencyAnalysis.{DependencyType, NoDependencyAnalysisMerge}
+import viper.silver.ast.{FalseLit, NoPosition}
+import viper.silver.dependencyAnalysis.{DependencyType, NoDependencyAnalysisMerge, StringAnalysisSourceInfo}
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.InternalWarningMessage
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
@@ -673,7 +673,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                smDef: SnapshotMapDefinition,
                                v: Verifier)
                               : (PermMapDefinition, PmCache) = {
-    val analysisInfos = DependencyAnalysisInfos.createUnique("summarizing heap", DependencyType.Internal)
+    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo.createUnique("summarizing heap"), DependencyType.Internal)
     Verifier.config.mapCache(s.pmCache.get(resource, relevantChunks)) match {
       case Some(pmDef) =>
         v.decider.assume(pmDef.valueDefinitions, Option.when(withExp)(DebugExp.createInstance("value definitions", isInternal_ = true)), enforceAssumption = false, analysisInfos=analysisInfos)
@@ -711,7 +711,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                              optSmDomainDefinitionCondition: Option[Term] = None,
                              optQVarsInstantiations: Option[Seq[Term]] = None)
                             : (SnapshotMapDefinition, SnapshotMapCache) = {
-    val analysisInfos = DependencyAnalysisInfos.createUnique("summarizing heap", DependencyType.Internal)
+    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo.createUnique("summarizing heap"), DependencyType.Internal)
 
     def emitSnapshotMapDefinition(s: State,
                                   smDef: SnapshotMapDefinition,
@@ -931,7 +931,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val commentGlobals = "Nested auxiliary terms: globals"
     v.decider.prover.comment(commentGlobals)
-    val analysisInfosGlobals = DependencyAnalysisInfos.create(commentGlobals, DependencyType.Internal, NoDependencyAnalysisMerge()) // TODO ake: review
+    val analysisInfosGlobals = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo(commentGlobals, NoPosition), DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge()) // TODO ake: review
     v.decider.assume(auxGlobals, Option.when(withExp)(DebugExp.createInstance(description=commentGlobals, children=auxGlobalsExp.get)),
       enforceAssumption = false, analysisInfos=analysisInfosGlobals)
 
@@ -1172,7 +1172,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val comment = "Nested auxiliary terms: globals"
     v.decider.prover.comment(comment)
-    v.decider.assume(auxGlobals, Option.when(withExp)(DebugExp.createInstance(description=comment, children=auxGlobalsExp.get)), enforceAssumption = false, analysisInfos=DependencyAnalysisInfos.create(comment, DependencyType.Internal))
+    v.decider.assume(auxGlobals, Option.when(withExp)(DebugExp.createInstance(description=comment, children=auxGlobalsExp.get)), enforceAssumption = false, analysisInfos=v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo.createUnique(comment), DependencyType.Internal))
 
     val comment2 = "Nested auxiliary terms: non-globals"
     v.decider.prover.comment(comment2)

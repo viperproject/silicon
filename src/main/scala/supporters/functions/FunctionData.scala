@@ -8,7 +8,6 @@ package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos.DefaultDependencyAnalysisInfos
 import viper.silicon.dependencyAnalysis.{DependencyAnalysisAxiomInfo, DependencyAnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces.FatalResult
 import viper.silicon.rules.{InverseFunctions, PermMapDefinition, SnapshotMapDefinition, functionSupporter}
@@ -133,6 +132,7 @@ class FunctionData(val programFunction: ast.Function,
       Seq.fill(1 + formalArgs.size)(None)
 
   val isAnalysisEnabled: Boolean = Verifier.config.enableDependencyAnalysis() && DependencyAnalyzer.extractEnableAnalysisFromInfo(programFunction.info).getOrElse(true)
+  val defaultAnalysisInfo: DependencyAnalysisInfos = DependencyAnalysisInfos.DefaultInfos.withEnabled(isAnalysisEnabled)
 
   val functionApplication = App(function, `?s` +: formalArgs.values.toSeq)
   val limitedFunctionApplication = App(limitedFunction, `?s` +: formalArgs.values.toSeq)
@@ -142,11 +142,10 @@ class FunctionData(val programFunction: ast.Function,
 
   private val bodyAnalysisInfo: DependencyAnalysisAxiomInfo = {
     val analysisInfos = if (programFunction.body.isDefined) {
-      DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.addInfo(programFunction.body.get.info, programFunction.body.get)
+      defaultAnalysisInfo.addInfo(programFunction.body.get.info, programFunction.body.get)
         .withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(programFunction.body.get), JoinType.Sink, EdgeType.Down))
-        .withEnabled(isAnalysisEnabled)
     } else
-      DependencyAnalysisInfos.create("unverified function body", DependencyType.Internal).withEnabled(isAnalysisEnabled)
+      defaultAnalysisInfo.withInfo(StringAnalysisSourceInfo("unverified function body"), DependencyType.Internal)
 
     DependencyAnalysisAxiomInfo(analysisInfos, programFunction.name)
   }
@@ -157,13 +156,13 @@ class FunctionData(val programFunction: ast.Function,
     (Forall(arguments,
            BuiltinEquals(limitedFunctionApplication, functionApplication),
            Trigger(functionApplication)),
-      DependencyAnalysisAxiomInfo(DependencyAnalysisInfos.create("Limited Axiom", DependencyType.Internal).withEnabled(isAnalysisEnabled), programFunction.name))
+      DependencyAnalysisAxiomInfo(defaultAnalysisInfo.withInfo(StringAnalysisSourceInfo("Limited Axiom"), DependencyType.Internal), programFunction.name))
 
   val limitedAxiom: Quantification = limitedAxiomWithInfo._1
 
   val triggerAxiomWithInfo: (Quantification, DependencyAnalysisAxiomInfo) =
     (Forall(arguments, triggerFunctionApplication, Trigger(limitedFunctionApplication)),
-      DependencyAnalysisAxiomInfo(DependencyAnalysisInfos.create("Trigger Axiom", DependencyType.Trigger).withEnabled(isAnalysisEnabled), programFunction.name))
+      DependencyAnalysisAxiomInfo(defaultAnalysisInfo.withInfo(StringAnalysisSourceInfo("Trigger Axiom"), DependencyType.Trigger), programFunction.name))
 
   val triggerAxiom: Quantification = triggerAxiomWithInfo._1
 
@@ -237,17 +236,17 @@ class FunctionData(val programFunction: ast.Function,
   }
 
   def postConditionInfo(post: ast.Exp): DependencyAnalysisAxiomInfo =
-  	DependencyAnalysisAxiomInfo(DefaultDependencyAnalysisInfos.withEnabled(isAnalysisEnabled).addInfo(post.info, post)
-			.withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(post), JoinType.Sink, EdgeType.Down)), programFunction.name)
+    DependencyAnalysisAxiomInfo(defaultAnalysisInfo.addInfo(post.info, post)
+      .withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(post), JoinType.Sink, EdgeType.Down)), programFunction.name)
 
   lazy val translatedPosts = {
-		translatedPostsWithInfo.map(_._1)
-	}
+    translatedPostsWithInfo.map(_._1)
+  }
 
   lazy val translatedPostsWithInfo: Seq[(Term, DependencyAnalysisAxiomInfo)] = {
     assert(phase == 1, s"Postcondition axiom must be generated in phase 1, current phase is $phase")
     if (programFunction.posts.nonEmpty) {
-			programFunction.posts.flatMap(_.topLevelConjuncts) map (p => (expressionTranslator.translatePostcondition(program, Seq(p), this).head, postConditionInfo(p)))
+      programFunction.posts.flatMap(_.topLevelConjuncts) map (p => (expressionTranslator.translatePostcondition(program, Seq(p), this).head, postConditionInfo(p)))
     } else {
       Seq()
     }
@@ -261,7 +260,6 @@ class FunctionData(val programFunction: ast.Function,
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
 
       def wrapBody(body: Term): Term = Let(toMap(bodyBindings), body)
-      val analysisInfos = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withEnabled(isAnalysisEnabled)
 
       if (isAnalysisEnabled) {
         (Forall(arguments, wrapBody(And(generateNestedDefinitionalAxioms)), Trigger(limitedFunctionApplication)), bodyAnalysisInfo) +:
@@ -270,13 +268,13 @@ class FunctionData(val programFunction: ast.Function,
           })
       } else {
         val innermostBody = And(generateNestedDefinitionalAxioms ++ List(Implies(pre, And(translatedPosts))))
-        Seq((Forall(arguments, wrapBody(innermostBody), Trigger(limitedFunctionApplication)), DependencyAnalysisAxiomInfo(analysisInfos, programFunction.name)))
+        Seq((Forall(arguments, wrapBody(innermostBody), Trigger(limitedFunctionApplication)), DependencyAnalysisAxiomInfo(defaultAnalysisInfo, programFunction.name)))
       }
     } else
       Seq.empty
   }
 
-	lazy val postAxiom: Seq[Term] = postAxiomWithInfo.map(_._1)
+  lazy val postAxiom: Seq[Term] = postAxiomWithInfo.map(_._1)
 
   /*
    * Properties resulting from phase 2 (verification)
@@ -349,7 +347,7 @@ class FunctionData(val programFunction: ast.Function,
     })
   }
 
-	lazy val definitionalAxiom: Option[Term] = definitionalAxiomWithInfo.map(_._1)
+  lazy val definitionalAxiom: Option[Term] = definitionalAxiomWithInfo.map(_._1)
 
   lazy val bodyPreconditionPropagationAxiomWithInfo: Seq[(Term, DependencyAnalysisAxiomInfo)] = {
     val pre = preconditionFunctionApplication
@@ -360,7 +358,7 @@ class FunctionData(val programFunction: ast.Function,
     bodyPreconditions.toSeq
   }
 
-	lazy val bodyPreconditionPropagationAxiom: Seq[Term] = bodyPreconditionPropagationAxiomWithInfo.map(_._1)
+  lazy val bodyPreconditionPropagationAxiom: Seq[Term] = bodyPreconditionPropagationAxiomWithInfo.map(_._1)
 
   lazy val postPreconditionPropagationAxiomWithInfo: Seq[(Term, DependencyAnalysisAxiomInfo)] = {
     val pre = preconditionFunctionApplication
@@ -372,5 +370,5 @@ class FunctionData(val programFunction: ast.Function,
     postPreconditions
   }
 
-	lazy val postPreconditionPropagationAxiom: Seq[Term] = postPreconditionPropagationAxiomWithInfo.map(_._1)
+  lazy val postPreconditionPropagationAxiom: Seq[Term] = postPreconditionPropagationAxiomWithInfo.map(_._1)
 }

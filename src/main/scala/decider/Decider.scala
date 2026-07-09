@@ -153,7 +153,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     var debugVariableTypes : Map[String, PType] = Map.empty
 
-    override def defaultAnalysisInfos: DependencyAnalysisInfos = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withEnabled(false)
+    override def defaultAnalysisInfos: DependencyAnalysisInfos = DependencyAnalysisInfos.DefaultInfos.withEnabled(false)
 
     def setPcs(other: PathConditionStack) = {
       /* [BRANCH-PARALLELISATION] */

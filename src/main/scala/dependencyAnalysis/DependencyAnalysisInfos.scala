@@ -127,25 +127,13 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
   }
 
   def withEnabled(analysisEnabled: Boolean): DependencyAnalysisInfos = this.copy(analysisEnabled=analysisEnabled)
+
+  def withInfo(sourceInfo: AnalysisSourceInfo, dependencyType: DependencyType): DependencyAnalysisInfos =
+    this.withSource(sourceInfo).withDependencyType(dependencyType)
 }
 
 object DependencyAnalysisInfos {
-  val DefaultDependencyAnalysisInfos = DependencyAnalysisInfos(List.empty, List.empty, List.empty, List.empty, List.empty)
-
-  def create(sourceInfo: AnalysisSourceInfo, dependencyType: DependencyType, mergeInfo: DependencyAnalysisMergeInfo): DependencyAnalysisInfos =
-    DependencyAnalysisInfos(List(sourceInfo), List(DependencyTypeInfo(dependencyType)), List(mergeInfo), List.empty, List.empty)
-
-  def create(sourceInfo: AnalysisSourceInfo, dependencyType: DependencyType): DependencyAnalysisInfos =
-    DependencyAnalysisInfos(List(sourceInfo), List(DependencyTypeInfo(dependencyType)), List.empty, List.empty, List.empty)
-
-  def create(infoString: String, dependencyType: DependencyType, mergeInfo: DependencyAnalysisMergeInfo): DependencyAnalysisInfos =
-    create(StringAnalysisSourceInfo(infoString, NoPosition), dependencyType, mergeInfo)
-
-  def create(infoString: String, dependencyType: DependencyType): DependencyAnalysisInfos =
-    create(StringAnalysisSourceInfo(infoString, NoPosition), dependencyType)
-
-  def createUnique(infoString: String, dependencyType: DependencyType): DependencyAnalysisInfos =
-    create(StringAnalysisSourceInfo(s"$infoString-${DependencyGraphHelper.nextId()}", NoPosition), dependencyType)
+  val DefaultInfos = DependencyAnalysisInfos(List.empty, List.empty, List.empty, List.empty, List.empty)
 }
 
 case class DependencyAnalysisAxiomInfo(analysisInfos: DependencyAnalysisInfos, memberStr: String) {

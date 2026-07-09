@@ -22,7 +22,7 @@ import viper.silver.dependencyAnalysis.{DependencyType, StringAnalysisSourceInfo
 
 case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathConditions) {
 
-  private val analysisInfos = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withSource(StringAnalysisSourceInfo("merge", NoPosition)).withDependencyType(DependencyType.Internal) // TODO ake
+  private val analysisInfos = DependencyAnalysisInfos.DefaultInfos.withInfo(StringAnalysisSourceInfo("merge", NoPosition), DependencyType.Internal) // TODO ake
 
   // Instead of merging states by calling State.merge,
   // we can directly merge JoinDataEntries to obtain new States,

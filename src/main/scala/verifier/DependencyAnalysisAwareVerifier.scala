@@ -63,8 +63,8 @@ class DependencyAnalysisAwareMainVerifier(config: Config,
 }
 
 class DependencyAnalysisAwareWorkerVerifier(mainVerifier: DependencyAnalysisAwareMainVerifier,
-              															uniqueId: String,
-																						override val reporter: Reporter,
-																						override val debugMode: Boolean)
+                                            uniqueId: String,
+                                            override val reporter: Reporter,
+                                            override val debugMode: Boolean)
   extends WorkerVerifier(mainVerifier, uniqueId, reporter, debugMode)
     with DependencyAnalysisAwareVerifier with DependencyAnalysisAwareMethodVerificationUnitProvider

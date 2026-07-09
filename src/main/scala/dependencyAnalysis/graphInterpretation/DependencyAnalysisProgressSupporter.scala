@@ -164,8 +164,8 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
         s"proof quality (Lea): $assertionQualitiesSum / $numNonTrivialAssertions = $proofQualityLea\n"
     )
 
-		val progressPeter = VerificationProgress(specQuality, proofQualityPeter)
-		val progressLea = VerificationProgress(specQuality, proofQualityLea)
+    val progressPeter = VerificationProgress(specQuality, proofQualityPeter)
+    val progressLea = VerificationProgress(specQuality, proofQualityLea)
     (progressPeter, progressLea)
   }
 
@@ -254,5 +254,5 @@ case class DAMemo[A,B](f: A => B) extends (A => B) {
 }
 
 case class VerificationProgress(specQuality: Double, proofQuality: Double) {
-	lazy val progress = specQuality * proofQuality
+  lazy val progress = specQuality * proofQuality
 }

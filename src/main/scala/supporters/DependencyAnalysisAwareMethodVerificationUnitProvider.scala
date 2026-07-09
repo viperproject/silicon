@@ -22,7 +22,15 @@ trait DependencyAnalysisAwareMethodVerificationUnitProvider extends DefaultMetho
 
     override def verify(sInit: State, method: Method): Seq[VerificationResult] = {
 
-      val presAssertionNodeForJoin = method.pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(pc)), List(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up)), method.name))
+      val presAssertionNodeForJoin = method.pres.flatMap(_.topLevelConjuncts).map(pc => {
+        val analysisSourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(pc)
+        SimpleAssertionNode(True,
+          analysisSourceInfo,
+          AssumptionType.Precondition,
+          SimpleDependencyAnalysisMerge(analysisSourceInfo),
+          List(SimpleDependencyAnalysisJoin(analysisSourceInfo, JoinType.Sink, EdgeType.Up)),
+          method.name)
+      })
       presAssertionNodeForJoin foreach decider.getDependencyAnalyzer.addAssertionNode
 
       val result = super.verify(sInit, method)

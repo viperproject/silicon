@@ -19,7 +19,7 @@ import viper.silicon.state.terms._
 import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silver.ast.FalseLit
+import viper.silver.ast.{FalseLit, NoPosition}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
@@ -260,7 +260,7 @@ object executor extends ExecutionRules {
             val sBody = s.copy(g = gBody, h = v.heapSupporter.getEmptyHeap(s.program))
 
             val analysisInfosInv = v.decider.defaultAnalysisInfos
-            val analysisInfosLoopInternal = DependencyAnalysisInfos.create(s"Loop ${block.id}\"", DependencyType.Internal)
+            val analysisInfosLoopInternal = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo(s"Loop ${block.id}\"", NoPosition), DependencyType.Internal)
 
             val edges = s.methodCfg.outEdges(block)
             val (outEdges, otherEdges) = edges partition(_.kind == cfg.Kind.Out)

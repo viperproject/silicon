@@ -430,7 +430,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       var resE: ast.Exp = null
       var resV: Verifier = null
       val pve: PartialVerificationError = PartialVerificationError(r => ContractNotWellformed(assertionE, r))
-      val verificationResult = evaluator.eval3(obl.s, assertionE, pve, obl.v, DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withEnabled(false))((_, t, newE, newV) => {
+      val verificationResult = evaluator.eval3(obl.s, assertionE, pve, obl.v, DependencyAnalysisInfos.DefaultInfos.withEnabled(false))((_, t, newE, newV) => {
         resT = t
         resE = newE.get
         resV = newV

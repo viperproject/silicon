@@ -61,7 +61,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     protected def emittedFunctionAxioms: Vector[Term] = emittedFunctionAxiomsWithInfo.map(_._1)
     private var freshVars: Vector[Var] = Vector.empty
     private var postConditionAxiomsWithInfo: Vector[(Term, DependencyAnalysisAxiomInfo)] = Vector.empty
-  	private def postConditionAxioms: Vector[Term] = postConditionAxiomsWithInfo.map(_._1)
+    private def postConditionAxioms: Vector[Term] = postConditionAxiomsWithInfo.map(_._1)
 
     private val expressionTranslator = {
       def resolutionFailureMessage(exp: ast.Positioned, data: FunctionData): String = (
@@ -271,7 +271,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       var recorders: Seq[FunctionRecorder] = Vector.empty
       val wExp = evaluator.withExp
 
-      val precondAnalysisSourceInfos = v.decider.defaultAnalysisInfos.withSource(StringAnalysisSourceInfo("preconditions", NoPosition)).withDependencyType(DependencyType.Internal)
+      val precondAnalysisSourceInfos = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo("preconditions", NoPosition), DependencyType.Internal)
       val analysisInfosPostcondition = v.decider.defaultAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))
       val analysisInfosBody = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, v.decider.defaultAnalysisInfos, body.info, body)
         .withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(body), JoinType.Source, EdgeType.Down))

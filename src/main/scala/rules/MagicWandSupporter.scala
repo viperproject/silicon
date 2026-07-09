@@ -591,7 +591,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
        * heap. After a statement is executed those permissions are transferred to hOps.
        */
 
-      val analysisInfos = v.decider.defaultAnalysisInfos.withSource(StringAnalysisSourceInfo("merge", NoPosition)).withDependencyType(DependencyType.Internal) // TODO ake
+      val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo("merge", NoPosition), DependencyType.Internal) // TODO ake
       val emptyHeap = v.heapSupporter.getEmptyHeap(newState.program)
       val (fr, hOpsJoinUsed) = v.stateConsolidator(newState).merge(newState.functionRecorder, newState, newState.reserveHeaps(1), newState.h, v, analysisInfos)
       newState.copy(functionRecorder = fr, h = emptyHeap,
