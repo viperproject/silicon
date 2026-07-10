@@ -1316,6 +1316,7 @@ object evaluator extends EvaluationRules {
     var optRemainingTriggerTerms: Option[Seq[Term]] = None
     // Setting a mark pushes a scope that needs to be popped again later, see below.
     val preMark = v.decider.setPathConditionMark()
+    val numberOfErrorsBefore = v.errorsReportedSoFar.get()
     var pcDelta = InsertionOrderedSet.empty[Term]
     var pcDeltaExp = InsertionOrderedSet.empty[DebugExp]
     var functionRecorder = s.functionRecorder
@@ -1366,6 +1367,9 @@ object evaluator extends EvaluationRules {
     // (since the preMark layer has no branch conditions), and we can assume them only conditionally.
     // See issue #688 for an example of what happens otherwise.
     v.decider.pcs.popUntilMark(preMark)
+    // Reset the number of reported errors; any errors that occurred while evaluating triggers should not count.
+    // See issue #992 for an example of what happens otherwise.
+    v.errorsReportedSoFar.set(numberOfErrorsBefore)
 
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
