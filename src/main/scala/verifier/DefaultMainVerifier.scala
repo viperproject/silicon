@@ -396,6 +396,7 @@ class DefaultMainVerifier(config: Config,
     } else InsertionOrderedSet.empty
 
     State(program = program,
+          currentBlock = None,
           functionData = functionData,
           predicateData = predicateData,
           qpFields = quantifiedFields,
@@ -421,6 +422,7 @@ class DefaultMainVerifier(config: Config,
     State(
       program = program,
       currentMember = None,
+      currentBlock = None,
       functionData = functionData,
       predicateData = predicateData,
       qpFields = quantifiedFields,

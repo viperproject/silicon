@@ -8,6 +8,7 @@ package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
 import viper.silver.ast
+import viper.silver.cfg
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
 import viper.silicon.interfaces._
@@ -19,6 +20,8 @@ import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
 import viper.silicon.Map
+import viper.silver.reporter.WarningsDuringVerification
+import viper.silver.verifier.VerifierWarning
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
@@ -55,6 +58,16 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
       val body = method.bodyOrAssumeFalse.toCfg()
         /* TODO: Might be worth special-casing on methods with empty bodies */
+
+      val ignoredInvLabels = body.blocks.collect {
+        case b: cfg.StatementBlock[ast.Stmt, ast.Exp] if b.invs.isDefined =>
+          b.stmts.collectFirst { case l: ast.Label => l }
+      }.flatten.toSeq
+      if (ignoredInvLabels.nonEmpty) {
+        val warnings = ignoredInvLabels.map(l =>
+          VerifierWarning(s"Label ${l.name} declares an invariant, but is not the head of a loop. The invariant will be ignored.", l.pos))
+        reporter report WarningsDuringVerification(warnings)
+      }
 
       val postViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, method)
 

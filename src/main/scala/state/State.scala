@@ -30,6 +30,7 @@ final case class State(g: Store = Store(),
                        h: Heap = Heap(),
                        program: ast.Program,
                        currentMember: Option[ast.Member],
+                       currentBlock: Option[(String, Integer)], // (block label, path id)
                        predicateData: Map[String, PredicateData],
                        functionData: Map[String, FunctionData],
                        oldHeaps: OldHeaps = Map.empty,
@@ -131,6 +132,8 @@ final case class State(g: Store = Store(),
     currentMember.isEmpty || !currentMember.get.isInstanceOf[ast.Function] || Verifier.config.respectFunctionPrePermAmounts()
   }
 
+  def setCurrentBlock(b: (String, Integer)) = copy(currentBlock = Some(b))
+
   val isLastRetry: Boolean = retryLevel == 0
 
   def incCycleCounter(m: ast.Predicate) =
@@ -199,6 +202,7 @@ object State {
     s1 match {
       /* Decompose state s1 */
       case State(g1, h1, program, member,
+                 block,
                  predicateData,
                  functionData,
                  oldHeaps1,
@@ -226,6 +230,7 @@ object State {
         s2 match {
           case State(`g1`, `h1`,
                      `program`, `member`,
+                     `block`,
                      `predicateData`, `functionData`,
                      oldHeaps2,
                      `parallelizeBranches1`,
@@ -362,6 +367,7 @@ object State {
     s1 match {
       /* Decompose state s1 */
       case State(g1, h1, program, member,
+      block,
       predicateData, functionData,
       oldHeaps1,
       parallelizeBranches1,
@@ -387,6 +393,7 @@ object State {
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
           case State(g2, h2, `program`, `member`,
+          `block`,
           `predicateData`, `functionData`,
           oldHeaps2,
           `parallelizeBranches1`,
