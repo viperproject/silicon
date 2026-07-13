@@ -109,7 +109,9 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
   def getJoinInfo: List[SimpleDependencyAnalysisJoin] = {
     if (!isAnalysisEnabled) return List.empty
     joinInfos.map {
-      case EvalStackDependencyAnalysisJoin(joinType, edgeType) => SimpleDependencyAnalysisJoin(sourceInfos.last, joinType, edgeType)
+      case EvalStackDependencyAnalysisJoin(joinType, edgeType) =>
+        if (sourceInfos.lastOption.isEmpty) SiliconRunner.logger.warn(s"WARN: Missing source info for $getDebugInfo")
+        SimpleDependencyAnalysisJoin(sourceInfos.lastOption.orElse(nodes.lastOption.map(AnalysisSourceInfo.createAnalysisSourceInfo)).getOrElse(StringAnalysisSourceInfo("Unknown", NoPosition)), joinType, edgeType)
       case a: SimpleDependencyAnalysisJoin => a
     }
   }
