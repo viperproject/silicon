@@ -1574,7 +1574,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       // converting to a Z3 term.
       // During function verification, we should not define macros, since they could contain resullt, which is not
       // defined elsewhere.
-      val declareMacro = s.functionRecorder == NoopFunctionRecorder // && !Verifier.config.useFlyweight
+      // Inline pTaken (instead of defining a macro) when a counterexample is requested, so that the
+      // chunk's permission term contains proper permission arithmetic the counterexample machinery
+      // can evaluate, rather than an opaque macro application.
+      val declareMacro = s.functionRecorder == NoopFunctionRecorder && Verifier.config.counterexample.toOption.isEmpty // && !Verifier.config.useFlyweight
 
       val permsProvided = ch.perm
       val permsProvidedExp = ch.permExp

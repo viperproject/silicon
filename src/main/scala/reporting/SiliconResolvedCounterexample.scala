@@ -494,6 +494,9 @@ object SiliconRawCounterexample {
     // field chunks for the same (receiver, field) location, so that e.g. two separate quantified
     // permissions covering the same location report their combined permission amount.
     val qpFields = scala.collection.mutable.LinkedHashMap[(String, String), (Rational, String)]()
+    // Quantified predicate permissions are likewise computed per argument tuple and summed across
+    // all quantified predicate chunks for the same (predicate, arguments) instance.
+    val qpPreds = scala.collection.mutable.LinkedHashMap[(String, Seq[String]), Rational]()
     h foreach {
       case c@BasicChunk(FieldID, _, _, _, _, _, _, _) =>
         heap += detField(model, c)
@@ -510,19 +513,19 @@ object SiliconRawCounterexample {
           qpFields(key) = (summedPerm, knownValue)
         }
       case c: st.QuantifiedPredicateChunk =>
-        val predName = c.id.name
-        val possiblePerm = detPermWithInv(c.perm, model)
-        var fSeq: Seq[String] = Seq()
-        if (!possiblePerm._1.isEmpty) {
-          fSeq = possiblePerm._1.head.map(x => x.toString)
+        for ((args, perm) <- detQPPredEntries(c, model)) {
+          val key = (c.id.name, args)
+          qpPreds(key) = qpPreds.get(key).getOrElse(Rational.zero) + perm
         }
-        heap += RawHeapEntry(Seq(predName), fSeq, "#undefined", possiblePerm._2, QPPredicateType, None)
       case c@MagicWandChunk(_, _, _, _, _, _, _) =>
         heap += detMagicWand(model, c)
       case _ => //println("This case is not supported in detHeap")
     }
     for (((recv, field), (perm, value)) <- qpFields) {
       heap += RawHeapEntry(Seq(recv), Seq(field), value, Some(perm), QPFieldType, None)
+    }
+    for (((predName, args), perm) <- qpPreds) {
+      heap += RawHeapEntry(Seq(predName), args, "#undefined", Some(perm), QPPredicateType, None)
     }
     heap
   }
@@ -534,9 +537,9 @@ object SiliconRawCounterexample {
     * `r` the chunk's permission term is evaluated with the quantified variable bound to `r`.
     */
   def detQPFieldEntries(c: st.QuantifiedFieldChunk, model: Model): Seq[(String, String, Rational)] = {
-    val fieldName = c.id.name
-    val qvarNames = c.quantifiedVars.map(_.id.name).toSet
-    // The receiver is the last argument of each inverse/image function application.
+    val qvar = c.quantifiedVars.head
+    // Candidate receivers are the argument values for which the model instantiated the chunk's
+    // inverse/image functions (the receiver is the last argument of each such application).
     val invImgNames = c.invs.toSeq.flatMap(i => (i.inverses ++ i.images).map(_.id.toString))
     var receivers: Set[String] = invImgNames.flatMap { fn =>
       model.entries.get(fn) match {
@@ -545,120 +548,55 @@ object SiliconRawCounterexample {
       }
     }.toSet
     if (receivers.isEmpty) {
-      c.singletonRcvr.flatMap(t => evalTermValue(t, scala.collection.immutable.Map.empty[String, String], model)).foreach(r => receivers += r)
+      c.singletonRcvr.map(t => evaluateTerm(t, model).asValueEntry.toString).foreach(r => receivers += r)
     }
-    // The stored field value is looked up in $FVF.lookup_<field>, keyed by the chunk's snapshot
-    // map (evaluated via the full term evaluator, which understands snapshot trees) and the receiver.
-    val fvf = evaluateTerm(c.snapshotMap, model)
-    val lookupOpts: scala.collection.immutable.Map[Seq[ValueEntry], ValueEntry] =
-      model.entries.get(s"$$FVF.lookup_$fieldName") match {
-        case Some(MapEntry(m, _)) => m
-        case _ => scala.collection.immutable.Map.empty[Seq[ValueEntry], ValueEntry]
-      }
     receivers.toSeq.flatMap { r =>
-      val env = qvarNames.map(_ -> r).toMap
-      evalPermInEnv(c.perm, env, model) match {
-        case Some(p) if p > Rational.zero =>
-          val value = lookupOpts.collectFirst {
-            case (k, v) if k.length >= 2 && k(0).toString == fvf.toString && k(1).toString == r => v.toString
-          }.getOrElse("#undefined")
-          Some((r, value, p))
+      val env = Map[Var, ExtractedModelEntry](qvar -> UnprocessedModelEntry(ConstantEntry(r)))
+      evaluateTerm(c.perm, model, env) match {
+        case LitPermEntry(p) =>
+          // LitPermEntry uses viper.silver.utility.Common.Rational; counterexamples use viper.silver.verifier.Rational.
+          val perm = Rational(p.numerator, p.denominator)
+          if (perm > Rational.zero) {
+            val value = evaluateTerm(c.valueAt(qvar), model, env) match {
+              case _: OtherEntry => "#undefined"
+              case e => e.toString
+            }
+            Some((r, value, perm))
+          } else None
         case _ => None
       }
     }
   }
 
   /**
-    * Looks up a function's value in the model for the given (already evaluated) string arguments,
-    * trying the usual name variants Silicon uses. Returns None if there is no exact entry.
+    * Extracts, for a single quantified predicate chunk, the (arguments, permission) pairs it
+    * contributes. Candidate argument tuples are the keys for which the model instantiated the
+    * chunk's inverse/image functions; for each tuple the chunk's permission term is evaluated with
+    * the quantified variables bound to the tuple's values.
     */
-  def lookupFunction(fname: String, args: Seq[String], model: Model): Option[String] = {
-    val entry = model.entries.get(fname + "%limited")
-      .orElse(model.entries.get(fname))
-      .orElse(model.entries.get(fname.replace("[", "<").replace("]", ">")))
-    entry match {
-      case Some(MapEntry(m, _)) => m.collectFirst { case (k, v) if k.map(_.toString) == args => v.toString }
-      case Some(ConstantEntry(cst)) => Some(cst)
-      case Some(ae: ApplicationEntry) => Some(ae.toString)
-      case _ => None
-    }
-  }
-
-  /** Evaluates a term to its model value string, binding quantified variables via `env`. */
-  def evalTermValue(t: Term, env: scala.collection.immutable.Map[String, String], model: Model): Option[String] = t match {
-    case v: Var if env.contains(v.id.name) => Some(env(v.id.name))
-    case v: Var =>
-      model.entries.get(v.id.name) match {
-        case Some(ConstantEntry(cst)) => Some(cst)
-        case Some(ae: ApplicationEntry) => Some(ae.toString)
-        case Some(other) if !other.isInstanceOf[MapEntry] => Some(other.toString)
-        case _ => None
+  def detQPPredEntries(c: st.QuantifiedPredicateChunk, model: Model): Seq[(Seq[String], Rational)] = {
+    val qvars = c.quantifiedVars
+    val invImgNames = c.invs.toSeq.flatMap(i => (i.inverses ++ i.images).map(_.id.toString))
+    var argTuples: Set[Seq[String]] = invImgNames.flatMap { fn =>
+      model.entries.get(fn) match {
+        case Some(MapEntry(m, _)) => m.keys.map(_.map(_.toString))
+        case _ => Seq.empty[Seq[String]]
       }
-    case IntLiteral(n) => Some(n.toString)
-    case b: BooleanLiteral => Some(b.value.toString)
-    case SeqLength(s) => evalTermValue(s, env, model).flatMap(sv => lookupFunction("Seq_length", Seq(sv), model))
-    case App(app, args) =>
-      val argVals = args.map(a => evalTermValue(a, env, model))
-      if (argVals.forall(_.isDefined)) lookupFunction(app.id.toString, argVals.map(_.get), model) else None
-    case _ => None
-  }
-
-  /** Evaluates an integer-sorted term. */
-  def evalIntTerm(t: Term, env: scala.collection.immutable.Map[String, String], model: Model): Option[BigInt] = t match {
-    case IntLiteral(n) => Some(n)
-    case _ => evalTermValue(t, env, model).flatMap(CounterexampleValue.parseInt)
-  }
-
-  /** Evaluates a boolean-sorted term. Conjunctions/disjunctions short-circuit on decided operands. */
-  def evalBoolTerm(t: Term, env: scala.collection.immutable.Map[String, String], model: Model): Option[Boolean] = t match {
-    case True => Some(true)
-    case False => Some(false)
-    case Not(a) => evalBoolTerm(a, env, model).map(!_)
-    case And(ts) =>
-      val rs = ts.map(evalBoolTerm(_, env, model))
-      if (rs.contains(Some(false))) Some(false) else if (rs.contains(None)) None else Some(true)
-    case Or(ts) =>
-      val rs = ts.map(evalBoolTerm(_, env, model))
-      if (rs.contains(Some(true))) Some(true) else if (rs.contains(None)) None else Some(false)
-    case AtMost(a, b) => for (x <- evalIntTerm(a, env, model); y <- evalIntTerm(b, env, model)) yield x <= y
-    case Less(a, b) => for (x <- evalIntTerm(a, env, model); y <- evalIntTerm(b, env, model)) yield x < y
-    case AtLeast(a, b) => for (x <- evalIntTerm(a, env, model); y <- evalIntTerm(b, env, model)) yield x >= y
-    case BuiltinEquals(a, b) => for (x <- evalTermValue(a, env, model); y <- evalTermValue(b, env, model)) yield x == y
-    case _ => evalTermValue(t, env, model).flatMap {
-      case "true" => Some(true)
-      case "false" => Some(false)
-      case _ => None
+    }.toSet
+    if (argTuples.isEmpty) {
+      c.singletonArguments.map(_.map(t => evaluateTerm(t, model).asValueEntry.toString)).foreach(t => argTuples += t)
     }
-  }
-
-  /** Evaluates a permission-sorted term to a rational, binding quantified variables via `env`. */
-  def evalPermInEnv(t: Term, env: scala.collection.immutable.Map[String, String], model: Model): Option[Rational] = t match {
-    case NoPerm => Some(Rational.zero)
-    case FullPerm => Some(Rational.one)
-    case FractionPermLiteral(r) => Some(Rational(r.numerator, r.denominator))
-    case FractionPerm(IntLiteral(n), IntLiteral(d)) => Some(Rational(n, d))
-    case Ite(cond, thn, els) =>
-      evalBoolTerm(cond, env, model).flatMap(b => if (b) evalPermInEnv(thn, env, model) else evalPermInEnv(els, env, model))
-    case PermPlus(a, b) => for (x <- evalPermInEnv(a, env, model); y <- evalPermInEnv(b, env, model)) yield x + y
-    case PermMinus(a, b) => for (x <- evalPermInEnv(a, env, model); y <- evalPermInEnv(b, env, model)) yield x - y
-    case PermTimes(a, b) => for (x <- evalPermInEnv(a, env, model); y <- evalPermInEnv(b, env, model)) yield x * y
-    case _ => evalTermValue(t, env, model).flatMap(parsePermValue)
-  }
-
-  /** Parses a permission amount from a model string ("1/2", "1.0", "0"). */
-  def parsePermValue(s0: String): Option[Rational] = {
-    val s = s0.trim
-    try {
-      if (s.contains("/")) {
-        val parts = s.split("/")
-        Some(Rational(BigInt(parts(0).trim), BigInt(parts(1).trim)))
-      } else if (s.contains(".") || s.contains("e") || s.contains("E")) {
-        val bd = BigDecimal(s)
-        if (bd.scale <= 0) Some(Rational(bd.toBigInt, 1))
-        else Some(Rational(bd.bigDecimal.unscaledValue(), BigInt(10).pow(bd.scale)))
-      } else Some(Rational(BigInt(s), 1))
-    } catch {
-      case _: Throwable => None
+    argTuples.toSeq.flatMap { tuple =>
+      if (tuple.length < qvars.length) None
+      else {
+        val env = Map[Var, ExtractedModelEntry](qvars.zip(tuple).map { case (qv, v) => qv -> UnprocessedModelEntry(ConstantEntry(v)) }: _*)
+        evaluateTerm(c.perm, model, env) match {
+          case LitPermEntry(p) =>
+            val perm = Rational(p.numerator, p.denominator)
+            if (perm > Rational.zero) Some((tuple.take(qvars.length), perm)) else None
+          case _ => None
+        }
+      }
     }
   }
 
@@ -771,62 +709,6 @@ object SiliconRawCounterexample {
     case _ => Seq(UnspecifiedEntry)
   }
 
-  /**
-    * Function used in quantified permissions:
-    * Checks the validity of the permission expression for every possible combination of inputs (possible
-    * inputs are given in the inverse functions of the counterexample from the SMT solver.
-    */
-  def detPermWithInv(perm: Term, model: Model): (Seq[Seq[ValueEntry]], Option[Rational]) = {
-    val check = "^inv@[0-9]+@[0-9]+\\([^)]*\\)$"
-    val (originals, replacements) = detTermReplacement(perm, check).toSeq.unzip
-    val newPerm = perm.replace(originals, replacements)
-    var allInvParameters = Map[Term, Map[Seq[ValueEntry], ValueEntry]]()
-    for (inv <- replacements) {
-      model.entries.get(inv.toString) match {
-        case Some(x) =>
-          var tempMap = Map[Seq[ValueEntry], ValueEntry]()
-          for ((input, output) <- x.asInstanceOf[MapEntry].options) {
-            if (input(0).toString != "else") {
-              tempMap += (input -> output)
-            }
-          }
-          allInvParameters += (inv -> tempMap)
-        case None => println(s"There is no Inverse Function with the name: ${inv.toString}")
-      }
-    }
-    if (allInvParameters.toSeq.filter(x => x._2.isEmpty).isEmpty) {
-      val (tempOriginals, predicateInputs, tempReplacements) = allInvParameters.toSeq.map { case x => (x._1, x._2.head._1, Var(SimpleIdentifier(x._2.head._2.toString), x._1.sort, false)) }.unzip3
-      val tempPerm = newPerm.replace(tempOriginals, tempReplacements)
-      val evaluatedTempPerm = evalPerm(tempPerm, model)
-      (predicateInputs, evaluatedTempPerm)
-    } else {
-      val predicateInputs = allInvParameters.toSeq.filter(x => !x._2.isEmpty).map(x => x._2.head._1)
-      val evaluatedTempPerm = Some(Rational.zero)
-      (predicateInputs, evaluatedTempPerm)
-    }
-  }
-
-  def detTermReplacement(term: Term, pattern: String): Map[Term, Term] = {
-    if (pattern.r.matches(term.toString)) {
-      val outIdentifier = SimpleIdentifier(term.toString.split("\\(")(0))
-      val outSort = term.asInstanceOf[App].applicable.resultSort
-      Map(term -> Var(outIdentifier, outSort, false))
-    } else {
-      term.subterms.foldLeft(Map[Term, Term]()) {(acc, x) => (acc ++ detTermReplacement(x, pattern))}
-    }
-  }
-
-  def allInvFuncCombinations(allInvParameters: Map[Term, Map[Seq[ValueEntry], ValueEntry]]): Seq[Seq[(Term, Seq[ValueEntry], ValueEntry)]] = {
-    if (allInvParameters.isEmpty) {
-      Seq(Seq())
-    } else {
-      val (invFun, inputOutputMap) = allInvParameters.head
-      val remainingMap = allInvParameters.tail
-      val remainingCombinations = allInvFuncCombinations(remainingMap)
-      inputOutputMap.flatMap { inputOutput => remainingCombinations.map((invFun, inputOutput._1, inputOutput._2) +: _)}.toSeq
-    }
-  }
-
   def detMagicWand(model: Model, chunk: MagicWandChunk): RawHeapEntry = {
     val name = chunk.id.toString
     var args = Seq[String]()
@@ -849,210 +731,12 @@ object SiliconRawCounterexample {
   }
 
   /**
-    * Evaluates a Term to a Permission (which is represented by a Rational).
+    * Evaluates a permission-sorted term to a rational by delegating to the shared term evaluator
+    * ([[Converter.evaluateTerm]]).
     */
-  def evalPerm(value: Term, model: Model): Option[Rational] = {
-    value match {
-      case _: Var => evaluateTerm(value, model) match {
-        case LitPermEntry(value) => Some(Rational.apply(value.numerator, value.denominator))
-        case _ => None
-      }
-      case App(applicable, argsSeq) => None
-      case IntLiteral(n) => Some(Rational.apply(n, 1))
-      case NoPerm => Some(Rational.zero)
-      case FullPerm => Some(Rational.one)
-      case Null => None
-      case a:BooleanLiteral => if (a.value) Some(Rational.apply(1, 1)) else Some(Rational.apply(0, 1))
-      case _: Quantification => None //not done yet
-      case Plus(v1, v2) =>
-        val pr1 = evalPerm(v1, model)
-        val pr2 = evalPerm(v2, model)
-        if (pr1 != None && pr2 != None) {
-          val num = pr1.get.numerator*pr2.get.denominator + pr2.get.numerator*pr1.get.denominator
-          val den = pr1.get.denominator*pr2.get.denominator
-          Some(Rational.apply(num, den))
-        } else {
-          None
-        }
-      case Minus(v1, v2) =>
-        val pr1 = evalPerm(v1, model)
-        val pr2 = evalPerm(v2, model)
-        if (pr1 != None && pr2 != None) {
-          val num = pr1.get.numerator * pr2.get.denominator - pr2.get.numerator * pr1.get.denominator
-          val den = pr1.get.denominator * pr2.get.denominator
-          Some(Rational.apply(num, den))
-        } else {
-          None
-        }
-      case Times(v1, v2) =>
-        val pr1 = evalPerm(v1, model)
-        val pr2 = evalPerm(v2, model)
-        if (pr1 != None && pr2 != None) {
-          val num = pr1.get.numerator * pr2.get.numerator
-          val den = pr1.get.denominator * pr2.get.denominator
-          Some(Rational.apply(num, den))
-        } else {
-          None
-        }
-      case Div(v1, v2) =>
-        val pr1 = evalPerm(v1, model)
-        val pr2 = evalPerm(v2, model)
-        if (pr1 != None && pr2 != None) {
-          val num = pr1.get.numerator * pr2.get.denominator
-          val den = pr1.get.denominator * pr2.get.numerator
-          Some(Rational.apply(num, den))
-        } else {
-          None
-        }
-      case Not(v) =>
-        val pr = evalPerm(v, model)
-        if (pr != None) {
-          Some(Rational.apply(1-pr.get.numerator, pr.get.denominator))
-        } else {
-          None
-        }
-      case Or(t) =>
-        val evalSeq = t.map(st =>
-          if (evalPerm(st, model) != None) {
-            Some(evalPerm(st, model).get.numerator)
-          } else {
-            None
-          })
-        if (evalSeq.contains(None)) {
-          None
-        } else if (evalSeq.contains(Some(BigInt(1)))) {
-          Some(Rational.one)
-        } else {
-          Some(Rational.zero)
-        }
-      case And(t) =>
-        val evalSeq = t.map(st =>
-          if (evalPerm(st, model) != None) {
-            Some(evalPerm(st, model).get.numerator)
-          } else {
-            None
-          })
-        if (evalSeq.contains(None)) {
-          None
-        } else if (evalSeq.contains(Some(BigInt(0)))) {
-          Some(Rational.zero)
-        } else {
-          Some(Rational.one)
-        }
-      case FractionPermLiteral(r) => Some(Rational.apply(r.numerator, r.denominator))
-      case FractionPerm(v1, v2) => if (v1.isInstanceOf[IntLiteral] && v2.isInstanceOf[IntLiteral]) Some(Rational(v1.asInstanceOf[IntLiteral].n, v2.asInstanceOf[IntLiteral].n)) else None
-      case IsValidPermVal(v) => evalPerm(v, model)
-      case IsReadPermVar(v) => evalPerm(v, model)
-      case Let(_) => None
-      case BuiltinEquals(t0, t1) =>
-        val first = evalTermToModelEntry(t0, model)
-        val second = evalTermToModelEntry(t1, model)
-        if (first.toString == second.toString) {
-          Some(Rational.one)
-        } else {
-          Some(Rational.zero)
-        }
-      case Less(t0, t1) =>
-        val first =
-          if (evalTermToModelEntry(t0, model).isDefined && evalTermToModelEntry(t0, model).get.toString.forall(Character.isDigit)) {
-            Some(evalTermToModelEntry(t0, model).get.toString.toInt)
-          } else {
-            None
-          }
-        val second =
-          if (evalTermToModelEntry(t1, model).isDefined && evalTermToModelEntry(t1, model).get.toString.forall(Character.isDigit)) {
-            Some(evalTermToModelEntry(t1, model).get.toString.toInt)
-          } else {
-            None
-          }
-        if (first.isDefined && second.isDefined && first.get < second.get) {
-          Some(Rational.one)
-        } else if (first.isDefined && second.isDefined) {
-          Some(Rational.zero)
-        } else {
-          None
-        }
-      case AtMost(t0, t1) =>
-        val first =
-          if (evalTermToModelEntry(t0, model).isDefined && evalTermToModelEntry(t0, model).get.toString.forall(Character.isDigit)) {
-            Some(evalTermToModelEntry(t0, model).get.toString.toInt)
-          } else {
-            None
-          }
-        val second =
-          if (evalTermToModelEntry(t1, model).isDefined && evalTermToModelEntry(t1, model).get.toString.forall(Character.isDigit)) {
-            Some(evalTermToModelEntry(t1, model).get.toString.toInt)
-          } else {
-            None
-          }
-        if (first.isDefined && second.isDefined && first.get <= second.get) {
-          Some(Rational.one)
-        } else if (first.isDefined && second.isDefined) {
-          Some(Rational.zero)
-        } else {
-          None
-        }
-      case AtLeast(t0, t1) =>
-        val first =
-          if (evalTermToModelEntry(t0, model).isDefined && evalTermToModelEntry(t0, model).get.toString.forall(Character.isDigit)) {
-            Some(evalTermToModelEntry(t0, model).get.toString.toInt)
-          } else {
-            None
-          }
-        val second =
-          if (evalTermToModelEntry(t1, model).isDefined && evalTermToModelEntry(t1, model).get.toString.forall(Character.isDigit)) {
-            Some(evalTermToModelEntry(t1, model).get.toString.toInt)
-          } else {
-            None
-          }
-        if (first.isDefined && second.isDefined && first.get >= second.get) {
-          Some(Rational.one)
-        } else if (first.isDefined && second.isDefined) {
-          Some(Rational.zero)
-        } else {
-          None
-        }
-      case PermTimes(v1, v2) =>
-        evalPerm(v1, model).flatMap(x => evalPerm(v2, model).map(y => x * y))
-      case IntPermTimes(v1, v2) =>
-        evalPerm(v1, model).flatMap(x => evalPerm(v2, model).map(y => x * y))
-      case PermIntDiv(v1, v2) =>
-        evalPerm(v1, model).flatMap(x => evalPerm(v2, model).map(y => x / y))
-      case PermPlus(v1, v2) =>
-        evalPerm(v1, model).flatMap(x => evalPerm(v2, model).map(y => x + y))
-      case PermMinus(v1, v2) =>
-        evalPerm(v1, model).flatMap(x => evalPerm(v2, model).map(y => x - y))
-      case PermLess(_, _) => None
-      case PermAtMost(_, _) => None
-      case PermMin(_, _) => None
-      case SortWrapper(t, _) => evalPerm(t, model)
-      case Distinct(domainFunSet) => None
-      case Let(bindings, body) => None
-      // Term cases that are not handled: MagicWandChunkTerm, MagicWandSnapshot,
-      // PredicateTrigger, PredicateDomain, PredicatePermLookup, PredicateLookup,
-      // FieldTrigger, Domain, PermLookup, Lookup,
-      // trait Decl, Applicable, Function
-      // trait SnapshotTerm
-      // trait SetTerm, MapTerm, MultisetTerm
-      case Ite(t, _, _) => evalPerm(t, model)
-      case SetIn(v, s) =>
-        if (model.entries.get("Set_in").get.isInstanceOf[MapEntry]) {
-          val setInEntry = model.entries.get("Set_in").get.asInstanceOf[MapEntry]
-          val lookupEntry = Seq(ConstantEntry(model.entries.getOrElse(v.toString, v).toString), ConstantEntry(model.entries.getOrElse(s.toString, s).toString))
-          if (setInEntry.options.contains(lookupEntry)) {
-            if (setInEntry.options.get(lookupEntry).get.toString.toBoolean) {
-              Some(Rational.one)
-            } else {
-              Some(Rational.zero)
-            }
-          } else {
-            None
-          }
-        } else {
-          None
-        }
-      case _ => None
-    }
+  def evalPerm(value: Term, model: Model): Option[Rational] = evaluateTerm(value, model) match {
+    case LitPermEntry(r) => Some(Rational(r.numerator, r.denominator))
+    case _ => None
   }
 
   /**
