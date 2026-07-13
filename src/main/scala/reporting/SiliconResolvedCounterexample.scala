@@ -1198,15 +1198,11 @@ object SiliconResolvedCounterexample {
             }
           }
         case MagicWandType | QPMagicWandType =>
-          var translatedArgs: Seq[String] = bhe.field.map(x => translNames.getOrElse(x, x))
+          val argValues: Seq[String] = bhe.field.map(x => translNames.getOrElse(x, x))
           for ((mw, idx) <- program.magicWandStructures.zipWithIndex) {
             val wandName = "wand@" ++ idx.toString
             if (bhe.reference(0) == wandName) {
-              val mwStructure = mw.structure(program, true)
-              val replacements: Iterable[(ast.Node, ast.Node)] = mwStructure.subexpressionsToEvaluate(program).zip(translatedArgs).map(e => e._1 -> LocalVar(e._2, e._1.typ)())
-              val repl: scala.collection.immutable.Map[ast.Node, ast.Node] = scala.collection.immutable.Map.from(replacements)
-              val transformed = mwStructure.replace(repl)
-              ans +:= (mw, WandFinalEntry(wandName, transformed.left, transformed.right, scala.collection.immutable.Map[String, String](), bhe.perm, bhe.het))
+              ans +:= (mw, WandFinalEntry.fromStructure(wandName, mw, argValues, bhe.perm, bhe.het, program))
             }
           }
         case _ => println("This type of heap entry could not be matched correctly!")
