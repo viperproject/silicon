@@ -35,7 +35,7 @@ case class SiliconResolvedCounterexample(model: Model,
 
   val (ceStore, refOcc) = SiliconResolvedCounterexample.detStore(internalStore, rawCE.basicVariables, rawCE.allCollections)
   val nameTranslationMap = SiliconResolvedCounterexample.detTranslationMap(rawCE.basicVariables, rawCE.allCollections, refOcc)
-  val ceHeaps = rawCE.allBasicHeaps.reverse.map(bh => (bh._1, SiliconResolvedCounterexample.detHeap(bh._2, program, rawCE.allCollections, nameTranslationMap, model)))
+  val ceHeaps = rawCE.allRawHeaps.reverse.map(bh => (bh._1, SiliconResolvedCounterexample.detHeap(bh._2, program, rawCE.allCollections, nameTranslationMap, model)))
 
   val domainEntries = SiliconResolvedCounterexample.detTranslatedDomains(rawCE.domainEntries, nameTranslationMap)
   val functionEntries =  SiliconResolvedCounterexample.detTranslatedFunctions(rawCE.nonDomainFunctions, nameTranslationMap)
@@ -71,10 +71,10 @@ case class SiliconRawCounterexample(model: Model,
   val allSequences: Seq[CECollection] = SiliconRawCounterexample.detSequences(model)
   val allSets: Seq[CECollection] = SiliconRawCounterexample.detSets(model)
   val allMultisets: Seq[CECollection] = SiliconRawCounterexample.detMultisets(model)
-  var allBasicHeaps: Seq[(String, BasicHeap)] = Seq(("current", BasicHeap(SiliconRawCounterexample.detHeap(model, heap, program.predicatesByName))))
-  oldHeaps.foreach {case (n, h) => allBasicHeaps +:= ((n, BasicHeap(SiliconRawCounterexample.detHeap(model, h.values, program.predicatesByName))))}
+  var allRawHeaps: Seq[(String, RawHeap)] = Seq(("current", RawHeap(SiliconRawCounterexample.detHeap(model, heap, program.predicatesByName))))
+  oldHeaps.foreach {case (n, h) => allRawHeaps +:= ((n, RawHeap(SiliconRawCounterexample.detHeap(model, h.values, program.predicatesByName))))}
 
-  def basicHeaps: Seq[(String, BasicHeap)] = allBasicHeaps
+  def rawHeaps: Seq[(String, RawHeap)] = allRawHeaps
   val domainEntries: Seq[BasicDomainEntry] = SiliconRawCounterexample.getAllDomains(model, program)
   val nonDomainFunctions: Seq[BasicFunctionEntry] = SiliconRawCounterexample.getAllFunctions(model, program)
 
@@ -85,8 +85,8 @@ case class SiliconRawCounterexample(model: Model,
       finalString += basicVariables.map(x => x.toString).mkString("", "\n", "\n")
     if (!allCollections.isEmpty)
       finalString += allCollections.map(x => x.toString).mkString("", "\n", "\n")
-    if (!allBasicHeaps.filter(y => !y._2.basicHeapEntries.isEmpty).isEmpty)
-      finalString += allBasicHeaps.filter(y => !y._2.basicHeapEntries.isEmpty).map(x => "   " + x._1 + " Heap: \n" + x._2.toString).mkString("", "\n", "\n")
+    if (!allRawHeaps.filter(y => !y._2.rawHeapEntries.isEmpty).isEmpty)
+      finalString += allRawHeaps.filter(y => !y._2.rawHeapEntries.isEmpty).map(x => "   " + x._1 + " Heap: \n" + x._2.toString).mkString("", "\n", "\n")
     if (!domainEntries.isEmpty || !nonDomainFunctions.isEmpty)
       finalString ++= "   Domains:\n"
     if (!domainEntries.isEmpty)
@@ -488,8 +488,8 @@ object SiliconRawCounterexample {
   /**
     * Transforms the Heap Chunks to their Viper heap types.
     */
-  def detHeap(model: Model, h: Iterable[Chunk], predByName: scala.collection.immutable.Map[String, Predicate]): Set[BasicHeapEntry] = {
-    var heap = Set[BasicHeapEntry]()
+  def detHeap(model: Model, h: Iterable[Chunk], predByName: scala.collection.immutable.Map[String, Predicate]): Set[RawHeapEntry] = {
+    var heap = Set[RawHeapEntry]()
     h foreach {
       case c@BasicChunk(FieldID, _, _, _, _, _, _, _) =>
         heap += detField(model, c)
@@ -508,7 +508,7 @@ object SiliconRawCounterexample {
                 val reference = k(1)
                 val value = v.toString
                 val tempPerm = possiblePerm._2
-                heap += BasicHeapEntry(Seq(reference.toString), Seq(fieldName), value, tempPerm, QPFieldType, None)
+                heap += RawHeapEntry(Seq(reference.toString), Seq(fieldName), value, tempPerm, QPFieldType, None)
               }
             }
           case None => //println(s"There is no QF with the snapshot: ${c.snapshotMap}")
@@ -521,7 +521,7 @@ object SiliconRawCounterexample {
         if (!possiblePerm._1.isEmpty) {
           fSeq = possiblePerm._1.head.map(x => x.toString)
         }
-        heap += BasicHeapEntry(Seq(predName), fSeq, "#undefined", possiblePerm._2, QPPredicateType, None)
+        heap += RawHeapEntry(Seq(predName), fSeq, "#undefined", possiblePerm._2, QPPredicateType, None)
       case c@MagicWandChunk(_, _, _, _, _, _, _) =>
         heap += detMagicWand(model, c)
       case _ => //println("This case is not supported in detHeap")
@@ -529,15 +529,15 @@ object SiliconRawCounterexample {
     heap
   }
 
-  def detField(model: Model, chunk: BasicChunk): BasicHeapEntry = {
+  def detField(model: Model, chunk: BasicChunk): RawHeapEntry = {
     val recvVar = evaluateTerm(chunk.args(0), model).toString
     val fieldName = chunk.id.name
     val value = evaluateTerm(chunk.snap, model).toString
     val perm = evalPerm(chunk.perm, model)
-    BasicHeapEntry(Seq(recvVar), Seq(fieldName), value, perm, FieldType, None)
+    RawHeapEntry(Seq(recvVar), Seq(fieldName), value, perm, FieldType, None)
   }
 
-  def detPredicate(model: Model, chunk: BasicChunk, predByName: scala.collection.immutable.Map[String, Predicate]): BasicHeapEntry = {
+  def detPredicate(model: Model, chunk: BasicChunk, predByName: scala.collection.immutable.Map[String, Predicate]): RawHeapEntry = {
     val predName = chunk.id.name
     val references = chunk.args.map(x => evaluateTerm(x, model))
     var snap: Seq[ModelEntry] = Seq()
@@ -547,7 +547,7 @@ object SiliconRawCounterexample {
     val astPred = predByName.get(predName)
     val insidePredicateMap = evalInsidePredicate(snap, astPred)
     val perm = evalPerm(chunk.perm, model)
-    BasicHeapEntry(Seq(predName), references.map(x => x.toString), chunk.snap.toString, perm, PredicateType, Some(insidePredicateMap))
+    RawHeapEntry(Seq(predName), references.map(x => x.toString), chunk.snap.toString, perm, PredicateType, Some(insidePredicateMap))
   }
 
   /**
@@ -694,7 +694,7 @@ object SiliconRawCounterexample {
     }
   }
 
-  def detMagicWand(model: Model, chunk: MagicWandChunk): BasicHeapEntry = {
+  def detMagicWand(model: Model, chunk: MagicWandChunk): RawHeapEntry = {
     val name = chunk.id.toString
     var args = Seq[String]()
     for (x <- chunk.args) {
@@ -712,7 +712,7 @@ object SiliconRawCounterexample {
       args ++= Seq(arg)
     }
     val perm = evalPerm(chunk.perm, model)
-    BasicHeapEntry(Seq(name), args, "#undefined", perm, MagicWandType, None)
+    RawHeapEntry(Seq(name), args, "#undefined", perm, MagicWandType, None)
   }
 
   /**
@@ -1171,30 +1171,30 @@ object SiliconResolvedCounterexample {
   /**
     * Match heap resources to their ast node and translate all identifiers (for fields and references)
     */
-  def detHeap(basicHeap: BasicHeap, program: Program, collections: Seq[CECollection], translNames: Map[String, String], model: Model): HeapCounterexample = {
-    var ans = Seq[(Resource, FinalHeapEntry)]()
-    for (bhe <- basicHeap.basicHeapEntries) {
+  def detHeap(basicHeap: RawHeap, program: Program, collections: Seq[CECollection], translNames: Map[String, String], model: Model): HeapCounterexample = {
+    var ans = Seq[(Resource, ResolvedHeapEntry)]()
+    for (bhe <- basicHeap.rawHeapEntries) {
       bhe.het match {
         case FieldType | QPFieldType =>
           for ((fn, fv) <- program.fieldsByName) {
             if (fn == bhe.field.head) {
               collections.find(_.id == bhe.valueID) match {
                 case Some(coll) =>
-                  ans +:= (fv, FieldFinalEntry(bhe.reference.head, bhe.field.head, coll.value, bhe.perm, fv.typ, bhe.het))
+                  ans +:= (fv, FieldResolvedEntry(bhe.reference.head, bhe.field.head, coll.value, bhe.perm, fv.typ, bhe.het))
                 case None =>
-                  ans +:= (fv, FieldFinalEntry(bhe.reference.head, bhe.field.head, CounterexampleValue.literal(bhe.valueID, Some(fv.typ)), bhe.perm, fv.typ, bhe.het))
+                  ans +:= (fv, FieldResolvedEntry(bhe.reference.head, bhe.field.head, CounterexampleValue.literal(bhe.valueID, Some(fv.typ)), bhe.perm, fv.typ, bhe.het))
               }
             }
           }
         case PredicateType | QPPredicateType =>
           for ((pn, pv) <- program.predicatesByName) {
             if (pn == bhe.reference.head) {
-              val refNames = bhe.field
+              val argExps = bhe.field.zip(pv.formalArgs).map { case (v, fa) => CounterexampleValue.literal(v, Some(fa.typ)) }
               var translatedArgs: Option[scala.collection.immutable.Map[Exp, ModelEntry]] = bhe.insidePredicate
               if (bhe.insidePredicate.isDefined) {
                 translatedArgs = Some(bhe.insidePredicate.get.map{case (k,v) => (k, ConstantEntry(translNames.getOrElse(v.toString, model.entries.getOrElse(v.toString, v).toString)))})
               }
-              ans +:= (pv, PredFinalEntry(bhe.reference.head, refNames, bhe.perm, translatedArgs, bhe.het))
+              ans +:= (pv, PredResolvedEntry(bhe.reference.head, argExps, bhe.perm, translatedArgs, bhe.het))
             }
           }
         case MagicWandType | QPMagicWandType =>
@@ -1202,7 +1202,7 @@ object SiliconResolvedCounterexample {
           for ((mw, idx) <- program.magicWandStructures.zipWithIndex) {
             val wandName = "wand@" ++ idx.toString
             if (bhe.reference(0) == wandName) {
-              ans +:= (mw, WandFinalEntry.fromStructure(wandName, mw, argValues, bhe.perm, bhe.het, program))
+              ans +:= (mw, WandResolvedEntry.fromStructure(wandName, mw, argValues, bhe.perm, bhe.het, program))
             }
           }
         case _ => println("This type of heap entry could not be matched correctly!")
