@@ -26,22 +26,22 @@ import viper.silver.verifier.Rational
 /**
   * CounterexampleGenerator class used for generating an "extended" CE.
   */
-case class SiliconExtendedCounterexample(model: Model,
+case class SiliconResolvedCounterexample(model: Model,
                                          internalStore: Store,
                                          heap: Iterable[Chunk],
                                          oldHeaps: State.OldHeaps,
-                                         program: ast.Program) extends SiliconCounterexample with ExtendedCounterexample {
-  val imCE = SiliconIntermediateCounterexample(model, internalStore, heap, oldHeaps, program)
+                                         program: ast.Program) extends SiliconCounterexample with ResolvedCounterexample {
+  val rawCE = SiliconRawCounterexample(model, internalStore, heap, oldHeaps, program)
 
-  val (ceStore, refOcc) = SiliconExtendedCounterexample.detStore(internalStore, imCE.basicVariables, imCE.allCollections)
-  val nameTranslationMap = SiliconExtendedCounterexample.detTranslationMap(ceStore, refOcc)
-  val ceHeaps = imCE.allBasicHeaps.reverse.map(bh => (bh._1, SiliconExtendedCounterexample.detHeap(bh._2, program, imCE.allCollections, nameTranslationMap, model)))
+  val (ceStore, refOcc) = SiliconResolvedCounterexample.detStore(internalStore, rawCE.basicVariables, rawCE.allCollections)
+  val nameTranslationMap = SiliconResolvedCounterexample.detTranslationMap(rawCE.basicVariables, rawCE.allCollections, refOcc)
+  val ceHeaps = rawCE.allBasicHeaps.reverse.map(bh => (bh._1, SiliconResolvedCounterexample.detHeap(bh._2, program, rawCE.allCollections, nameTranslationMap, model)))
 
-  val domainEntries = SiliconExtendedCounterexample.detTranslatedDomains(imCE.domainEntries, nameTranslationMap)
-  val functionEntries =  SiliconExtendedCounterexample.detTranslatedFunctions(imCE.nonDomainFunctions, nameTranslationMap)
+  val domainEntries = SiliconResolvedCounterexample.detTranslatedDomains(rawCE.domainEntries, nameTranslationMap)
+  val functionEntries =  SiliconResolvedCounterexample.detTranslatedFunctions(rawCE.nonDomainFunctions, nameTranslationMap)
 
   override def toString: String = {
-    var finalString = "      Extended Counterexample: \n"
+    var finalString = "      Resolved Counterexample: \n"
     finalString += "   Store: \n"
     if (!ceStore.storeEntries.isEmpty)
       finalString += ceStore.storeEntries.map(x => x.toString).mkString("", "\n", "\n")
@@ -55,31 +55,31 @@ case class SiliconExtendedCounterexample(model: Model,
   }
 
   override def withStore(s: Store): SiliconCounterexample = {
-    SiliconExtendedCounterexample(model, s, heap, oldHeaps, program)
+    SiliconResolvedCounterexample(model, s, heap, oldHeaps, program)
   }
 }
 
 /**
   * CounterexampleGenerator class used for generating an "intermediate" CE.
   */
-case class SiliconIntermediateCounterexample(model: Model,
+case class SiliconRawCounterexample(model: Model,
                                              internalStore: Store,
                                              heap: Iterable[Chunk],
                                              oldHeaps: State.OldHeaps,
-                                             program: ast.Program) extends SiliconCounterexample with IntermediateCounterexample {
-  val basicVariables: Seq[CEVariable] = SiliconIntermediateCounterexample.detBasicVariables(model, internalStore)
-  val allSequences: Seq[CEValue] = SiliconIntermediateCounterexample.detSequences(model)
-  val allSets: Seq[CEValue] = SiliconIntermediateCounterexample.detSets(model)
-  val allMultisets: Seq[CEValue] = SiliconIntermediateCounterexample.detMultisets(model)
-  var allBasicHeaps: Seq[(String, BasicHeap)] = Seq(("current", BasicHeap(SiliconIntermediateCounterexample.detHeap(model, heap, program.predicatesByName))))
-  oldHeaps.foreach {case (n, h) => allBasicHeaps +:= ((n, BasicHeap(SiliconIntermediateCounterexample.detHeap(model, h.values, program.predicatesByName))))}
+                                             program: ast.Program) extends SiliconCounterexample with RawCounterexample {
+  val basicVariables: Seq[CEVariable] = SiliconRawCounterexample.detBasicVariables(model, internalStore)
+  val allSequences: Seq[CECollection] = SiliconRawCounterexample.detSequences(model)
+  val allSets: Seq[CECollection] = SiliconRawCounterexample.detSets(model)
+  val allMultisets: Seq[CECollection] = SiliconRawCounterexample.detMultisets(model)
+  var allBasicHeaps: Seq[(String, BasicHeap)] = Seq(("current", BasicHeap(SiliconRawCounterexample.detHeap(model, heap, program.predicatesByName))))
+  oldHeaps.foreach {case (n, h) => allBasicHeaps +:= ((n, BasicHeap(SiliconRawCounterexample.detHeap(model, h.values, program.predicatesByName))))}
 
   def basicHeaps: Seq[(String, BasicHeap)] = allBasicHeaps
-  val domainEntries: Seq[BasicDomainEntry] = SiliconIntermediateCounterexample.getAllDomains(model, program)
-  val nonDomainFunctions: Seq[BasicFunctionEntry] = SiliconIntermediateCounterexample.getAllFunctions(model, program)
+  val domainEntries: Seq[BasicDomainEntry] = SiliconRawCounterexample.getAllDomains(model, program)
+  val nonDomainFunctions: Seq[BasicFunctionEntry] = SiliconRawCounterexample.getAllFunctions(model, program)
 
   override def toString: String = {
-    var finalString = "      Intermediate Counterexample: \n"
+    var finalString = "      Raw Counterexample: \n"
     finalString ++= "   Local Information:\n"
     if (!basicVariables.isEmpty)
       finalString += basicVariables.map(x => x.toString).mkString("", "\n", "\n")
@@ -97,11 +97,11 @@ case class SiliconIntermediateCounterexample(model: Model,
   }
 
   override def withStore(s: Store): SiliconCounterexample = {
-    SiliconExtendedCounterexample(model, s, heap, oldHeaps, program).imCE
+    SiliconResolvedCounterexample(model, s, heap, oldHeaps, program).rawCE
   }
 }
 
-object SiliconIntermediateCounterexample {
+object SiliconRawCounterexample {
 
   /**
     * Determines the local variables and their value.
@@ -117,9 +117,9 @@ object SiliconIntermediateCounterexample {
               varTyp = Some(k.asInstanceOf[LocalVar].typ)
             }
             if (x.isInstanceOf[ConstantEntry]) {
-              res +:= CEVariable(k.name, x, varTyp)
+              res +:= CEVariable(k.name, CounterexampleValue.literal(x.toString, varTyp), varTyp)
             } else if (x.isInstanceOf[ApplicationEntry]) {
-              res +:= CEVariable(k.name, x, varTyp)
+              res +:= CEVariable(k.name, CounterexampleValue.literal(x.toString, varTyp), varTyp)
             } else {
               println(s"Couldn't find a ConstantEntry or ApplicationEntry for the Variable: ${k.name}")
             }
@@ -130,13 +130,13 @@ object SiliconIntermediateCounterexample {
         if (k.isInstanceOf[LocalVar]) {
           varTyp = Some(k.asInstanceOf[LocalVar].typ)
         }
-        res +:= CEVariable(k.name, ConstantEntry(v.toString), varTyp)
+        res +:= CEVariable(k.name, CounterexampleValue.literal(v.toString, varTyp), varTyp)
       }
     }
     if (model.entries.contains("$Ref.null")) {
       val nullRef = model.entries.get("$Ref.null").get
       if (nullRef.isInstanceOf[ConstantEntry]) {
-        res +:= CEVariable("null", nullRef, Some(ast.Ref))
+        res +:= CEVariable("null", CounterexampleValue.literal(nullRef.toString, Some(ast.Ref)), Some(ast.Ref))
       }
     }
     res
@@ -147,7 +147,7 @@ object SiliconIntermediateCounterexample {
     * and are not assigned to their actual value. Additionally, not every sequence in the output set will be mentioned
     * in the "extended" CE as only sequences that are used in the method containing the verification error will be mentioned there.
     */
-  def detSequences(model: Model): Seq[CEValue] = {
+  def detSequences(model: Model): Seq[CECollection] = {
     var res = Map[String, Seq[String]]()
     var tempMap = Map[(String, Seq[String]), String]()
     for ((opName, opValues) <- model.entries) {
@@ -246,22 +246,13 @@ object SiliconIntermediateCounterexample {
         }
       }
     }
-    var ans = Seq[CEValue]()
+    var ans = Seq[CECollection]()
     res.foreach {
       case (n, s) =>
-        val typ: Option[Type] = detASTTypeFromString(n.replaceAll(".*?<(.*)>.*", "$1")) match {
-          case Some(x) => Some(ast.SeqType(x))
-          case None => None
-        }
-        var entries = Map[BigInt, String]()
-        var counter = 0
-        for (e <- s) {
-          if (e != "#undefined") {
-            entries += ((BigInt(counter), e))
-          }
-          counter += 1
-        }
-        ans +:= CESequence(n, BigInt(s.length), entries, s, typ)
+        val elemTyp: Option[Type] = detASTTypeFromString(n.replaceAll(".*?<(.*)>.*", "$1"))
+        val elems = s.map(e => CounterexampleValue.literal(e, elemTyp))
+        val value = if (elems.isEmpty) ast.EmptySeq(elemTyp.getOrElse(ast.InternalType))() else ast.ExplicitSeq(elems)()
+        ans +:= CECollection(n, value)
     }
     ans
   }
@@ -271,7 +262,7 @@ object SiliconIntermediateCounterexample {
     * and are not assigned to their actual value. Additionally, not every set in the output set will be mentioned
     * in the "extended" CE as only sets that are used in the method containing the verification error will be mentioned there.
     */
-  def detSets(model: Model): Seq[CEValue] = {
+  def detSets(model: Model): Seq[CECollection] = {
     var res = Map[String, Set[String]]()
     for ((opName, opValues) <- model.entries) {
       if (opName == "Set_empty") {
@@ -361,20 +352,13 @@ object SiliconIntermediateCounterexample {
         }
       }
     }
-    var ans = Seq[CEValue]()
+    var ans = Seq[CECollection]()
     res.foreach {
       case (n, s) =>
-        val typ: Option[Type] = detASTTypeFromString(n.replaceAll(".*?<(.*)>.*", "$1")) match {
-          case Some(x) => Some(ast.SetType(x))
-          case None => None
-        }
-        var containment = Map[String, Boolean]()
-        for (e <- s) {
-          if (e != "#undefined") {
-            containment += ((e, true))
-          }
-        }
-        ans +:= CESet(n, BigInt(s.size), containment, s, typ)
+        val elemTyp: Option[Type] = detASTTypeFromString(n.replaceAll(".*?<(.*)>.*", "$1"))
+        val elems = s.filter(_ != "#undefined").toSeq.map(e => CounterexampleValue.literal(e, elemTyp))
+        val value = if (elems.isEmpty) ast.EmptySet(elemTyp.getOrElse(ast.InternalType))() else ast.ExplicitSet(elems)()
+        ans +:= CECollection(n, value)
     }
     ans
   }
@@ -384,7 +368,7 @@ object SiliconIntermediateCounterexample {
     * and are not assigned to their actual value. Additionally, not every multiset in the output set will be mentioned
     * in the "extended" CE as only multisets that are used in the method containing the verification error will be mentioned there.
     */
-  def detMultisets(model: Model): Seq[CEValue] = {
+  def detMultisets(model: Model): Seq[CECollection] = {
     var res = Map[String, scala.collection.immutable.Map[String, Int]]()
     for ((opName, opValues) <- model.entries) {
       if (opName == "Multiset_empty") {
@@ -477,15 +461,13 @@ object SiliconIntermediateCounterexample {
         }
       }
     }
-    var ans = Seq[CEValue]()
+    var ans = Seq[CECollection]()
     res.foreach {
       case (n, s) =>
-        val typ: Option[Type] = detASTTypeFromString(n.replaceAll(".*?<(.*)>.*", "$1")) match {
-          case Some(x) => Some(ast.SetType(x))
-          case None => None
-        }
-        val size = s.values.sum
-        ans +:= CEMultiset(n, BigInt(size), s, typ)
+        val elemTyp: Option[Type] = detASTTypeFromString(n.replaceAll(".*?<(.*)>.*", "$1"))
+        val elems = s.toSeq.flatMap { case (e, count) => Seq.fill(count)(CounterexampleValue.literal(e, elemTyp)) }
+        val value = if (elems.isEmpty) ast.EmptyMultiset(elemTyp.getOrElse(ast.InternalType))() else ast.ExplicitMultiset(elems)()
+        ans +:= CECollection(n, value)
     }
     ans
   }
@@ -1111,35 +1093,35 @@ object SiliconIntermediateCounterexample {
   }
 }
 
-object SiliconExtendedCounterexample {
+object SiliconResolvedCounterexample {
   /**
     * Combine a local variable with its ast node.
     */
-  def detStore(store: Store, variables: Seq[CEVariable], collections: Seq[CEValue]): (StoreCounterexample, Map[String, (String, Int)])  = {
+  def detStore(store: Store, variables: Seq[CEVariable], collections: Seq[CECollection]): (StoreCounterexample, Map[String, (String, Int)])  = {
     var refOccurences = Map[String, (String, Int)]()
     var ans = Seq[StoreEntry]()
     for ((k, _) <- store.values) {
       for (vari <- variables) {
         if (k.name == vari.name) {
           if (k.typ == ast.Ref) {
-            if (refOccurences.get(vari.entryValue.toString).isDefined) {
-              val (n, i) = refOccurences.get(vari.entryValue.toString).get
+            if (refOccurences.get(vari.value.toString).isDefined) {
+              val (n, i) = refOccurences.get(vari.value.toString).get
               if (n != k.name) {
-                refOccurences += (vari.entryValue.toString -> (k.name, i + 1))
+                refOccurences += (vari.value.toString -> (k.name, i + 1))
               }
             } else {
-              refOccurences += (vari.entryValue.toString -> (k.name, 1))
+              refOccurences += (vari.value.toString -> (k.name, 1))
             }
           }
           var found = false
           for (coll <- collections) {
-            if (vari.entryValue.toString == coll.id) {
-              ans +:= StoreEntry(k, coll)
+            if (vari.value.toString == coll.id) {
+              ans +:= StoreEntry(k, coll.value)
               found = true
             }
           }
           if (!found) {
-            ans +:= StoreEntry(k, vari)
+            ans +:= StoreEntry(k, vari.value)
           }
         }
       }
@@ -1150,14 +1132,19 @@ object SiliconExtendedCounterexample {
   /**
     * Match the collection type for the "extended" CE.
     */
-  def detTranslationMap(store: StoreCounterexample, fields: Map[String, (String, Int)]): Map[String, String] = {
+  def detTranslationMap(variables: Seq[CEVariable], collections: Seq[CECollection], fields: Map[String, (String, Int)]): Map[String, String] = {
     var namesTranslation = Map[String, String]()
-    for (ent <- store.storeEntries) {
-      ent.entry match {
-        case CEVariable(internalName, _, _) => namesTranslation += (internalName -> ent.id.name)
-        case CESequence(internalName, _, _, _, _) => namesTranslation += (internalName -> (ent.id.name + " (Seq)"))
-        case CESet(internalName, _, _, _, _) => namesTranslation += (internalName -> (ent.id.name + " (Set)"))
-        case CEMultiset(internalName, _, _, _) => namesTranslation += (internalName -> (ent.id.name + " (MultiSet)"))
+    for (vari <- variables) {
+      collections.find(_.id == vari.value.toString) match {
+        case Some(coll) =>
+          val suffix = vari.typ match {
+            case Some(_: ast.SeqType) => " (Seq)"
+            case Some(_: ast.SetType) => " (Set)"
+            case Some(_: ast.MultisetType) => " (MultiSet)"
+            case _ => ""
+          }
+          namesTranslation += (coll.id -> (vari.name + suffix))
+        case None => //
       }
     }
     for ((k, v) <- fields) {
@@ -1184,42 +1171,25 @@ object SiliconExtendedCounterexample {
   /**
     * Match heap resources to their ast node and translate all identifiers (for fields and references)
     */
-  def detHeap(basicHeap: BasicHeap, program: Program, collections: Seq[CEValue], translNames: Map[String, String], model: Model): HeapCounterexample = {
+  def detHeap(basicHeap: BasicHeap, program: Program, collections: Seq[CECollection], translNames: Map[String, String], model: Model): HeapCounterexample = {
     var ans = Seq[(Resource, FinalHeapEntry)]()
     for (bhe <- basicHeap.basicHeapEntries) {
       bhe.het match {
         case FieldType | QPFieldType =>
           for ((fn, fv) <- program.fieldsByName) {
             if (fn == bhe.field.head) {
-              var found = false
-              for (coll <- collections) {
-                if (bhe.valueID == coll.id) {
-                  if (false && translNames.get(bhe.reference.head).isDefined) {
-                    ans +:= (fv, FieldFinalEntry(translNames.get(bhe.reference.head).get, bhe.field.head, coll, bhe.perm, fv.typ, bhe.het))
-                  } else {
-                    ans +:= (fv, FieldFinalEntry(bhe.reference.head, bhe.field.head, coll, bhe.perm, fv.typ, bhe.het))
-                  }
-                  found = true
-                }
-              }
-              if (!found) {
-                if (false && translNames.get(bhe.reference.head).isDefined) {
-                  ans +:= (fv, FieldFinalEntry(translNames.get(bhe.reference.head).get, bhe.field.head, CEVariable("#undefined", ConstantEntry(bhe.valueID), Some(fv.typ)), bhe.perm, fv.typ, bhe.het))
-                } else {
-                  ans +:= (fv, FieldFinalEntry(bhe.reference.head, bhe.field.head, CEVariable("#undefined", ConstantEntry(bhe.valueID), Some(fv.typ)), bhe.perm, fv.typ, bhe.het))
-                }
+              collections.find(_.id == bhe.valueID) match {
+                case Some(coll) =>
+                  ans +:= (fv, FieldFinalEntry(bhe.reference.head, bhe.field.head, coll.value, bhe.perm, fv.typ, bhe.het))
+                case None =>
+                  ans +:= (fv, FieldFinalEntry(bhe.reference.head, bhe.field.head, CounterexampleValue.literal(bhe.valueID, Some(fv.typ)), bhe.perm, fv.typ, bhe.het))
               }
             }
           }
         case PredicateType | QPPredicateType =>
           for ((pn, pv) <- program.predicatesByName) {
             if (pn == bhe.reference.head) {
-              val refNames = bhe.field.map(x =>
-                if (false && translNames.get(x).isDefined) {
-                  translNames.get(x).get
-                } else {
-                  x
-                })
+              val refNames = bhe.field
               var translatedArgs: Option[scala.collection.immutable.Map[Exp, ModelEntry]] = bhe.insidePredicate
               if (bhe.insidePredicate.isDefined) {
                 translatedArgs = Some(bhe.insidePredicate.get.map{case (k,v) => (k, ConstantEntry(translNames.getOrElse(v.toString, model.entries.getOrElse(v.toString, v).toString)))})

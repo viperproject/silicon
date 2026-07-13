@@ -16,7 +16,7 @@ class GeneralCounterexampleTests extends SiliconTests {
 
   override def configureVerifiersFromConfigMap(configMap: Map[String, Any]): Unit = {
     val args = Silicon.optionsFromScalaTestConfigMap(prefixSpecificConfigMap(configMap).getOrElse("silicon", Map()))
-    val additionalArgs = Seq("--counterexample", "extended")
+    val additionalArgs = Seq("--counterexample", "resolved")
 
     silicon.parseCommandLine(args ++ additionalArgs :+ Silicon.dummyInputFilename)
   }
