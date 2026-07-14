@@ -6,6 +6,7 @@
 
 package viper.silicon.dependencyAnalysis
 
+import viper.silicon.SiliconRunner
 import viper.silicon.decider.{Decider, DependencyAnalysisDeciderFeatures}
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.state.chunks.{Chunk, GeneralChunk}
@@ -13,6 +14,7 @@ import viper.silicon.state.terms.{Implies, NoPerm, _}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast._
+import viper.silver.dependencyAnalysis.EdgeType.EdgeType
 import viper.silver.dependencyAnalysis.JoinType.JoinType
 import viper.silver.dependencyAnalysis._
 
@@ -157,37 +159,49 @@ object DependencyAnalyzer {
    * via the join information stored in each node.
    */
   def joinGraphsAndGetInterpreter(name: String, dependencyGraphInterpreters: Set[DependencyGraphInterpreter[IntraProcedural]]): DependencyGraphInterpreter[Final] = {
+    SiliconRunner.logger.info(s"INFO: Joining all graphs...")
     val newGraph = new DependencyGraph[Final]
 
+    SiliconRunner.logger.info(s"INFO: Copying nodes...")
     newGraph.addAssumptionNodes(dependencyGraphInterpreters.flatMap (_.getGraph.getAssumptionNodes))
     newGraph.addAssertionNodes(dependencyGraphInterpreters.flatMap (_.getGraph.getAssertionNodes))
+    SiliconRunner.logger.info(s"INFO: Copying edges...")
     dependencyGraphInterpreters foreach (interpreter => interpreter.getGraph.getAllEdges foreach {case (t, deps) => newGraph.addEdges(deps, t)})
 
     val joinSourceNodes = dependencyGraphInterpreters flatMap(i => i.joinSourceNodes)
     val joinSinkNodes   = dependencyGraphInterpreters flatMap(i => i.joinSinkNodes)
 
-    def getJoinNodesByJoinInfo(candidateNodes: Set[DependencyAnalysisNode], joinType: JoinType) = {
-      candidateNodes
-        .flatMap(node => node.joinInfos.filter(_.joinType.equals(joinType)).map((_, node)))
-        .groupBy(_._1)
-        .view.mapValues(_.map(_._2))
-        .toMap
+    def getJoinNodesByJoinInfo(candidateNodes: Set[DependencyAnalysisNode], joinType: JoinType): Map[(AnalysisSourceInfo, EdgeType), Set[DependencyAnalysisNode]] = {
+      val acc: mutable.Map[(AnalysisSourceInfo, EdgeType), Set[DependencyAnalysisNode]] = mutable.Map.empty
+      candidateNodes.foreach {
+        node =>
+          node.joinInfos.foreach { joinInfo =>
+            if (joinInfo.joinType.equals(joinType)) {
+              val key = (joinInfo.sourceInfo, joinInfo.edgeType)
+              acc.update(key, acc.getOrElse(key, Set.empty) + node)
+            }
+          }
+      }
+      acc.toMap
     }
 
+    SiliconRunner.logger.info(s"INFO: GetJoinNodesByJoinInfo...")
     val sourceNodesByJoinInfo = getJoinNodesByJoinInfo(joinSourceNodes, JoinType.Source)
     val sinkNodesByJoinInfo = getJoinNodesByJoinInfo(joinSinkNodes, JoinType.Sink)
 
-    sinkNodesByJoinInfo.foreach{case (joinInfo, sinkNodes) =>
-      val matchingSourceNodes = sourceNodesByJoinInfo.filter{case (sourceJoinInfo, _) => sourceJoinInfo.matches(joinInfo)}.values.flatten.toSet
-      addEdgesConnectingMethods(newGraph, joinInfo, matchingSourceNodes, sinkNodes)
+    SiliconRunner.logger.info(s"INFO: Adding join edges...")
+    sinkNodesByJoinInfo.foreach { case (joinKey, sinkNodes) =>
+      val matchingSourceNodes = sourceNodesByJoinInfo.getOrElse(joinKey, Set.empty)
+      addEdgesConnectingMethods(newGraph, joinKey._2, matchingSourceNodes, sinkNodes)
     }
 
     val newInterpreter = new DependencyGraphInterpreter[Final](name, newGraph, dependencyGraphInterpreters.toList.flatMap(_.getErrors))
+    SiliconRunner.logger.info(s"INFO: Finished joining all graphs.")
     newInterpreter
   }
 
-  private def addEdgesConnectingMethods(newGraph: DependencyGraph[Final], joinInfo: SimpleDependencyAnalysisJoin, sourceNodes: Set[DependencyAnalysisNode], sinkNodes: Set[DependencyAnalysisNode]): Unit = {
-    if (joinInfo.edgeType.equals(EdgeType.Up)) {
+  private def addEdgesConnectingMethods(newGraph: DependencyGraph[Final], edgeType: EdgeType, sourceNodes: Set[DependencyAnalysisNode], sinkNodes: Set[DependencyAnalysisNode]): Unit = {
+    if (edgeType.equals(EdgeType.Up)) {
       val directDepsOfSources = if(!Verifier.config.disableDependencyAnalysisJoinPrecisionOpt()) {
         // Preconditions are connected to the dependencies required to prove them at all call sites. However, they do not depend on the calls themselves.
         sourceNodes.groupBy(_.sourceInfo).flatMap(t => newGraph.getDirectDependenciesByNode(t._2, includeInfeasibilityNodes = true, includeUpwardEdges = true, includeDownwardEdges = true))
@@ -387,6 +401,7 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
   private def buildAndGetMergedGraph(): DependencyGraph[IntraProcedural] = {
     def keepNode(n: DependencyAnalysisNode): Boolean = !n.mergeInfo.isMerge || n.joinInfos.nonEmpty || n.isInstanceOf[InfeasibilityNode] || n.isInstanceOf[AxiomAssumptionNode]
 
+    SiliconRunner.logger.info(s"INFO: Building final graph for member ${member.map(_.name).getOrElse("unknown")}...")
     val mergedGraph = new DependencyGraph[IntraProcedural]
     val nodeMap = mutable.HashMap[Int, Int]()
 
@@ -420,6 +435,8 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
       val newTarget = nodeMap.getOrElse(target, target)
       mergedGraph.addEdges(deps.map(d => nodeMap.getOrElse(d, d)), newTarget)
     }
+
+    SiliconRunner.logger.info(s"INFO: Finished building final graph for member ${member.map(_.name).getOrElse("unknown")}.")
 
     mergedGraph
   }
