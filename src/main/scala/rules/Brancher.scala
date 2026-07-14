@@ -8,20 +8,14 @@ package viper.silicon.rules
 
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
-import viper.silicon.dependencyAnalysis.{
-  DependencyAnalysisInfos,
-  DependencyAnalyzer
-}
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.state.State
 import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.dependencyAnalysis.{
-  DependencyType,
-  NoDependencyAnalysisMerge
-}
+import viper.silver.dependencyAnalysis.{AssumptionType, NoDependencyAnalysisMerge}
 import viper.silver.reporter.BranchFailureMessage
 import viper.silver.verifier.Failure
 
@@ -77,13 +71,13 @@ object brancher extends BranchingRules {
     /* True if the then-branch is to be explored */
     val executeThenBranch = (
          skipPathFeasibilityCheck
-      || !v.decider.check(negatedCondition, Verifier.config.checkTimeout(), analysisInfos1.withDependencyType(DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge())))
+      || !v.decider.check(negatedCondition, Verifier.config.checkTimeout(), analysisInfos1.withDependencyType(AssumptionType.Internal).withMergeInfo(NoDependencyAnalysisMerge())))
 
     /* False if the then-branch is to be explored */
     val executeElseBranch = (
          !executeThenBranch /* Assumes that ast least one branch is feasible */
       || skipPathFeasibilityCheck
-      || !v.decider.check(condition, Verifier.config.checkTimeout(), analysisInfos1.withDependencyType(DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge())))
+      || !v.decider.check(condition, Verifier.config.checkTimeout(), analysisInfos1.withDependencyType(AssumptionType.Internal).withMergeInfo(NoDependencyAnalysisMerge())))
 
     val parallelizeElseBranch = s.parallelizeBranches && executeThenBranch && executeElseBranch
 
@@ -162,7 +156,7 @@ object brancher extends BranchingRules {
           executionFlowController.locally(s, v0)((s1, v1) => {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
             v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew), analysisInfos1)
-            if (Verifier.config.enableDependencyAnalysis() && !executeElseBranch) v.decider.checkSmoke(analysisInfos1.withDependencyType(DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge()))
+            if (Verifier.config.enableDependencyAnalysis() && !executeElseBranch) v.decider.checkSmoke(analysisInfos1.withDependencyType(AssumptionType.Internal).withMergeInfo(NoDependencyAnalysisMerge()))
 
             var functionsOfElseBranchdDeciderBefore: Set[FunctionDecl] = null
             var nMacrosOfElseBranchDeciderBefore: Int = 0
@@ -213,7 +207,7 @@ object brancher extends BranchingRules {
           executionFlowController.locally(s, v)((s1, v1) => {
             v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
             v1.decider.setCurrentBranchCondition(condition, conditionExp, analysisInfos1)
-            if (Verifier.config.enableDependencyAnalysis() && !executeThenBranch) v.decider.checkSmoke(analysisInfos1.withDependencyType(DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge()))
+            if (Verifier.config.enableDependencyAnalysis() && !executeThenBranch) v.decider.checkSmoke(analysisInfos1.withDependencyType(AssumptionType.Internal).withMergeInfo(NoDependencyAnalysisMerge()))
 
             fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
           })

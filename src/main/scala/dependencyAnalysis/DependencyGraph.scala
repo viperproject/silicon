@@ -333,7 +333,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
    */
   def removeInternalNodes(): Unit = {
     def filterCriteria(n: DependencyAnalysisNode) = {
-      AssumptionType.internalTypes.contains(n.assumptionType) && !n.isInstanceOf[InfeasibilityNode]
+      n.assumptionType.isInstanceOf[AssumptionType.InternalType] && !n.isInstanceOf[InfeasibilityNode]
     }
 
     assumptionNodes filter filterCriteria foreach removeAllEdgesForNode
@@ -369,7 +369,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
         case node: GeneralAssertionNode => node.hasFailed
         case _ => false
       }
-      val parts = mutable.Seq(node.id.toString, node.getNodeType, node.assumptionType.toString, node.getNodeString, node.sourceInfo.toString,
+      val parts = mutable.Seq(node.id.toString, node.getNodeType, node.toString, node.getNodeString, node.sourceInfo.toString,
         node.sourceInfo.getPositionString, node.mergeInfo.toString, node.sourceInfo.getDescription, node.memberStr, hasFailed.toString)
       parts.map(_.replace("#", "@")).mkString(sep)
     }

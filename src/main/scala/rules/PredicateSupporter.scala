@@ -6,7 +6,6 @@
 
 package viper.silicon.rules
 
-import viper.silicon.state.chunks.{BasicChunk, BasicChunkIdentifier, ChunkIdentifer, GeneralChunk, MagicWandChunk, NonQuantifiedChunk}
 import viper.silicon
 import viper.silicon.Config.JoinMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -15,13 +14,14 @@ import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.resources.FieldID
 import viper.silicon.state._
+import viper.silicon.state.chunks._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.{PredicateBranchNode, PredicateContentsTree, PredicateLeafNode}
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.dependencyAnalysis.DependencyType
+import viper.silver.dependencyAnalysis.AssumptionType
 import viper.silver.verifier.PartialVerificationError
 
 trait PredicateSupportRules extends SymbolicExecutionRules {
@@ -216,7 +216,7 @@ object predicateSupporter extends PredicateSupportRules {
               App(s4.predicateData(predicate.name).triggerFunction,
                 snap.get.convert(terms.sorts.Snap) +: tArgs)
             val eargs = eArgs.mkString(", ")
-            v4.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), analysisInfos.withDependencyType(DependencyType.Trigger))
+            v4.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), analysisInfos.withDependencyType(AssumptionType.Trigger))
           }
           Q(s4.copy(g = s.g,
             permissionScalingFactor = s.permissionScalingFactor,
@@ -231,7 +231,7 @@ object predicateSupporter extends PredicateSupportRules {
               App(s4.predicateData(predicate.name).triggerFunction,
                 snap.get.convert(terms.sorts.Snap) +: tArgs)
             val eargs = eArgs.mkString(", ")
-            v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), analysisInfos.withDependencyType(DependencyType.Trigger))
+            v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), analysisInfos.withDependencyType(AssumptionType.Trigger))
           }
           Q(s4.copy(g = s.g,
             permissionScalingFactor = s.permissionScalingFactor,

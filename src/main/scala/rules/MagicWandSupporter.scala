@@ -21,7 +21,7 @@ import viper.silver.ast
 import viper.silver.ast.{Exp, FalseLit, NoPosition, Stmt}
 import viper.silver.cfg.Edge
 import viper.silver.cfg.silver.SilverCfg.SilverBlock
-import viper.silver.dependencyAnalysis.{DependencyType, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{AssumptionType, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
 import viper.silver.parser.PUnknown
 import viper.silver.verifier.PartialVerificationError
 
@@ -432,7 +432,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
     }
 
     // some of the analysis labels, introduced while verifying the package statement, might be needed later on -> reassume them
-    analysisLabels foreach (l => v.decider.assume(DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v.decider, l, Set.empty, Set(l)), None, analysisInfos.withDependencyType(DependencyType.Internal)))
+    analysisLabels foreach (l => v.decider.assume(DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v.decider, l, Set.empty, Set(l)), None, analysisInfos.withDependencyType(AssumptionType.Internal)))
 
     recordedBranches.foldLeft(tempResult)((prevRes, recordedState) => {
       prevRes combine {
@@ -450,7 +450,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           v1.decider.setCurrentBranchCondition(And(branchConditions map (t => DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v1.decider, t, Set.empty, Set(t)))), (exp, expNew), analysisInfos)
 
           // Recreate all path conditions in the Z3 proof script that we recorded for that branch
-          v1.decider.assume(conservedPcs._1 map (t => DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v1.decider, t, Set.empty, Set(t))), conservedPcs._2, analysisInfos.withDependencyType(DependencyType.Internal))
+          v1.decider.assume(conservedPcs._1 map (t => DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v1.decider, t, Set.empty, Set(t))), conservedPcs._2, analysisInfos.withDependencyType(AssumptionType.Internal))
 
           // Execute the continuation Q
           Q(s2, magicWandChunk, v1)
@@ -591,7 +591,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
        * heap. After a statement is executed those permissions are transferred to hOps.
        */
 
-      val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo("merge", NoPosition), DependencyType.Internal)
+      val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo("merge", NoPosition), AssumptionType.Internal)
       val emptyHeap = v.heapSupporter.getEmptyHeap(newState.program)
       val (fr, hOpsJoinUsed) = v.stateConsolidator(newState).merge(newState.functionRecorder, newState, newState.reserveHeaps(1), newState.h, v, analysisInfos)
       newState.copy(functionRecorder = fr, h = emptyHeap,

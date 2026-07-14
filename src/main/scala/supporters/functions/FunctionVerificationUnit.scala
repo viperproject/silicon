@@ -271,7 +271,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       var recorders: Seq[FunctionRecorder] = Vector.empty
       val wExp = evaluator.withExp
 
-      val precondAnalysisSourceInfos = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo("preconditions", NoPosition), DependencyType.Internal)
+      val precondAnalysisSourceInfos = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo("preconditions", NoPosition), AssumptionType.Internal)
       val analysisInfosPostcondition = v.decider.defaultAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))
       val analysisInfosBody = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, v.decider.defaultAnalysisInfos, body.info, body)
         .withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(body), JoinType.Source, EdgeType.Down))

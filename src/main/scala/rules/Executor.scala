@@ -10,25 +10,13 @@ import viper.silicon.Config.JoinMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
-import viper.silicon.dependencyAnalysis.{
-  DependencyAnalysisInfos,
-  DependencyAnalyzer
-}
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces._
-import viper.silicon.logger.records.data.{
-  CommentRecord,
-  ConditionalEdgeRecord,
-  ExecuteRecord,
-  MethodCallRecord
-}
+import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
 import viper.silicon.state._
 import viper.silicon.state.chunks._
 import viper.silicon.state.terms._
-import viper.silicon.utils.ast.{
-  BigAnd,
-  extractPTypeFromExp,
-  simplifyVariableName
-}
+import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast.{FalseLit, NoPosition}
@@ -38,11 +26,7 @@ import viper.silver.cfg.{ConditionalEdge, StatementBlock}
 import viper.silver.dependencyAnalysis._
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
-import viper.silver.verifier.{
-  CounterexampleTransformer,
-  NullPartialVerificationError,
-  PartialVerificationError
-}
+import viper.silver.verifier.{CounterexampleTransformer, NullPartialVerificationError, PartialVerificationError}
 import viper.silver.{ast, cfg}
 
 import scala.annotation.unused
@@ -276,7 +260,7 @@ object executor extends ExecutionRules {
             val sBody = s.copy(g = gBody, h = v.heapSupporter.getEmptyHeap(s.program))
 
             val analysisInfosInv = v.decider.defaultAnalysisInfos
-            val analysisInfosLoopInternal = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo(s"Loop ${block.id}\"", NoPosition), DependencyType.Internal)
+            val analysisInfosLoopInternal = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo(s"Loop ${block.id}\"", NoPosition), AssumptionType.Internal)
 
             val edges = s.methodCfg.outEdges(block)
             val (outEdges, otherEdges) = edges partition(_.kind == cfg.Kind.Out)

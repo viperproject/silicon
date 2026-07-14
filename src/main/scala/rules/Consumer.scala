@@ -10,11 +10,7 @@ import viper.silicon.Config.JoinMode
 import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces.VerificationResult
-import viper.silicon.logger.records.data.{
-  CondExpRecord,
-  ConsumeRecord,
-  ImpliesRecord
-}
+import viper.silicon.logger.records.data.{CondExpRecord, ConsumeRecord, ImpliesRecord}
 import viper.silicon.state._
 import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.state.terms._
@@ -22,10 +18,7 @@ import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silver.dependencyAnalysis.{
-  DependencyType,
-  StringAnalysisSourceInfo
-}
+import viper.silver.dependencyAnalysis.{AssumptionType, StringAnalysisSourceInfo}
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons._
 
@@ -442,7 +435,7 @@ object consumer extends ConsumptionRules {
         }
         v2.decider.assert(termToAssert, analysisInfos) {
           case true =>
-            v2.decider.assume(t, Option.when(withExp)(e), eNew, analysisInfos.withDependencyType(DependencyType.Internal))
+            v2.decider.assume(t, Option.when(withExp)(e), eNew, analysisInfos.withDependencyType(AssumptionType.Internal))
             QS(s3, v2)
           case false =>
             val failure = createFailure(pve dueTo AssertionFalse(e), v2, s3, termToAssert, eNew)

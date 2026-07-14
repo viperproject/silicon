@@ -55,7 +55,7 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
   def withDependencyType(assumptionType: AssumptionType): DependencyAnalysisInfos = {
     if (!isAnalysisEnabled) return this
 
-    this.copy(dependencyTypes = DependencyTypeInfo(DependencyType.make(assumptionType)) +: dependencyTypes)
+    this.copy(dependencyTypes = DependencyTypeInfo(DependencyType(assumptionType)) +: dependencyTypes)
   }
 
   def withSource(source: AnalysisSourceInfo): DependencyAnalysisInfos = {
@@ -91,13 +91,13 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
   }
 
   def getDependencyType: DependencyType = {
-    if (!isAnalysisEnabled) return DependencyType.make(AssumptionType.Unknown)
+    if (!isAnalysisEnabled) return AssumptionType.Unknown.asDepType()
     val dependencyTypeOpt = dependencyTypes.headOption.map(_.dependencyType)
     if (dependencyTypeOpt.isDefined) {
       dependencyTypeOpt.get
     } else {
       SiliconRunner.logger.warn(s"WARN: Missing dependency type for $getDebugInfo")
-      DependencyType.make(AssumptionType.Unknown)
+      AssumptionType.Unknown.asDepType()
     }
   }
 
@@ -132,6 +132,9 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
 
   def withInfo(sourceInfo: AnalysisSourceInfo, dependencyType: DependencyType): DependencyAnalysisInfos =
     this.withSource(sourceInfo).withDependencyType(dependencyType)
+
+  def withInfo(sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): DependencyAnalysisInfos =
+    this.withSource(sourceInfo).withDependencyType(assumptionType)
 }
 
 object DependencyAnalysisInfos {

@@ -145,7 +145,7 @@ class FunctionData(val programFunction: ast.Function,
       defaultAnalysisInfo.addInfo(programFunction.body.get.info, programFunction.body.get)
         .withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(programFunction.body.get), JoinType.Sink, EdgeType.Down))
     } else
-      defaultAnalysisInfo.withInfo(StringAnalysisSourceInfo("unverified function body"), DependencyType.Internal)
+      defaultAnalysisInfo.withInfo(StringAnalysisSourceInfo("unverified function body"), AssumptionType.Internal)
 
     DependencyAnalysisAxiomInfo(analysisInfos, programFunction.name)
   }
@@ -156,13 +156,13 @@ class FunctionData(val programFunction: ast.Function,
     (Forall(arguments,
            BuiltinEquals(limitedFunctionApplication, functionApplication),
            Trigger(functionApplication)),
-      DependencyAnalysisAxiomInfo(defaultAnalysisInfo.withInfo(StringAnalysisSourceInfo("Limited Axiom"), DependencyType.Internal), programFunction.name))
+      DependencyAnalysisAxiomInfo(defaultAnalysisInfo.withInfo(StringAnalysisSourceInfo("Limited Axiom"), AssumptionType.Internal), programFunction.name))
 
   val limitedAxiom: Quantification = limitedAxiomWithInfo._1
 
   val triggerAxiomWithInfo: (Quantification, DependencyAnalysisAxiomInfo) =
     (Forall(arguments, triggerFunctionApplication, Trigger(limitedFunctionApplication)),
-      DependencyAnalysisAxiomInfo(defaultAnalysisInfo.withInfo(StringAnalysisSourceInfo("Trigger Axiom"), DependencyType.Trigger), programFunction.name))
+      DependencyAnalysisAxiomInfo(defaultAnalysisInfo.withInfo(StringAnalysisSourceInfo("Trigger Axiom"), AssumptionType.Trigger), programFunction.name))
 
   val triggerAxiom: Quantification = triggerAxiomWithInfo._1
 

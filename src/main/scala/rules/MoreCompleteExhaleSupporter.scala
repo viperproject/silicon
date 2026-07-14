@@ -9,19 +9,10 @@ package viper.silicon.rules
 import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
 import viper.silicon.interfaces.{Success, VerificationResult}
-import viper.silicon.resources.{
-  FieldID,
-  NonQuantifiedPropertyInterpreter,
-  Resources
-}
+import viper.silicon.resources.{FieldID, NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.rules.chunkSupporter.findChunksWithID
 import viper.silicon.state._
-import viper.silicon.state.chunks.{
-  BasicChunk,
-  Chunk,
-  ChunkIdentifier,
-  NonQuantifiedChunk
-}
+import viper.silicon.state.chunks.{BasicChunk, Chunk, ChunkIdentifier, NonQuantifiedChunk}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{IsNonPositive, IsPositive}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
@@ -30,10 +21,7 @@ import viper.silicon.verifier.Verifier
 import viper.silicon.{MList, MMap}
 import viper.silver.ast
 import viper.silver.ast.FalseLit
-import viper.silver.dependencyAnalysis.{
-  DependencyType,
-  StringAnalysisSourceInfo
-}
+import viper.silver.dependencyAnalysis.{AssumptionType, StringAnalysisSourceInfo}
 import viper.silver.parser.PUnknown
 import viper.silver.verifier.VerificationError
 
@@ -122,7 +110,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         Implies(And(argumentEqualities, IsPositive(ch.perm)), `?s` === ch.snap)
     })
 
-    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo("summarize"), DependencyType.Internal)
+    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo("summarize"), AssumptionType.Internal)
 
     val taggedSummarisingSnapshot =
       summarisingSnapshotDefinitions
@@ -181,7 +169,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     // query to check if the permission amount we have is sufficient to get the correct counterexample. If we perform
     // the query in two parts (one part here, one part in our caller to see if the permission amount is sufficient),
     // the counterexample might be wrong.
-    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo("summarise"), DependencyType.Internal)
+    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo("summarise"), AssumptionType.Internal)
 
     if (relevantChunks.size == 1 &&  !Verifier.config.counterexample.isDefined) {
       val chunk = relevantChunks.head
@@ -192,7 +180,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     }
 
     val (s1, taggedSnap, snapDefs, permSum, permSumExp) = summariseOnly(s, relevantChunks, resource, args, argsExp, knownValue, v)
-    v.decider.assumeDefinition(And(snapDefs), Option.when(withExp)(DebugExp.createInstance("Snapshot", isInternal_ = true)), analysisInfos.withDependencyType(DependencyType.Internal))
+    v.decider.assumeDefinition(And(snapDefs), Option.when(withExp)(DebugExp.createInstance("Snapshot", isInternal_ = true)), analysisInfos.withDependencyType(AssumptionType.Internal))
     //    v.decider.assume(PermAtMost(permSum, FullPerm())) /* Done in StateConsolidator instead */
 
     val s2 =
@@ -413,7 +401,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             pNeeded = PermMinus(pNeeded, pTaken)
             pNeededExp = permsExp.map(pe => ast.PermSub(pNeededExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT))
 
-            if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout(), analysisInfos.withDependencyType(DependencyType.Internal))) {
+            if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout(), analysisInfos.withDependencyType(AssumptionType.Internal))) {
               newChunks.append(newChunk)
             }
 
@@ -440,7 +428,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         if (returnSnap) {
           summarise(s0, relevantChunks.toSeq, resource, args, argsExp, Some(definiteAlias.map(_.snap)), v)((s1, snap, _, _, v1) => {
-            val condSnap = Some(if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout(), analysisInfos.withDependencyType(DependencyType.Internal))) {
+            val condSnap = Some(if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout(), analysisInfos.withDependencyType(AssumptionType.Internal))) {
               snap
             } else {
               Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit)
@@ -605,7 +593,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       relevantChunks foreach (chunk => {
         val instantiatedPermSum = permissionSum.replace(freeReceiver, chunk.args.head)
         val exp = permissionSumExp.map(pse => ast.PermLeCmp(replaceVarsInExp(pse, Seq(freeReceiverExp.name), Seq(chunk.argsExp.get.head)), ast.FullPerm()())())
-        v.decider.assume(PermAtMost(instantiatedPermSum, FullPerm), exp, exp, analysisInfos.withDependencyType(DependencyType.Internal))
+        v.decider.assume(PermAtMost(instantiatedPermSum, FullPerm), exp, exp, analysisInfos.withDependencyType(AssumptionType.Internal))
       })
     }
   }

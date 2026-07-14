@@ -23,7 +23,7 @@ method client1(x: Ref)
 {
   var b: Int
   inhale @dependencyInfo("assumptionType:Explicit, label:L9")((acc(x.f)))
-  inhale @dependencyInfo("assumptionType:Explicit, assertionType:Implicit, label:L10, expectedDependencies:[L9]")((x.f > 0))
+  inhale @dependencyInfo("assumptionType:Explicit, assertionType:Annotation, label:L10, expectedDependencies:[L9]")((x.f > 0))
   @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L11, expectedDependencies:[L9,L10]")
   fold pred(x)
 

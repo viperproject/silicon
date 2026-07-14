@@ -8,6 +8,7 @@ package viper.silicon.dependencyAnalysis.graphInterpretation
 
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.graphInterpretation.DATraversalMode.DATraversalMode
+import viper.silver.dependencyAnalysis
 import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType}
 
 import scala.collection.mutable
@@ -112,7 +113,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 
     if (allDependencies.isEmpty) return None // we filter out trivial assertions, e.g. assertions that do not have any dependencies
 
-    val explicitDeps = allDependencies.filter(_.assumptionTypes.intersect(AssumptionType.explicitAssumptionTypes).nonEmpty).map(_.source)
+    val explicitDeps = allDependencies.filter(_.assumptionTypes.exists(_.isInstanceOf[dependencyAnalysis.AssumptionType.ExplicitAssumptionType])).map(_.source)
     val numDepsTotal = allDependencies.size
     Some((numDepsTotal - explicitDeps.size).toDouble / numDepsTotal.toDouble)
   }
