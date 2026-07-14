@@ -25,7 +25,7 @@ trait DependencyAnalysisAwareFunctionVerificationUnitProvider extends DefaultFun
   object DependencyAnalysisAwareFunctionSupporter extends FunctionsSupporter {
     override protected def handleFunction(sInit: State, function: ast.Function): VerificationResult = {
 
-      val presAssertionNodeForJoin = function.pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(pc)), List(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up)), function.name))
+      val presAssertionNodeForJoin = function.pres.flatMap(_.topLevelConjuncts).map(pc => new SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(pc)), List(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up)), function.name))
       presAssertionNodeForJoin foreach decider.getDependencyAnalyzer.addAssertionNode
 
       val result = super.handleFunction(sInit, function)

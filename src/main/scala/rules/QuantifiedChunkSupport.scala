@@ -13,38 +13,24 @@ import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.logger.records.data.CommentRecord
-import viper.silicon.resources.{
-  NonQuantifiedPropertyInterpreter,
-  QuantifiedPropertyInterpreter,
-  Resources
-}
+import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, QuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.chunks._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{BigPermSum, IsPositive}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.utils.consumeExactRead
-import viper.silicon.supporters.functions.{
-  FunctionRecorder,
-  NoopFunctionRecorder
-}
+import viper.silicon.supporters.functions.{FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.utils.ast.{BigAnd, buildMinExp}
 import viper.silicon.utils.freshSnap
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.{FalseLit, NoPosition}
-import viper.silver.dependencyAnalysis.{
-  DependencyType,
-  NoDependencyAnalysisMerge,
-  StringAnalysisSourceInfo
-}
+import viper.silver.dependencyAnalysis.{DependencyType, NoDependencyAnalysisMerge, StringAnalysisSourceInfo}
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.InternalWarningMessage
-import viper.silver.verifier.reasons.{
-  InsufficientPermission,
-  MagicWandChunkNotFound
-}
+import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 
 import scala.collection.immutable.ArraySeq
@@ -945,7 +931,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val commentGlobals = "Nested auxiliary terms: globals"
     v.decider.prover.comment(commentGlobals)
-    val analysisInfosGlobals = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo(commentGlobals, NoPosition), DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge()) // TODO ake: review
+    val analysisInfosGlobals = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo(commentGlobals, NoPosition), DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge())
     v.decider.assume(auxGlobals, Option.when(withExp)(DebugExp.createInstance(description=commentGlobals, children=auxGlobalsExp.get)),
       enforceAssumption = false, analysisInfos=analysisInfosGlobals)
 

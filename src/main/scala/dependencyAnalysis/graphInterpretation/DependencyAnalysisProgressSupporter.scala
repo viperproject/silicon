@@ -46,7 +46,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 
       // recursively compute all interprocedural dependencies and cache results at procedure-boundaries
       val relevantInterProceduralEdges = traversalMode match {
-        case DATraversalMode.Upwards   => dependencyGraph.getEdgesConnectingMethodsUpwards // TODO ake: increase precision, we are not using the low-level nodes properly here
+        case DATraversalMode.Upwards   => dependencyGraph.getEdgesConnectingMethodsUpwards
         case DATraversalMode.Downwards => dependencyGraph.getEdgesConnectingMethodsDownwards
       }
       val interProceduralNodeIds = intraMethodDependencyIds.flatMap(n => relevantInterProceduralEdges.getOrElse(n, Set.empty))

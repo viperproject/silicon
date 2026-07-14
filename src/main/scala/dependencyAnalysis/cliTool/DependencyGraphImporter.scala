@@ -56,20 +56,20 @@ object DependencyGraphImporter {
       val chunk: Chunk = DummyChunk()
       val description: Option[String] = None
       val mergeInfo: SimpleDependencyAnalysisMerge = SimpleDependencyAnalysisMerge(sourceInfo)
-      val labelNode: LabelNode = LabelNode(dummyVar, memberStr)
+      val labelNode: LabelNode = new LabelNode(dummyVar, memberStr)
       val joinNodeInfos: List[SimpleDependencyAnalysisJoin] = List.empty
 
       val nodeId = Some(nodeIdStr.toInt)
       // Create node based on type
       val node = nodeType match {
-        case "Assumption" => SimpleAssumptionNode(term, description, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr, _id=nodeId)
-        case "Axiom" => AxiomAssumptionNode(term, description, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr, _id=nodeId)
-        case "Assertion" => SimpleAssertionNode(term, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr, hasFailed, _id=nodeId)
-        case "Check" => SimpleCheckNode(term, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr, hasFailed, _id=nodeId)
-        case "Inhale" => PermissionInhaleNode(chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinNodeInfos, memberStr, _id=nodeId)
-        case "Exhale" => PermissionExhaleNode(chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinNodeInfos, memberStr, hasFailed, _id=nodeId)
-        case "Label" => LabelNode(dummyVar, memberStr, _id=nodeId)
-        case "Infeasible" => InfeasibilityNode(sourceInfo, assumptionType, memberStr, _id=nodeId)
+        case "Assumption" => new SimpleAssumptionNode(term, description, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr, _id=nodeId)
+        case "Axiom" => new AxiomAssumptionNode(term, description, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr, _id=nodeId)
+        case "Assertion" => new SimpleAssertionNode(term, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr, hasFailed, _id=nodeId)
+        case "Check" => new SimpleCheckNode(term, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr, hasFailed, _id=nodeId)
+        case "Inhale" => new PermissionInhaleNode(chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinNodeInfos, memberStr, _id=nodeId)
+        case "Exhale" => new PermissionExhaleNode(chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinNodeInfos, memberStr, hasFailed, _id=nodeId)
+        case "Label" => new LabelNode(dummyVar, memberStr, _id=nodeId)
+        case "Infeasible" => new InfeasibilityNode(sourceInfo, assumptionType, memberStr, _id=nodeId)
         case _ => throw new IllegalArgumentException(s"Unknown node type: $nodeType")
       }
 

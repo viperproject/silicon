@@ -10,16 +10,9 @@ import viper.silicon
 import viper.silicon.Config.JoinMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.{
-  DependencyAnalysisInfos,
-  DependencyAnalyzer
-}
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces._
-import viper.silicon.logger.records.data.{
-  CondExpRecord,
-  EvaluateRecord,
-  ImpliesRecord
-}
+import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
 import viper.silicon.state._
 import viper.silicon.state.chunks._
 import viper.silicon.state.terms._
@@ -30,25 +23,13 @@ import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silver.ast
-import viper.silver.ast.{
-  AnnotationInfo,
-  FalseLit,
-  LocalVarWithVersion,
-  WeightedQuantifier
-}
+import viper.silver.ast.{AnnotationInfo, FalseLit, LocalVarWithVersion, WeightedQuantifier}
 import viper.silver.dependencyAnalysis._
 import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
 import viper.silver.utility.Common.Rational
-import viper.silver.verifier.errors.{
-  ErrorWrapperWithExampleTransformer,
-  PreconditionInAppFalse
-}
+import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
 import viper.silver.verifier.reasons._
-import viper.silver.verifier.{
-  CounterexampleTransformer,
-  PartialVerificationError,
-  VerifierWarning
-}
+import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, VerifierWarning}
 
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
@@ -564,7 +545,7 @@ object evaluator extends EvaluationRules {
             val auxNonGlobalsExp = auxExps.map(_._2)
             val commentGlobal = "Nested auxiliary terms: globals (aux)"
             v1.decider.prover.comment(commentGlobal)
-            val auxAnalysisInfos = analysisInfos.withDependencyType(DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge()) // TODO ake: review
+            val auxAnalysisInfos = analysisInfos.withDependencyType(DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge())
             v1.decider.assume(tAuxGlobal, Option.when(withExp)(DebugExp.createInstance(description=commentGlobal, children=auxGlobalsExp.get)), enforceAssumption = false, auxAnalysisInfos)
             val commentNonGlobals = "Nested auxiliary terms: non-globals (aux)"
             v1.decider.prover.comment(commentNonGlobals)

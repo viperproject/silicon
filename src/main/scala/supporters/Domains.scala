@@ -128,7 +128,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
 
   def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = sink match {
     case daSink: DependencyAnalysisProverFeatures =>
-      daSink.assumeAxiomsWithAnalysisInfo(collectedAxioms, "Domain axioms") // TODO ake
+      daSink.assumeAxiomsWithAnalysisInfo(collectedAxioms, "Domain axioms")
     case _ =>
       sink.assumeAxioms(collectedAxioms.map(_._1), "Domain axioms")
   }

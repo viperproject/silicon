@@ -24,7 +24,7 @@ trait DependencyAnalysisAwareMethodVerificationUnitProvider extends DefaultMetho
 
       val presAssertionNodeForJoin = method.pres.flatMap(_.topLevelConjuncts).map(pc => {
         val analysisSourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(pc)
-        SimpleAssertionNode(True,
+        new SimpleAssertionNode(True,
           analysisSourceInfo,
           AssumptionType.Precondition,
           SimpleDependencyAnalysisMerge(analysisSourceInfo),
