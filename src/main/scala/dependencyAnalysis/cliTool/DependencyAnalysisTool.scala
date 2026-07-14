@@ -6,6 +6,7 @@
 
 package viper.silicon.dependencyAnalysis.cliTool
 
+import dependencyAnalysis.DependencyGraphJoiner
 import viper.silicon.dependencyAnalysis.cliTool.DependencyGraphImporter.{importGraphFromCsv, importProgram}
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.dependencyAnalysis.{DependencyAnalysisResult, Final}
@@ -55,13 +56,15 @@ object DependencyAnalysisTool {
 
     val dependencyGraphInterpreters = verificationResults.filter(_.dependencyGraphInterpreter.isDefined).map(_.dependencyGraphInterpreter.get)
     val verificationErrors: List[Failure] = (verificationResults filter (_.isInstanceOf[Failure])) map (_.asInstanceOf[Failure])
-
     // TODO ake: make sure we can access the name of frontend programs (instead of naming it "joined")
-    val result = DependencyAnalysisResult(inputFile.map(_.replaceAll("\\\\", "_").replaceAll("/", "_").replaceAll(".vpr", "")).getOrElse("joined"), program, dependencyGraphInterpreters.toSet)
+    val programName = inputFile.map(_.replaceAll("\\\\", "_").replaceAll("/", "_").replaceAll(".vpr", "")).getOrElse("joined")
 
-    val userTool = new DependencyAnalysisCliTool(result.getFullDependencyGraphInterpreter, result.program, verificationErrors)
+    val fullGraphInterpreter =  new DependencyGraphJoiner(programName, dependencyGraphInterpreters.toSet).joinGraphsAndGetInterpreter()
+
+    val userTool = new DependencyAnalysisCliTool(fullGraphInterpreter, program, verificationErrors)
     runUserTool(Verifier.config.dependencyAnalysisMode.getOrElse(""), userTool)
 
+    val result = DependencyAnalysisResult(program, fullGraphInterpreter)
     Some(result)
   }
 

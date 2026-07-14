@@ -230,16 +230,16 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
 
   def getAllDependencies(targets: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
     val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)
-    var visited: Set[Int] = Set.empty
-    var queue: List[Int] = targets.toList
+    val visited: mutable.Set[Int] = mutable.Set.empty
+    val queue: mutable.Queue[Int] = mutable.Queue(targets.toSeq: _*)
     val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
     while(queue.nonEmpty) {
-      val curr = queue.head
+      val curr = queue.dequeue()
       val newVisits = allEdges.getOrElse(curr, Set()).diff(infeasibilityNodeIds)
-      visited = visited ++ Set(curr)
-      queue = queue.tail ++ newVisits.diff(visited).diff(queue.toSet)
+      visited.add(curr)
+      queue.enqueueAll(newVisits.diff(visited).diff(queue.toSet))
     }
-    visited
+    visited.toSet
   }
 
   def getDirectDependenciesByNode(targets: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
@@ -261,49 +261,49 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
     val targetIds: Set[Int] = initQueue.toSet
     val sourceInfoNodeIds: Set[Int] = getNodes.filter(_.sourceInfo == targetSourceInfo).map(_.id)
     assert(targetIds.subsetOf(sourceInfoNodeIds), s"Target ids do not all belong to sourceInfo $targetSourceInfo")
-    var visited: Set[Int] = Set.empty
-    var result: Set[Int] = Set.empty
+    val visited: mutable.Set[Int] = mutable.Set.empty
+    val result: mutable.Set[Int] = mutable.Set.empty
     var queue: List[Int] = initQueue
     val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
     while (queue.nonEmpty) {
       val curr = queue.head
       val newVisits = allEdges.getOrElse(curr, Set()).diff(infeasibilityNodeIds).diff(visited)
       val newQueues = newVisits.intersect(sourceInfoNodeIds)
-      visited = visited ++ newVisits
-      result = result ++ newVisits.diff(newQueues)
+      visited.addAll(newVisits)
+      result.addAll(newVisits.diff(newQueues))
       queue = queue.tail ++ newQueues.diff(queue.toSet)
     }
-    result
+    result.toSet
   }
 
   def getAllDependents(sources: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
     val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)
-    var visited: Set[Int] = Set.empty
+    val visited: mutable.Set[Int] = mutable.Set.empty
     var queue: Set[Int] = sources
     val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
     while(queue.nonEmpty) {
       val newVisits = allEdges.filter{ case (t, s) => s.intersect(queue).nonEmpty && !infeasibilityNodeIds.contains(t) }.keys.toSet
-      visited = visited ++ queue
+      visited.addAll(queue)
       queue = newVisits.diff(visited)
     }
-    visited
+    visited.toSet
   }
 
   def getDirectDependents(sources: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
     val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)
-    var visited: Set[Int] = sources
-    var result: Set[Int] = Set.empty
+    val visited: mutable.Set[Int] = mutable.Set.empty
+    val result: mutable.Set[Int] = mutable.Set.empty
     var queue: Set[Int] = sources
     val sourceSourceInfos = getNodesByIds(sources).map(_.sourceInfo)
     val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
     while(queue.nonEmpty) {
+      visited.addAll(queue)
       val newVisits = allEdges.filter{case (t, s) => s.intersect(queue).nonEmpty && !infeasibilityNodeIds.contains(t)}.keys.toSet.diff(visited)
       val newQueues = getNodesByIds(newVisits).filter(n => sourceSourceInfos.contains(n.sourceInfo)).map(_.id)
-      visited = visited ++ newVisits
-      result = result ++ newVisits.diff(newQueues)
+      result.addAll(newVisits.diff(newQueues))
       queue = newQueues.diff(visited)
     }
-    result
+    result.toSet
   }
 
   /**
