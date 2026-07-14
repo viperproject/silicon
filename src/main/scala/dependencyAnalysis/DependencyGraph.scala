@@ -6,7 +6,7 @@
 
 package viper.silicon.dependencyAnalysis
 
-import viper.silver.dependencyAnalysis.AssumptionType
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType}
 
 import java.io.PrintWriter
 import java.nio.file.Paths
@@ -243,24 +243,32 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   }
 
   def getDirectDependenciesByNode(targets: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
-    getDirectDependencies(targets.map(_.id).toList, targets, includeInfeasibilityNodes, includeUpwardEdges, includeDownwardEdges)
+    targets.groupBy(_.sourceInfo).flatMap { case (sourceInfo, nodes) =>
+      getDirectDependencies(nodes.map(_.id).toList, sourceInfo, includeInfeasibilityNodes, includeUpwardEdges, includeDownwardEdges)
+    }.toSet
   }
 
   def getDirectDependenciesById(targets: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
-    getDirectDependencies(targets.toList, getNodesByIds(targets), includeInfeasibilityNodes, includeUpwardEdges, includeDownwardEdges)
+    val targetNodes = getNodesByIds(targets)
+    assert(targetNodes.size == targets.size, s"Some node ids are missing from the graph: ${targets.diff(targetNodes.map(_.id))}")
+    targetNodes.groupBy(_.sourceInfo).flatMap { case (sourceInfo, nodes) =>
+      getDirectDependencies(nodes.map(_.id).toList, sourceInfo, includeInfeasibilityNodes, includeUpwardEdges, includeDownwardEdges)
+    }.toSet
   }
 
-  private def getDirectDependencies(initQueue: List[Int], targetNodes: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
-    val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)
-    var visited: Set[Int] = initQueue.toSet
+  private def getDirectDependencies(initQueue: List[Int], targetSourceInfo: AnalysisSourceInfo, includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
+    val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes.filter(_.isInstanceOf[InfeasibilityNode]).map(_.id)
+    val targetIds: Set[Int] = initQueue.toSet
+    val sourceInfoNodeIds: Set[Int] = getNodes.filter(_.sourceInfo == targetSourceInfo).map(_.id)
+    assert(targetIds.subsetOf(sourceInfoNodeIds), s"Target ids do not all belong to sourceInfo $targetSourceInfo")
+    var visited: Set[Int] = Set.empty
     var result: Set[Int] = Set.empty
     var queue: List[Int] = initQueue
-    val targetSourceInfos = targetNodes.map(_.sourceInfo)
     val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
     while (queue.nonEmpty) {
       val curr = queue.head
       val newVisits = allEdges.getOrElse(curr, Set()).diff(infeasibilityNodeIds).diff(visited)
-      val newQueues = getNodesByIds(newVisits).filter(n => targetSourceInfos.contains(n.sourceInfo)).map(_.id)
+      val newQueues = newVisits.intersect(sourceInfoNodeIds)
       visited = visited ++ newVisits
       result = result ++ newVisits.diff(newQueues)
       queue = queue.tail ++ newQueues.diff(queue.toSet)
