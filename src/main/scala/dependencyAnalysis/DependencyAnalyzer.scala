@@ -6,7 +6,6 @@
 
 package viper.silicon.dependencyAnalysis
 
-import viper.silicon.SiliconRunner
 import viper.silicon.decider.{Decider, DependencyAnalysisDeciderFeatures}
 import viper.silicon.state.chunks.{Chunk, GeneralChunk}
 import viper.silicon.state.terms.{Implies, NoPerm, _}
@@ -333,7 +332,6 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
   private def buildAndGetMergedGraph(): DependencyGraph[IntraProcedural] = {
     def keepNode(n: DependencyAnalysisNode): Boolean = !n.mergeInfo.isMerge || n.joinInfos.nonEmpty || n.isInstanceOf[InfeasibilityNode] || n.isInstanceOf[AxiomAssumptionNode]
 
-    SiliconRunner.logger.info(s"INFO: Building final graph for member ${member.map(_.name).getOrElse("unknown")}...")
     val mergedGraph = new DependencyGraph[IntraProcedural]
     val nodeMap = mutable.HashMap[Int, Int]()
 
@@ -367,8 +365,6 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
       val newTarget = nodeMap.getOrElse(target, target)
       mergedGraph.addEdges(deps.map(d => nodeMap.getOrElse(d, d)), newTarget)
     }
-
-    SiliconRunner.logger.info(s"INFO: Finished building final graph for member ${member.map(_.name).getOrElse("unknown")}.")
 
     mergedGraph
   }

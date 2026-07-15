@@ -6,7 +6,6 @@
 
 package viper.silicon.dependencyAnalysis
 
-import viper.silicon.SiliconRunner
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.verifier.Verifier
 import viper.silver.dependencyAnalysis.EdgeType.EdgeType
@@ -28,13 +27,10 @@ class DependencyGraphJoiner(name: String, dependencyGraphInterpreters: Set[Depen
    * via the join information stored in each node.
    */
   def joinGraphsAndGetInterpreter(): DependencyGraphInterpreter[Final] = {
-    SiliconRunner.logger.info(s"INFO: Joining all graphs...")
     val newGraph = new DependencyGraph[Final]
 
-    SiliconRunner.logger.info(s"INFO: Copying nodes...")
     newGraph.addAssumptionNodes(dependencyGraphInterpreters.flatMap (_.getAssumptionNodes))
     newGraph.addAssertionNodes(dependencyGraphInterpreters.flatMap (_.getAssertionNodes))
-    SiliconRunner.logger.info(s"INFO: Copying edges...")
     dependencyGraphInterpreters foreach (interpreter => interpreter.getGraph.getAllEdges foreach {case (t, deps) => newGraph.addEdges(deps, t)})
 
     val joinSourceNodes = dependencyGraphInterpreters flatMap(i => i.joinSourceNodes)
@@ -54,20 +50,17 @@ class DependencyGraphJoiner(name: String, dependencyGraphInterpreters: Set[Depen
       acc.toMap
     }
 
-    SiliconRunner.logger.info(s"INFO: GetJoinNodesByJoinInfo...")
     val sourceNodesByJoinInfo = getJoinNodesByJoinInfo(joinSourceNodes, JoinType.Source)
     val sinkNodesByJoinInfo = getJoinNodesByJoinInfo(joinSinkNodes, JoinType.Sink)
 
     val sourceInfoToNodeIds = newGraph.getNodes.groupBy(_.sourceInfo).view.mapValues(_.map(_.id)).toMap
 
-    SiliconRunner.logger.info(s"INFO: Adding join edges...")
     sinkNodesByJoinInfo.foreach { case (joinKey, sinkNodes) =>
       val matchingSourceNodes = sourceNodesByJoinInfo.getOrElse(joinKey, Set.empty)
       addEdgesConnectingMethods(newGraph, joinKey._2, matchingSourceNodes, sinkNodes, sourceInfoToNodeIds)
     }
 
     val newInterpreter = new DependencyGraphInterpreter[Final](name, newGraph, dependencyGraphInterpreters.toList.flatMap(_.getErrors))
-    SiliconRunner.logger.info(s"INFO: Finished joining all graphs.")
     newInterpreter
   }
 
