@@ -18,11 +18,11 @@ import viper.silicon.utils.ast.{BigAnd, BigOr}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.NoPosition
-import viper.silver.dependencyAnalysis.{AssumptionType, StringAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{AssumptionType, StringDependencyAnalysisSourceInfo}
 
 case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathConditions) {
 
-  private val analysisInfos = DependencyAnalysisInfos.DefaultInfos.withInfo(StringAnalysisSourceInfo("merge", NoPosition), AssumptionType.Internal) // TODO ake: is it fine to use DefaultInfos here?
+  private val analysisInfos = DependencyAnalysisInfos.DefaultInfos.withInfo(StringDependencyAnalysisSourceInfo("merge", NoPosition), AssumptionType.Internal) // TODO ake: is it fine to use DefaultInfos here?
 
   // Instead of merging states by calling State.merge,
   // we can directly merge JoinDataEntries to obtain new States,

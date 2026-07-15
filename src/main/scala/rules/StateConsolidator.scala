@@ -20,7 +20,7 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.FunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.dependencyAnalysis.{AssumptionType, StringAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{AssumptionType, StringDependencyAnalysisSourceInfo}
 
 import scala.annotation.unused
 
@@ -63,7 +63,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
     val comLog = new CommentRecord("state consolidation", s, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(comLog)
-    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo.createUnique("state consolidation"), AssumptionType.Internal)
+    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo.createUnique("state consolidation"), AssumptionType.Internal)
     v.decider.prover.comment("[state consolidation]")
     v.decider.prover.saturate(config.proverSaturationTimeouts.beforeIteration)
 
@@ -177,7 +177,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
        * nextChunk: current chunk from the sequence of new chunks/of chunks to merge into the
        *           sequence of destination chunks
        */
-      val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo.createUnique("state_consolidation"), AssumptionType.Internal)
+      val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo.createUnique("state_consolidation"), AssumptionType.Internal)
       findMatchingChunk(accMergedChunks, nextChunk, v, analysisInfos) match {
         case Some(ch) =>
           val resMerge = mergeChunks(fr1, ch, nextChunk, qvars, v, analysisInfos)
@@ -434,7 +434,7 @@ class MoreComplexExhaleStateConsolidator(config: Config) extends DefaultStateCon
     //   silver\src\test\resources\quantifiedpermissions\sets\generalised_shape.sil
     // to fail.
 
-    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo.createUnique("state consolidation"), AssumptionType.Internal)
+    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo.createUnique("state consolidation"), AssumptionType.Internal)
 
     if (s.retrying) {
       // TODO: apply to all heaps (s.h +: s.reserveHeaps, as done below)

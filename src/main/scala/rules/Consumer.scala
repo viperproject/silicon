@@ -18,7 +18,7 @@ import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silver.dependencyAnalysis.{AssumptionType, StringAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{AssumptionType, StringDependencyAnalysisSourceInfo}
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons._
 
@@ -384,7 +384,7 @@ object consumer extends ConsumptionRules {
                 entry1.data._1, And(entry1.pathConditions.branchConditions), Option.when(withExp)(BigAnd(entry1.pathConditions.branchConditionExps.map(_._2.get))),
                 entry2.data._1, And(entry2.pathConditions.branchConditions), Option.when(withExp)(BigAnd(entry2.pathConditions.branchConditionExps.map(_._2.get))),
                 v1,
-                analysisInfos.withSource(StringAnalysisSourceInfo("conditional join", e0.pos))
+                analysisInfos.withSource(StringDependencyAnalysisSourceInfo("conditional join", e0.pos))
               ),
               // Assume that entry1.pcs is inverse of entry2.pcs
               (entry1.data._2, entry2.data._2) match {

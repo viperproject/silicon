@@ -6,7 +6,7 @@
 
 package viper.silicon.dependencyAnalysis
 
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType}
+import viper.silver.dependencyAnalysis.{AssumptionType, DependencyAnalysisSourceInfo}
 
 import java.io.PrintWriter
 import java.nio.file.Paths
@@ -263,7 +263,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
     (depIds flatMap getNodeById).toSet
   }
 
-  private def getDirectDependenciesInternal(initQueue: List[Int], targetSourceInfo: AnalysisSourceInfo, includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
+  private def getDirectDependenciesInternal(initQueue: List[Int], targetSourceInfo: DependencyAnalysisSourceInfo, includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
     val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes.filter(_.isInstanceOf[InfeasibilityNode]).map(_.id)
     val targetIds: Set[Int] = initQueue.toSet
     val sourceInfoNodeIds: Set[Int] = getNodes.filter(_.sourceInfo == targetSourceInfo).map(_.id)

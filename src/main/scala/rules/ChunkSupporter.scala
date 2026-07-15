@@ -18,7 +18,7 @@ import viper.silicon.utils.ast.buildMinExp
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.FalseLit
-import viper.silver.dependencyAnalysis.{AssumptionType, StringAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{AssumptionType, StringDependencyAnalysisSourceInfo}
 import viper.silver.parser.PUnknown
 import viper.silver.verifier.VerificationError
 
@@ -240,7 +240,7 @@ object chunkSupporter extends ChunkSupportRules {
   def produce(s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier)
              (Q: (State, Heap, Verifier) => VerificationResult)
              : VerificationResult = {
-    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo("produce", ast.NoPosition), AssumptionType.Internal)
+    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo("produce", ast.NoPosition), AssumptionType.Internal)
     // Try to merge the chunk into the heap by finding an alias.
     // In any case, property assumptions are added after the merge step.
     val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, h, ch, v, analysisInfos)

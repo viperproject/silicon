@@ -260,7 +260,7 @@ object executor extends ExecutionRules {
             val sBody = s.copy(g = gBody, h = v.heapSupporter.getEmptyHeap(s.program))
 
             val analysisInfosInv = v.decider.defaultAnalysisInfos
-            val analysisInfosLoopInternal = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo(s"Loop ${block.id}\"", NoPosition), AssumptionType.Internal)
+            val analysisInfosLoopInternal = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo(s"Loop ${block.id}\"", NoPosition), AssumptionType.Internal)
 
             val edges = s.methodCfg.outEdges(block)
             val (outEdges, otherEdges) = edges partition(_.kind == cfg.Kind.Out)
@@ -564,7 +564,7 @@ object executor extends ExecutionRules {
             if (Verifier.config.enableDependencyAnalysis()) {
               argsWithExp.map(arg => {
                 val argNew = v1.decider.fresh(arg._1.sort, None)
-                v1.decider.assume(Equals(argNew, arg._1), None, analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(arg._2.get))))
+                v1.decider.assume(Equals(argNew, arg._1), None, analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(arg._2.get))))
                 (argNew, None)
               })
             } else argsWithExp

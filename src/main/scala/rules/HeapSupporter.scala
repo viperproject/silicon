@@ -25,7 +25,7 @@ import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.FalseLit
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, SimpleDependencyAnalysisMerge}
+import viper.silver.dependencyAnalysis.{AssumptionType, DependencyAnalysisSourceInfo, SimpleDependencyAnalysisMerge}
 import viper.silver.parser.PUnknown
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silver.verifier.{ErrorReason, PartialVerificationError, VerificationError}
@@ -205,7 +205,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v, analysisInfos)
       val s2 = triggerResourceIfNeeded(s, ass.lhs, Seq(tRcvr), eRcvrNew.map(Seq(_)), v, analysisInfos)
       v.decider.clearModel()
-      val lhsSourceInfos = analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(ass.lhs))) // splitting lhs and rhs to make permission flow analysis more precise
+      val lhsSourceInfos = analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(ass.lhs))) // splitting lhs and rhs to make permission flow analysis more precise
       val result = quantifiedChunkSupporter.removePermissions(
         s2,
         relevantChunks,
@@ -245,7 +245,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       }
     } else {
       val description = s"consume ${ass.pos}: $ass"
-      val lhsSourceInfos = analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(ass.lhs))) // splitting lhs and rhs to make permission flow analysis more precise
+      val lhsSourceInfos = analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(ass.lhs))) // splitting lhs and rhs to make permission flow analysis more precise
       chunkSupporter.consume(s, s.h, field, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v, description, lhsSourceInfos)((s3, h3, _, v3) => {
         val id = BasicChunkIdentifier(field.name)
         val newChunk = v3.chunkFactory.createBasicChunk(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tRhs, eRhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), lhsSourceInfos.withDependencyType(AssumptionType.Internal))

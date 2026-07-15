@@ -21,7 +21,7 @@ import viper.silicon.verifier.Verifier
 import viper.silicon.{MList, MMap}
 import viper.silver.ast
 import viper.silver.ast.FalseLit
-import viper.silver.dependencyAnalysis.{AssumptionType, StringAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{AssumptionType, StringDependencyAnalysisSourceInfo}
 import viper.silver.parser.PUnknown
 import viper.silver.verifier.VerificationError
 
@@ -110,7 +110,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         Implies(And(argumentEqualities, IsPositive(ch.perm)), `?s` === ch.snap)
     })
 
-    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo("summarize"), AssumptionType.Internal)
+    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo("summarize"), AssumptionType.Internal)
 
     val taggedSummarisingSnapshot =
       summarisingSnapshotDefinitions
@@ -169,7 +169,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     // query to check if the permission amount we have is sufficient to get the correct counterexample. If we perform
     // the query in two parts (one part here, one part in our caller to see if the permission amount is sufficient),
     // the counterexample might be wrong.
-    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo("summarise"), AssumptionType.Internal)
+    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo("summarise"), AssumptionType.Internal)
 
     if (relevantChunks.size == 1 &&  !Verifier.config.counterexample.isDefined) {
       val chunk = relevantChunks.head

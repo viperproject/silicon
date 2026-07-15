@@ -26,7 +26,7 @@ trait DependencyAnalysisNode {
    * This information is crucial to lift lower-level graphs to higher-level graphs and to present user-readable
    * dependency results.
    */
-  val sourceInfo: AnalysisSourceInfo
+  val sourceInfo: DependencyAnalysisSourceInfo
 
   /**
    * The assumption / assertion type of the node which is heavily used in dependency graph queries to filter nodes,
@@ -90,34 +90,34 @@ trait ChunkAnalysisInfo {
   val labelNode: LabelNode
 }
 
-class SimpleAssumptionNode(override val term: Term, description: Option[String], override val sourceInfo: AnalysisSourceInfo, override val assumptionType: AssumptionType, override val mergeInfo: DependencyAnalysisMergeInfo, override val joinInfos: List[SimpleDependencyAnalysisJoin], override val memberStr: String, override val _id: Option[Int]=None) extends GeneralAssumptionNode {
+class SimpleAssumptionNode(override val term: Term, description: Option[String], override val sourceInfo: DependencyAnalysisSourceInfo, override val assumptionType: AssumptionType, override val mergeInfo: DependencyAnalysisMergeInfo, override val joinInfos: List[SimpleDependencyAnalysisJoin], override val memberStr: String, override val _id: Option[Int]=None) extends GeneralAssumptionNode {
   override def getNodeString: String = "assume " + term.toString + description.map(" (" + _ + ")").getOrElse("")
 }
 
-class AxiomAssumptionNode(override val term: Term, description: Option[String], override val sourceInfo: AnalysisSourceInfo, override val assumptionType: AssumptionType, override val mergeInfo: DependencyAnalysisMergeInfo, override val joinInfos: List[SimpleDependencyAnalysisJoin], override val memberStr: String, override val _id: Option[Int]=None) extends GeneralAssumptionNode {
+class AxiomAssumptionNode(override val term: Term, description: Option[String], override val sourceInfo: DependencyAnalysisSourceInfo, override val assumptionType: AssumptionType, override val mergeInfo: DependencyAnalysisMergeInfo, override val joinInfos: List[SimpleDependencyAnalysisJoin], override val memberStr: String, override val _id: Option[Int]=None) extends GeneralAssumptionNode {
   override def getNodeString: String = "assume axiom " + term.toString + description.map(" (" + _ + ")").getOrElse("")
   override def getNodeType: String = "Axiom"
 }
 
-class SimpleAssertionNode(override val term: Term, override val sourceInfo: AnalysisSourceInfo, override val assumptionType: AssumptionType, override val mergeInfo: DependencyAnalysisMergeInfo, override val joinInfos: List[SimpleDependencyAnalysisJoin], override val memberStr: String, override val hasFailed: Boolean = false, override val _id: Option[Int]=None) extends GeneralAssertionNode {
+class SimpleAssertionNode(override val term: Term, override val sourceInfo: DependencyAnalysisSourceInfo, override val assumptionType: AssumptionType, override val mergeInfo: DependencyAnalysisMergeInfo, override val joinInfos: List[SimpleDependencyAnalysisJoin], override val memberStr: String, override val hasFailed: Boolean = false, override val _id: Option[Int]=None) extends GeneralAssertionNode {
   override def getNodeString: String = "assert " + term.toString
 
   override def getAssertFailedNode: GeneralAssertionNode = new SimpleAssertionNode(term, sourceInfo, assumptionType, mergeInfo, hasFailed=true, joinInfos=joinInfos, memberStr=memberStr)
 }
 
-class SimpleCheckNode(override val term: Term, override val sourceInfo: AnalysisSourceInfo, override val assumptionType: AssumptionType, override val mergeInfo: DependencyAnalysisMergeInfo, override val joinInfos: List[SimpleDependencyAnalysisJoin], override val memberStr: String, override val hasFailed: Boolean = false, override val _id: Option[Int]=None) extends GeneralAssertionNode {
+class SimpleCheckNode(override val term: Term, override val sourceInfo: DependencyAnalysisSourceInfo, override val assumptionType: AssumptionType, override val mergeInfo: DependencyAnalysisMergeInfo, override val joinInfos: List[SimpleDependencyAnalysisJoin], override val memberStr: String, override val hasFailed: Boolean = false, override val _id: Option[Int]=None) extends GeneralAssertionNode {
   override def getNodeString: String = "check " + term
   override def getNodeType: String = "Check"
 
   override def getAssertFailedNode: GeneralAssertionNode = new SimpleCheckNode(term, sourceInfo, assumptionType, mergeInfo, joinInfos, memberStr=memberStr, hasFailed=true)
 }
 
-class PermissionInhaleNode(override val chunk: Chunk, override val term: Term, override val sourceInfo: AnalysisSourceInfo, override val assumptionType: AssumptionType, override val mergeInfo: DependencyAnalysisMergeInfo, override val labelNode: LabelNode, override val joinInfos: List[SimpleDependencyAnalysisJoin], override val memberStr: String, override val _id: Option[Int]=None) extends GeneralAssumptionNode with ChunkAnalysisInfo {
+class PermissionInhaleNode(override val chunk: Chunk, override val term: Term, override val sourceInfo: DependencyAnalysisSourceInfo, override val assumptionType: AssumptionType, override val mergeInfo: DependencyAnalysisMergeInfo, override val labelNode: LabelNode, override val joinInfos: List[SimpleDependencyAnalysisJoin], override val memberStr: String, override val _id: Option[Int]=None) extends GeneralAssumptionNode with ChunkAnalysisInfo {
   override def getNodeString: String = "inhale " + chunk.toString
   override def getNodeType: String = "Inhale"
 }
 
-class PermissionExhaleNode(override val chunk: Chunk, override val term: Term, override val sourceInfo: AnalysisSourceInfo, override val assumptionType: AssumptionType, override val mergeInfo: DependencyAnalysisMergeInfo, override val labelNode: LabelNode, override val joinInfos: List[SimpleDependencyAnalysisJoin], override val memberStr: String, override val hasFailed: Boolean = false, override val _id: Option[Int]=None) extends GeneralAssertionNode with ChunkAnalysisInfo {
+class PermissionExhaleNode(override val chunk: Chunk, override val term: Term, override val sourceInfo: DependencyAnalysisSourceInfo, override val assumptionType: AssumptionType, override val mergeInfo: DependencyAnalysisMergeInfo, override val labelNode: LabelNode, override val joinInfos: List[SimpleDependencyAnalysisJoin], override val memberStr: String, override val hasFailed: Boolean = false, override val _id: Option[Int]=None) extends GeneralAssertionNode with ChunkAnalysisInfo {
   override def getNodeType: String = "Exhale"
   override def getNodeString: String = "exhale " + chunk.toString
 
@@ -129,7 +129,7 @@ class PermissionExhaleNode(override val chunk: Chunk, override val term: Term, o
  * By default, they get removed from the final graph. When debugging the DA is enabled, they are kept but still marked internal.
  */
 class LabelNode(override val term: Var, override val memberStr: String, override val _id: Option[Int]=None) extends GeneralAssumptionNode {
-  override val sourceInfo: AnalysisSourceInfo = NoAnalysisSourceInfo()
+  override val sourceInfo: DependencyAnalysisSourceInfo = NoDependencyAnalysisSourceInfo()
   override val assumptionType: AssumptionType = AssumptionType.Internal
   override val mergeInfo: DependencyAnalysisMergeInfo = NoDependencyAnalysisMerge()
   val description: String = term.toString
@@ -146,7 +146,7 @@ class LabelNode(override val term: Var, override val memberStr: String, override
  * Infeasibility nodes should always depend on the proof of false.
  * All subsequent assertions on the infeasible path should depend on the infeasibility node.
  */
-class InfeasibilityNode(override val sourceInfo: AnalysisSourceInfo, override val assumptionType: AssumptionType, override val memberStr: String, override val _id: Option[Int]=None) extends GeneralAssumptionNode {
+class InfeasibilityNode(override val sourceInfo: DependencyAnalysisSourceInfo, override val assumptionType: AssumptionType, override val memberStr: String, override val _id: Option[Int]=None) extends GeneralAssumptionNode {
   override val term: Term = False
   override val mergeInfo: DependencyAnalysisMergeInfo = NoDependencyAnalysisMerge()
   val description: String = "False"

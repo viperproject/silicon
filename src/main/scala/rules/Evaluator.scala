@@ -597,7 +597,7 @@ object evaluator extends EvaluationRules {
            */
           case q: ast.Forall => q.copy(triggers = Nil)(q.pos, q.info, q.errT)
         })
-        val fappSourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(fapp)
+        val fappSourceInfo = DependencyAnalysisSourceInfo.createAnalysisSourceInfo(fapp)
         val presWithDAInfo = DependencyAnalysisMergeInfo.attachExpMergeInfo(pres.flatMap(_.topLevelConjuncts), Some(fappSourceInfo))
         val eArgsWithDAInfO = DependencyAnalysisMergeInfo.attachExpMergeInfo(eArgs, None)
 

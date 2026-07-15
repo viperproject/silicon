@@ -11,7 +11,7 @@ import viper.silver.ast
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.{If, Stmt}
-import viper.silver.dependencyAnalysis.AnalysisSourceInfo
+import viper.silver.dependencyAnalysis.DependencyAnalysisSourceInfo
 
 import java.io.PrintWriter
 
@@ -23,11 +23,11 @@ class DependencyAnalysisPruningSupporter[T <: DependencyGraphState](interpreter:
   def getPrunedProgram(crucialNodes: Set[DependencyAnalysisNode], program: ast.Program): (ast.Program, Double) = {
 
     def isCrucialExp(exp: ast.Exp, crucialNodePositionStrings: Set[String]): Boolean = {
-      crucialNodePositionStrings.contains(AnalysisSourceInfo.extractPositionString(exp.pos)) // TODO ake: currently we compare only lines not columns!
+      crucialNodePositionStrings.contains(DependencyAnalysisSourceInfo.extractPositionString(exp.pos)) // TODO ake: currently we compare only lines not columns!
     }
 
     def isCrucialStmt(stmt: ast.Stmt, crucialNodePositionStrings: Set[String]): Boolean = {
-      crucialNodePositionStrings.contains(AnalysisSourceInfo.extractPositionString(stmt.pos))
+      crucialNodePositionStrings.contains(DependencyAnalysisSourceInfo.extractPositionString(stmt.pos))
     }
 
     val crucialNodeSourceInfos = crucialNodes.map(_.sourceInfo)
@@ -45,8 +45,8 @@ class DependencyAnalysisPruningSupporter[T <: DependencyGraphState](interpreter:
       case s@(_: ast.Seqn | _: ast.Goto) => s
       case domain@ast.Domain(name, functions, axioms, typVars, interpretations) =>
         val newAxioms = axioms.filter(a =>
-          crucialNodePositionStrings.contains(AnalysisSourceInfo.extractPositionString(a.exp.pos)) ||
-            crucialNodePositionStrings.contains(AnalysisSourceInfo.extractPositionString(a.pos)))
+          crucialNodePositionStrings.contains(DependencyAnalysisSourceInfo.extractPositionString(a.exp.pos)) ||
+            crucialNodePositionStrings.contains(DependencyAnalysisSourceInfo.extractPositionString(a.pos)))
         ast.Domain(name, functions, newAxioms, typVars, interpretations)(domain.pos, domain.info, domain.errT)
       case function@ast.Function(name, formalArgs, typ, pres, posts, body) =>
         val newPres = pres.filter(isCrucialExp(_, crucialNodePositionStrings))

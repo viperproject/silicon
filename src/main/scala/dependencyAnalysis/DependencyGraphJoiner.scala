@@ -11,7 +11,7 @@ import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInter
 import viper.silicon.verifier.Verifier
 import viper.silver.dependencyAnalysis.EdgeType.EdgeType
 import viper.silver.dependencyAnalysis.JoinType.JoinType
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, EdgeType, JoinType}
+import viper.silver.dependencyAnalysis.{DependencyAnalysisSourceInfo, EdgeType, JoinType}
 
 import scala.collection.mutable
 
@@ -40,8 +40,8 @@ class DependencyGraphJoiner(name: String, dependencyGraphInterpreters: Set[Depen
     val joinSourceNodes = dependencyGraphInterpreters flatMap(i => i.joinSourceNodes)
     val joinSinkNodes   = dependencyGraphInterpreters flatMap(i => i.joinSinkNodes)
 
-    def getJoinNodesByJoinInfo(candidateNodes: Set[DependencyAnalysisNode], joinType: JoinType): Map[(AnalysisSourceInfo, EdgeType), Set[DependencyAnalysisNode]] = {
-      val acc: mutable.Map[(AnalysisSourceInfo, EdgeType), Set[DependencyAnalysisNode]] = mutable.Map.empty
+    def getJoinNodesByJoinInfo(candidateNodes: Set[DependencyAnalysisNode], joinType: JoinType): Map[(DependencyAnalysisSourceInfo, EdgeType), Set[DependencyAnalysisNode]] = {
+      val acc: mutable.Map[(DependencyAnalysisSourceInfo, EdgeType), Set[DependencyAnalysisNode]] = mutable.Map.empty
       candidateNodes.foreach {
         node =>
           node.joinInfos.foreach { joinInfo =>
@@ -71,7 +71,7 @@ class DependencyGraphJoiner(name: String, dependencyGraphInterpreters: Set[Depen
     newInterpreter
   }
 
-  private def addEdgesConnectingMethods(newGraph: DependencyGraph[Final], edgeType: EdgeType, sourceNodes: Set[DependencyAnalysisNode], sinkNodes: Set[DependencyAnalysisNode], sourceInfoToNodeIds: Map[AnalysisSourceInfo, Set[Int]]): Unit = {
+  private def addEdgesConnectingMethods(newGraph: DependencyGraph[Final], edgeType: EdgeType, sourceNodes: Set[DependencyAnalysisNode], sinkNodes: Set[DependencyAnalysisNode], sourceInfoToNodeIds: Map[DependencyAnalysisSourceInfo, Set[Int]]): Unit = {
     if (edgeType.equals(EdgeType.Up)) {
       val directDepsOfSources = if(!Verifier.config.disableDependencyAnalysisJoinPrecisionOpt()) {
         // Preconditions are connected to the dependencies required to prove them at all call sites. However, they do not depend on the calls themselves.

@@ -8,13 +8,13 @@ package viper.silicon.dependencyAnalysis
 
 import viper.silver.ast.Position
 import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, StringAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{DependencyAnalysisSourceInfo, StringDependencyAnalysisSourceInfo}
 
 object UserLevelDependencyAnalysisNode {
 
   def from(dependencyNodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = {
     val res = dependencyNodes
-      .map(n => ((StringAnalysisSourceInfo(n.sourceInfo.getDescription, n.sourceInfo.getPosition), n.memberStr), n))
+      .map(n => ((StringDependencyAnalysisSourceInfo(n.sourceInfo.getDescription, n.sourceInfo.getPosition), n.memberStr), n))
       .groupBy(_._1).map { case (key, nodes) =>
       UserLevelDependencyAnalysisNode(key._1, key._2, nodes.map(_._2).toSet)
     }.toSet
@@ -35,17 +35,17 @@ object UserLevelDependencyAnalysisNode {
       left.filterNot(n => sources.contains(n.groupingCondition))
     }
 
-    def toSourceSet(): Set[AnalysisSourceInfo] = {
+    def toSourceSet(): Set[DependencyAnalysisSourceInfo] = {
       left.map(_.source)
     }
 
-    def toSourceMemberSet(): Set[(AnalysisSourceInfo, String)] = {
+    def toSourceMemberSet(): Set[(DependencyAnalysisSourceInfo, String)] = {
       left.map(n => (n.source, n.member))
     }
   }
 }
 
-case class UserLevelDependencyAnalysisNode(source: AnalysisSourceInfo, member: String, lowerLevelNodes: Set[DependencyAnalysisNode]) {
+case class UserLevelDependencyAnalysisNode(source: DependencyAnalysisSourceInfo, member: String, lowerLevelNodes: Set[DependencyAnalysisNode]) {
 
   def position: Position = source.getPosition
 
@@ -63,6 +63,6 @@ case class UserLevelDependencyAnalysisNode(source: AnalysisSourceInfo, member: S
 
 }
 
-case class CompactUserLevelDependencyAnalysisNode(source: AnalysisSourceInfo, assumptionTypes: Set[AssumptionType], assertionTypes: Set[AssumptionType], hasFailures: Boolean) {
+case class CompactUserLevelDependencyAnalysisNode(source: DependencyAnalysisSourceInfo, assumptionTypes: Set[AssumptionType], assertionTypes: Set[AssumptionType], hasFailures: Boolean) {
   def position: Position = source.getPosition
 }

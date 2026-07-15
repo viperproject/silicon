@@ -21,7 +21,7 @@ import viper.silver.ast
 import viper.silver.ast.{Exp, FalseLit, NoPosition, Stmt}
 import viper.silver.cfg.Edge
 import viper.silver.cfg.silver.SilverCfg.SilverBlock
-import viper.silver.dependencyAnalysis.{AssumptionType, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{AssumptionType, ExpDependencyAnalysisSourceInfo, StringDependencyAnalysisSourceInfo}
 import viper.silver.parser.PUnknown
 import viper.silver.verifier.PartialVerificationError
 
@@ -376,7 +376,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val freshSnapRoot = freshSnap(sorts.Snap, v1)
 
       // Produce the wand's LHS.
-      val analysisInfosLeft = analysisInfos.withSource(ExpAnalysisSourceInfo(wand.left, wand.left.pos))
+      val analysisInfosLeft = analysisInfos.withSource(ExpDependencyAnalysisSourceInfo(wand.left, wand.left.pos))
       produce(s1.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1, analysisInfosLeft)((sLhs, v2) => {
         val proofScriptCfg = proofScript.toCfg()
         val emptyHeap = v2.heapSupporter.getEmptyHeap(sLhs.program)
@@ -591,7 +591,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
        * heap. After a statement is executed those permissions are transferred to hOps.
        */
 
-      val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringAnalysisSourceInfo("merge", NoPosition), AssumptionType.Internal)
+      val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo("merge", NoPosition), AssumptionType.Internal)
       val emptyHeap = v.heapSupporter.getEmptyHeap(newState.program)
       val (fr, hOpsJoinUsed) = v.stateConsolidator(newState).merge(newState.functionRecorder, newState, newState.reserveHeaps(1), newState.h, v, analysisInfos)
       newState.copy(functionRecorder = fr, h = emptyHeap,

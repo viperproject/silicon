@@ -10,14 +10,14 @@ import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.graphInterpretation.DATraversalMode.DATraversalMode
 import viper.silver.dependencyAnalysis
 import viper.silver.dependencyAnalysis.AssumptionType.PreconditionType
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType}
+import viper.silver.dependencyAnalysis.{AssumptionType, DependencyAnalysisSourceInfo}
 
 import scala.collection.mutable
 
 class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter: DependencyGraphInterpreter[T]) {
 
   private val dependencyGraph = interpreter.getGraph
-  private lazy val sourceToAssertionNodesMap: Map[AnalysisSourceInfo, Set[GeneralAssertionNode]] = interpreter.getNonInternalAssertionNodes.groupBy(_.sourceInfo)
+  private lazy val sourceToAssertionNodesMap: Map[DependencyAnalysisSourceInfo, Set[GeneralAssertionNode]] = interpreter.getNonInternalAssertionNodes.groupBy(_.sourceInfo)
 
   def computeVerificationProgress(enableDebugging: Boolean = false): (VerificationProgress, VerificationProgress) = {
     computeVerificationProgressOptimized(enableDebugging)
@@ -28,9 +28,9 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
    * That is, the dependencies of each pre- and postcondition are cached and can thus be reused for subsequent computations.
    * We do not cache intraprocedural dependencies to allow for precise computation of dependencies using the low-level graph.
    */
-  val deps: DAMemo[(AnalysisSourceInfo, DATraversalMode), Set[CompactUserLevelDependencyAnalysisNode]] = DAMemo { case (assertionNode, mode) =>
+  val deps: DAMemo[(DependencyAnalysisSourceInfo, DATraversalMode), Set[CompactUserLevelDependencyAnalysisNode]] = DAMemo { case (assertionNode, mode) =>
     // TODO ake: maybe this should be moved to the DependencyGraphInterpreter such that other queries can be optimized as well.
-    def computeDependencies(currentNode: AnalysisSourceInfo, visited: Set[(AnalysisSourceInfo, DATraversalMode)], traversalMode: DATraversalMode): Set[CompactUserLevelDependencyAnalysisNode] = {
+    def computeDependencies(currentNode: DependencyAnalysisSourceInfo, visited: Set[(DependencyAnalysisSourceInfo, DATraversalMode)], traversalMode: DATraversalMode): Set[CompactUserLevelDependencyAnalysisNode] = {
       if (visited.contains((currentNode, traversalMode))) {
         return Set.empty // break cycles to avoid infinite loops
       }
@@ -66,7 +66,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 
   // merges results of several computations by merging low-level nodes belonging to the same source
   private def reduceCompactUserLevelNodes(inputNodes: Iterable[CompactUserLevelDependencyAnalysisNode]): Set[CompactUserLevelDependencyAnalysisNode] = {
-    inputNodes.foldLeft(Map.empty[AnalysisSourceInfo, CompactUserLevelDependencyAnalysisNode]) { case (resultMap, node) =>
+    inputNodes.foldLeft(Map.empty[DependencyAnalysisSourceInfo, CompactUserLevelDependencyAnalysisNode]) { case (resultMap, node) =>
       val updatedNode = resultMap.get(node.source) match {
         case Some(existing) =>
           CompactUserLevelDependencyAnalysisNode(
@@ -97,7 +97,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
    * If the assertion encountered a failure, i.e. it could not be proven to hold, then the assertion quality is 0.0.
    * Otherwise, the assertion quality is defined as the fraction of non-assumption dependencies over all dependencies.
    */
-  private def computeAssertionQuality(allDependencies: Set[CompactUserLevelDependencyAnalysisNode], assertion: AnalysisSourceInfo): Option[Double] = {
+  private def computeAssertionQuality(allDependencies: Set[CompactUserLevelDependencyAnalysisNode], assertion: DependencyAnalysisSourceInfo): Option[Double] = {
     val assertionNodes = sourceToAssertionNodesMap.getOrElse(assertion, Set.empty).collect { case node: GeneralAssertionNode => node }
     val failedAssertionNodes = assertionNodes.filter(node => node.hasFailed || node.assumptionType.equals(AssumptionType.ExplicitPostcondition))
     // assertions with failures have quality of 0.0
@@ -111,7 +111,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
     Some((numDepsTotal - explicitDeps.size).toDouble / numDepsTotal.toDouble)
   }
 
-  private def getAssertionsRelevantForProgress: Map[AnalysisSourceInfo, Set[GeneralAssertionNode]] = {
+  private def getAssertionsRelevantForProgress: Map[DependencyAnalysisSourceInfo, Set[GeneralAssertionNode]] = {
     sourceToAssertionNodesMap.filter {
       case (_, assertionNodes) => !assertionNodes.exists(node =>
         node.assumptionType.isInstanceOf[AssumptionType.ImportedType] || node.assumptionType.isInstanceOf[PreconditionType])
@@ -213,7 +213,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
     totalImpacts.sortBy(_._2).reverse
   }
 
-  private def getAssertionsWithZeroQuality: Set[AnalysisSourceInfo] = {
+  private def getAssertionsWithZeroQuality: Set[DependencyAnalysisSourceInfo] = {
     val allAssertions = interpreter.toUserLevelNodes(interpreter.getNonInternalAssertionNodes)
     allAssertions.filter(assertion => assertion.hasFailures || assertion.assertionTypes.contains(AssumptionType.ExplicitPostcondition)).toSourceSet()
   }
@@ -221,7 +221,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
   /**
    * Returns all uncovered source code statements.
    */
-  def computeUncoveredStatementsPerMember(): Map[String, List[AnalysisSourceInfo]] = {
+  def computeUncoveredStatementsPerMember(): Map[String, List[DependencyAnalysisSourceInfo]] = {
     val allAssertions = interpreter.toUserLevelNodes(getAssertionsRelevantForProgress.values.flatten)
     val allDependencies = allAssertions.flatMap(ass => interpreter.toUserLevelNodes(interpreter.computeNonInternalDependencies(ass.lowerLevelNodes)).diffBySource(Set(ass))).toSourceMemberSet()
 

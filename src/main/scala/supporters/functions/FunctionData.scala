@@ -143,9 +143,9 @@ class FunctionData(val programFunction: ast.Function,
   private val bodyAnalysisInfo: DependencyAnalysisAxiomInfo = {
     val analysisInfos = if (programFunction.body.isDefined) {
       defaultAnalysisInfo.addInfo(programFunction.body.get.info, programFunction.body.get)
-        .withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(programFunction.body.get), JoinType.Sink, EdgeType.Down))
+        .withJoinInfo(SimpleDependencyAnalysisJoin(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(programFunction.body.get), JoinType.Sink, EdgeType.Down))
     } else
-      defaultAnalysisInfo.withInfo(StringAnalysisSourceInfo("unverified function body"), AssumptionType.Internal)
+      defaultAnalysisInfo.withInfo(StringDependencyAnalysisSourceInfo("unverified function body"), AssumptionType.Internal)
 
     DependencyAnalysisAxiomInfo(analysisInfos, programFunction.name)
   }
@@ -156,13 +156,13 @@ class FunctionData(val programFunction: ast.Function,
     (Forall(arguments,
            BuiltinEquals(limitedFunctionApplication, functionApplication),
            Trigger(functionApplication)),
-      DependencyAnalysisAxiomInfo(defaultAnalysisInfo.withInfo(StringAnalysisSourceInfo("Limited Axiom"), AssumptionType.Internal), programFunction.name))
+      DependencyAnalysisAxiomInfo(defaultAnalysisInfo.withInfo(StringDependencyAnalysisSourceInfo("Limited Axiom"), AssumptionType.Internal), programFunction.name))
 
   val limitedAxiom: Quantification = limitedAxiomWithInfo._1
 
   val triggerAxiomWithInfo: (Quantification, DependencyAnalysisAxiomInfo) =
     (Forall(arguments, triggerFunctionApplication, Trigger(limitedFunctionApplication)),
-      DependencyAnalysisAxiomInfo(defaultAnalysisInfo.withInfo(StringAnalysisSourceInfo("Trigger Axiom"), AssumptionType.Trigger), programFunction.name))
+      DependencyAnalysisAxiomInfo(defaultAnalysisInfo.withInfo(StringDependencyAnalysisSourceInfo("Trigger Axiom"), AssumptionType.Trigger), programFunction.name))
 
   val triggerAxiom: Quantification = triggerAxiomWithInfo._1
 
@@ -237,7 +237,7 @@ class FunctionData(val programFunction: ast.Function,
 
   def postConditionInfo(post: ast.Exp): DependencyAnalysisAxiomInfo =
     DependencyAnalysisAxiomInfo(defaultAnalysisInfo.addInfo(post.info, post)
-      .withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(post), JoinType.Sink, EdgeType.Down)), programFunction.name)
+      .withJoinInfo(SimpleDependencyAnalysisJoin(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(post), JoinType.Sink, EdgeType.Down)), programFunction.name)
 
   lazy val translatedPosts = {
     translatedPostsWithInfo.map(_._1)
