@@ -6,7 +6,6 @@
 
 package viper.silicon.dependencyAnalysis
 
-import viper.silicon.state.terms.{And, Term}
 import viper.silver.ast.Position
 import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, StringAnalysisSourceInfo}
@@ -36,11 +35,11 @@ object UserLevelDependencyAnalysisNode {
       left.filterNot(n => sources.contains(n.groupingCondition))
     }
 
-    def getSourceSet(): Set[AnalysisSourceInfo] = {
+    def toSourceSet(): Set[AnalysisSourceInfo] = {
       left.map(_.source)
     }
 
-    def getSourceMemberSet(): Set[(AnalysisSourceInfo, String)] = {
+    def toSourceMemberSet(): Set[(AnalysisSourceInfo, String)] = {
       left.map(n => (n.source, n.member))
     }
   }
@@ -55,9 +54,6 @@ case class UserLevelDependencyAnalysisNode(source: AnalysisSourceInfo, member: S
 
   lazy val lowLevelAssumptionNodes: Set[GeneralAssumptionNode] = lowerLevelNodes.collect { case node: GeneralAssumptionNode => node }
   lazy val lowLevelAssertionNodes: Set[GeneralAssertionNode] = lowerLevelNodes.collect { case node: GeneralAssertionNode => node }
-
-  lazy val assumptionTerm: Term = And(lowLevelAssumptionNodes.map(_.getTerm))
-  lazy val assertionTerm: Term = And(lowLevelAssertionNodes.map(_.getTerm))
 
   lazy val hasFailures: Boolean = lowLevelAssertionNodes.exists(_.hasFailed)
 

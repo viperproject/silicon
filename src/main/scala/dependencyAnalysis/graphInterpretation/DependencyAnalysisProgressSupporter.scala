@@ -215,7 +215,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 
   private def getAssertionsWithZeroQuality: Set[AnalysisSourceInfo] = {
     val allAssertions = interpreter.toUserLevelNodes(interpreter.getNonInternalAssertionNodes)
-    allAssertions.filter(assertion => assertion.hasFailures || assertion.assertionTypes.contains(AssumptionType.ExplicitPostcondition)).getSourceSet()
+    allAssertions.filter(assertion => assertion.hasFailures || assertion.assertionTypes.contains(AssumptionType.ExplicitPostcondition)).toSourceSet()
   }
 
   /**
@@ -223,11 +223,11 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
    */
   def computeUncoveredStatementsPerMember(): Map[String, List[AnalysisSourceInfo]] = {
     val allAssertions = interpreter.toUserLevelNodes(getAssertionsRelevantForProgress.values.flatten)
-    val allDependencies = allAssertions.flatMap(ass => interpreter.toUserLevelNodes(interpreter.computeNonInternalDependencies(ass.lowerLevelNodes)).diffBySource(Set(ass))).getSourceMemberSet()
+    val allDependencies = allAssertions.flatMap(ass => interpreter.toUserLevelNodes(interpreter.computeNonInternalDependencies(ass.lowerLevelNodes)).diffBySource(Set(ass))).toSourceMemberSet()
 
     val explicitAssertions = interpreter.toUserLevelNodes(interpreter.getExplicitAssertionNodes)
     val allNodes = interpreter.toUserLevelNodes(interpreter.getNonInternalAssumptionNodes)
-    val allSourceCodeStmts = UserLevelDependencyAnalysisNode.extractByAssumptionType(allNodes, _.isInstanceOf[AssumptionType.SourceCodeType]).getSourceMemberSet().diff(explicitAssertions.getSourceMemberSet())
+    val allSourceCodeStmts = UserLevelDependencyAnalysisNode.extractByAssumptionType(allNodes, _.isInstanceOf[AssumptionType.SourceCodeType]).toSourceMemberSet().diff(explicitAssertions.toSourceMemberSet())
 
     val uncoveredSourceCodeStmts = allSourceCodeStmts.diff(allDependencies)
     uncoveredSourceCodeStmts.groupBy(_._2).map { case (member, sources) =>
@@ -250,5 +250,5 @@ case class DAMemo[A,B](f: A => B) extends (A => B) {
 }
 
 case class VerificationProgress(specQuality: Double, proofQuality: Double) {
-  lazy val progress = specQuality * proofQuality
+  lazy val progress: Double = specQuality * proofQuality
 }

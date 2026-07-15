@@ -60,7 +60,7 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
     Option.when(isTested)(isAssumptionTypeCorrect && isAssertionTypeCorrect)
   }
 
-  private def printIfFalse(test: Boolean, message: String) =
+  private def printIfFalse(test: Boolean, message: String): Unit =
     if (!test)
       println(message)
 
@@ -79,7 +79,7 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
 
     val queriedAssertions = assertionNode.lowLevelAssertionNodes
     val allDependencies = interpreter.computeNonInternalDependencies(queriedAssertions.toSet)
-    val sourceDependencies = UserLevelDependencyAnalysisNode.from(allDependencies).getSourceSet().diff(UserLevelDependencyAnalysisNode.from(queriedAssertions).getSourceSet())
+    val sourceDependencies = UserLevelDependencyAnalysisNode.from(allDependencies).toSourceSet().diff(UserLevelDependencyAnalysisNode.from(queriedAssertions).toSourceSet())
 
     val labelsInReportedDeps: Set[Set[String]] = sourceDependencies.map(node => nodeLabelRegex.findAllMatchIn(node.toString).map(_.group(1)).toSet)
     val actualLabelInReportedDeps = labelsInReportedDeps.filter(_.size == 1).flatten

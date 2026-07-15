@@ -35,7 +35,7 @@ object DependencyGraphImporter {
   }
 
   def importProgram(userInput: String): Program = {
-    loadProgram(userInput +"\\", "program.vpr", frontend)
+    loadProgram(userInput +"\\", frontend)
   }
 
   private def createNodesFromCsv(graph: DependencyGraph[Final], csvFilePath: String): Unit = {
@@ -106,8 +106,8 @@ object DependencyGraphImporter {
     fe
   }
 
-  private def loadProgram(filePrefix: String, fileName: String, frontend: SilFrontend): Program = {
-    val testFile = Paths.get(filePrefix + fileName)
+  private def loadProgram(filePrefix: String, frontend: SilFrontend): Program = {
+    val testFile = Paths.get(filePrefix + "program.vpr")
 
     frontend.reset(testFile)
     frontend.runTo(frontend.Translation)

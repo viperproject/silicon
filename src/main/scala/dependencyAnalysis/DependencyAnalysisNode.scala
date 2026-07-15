@@ -8,7 +8,6 @@ package viper.silicon.dependencyAnalysis
 
 import viper.silicon.state.chunks.Chunk
 import viper.silicon.state.terms.{False, Term, Var}
-import viper.silver.ast.Position
 import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silver.dependencyAnalysis._
 
@@ -58,7 +57,6 @@ trait DependencyAnalysisNode {
   def getTerm: Term = term
 
   def getUserLevelRepresentation: String = sourceInfo.toString
-  def getSourceCodePosition: Position = sourceInfo.getPosition
 
   /**
     Some string representations, mainly used for debugging purposes.

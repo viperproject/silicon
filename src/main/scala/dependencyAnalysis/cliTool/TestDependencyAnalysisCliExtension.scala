@@ -17,7 +17,7 @@ class TestDependencyAnalysisCliExtension(override val interpreter: DependencyGra
     new DependenciesTestCommand,
   )
 
-  class TestAllCommand extends DependencyAnalysisCliCommand {
+  private class TestAllCommand extends DependencyAnalysisCliCommand {
     override val cmdName: String = "test"
     override val description: String = s"""'$cmdName' to test all node types and dependencies with respect to the @dependencyInfo(...) annotations"""
     override val cmd: Seq[String] => Unit = { _ =>
@@ -28,7 +28,7 @@ class TestDependencyAnalysisCliExtension(override val interpreter: DependencyGra
     }
   }
 
-  class NodeTypeTestCommand extends DependencyAnalysisCliCommand {
+  private class NodeTypeTestCommand extends DependencyAnalysisCliCommand {
     override val cmdName: String = "testNodeTypes"
     override val description: String = s"""'$cmdName [line numbers]' to test the node type with respect to the @dependencyInfo(...) annotations"""
     override val cmd: Seq[String] => Unit = { inputs =>
@@ -40,7 +40,7 @@ class TestDependencyAnalysisCliExtension(override val interpreter: DependencyGra
     }
   }
 
-  class DependenciesTestCommand extends DependencyAnalysisCliCommand {
+  private class DependenciesTestCommand extends DependencyAnalysisCliCommand {
     override val cmdName: String = "testDependencies"
     override val description: String = s"""'$cmdName [line numbers]' to test the node type with respect to the @dependencyInfo(...) annotations"""
     override val cmd: Seq[String] => Unit = { inputs =>

@@ -21,11 +21,11 @@ class DebugDependencyAnalysisCliExtension(override val interpreter: DependencyGr
                                                                 new WeirdNodesCommand
                                                               )
 
-  class AssumptionTypesCommand extends DependencyAnalysisCliCommand {
+  private class AssumptionTypesCommand extends DependencyAnalysisCliCommand {
     override val cmdName: String = "assumptionTypes"
     override val cmd: Seq[String] => Unit = { inputs =>
       if (inputs.isEmpty)
-        println(getAssumptionTypesPerNode().mkString("\n"))
+        println(getAssumptionTypesPerNode.mkString("\n"))
       else
         inputs.flatMap(_.toIntOption).foreach(i => println(s"$i: ${getAssumptionTypesByLine(i)}"))
     }
@@ -35,18 +35,18 @@ class DebugDependencyAnalysisCliExtension(override val interpreter: DependencyGr
       interpreter.getNodesByLine(line).filter(_.isInstanceOf[GeneralAssumptionNode]).map(_.assumptionType)
     }
 
-    private def getAssumptionTypesPerNode(): Map[AnalysisSourceInfo, Set[AssumptionType]] =
+    private def getAssumptionTypesPerNode: Map[AnalysisSourceInfo, Set[AssumptionType]] =
       getAssumptionTypesPerNode(interpreter.getAssumptionNodes)
 
     private def getAssumptionTypesPerNode(nodes: Set[GeneralAssumptionNode]): Map[AnalysisSourceInfo, Set[AssumptionType]] =
       nodes.groupBy(_.sourceInfo).view.mapValues(_.map(_.assumptionType)).toMap
   }
 
-  class AssertionTypesCommand extends DependencyAnalysisCliCommand {
+  private class AssertionTypesCommand extends DependencyAnalysisCliCommand {
     override val cmdName: String = "assertionTypes"
     override val cmd: Seq[String] => Unit = { inputs =>
       if (inputs.isEmpty)
-        println(getAssertionTypesPerNode().mkString("\n"))
+        println(getAssertionTypesPerNode.mkString("\n"))
       else
         inputs.flatMap(_.toIntOption).foreach(i => println(s"$i: ${getAssertionTypesByLine(i)}"))
     }
@@ -56,14 +56,14 @@ class DebugDependencyAnalysisCliExtension(override val interpreter: DependencyGr
       interpreter.getNodesByLine(line).filter(_.isInstanceOf[GeneralAssertionNode]).map(_.assumptionType)
     }
 
-    private def getAssertionTypesPerNode(): Map[AnalysisSourceInfo, Set[AssumptionType]] =
+    private def getAssertionTypesPerNode: Map[AnalysisSourceInfo, Set[AssumptionType]] =
       getAssertionTypesPerNode(interpreter.getAssertionNodes)
 
     private def getAssertionTypesPerNode(nodes: Set[GeneralAssertionNode]): Map[AnalysisSourceInfo, Set[AssumptionType]] =
       nodes.groupBy(_.sourceInfo).view.mapValues(_.map(_.assumptionType)).toMap
   }
 
-  class LowLevelNodesCommand extends DependencyAnalysisCliCommand {
+  private class LowLevelNodesCommand extends DependencyAnalysisCliCommand {
     override val cmdName: String = "lowLevelNodes"
     override val cmd: Seq[String] => Unit = inputs =>
       inputs.flatMap(_.toIntOption).foreach(i => println(s"$i:\n\t${getLowLevelNodesByLine(i).mkString("\n\t")}"))
@@ -76,11 +76,11 @@ class DebugDependencyAnalysisCliExtension(override val interpreter: DependencyGr
     }
   }
 
-  class WeirdNodesCommand extends DependencyAnalysisCliCommand {
+  private class WeirdNodesCommand extends DependencyAnalysisCliCommand {
     override val cmdName: String = "weirdNodes"
     override val cmd: Seq[String] => Unit = _ => printWeirdNodes()
     override val description: String = s"'$cmdName' to print weird nodes"
-    private val weirdNodePattern = """\b(function|func|method|domain|if|else|while|for|match|interface|struct|package|import|type)\b""".r
+    private val weirdNodePattern = """\b(function|func|method|axiom|if|else|while|for|interface|struct|package|import|type)\b""".r
 
     private def printWeirdNodes(): Unit = {
       interpreter.getNodes.filter(n => !n.assumptionType.isInstanceOf[AssumptionType.InternalType]).groupBy(_.sourceInfo)

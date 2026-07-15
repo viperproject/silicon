@@ -15,13 +15,13 @@ import java.io.PrintWriter
 import scala.annotation.tailrec
 import scala.io.StdIn.readLine
 
-class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter[Final],
+class DependencyAnalysisCliTool(override val interpreter: DependencyGraphInterpreter[Final],
                                 program: ast.Program, verificationErrors: List[Failure]) extends AbstractDependencyAnalysisCliTool {
 
   val extensions: List[DependencyAnalysisCliToolExtension] = List(
-    new DebugDependencyAnalysisCliExtension(fullGraphInterpreter),
-    new TestDependencyAnalysisCliExtension(fullGraphInterpreter),
-    new BenchmarkDependencyAnalysisCliExtension(fullGraphInterpreter, program)
+    new DebugDependencyAnalysisCliExtension(interpreter),
+    new TestDependencyAnalysisCliExtension(interpreter),
+    new BenchmarkDependencyAnalysisCliExtension(interpreter, program)
   )
 
   def run(commandStr: String): Unit = {
@@ -47,7 +47,7 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
   private def handleInteractiveMode(): Unit = {
     println("Dependency Analysis Tool started.")
     println(infoString)
-    if(verificationErrors.nonEmpty || fullGraphInterpreter.getAssertionNodesWithFailures.nonEmpty)
+    if(verificationErrors.nonEmpty || interpreter.getAssertionNodesWithFailures.nonEmpty)
       println("Program did not verify!")
 
     runInteractiveMode()
@@ -81,7 +81,7 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
         case "dep" => handleDependencyQuery(cmdParts.tail.toSet)
         case "ad" | "alldeps" => handleAllDependenciesQuery(cmdParts.tail.toSet)
         case "downdep" => handleDependentsQuery(cmdParts.tail.toSet)
-        case "export"  => fullGraphInterpreter.exportGraph(program, exportFileName.get)
+        case "export"  => interpreter.exportGraph(program, exportFileName.get)
         case "progress" | "prog" => handleVerificationProgressQuery(cmdParts.tail, exportFileName)
         case "guidance" | "guide" => handleVerificationGuidanceQuery(cmdParts.tail)
         case "prune" => handlePruningRequest(cmdParts.tail, exportFileName.get)
@@ -94,17 +94,17 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
     }
   }
 
-  private def handleFailuresRequest() = {
+  private def handleFailuresRequest(): Unit = {
     println("Reported verification failures:")
     println(s"\t${verificationErrors.mkString("\n\t")}")
     println(s"Dependency nodes of failures:")
-    println(s"\t${fullGraphInterpreter.getAssertionNodesWithFailures.map(_.sourceInfo).mkString("\n\t")}")
+    println(s"\t${interpreter.getAssertionNodesWithFailures.map(_.sourceInfo).mkString("\n\t")}")
   }
 
-  def handleVerificationProgressQuery(inputs: Seq[String], exportFileNameOpt: Option[String] = None): Unit = {
+  private def handleVerificationProgressQuery(inputs: Seq[String], exportFileNameOpt: Option[String] = None): Unit = {
     val enableDebugging = inputs.nonEmpty && inputs.head.equals("debug")
 
-    val ((optProgressPeter, optProgressLea), optTime) = measureTime(fullGraphInterpreter.progressSupporter.computeVerificationProgress(enableDebugging))
+    val ((optProgressPeter, optProgressLea), optTime) = measureTime(interpreter.progressSupporter.computeVerificationProgress(enableDebugging))
 
     println(s"Peter: ${optProgressPeter.progress}; Lea: ${optProgressLea.progress}\nFinished in ${optTime}ms")
 
@@ -120,10 +120,10 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
     val queriedNodes = getQueriedNodesFromInput(inputs)
     val queriedAssertions = queriedNodes.filter(node => node.isInstanceOf[GeneralAssertionNode])
 
-    val (directDependencies, timeDirect) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.computeDirectDependencies(queriedAssertions))
-    val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.computeNonInternalDependencies(queriedAssertions))
-    val (allDependenciesWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.computeNonInternalDependencies(queriedAssertions, includeInfeasibilityNodes=false))
-    val (explicitDependencies, timeExplicit) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.computeExplicitDependencies(queriedAssertions))
+    val (directDependencies, timeDirect) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeDirectDependencies(queriedAssertions))
+    val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeNonInternalDependencies(queriedAssertions))
+    val (allDependenciesWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeNonInternalDependencies(queriedAssertions, includeInfeasibilityNodes=false))
+    val (explicitDependencies, timeExplicit) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeExplicitDependencies(queriedAssertions))
 
     println(s"Queried:\n\t${getSourceInfoString(queriedNodes)}")
 
@@ -140,7 +140,7 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
     val queriedNodes = getQueriedNodesFromInput(inputs)
     val queriedAssertions = queriedNodes.filter(node => node.isInstanceOf[GeneralAssertionNode])
 
-    val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.computeNonInternalDependencies(queriedAssertions))
+    val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeNonInternalDependencies(queriedAssertions))
 
     println(s"Queried:\n\t${getSourceInfoString(queriedNodes)}")
 
@@ -151,12 +151,12 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
 
   private def handleDependentsQuery(inputs: Set[String]): Unit = {
 
-    val queriedNodes = getQueriedNodesFromInput(inputs).filter(fullGraphInterpreter.isNonInternalAssumptionNode)
+    val queriedNodes = getQueriedNodesFromInput(inputs).filter(interpreter.isNonInternalAssumptionNode)
 
-    val (directDependents, timeDirect) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.computeDirectDependents(queriedNodes))
-    val (allDependents, timeAll) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.computeNonInternalDependents(queriedNodes))
-    val (dependentsWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.computeNonInternalDependents(queriedNodes, includeInfeasibilityNodes=false))
-    val (explicitDependents, timeExplicit) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.computeExplicitDependents(queriedNodes))
+    val (directDependents, timeDirect) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeDirectDependents(queriedNodes))
+    val (allDependents, timeAll) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeNonInternalDependents(queriedNodes))
+    val (dependentsWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeNonInternalDependents(queriedNodes, includeInfeasibilityNodes=false))
+    val (explicitDependents, timeExplicit) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeExplicitDependents(queriedNodes))
 
     println(s"Queried:\n\t${getSourceInfoString(queriedNodes)}")
 
@@ -167,19 +167,19 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
 
   }
 
-  def handlePruningRequest(inputs: Seq[String], exportFileName: String): Unit = {
+  private def handlePruningRequest(inputs: Seq[String], exportFileName: String): Unit = {
     val queriedNodes = getQueriedNodesFromInput(inputs.toSet)
-    fullGraphInterpreter.pruningSupporter.pruneProgramAndExport(queriedNodes, program, exportFileName)
+    interpreter.pruningSupporter.pruneProgramAndExport(queriedNodes, program, exportFileName)
   }
 
   private def handleVerificationGuidanceQuery(inputs: Seq[String]): Unit = {
     val enableDebugging = inputs.nonEmpty && inputs.head.equals("debug")
 
-    val assumptionRanking = fullGraphInterpreter.progressSupporter.computeAssumptionRanking().filter(_._2 > 0.0)
+    val assumptionRanking = interpreter.progressSupporter.computeAssumptionRanking().filter(_._2 > 0.0)
     println(s"Assumptions/unverified assertions and the number of dependents:\n\t${assumptionRanking.mkString("\n\t")}\n")
 
     println("Uncovered source code per method: ")
-    val uncoveredStatements = new DependencyAnalysisProgressSupporter(fullGraphInterpreter).computeUncoveredStatementsPerMember()
+    val uncoveredStatements = new DependencyAnalysisProgressSupporter(interpreter).computeUncoveredStatementsPerMember()
 
     val memberCoverageRanking = uncoveredStatements.view.mapValues(_.size).toList.filter(_._2 > 0).sortBy(_._2).reverse
     println(s"\nMethods and the number of uncovered statements:\n\t${memberCoverageRanking.mkString("\n\t")}\n")
@@ -188,7 +188,5 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
       println(s"\nUncovered statements by member:\n\t${uncoveredStatements.view.mapValues(v => (v, v.size)).toList.filter(_._2._2 > 0).sortBy(_._2._2).reverse}")
 
   }
-
-  override val interpreter: DependencyGraphInterpreter[Final] = fullGraphInterpreter
 }
 

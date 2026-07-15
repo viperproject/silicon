@@ -11,6 +11,7 @@ import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType}
 import java.io.PrintWriter
 import java.nio.file.Paths
 import java.util.concurrent.atomic.AtomicInteger
+import scala.annotation.unused
 import scala.collection.mutable
 
 
@@ -36,6 +37,7 @@ trait ReadOnlyDependencyGraph[T <: DependencyGraphState] {
   def getAssertionNodes: Set[GeneralAssertionNode]
 
   def getNodeById(id: Int): Option[DependencyAnalysisNode]
+  def getNodesByIds(targets: Set[Int]): Set[DependencyAnalysisNode]
 
   /**
    * @return a map from node to the set of direct dependencies in the intraprocedural graph
@@ -117,7 +119,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   private val edgesConnectingMethodsDownwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // e.g. edges connecting POSTcondition with method/function calls
   private val edgesConnectingMethodsUpwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // e.g. edges connecting PREconditions with method/function calls
   private val allEdges: mutable.Map[Int, Set[Int]] = mutable.Map.empty // should contain exactly all edges from intraMethodEdges, edgesConnectingMethodsDownwards, edgesConnectingMethodsUpwards
-  private var vacuousProofs: mutable.Set[Int] = mutable.Set()
+  private val vacuousProofs: mutable.Set[Int] = mutable.Set()
 
   private val assumptionNodes: mutable.Map[Int, GeneralAssumptionNode] = mutable.HashMap.empty
   private val assertionNodes: mutable.Map[Int, GeneralAssertionNode] = mutable.HashMap.empty
@@ -131,6 +133,10 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   def getEdgesConnectingMethodsUpwards: Map[Int, Set[Int]] = edgesConnectingMethodsUpwards.toMap
 
   def getNodeById(id: Int): Option[DependencyAnalysisNode] = assumptionNodes.get(id).orElse(assertionNodes.get(id))
+
+  def getNodesByIds(targets: Set[Int]): Set[DependencyAnalysisNode] = {
+    targets flatMap getNodeById
+  }
 
   def getAllEdges: Map[Int, Set[Int]] = {
     allEdges.toMap
@@ -150,6 +156,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
     allEdges.toMap
   }
 
+  @unused
   def getVacuousProofs: Set[Int] = vacuousProofs.toSet // TODO ake: what to do with these?
 
   def addAssumptionNode(node: GeneralAssumptionNode): Unit = {
@@ -233,10 +240,6 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
 
   def addVacuousProof(assertionId: Int): Unit = {
     vacuousProofs.add(assertionId)
-  }
-
-  def getNodesByIds(targets: Set[Int]): Set[DependencyAnalysisNode] = {
-    getNodes.filter(n => targets.contains(n.id))
   }
 
   def computeDependencies(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[DependencyAnalysisNode] = {

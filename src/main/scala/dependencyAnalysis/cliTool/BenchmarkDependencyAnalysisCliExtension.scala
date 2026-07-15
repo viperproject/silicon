@@ -30,7 +30,7 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
       new PrecisionEvaluationCommand
     )
 
-  class PerformanceBenchmarkCommand extends DependencyAnalysisCliCommand {
+  private class PerformanceBenchmarkCommand extends DependencyAnalysisCliCommand {
     override val cmdName: String = "benchmark"
     override val cmd: Seq[String] => Unit = _ => handleBenchmarkQuery()
     override val description: String = s"'$cmdName' to run the performance benchmark"
@@ -73,7 +73,7 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
     }
   }
 
-  class PrecisionEvaluationCommand extends DependencyAnalysisCliCommand {
+  private class PrecisionEvaluationCommand extends DependencyAnalysisCliCommand {
     override val cmdName: String = "precisionEval"
     override val cmd: Seq[String] => Unit = inputs => handlePrecisionEval(inputs.head)
     override val description: String = s"'$cmdName [folder]' to run precision evaluation with respect to the ground truth and call graphs specified in the provided folder"
@@ -112,7 +112,7 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
         val startAnalysis = System.nanoTime()
         val queriedAssertions = interpreter.getNodesByLabel(assertionLabel)
         val allDependencies = interpreter.computeNonInternalDependencies(queriedAssertions)
-        val sourceDependencies = UserLevelDependencyAnalysisNode.from(allDependencies).getSourceSet().diff(UserLevelDependencyAnalysisNode.from(queriedAssertions).getSourceSet())
+        val sourceDependencies = UserLevelDependencyAnalysisNode.from(allDependencies).toSourceSet().diff(UserLevelDependencyAnalysisNode.from(queriedAssertions).toSourceSet())
 
         val endAnalysis = System.nanoTime()
         val durationMs = (endAnalysis - startAnalysis) / 1e6
@@ -158,7 +158,7 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
     }
   }
 
-  class AnnotateProgramCommand extends DependencyAnalysisCliCommand {
+  private class AnnotateProgramCommand extends DependencyAnalysisCliCommand {
     override val cmdName: String = "annotate"
     override val cmd: Seq[String] => Unit = inputs => handleAnnotateQuery(inputs.head)
     override val description: String = s"'$cmdName [file name] to annotate each statement with a label and write the resulting program to the provided file"
@@ -224,7 +224,7 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
     }
   }
 
-  class GraphSizeCommand extends DependencyAnalysisCliCommand {
+  private class GraphSizeCommand extends DependencyAnalysisCliCommand {
     override val cmdName: String = "graphSize"
     override val cmd: Seq[String] => Unit = _ => handleGraphSizeQuery()
     override val description: String = s"'$cmdName' to print the size of the graph"
