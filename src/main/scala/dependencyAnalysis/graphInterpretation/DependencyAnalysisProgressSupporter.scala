@@ -65,14 +65,9 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
   }
 
   // merges results of several computations by merging low-level nodes belonging to the same source
-  private def reduceCompactUserLevelNodes(inputNodes: Set[CompactUserLevelDependencyAnalysisNode]): Set[CompactUserLevelDependencyAnalysisNode] = {
-
-    val resultMap: mutable.Map[AnalysisSourceInfo, CompactUserLevelDependencyAnalysisNode] = mutable.Map()
-
-    for (node <- inputNodes) {
-      val existingNode = resultMap.get(node.source)
-
-      val newNode = existingNode match {
+  private def reduceCompactUserLevelNodes(inputNodes: Iterable[CompactUserLevelDependencyAnalysisNode]): Set[CompactUserLevelDependencyAnalysisNode] = {
+    inputNodes.foldLeft(Map.empty[AnalysisSourceInfo, CompactUserLevelDependencyAnalysisNode]) { case (resultMap, node) =>
+      val updatedNode = resultMap.get(node.source) match {
         case Some(existing) =>
           CompactUserLevelDependencyAnalysisNode(
             source = node.source,
@@ -82,20 +77,17 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
           )
         case None => node
       }
-
-      resultMap.update(node.source, newNode)
-    }
-
-    resultMap.values.toSet
+      resultMap.updated(node.source, updatedNode)
+    }.values.toSet
   }
 
   private def toCompactUserLevelNodes(lowLevelNodes: Set[DependencyAnalysisNode]): Set[CompactUserLevelDependencyAnalysisNode] = {
     lowLevelNodes.groupBy(_.sourceInfo).map { case (source, nodes) =>
-      val assertionNodes = nodes.filter(_.isInstanceOf[GeneralAssertionNode])
+      val assertionNodes = nodes.collect { case node: GeneralAssertionNode => node }
       CompactUserLevelDependencyAnalysisNode(source,
-        nodes.filter(_.isInstanceOf[GeneralAssumptionNode]).map(_.assumptionType),
+        nodes.collect { case node: GeneralAssumptionNode => node.assumptionType },
         assertionNodes.map(_.assumptionType),
-        assertionNodes.exists(_.asInstanceOf[GeneralAssertionNode].hasFailed)
+        assertionNodes.exists(_.hasFailed)
       )}.toSet
   }
 
@@ -106,8 +98,8 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
    * Otherwise, the assertion quality is defined as the fraction of non-assumption dependencies over all dependencies.
    */
   private def computeAssertionQuality(allDependencies: Set[CompactUserLevelDependencyAnalysisNode], assertion: AnalysisSourceInfo): Option[Double] = {
-    val assertionNodes = sourceToAssertionNodesMap.getOrElse(assertion, Set.empty).filter(node => node.isInstanceOf[GeneralAssertionNode])
-    val failedAssertionNodes = assertionNodes.filter(node => node.asInstanceOf[GeneralAssertionNode].hasFailed || node.assumptionType.equals(AssumptionType.ExplicitPostcondition))
+    val assertionNodes = sourceToAssertionNodesMap.getOrElse(assertion, Set.empty).collect { case node: GeneralAssertionNode => node }
+    val failedAssertionNodes = assertionNodes.filter(node => node.hasFailed || node.assumptionType.equals(AssumptionType.ExplicitPostcondition))
     // assertions with failures have quality of 0.0
     if (failedAssertionNodes.nonEmpty)
       return Some(0.0)
@@ -120,10 +112,10 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
   }
 
   private def getAssertionsRelevantForProgress: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = {
-    sourceToAssertionNodesMap.filter(ass => {
-      !ass._2.map(_.assumptionType).exists(assumptionType =>
-        assumptionType.isInstanceOf[AssumptionType.ImportedType] || assumptionType.isInstanceOf[PreconditionType])
-    })
+    sourceToAssertionNodesMap.filter {
+      case (_, assertionNodes) => !assertionNodes.exists(node =>
+        node.assumptionType.isInstanceOf[AssumptionType.ImportedType] || node.assumptionType.isInstanceOf[PreconditionType])
+    }
   }
 
   /**

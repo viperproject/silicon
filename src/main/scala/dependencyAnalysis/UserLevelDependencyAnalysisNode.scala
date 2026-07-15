@@ -53,14 +53,13 @@ case class UserLevelDependencyAnalysisNode(source: AnalysisSourceInfo, member: S
   def assumptionTypes: Set[AssumptionType] = lowLevelAssumptionNodes.map(_.assumptionType)
   def assertionTypes: Set[AssumptionType] = lowLevelAssertionNodes.map(_.assumptionType)
 
-  lazy val lowLevelAssumptionNodes: Set[DependencyAnalysisNode] = lowerLevelNodes.filter(_.isInstanceOf[GeneralAssumptionNode])
-  lazy val lowLevelAssertionNodes: Set[DependencyAnalysisNode] = lowerLevelNodes.filter(_.isInstanceOf[GeneralAssertionNode])
+  lazy val lowLevelAssumptionNodes: Set[GeneralAssumptionNode] = lowerLevelNodes.collect { case node: GeneralAssumptionNode => node }
+  lazy val lowLevelAssertionNodes: Set[GeneralAssertionNode] = lowerLevelNodes.collect { case node: GeneralAssertionNode => node }
 
   lazy val assumptionTerm: Term = And(lowLevelAssumptionNodes.map(_.getTerm))
   lazy val assertionTerm: Term = And(lowLevelAssertionNodes.map(_.getTerm))
 
-  lazy val hasFailures: Boolean = lowerLevelNodes.filter(_.isInstanceOf[GeneralAssertionNode]).map(_.asInstanceOf[GeneralAssertionNode]).exists(_.hasFailed)
-
+  lazy val hasFailures: Boolean = lowLevelAssertionNodes.exists(_.hasFailed)
 
   override def toString: String = source.toString
 

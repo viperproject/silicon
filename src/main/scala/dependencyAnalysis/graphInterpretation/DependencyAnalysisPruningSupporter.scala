@@ -22,15 +22,16 @@ class DependencyAnalysisPruningSupporter[T <: DependencyGraphState](interpreter:
    */
   def getPrunedProgram(crucialNodes: Set[DependencyAnalysisNode], program: ast.Program): (ast.Program, Double) = {
 
-    def isCrucialExp(exp: ast.Exp, crucialNodesWithExpInfo: Set[AnalysisSourceInfo]): Boolean = {
-      crucialNodesWithExpInfo exists (n => n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(exp.pos))) // TODO ake: currently we compare only lines not columns!
+    def isCrucialExp(exp: ast.Exp, crucialNodePositionStrings: Set[String]): Boolean = {
+      crucialNodePositionStrings.contains(AnalysisSourceInfo.extractPositionString(exp.pos)) // TODO ake: currently we compare only lines not columns!
     }
 
-    def isCrucialStmt(stmt: ast.Stmt, crucialNodesWithStmtInfo: Set[AnalysisSourceInfo]): Boolean = {
-      crucialNodesWithStmtInfo exists (n => n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(stmt.pos)))
+    def isCrucialStmt(stmt: ast.Stmt, crucialNodePositionStrings: Set[String]): Boolean = {
+      crucialNodePositionStrings.contains(AnalysisSourceInfo.extractPositionString(stmt.pos))
     }
 
-    val crucialNodeSourceInfos = crucialNodes map (_.sourceInfo)
+    val crucialNodeSourceInfos = crucialNodes.map(_.sourceInfo)
+    val crucialNodePositionStrings = crucialNodeSourceInfos.map(_.getPositionString)
     var total = 0
     var removed = 0
     var nonDetermBoolCount = 0
@@ -43,22 +44,22 @@ class DependencyAnalysisPruningSupporter[T <: DependencyGraphState](interpreter:
     val newProgram: ast.Program = ViperStrategy.Slim({
       case s@(_: ast.Seqn | _: ast.Goto) => s
       case domain@ast.Domain(name, functions, axioms, typVars, interpretations) =>
-        val newAxioms = axioms filter (a =>
-          crucialNodeSourceInfos exists (n => n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(a.exp.pos)) ||
-            n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(a.pos))))
+        val newAxioms = axioms.filter(a =>
+          crucialNodePositionStrings.contains(AnalysisSourceInfo.extractPositionString(a.exp.pos)) ||
+            crucialNodePositionStrings.contains(AnalysisSourceInfo.extractPositionString(a.pos)))
         ast.Domain(name, functions, newAxioms, typVars, interpretations)(domain.pos, domain.info, domain.errT)
       case function@ast.Function(name, formalArgs, typ, pres, posts, body) =>
-        val newPres = pres filter (isCrucialExp(_, crucialNodeSourceInfos))
-        val newPosts = posts filter (isCrucialExp(_, crucialNodeSourceInfos))
-        val newBody = body filter (isCrucialExp(_, crucialNodeSourceInfos))
+        val newPres = pres.filter(isCrucialExp(_, crucialNodePositionStrings))
+        val newPosts = posts.filter(isCrucialExp(_, crucialNodePositionStrings))
+        val newBody = body.filter(isCrucialExp(_, crucialNodePositionStrings))
         ast.Function(name, formalArgs, typ, newPres, newPosts, newBody)(function.pos, function.info, function.errT)
       case meth@ast.Method(name, inVars, outVars, pres, posts, body) =>
-        val newPres = pres filter (isCrucialExp(_, crucialNodeSourceInfos))
-        val newPosts = posts filter (isCrucialExp(_, crucialNodeSourceInfos))
+        val newPres = pres.filter(isCrucialExp(_, crucialNodePositionStrings))
+        val newPosts = posts.filter(isCrucialExp(_, crucialNodePositionStrings))
         total += pres.size + posts.size
         removed += (pres.size - newPres.size) + (posts.size - newPosts.size)
         ast.Method(name, inVars, outVars, newPres, newPosts, body)(meth.pos, meth.info, meth.errT)
-      case ifStmt@ast.If(cond, thenBody, elseBody) if !isCrucialExp(cond, crucialNodeSourceInfos) =>
+      case ifStmt@ast.If(cond, thenBody, elseBody) if !isCrucialExp(cond, crucialNodePositionStrings) =>
         total += 1
         removed += 1
         val nonDetermBool = getNextNonDetermBool
@@ -69,8 +70,8 @@ class DependencyAnalysisPruningSupporter[T <: DependencyGraphState](interpreter:
       case ifStmt: If =>
         total += 1
         ifStmt
-      case whileStmt@ast.While(cond, invs, body) if !isCrucialExp(cond, crucialNodeSourceInfos) =>
-        val newInvs = invs filter (isCrucialExp(_, crucialNodeSourceInfos))
+      case whileStmt@ast.While(cond, invs, body) if !isCrucialExp(cond, crucialNodePositionStrings) =>
+        val newInvs = invs.filter(isCrucialExp(_, crucialNodePositionStrings))
         total += 1 + invs.size
         removed += 1 + (invs.size - newInvs.size)
         val nonDetermBool = getNextNonDetermBool
@@ -79,20 +80,20 @@ class DependencyAnalysisPruningSupporter[T <: DependencyGraphState](interpreter:
           ast.While(ast.LocalVar(nonDetermBool, ast.Bool)(cond.pos, cond.info, cond.errT), newInvs, body)(whileStmt.pos, whileStmt.info, whileStmt.errT))
           , Seq())(whileStmt.pos, whileStmt.info, whileStmt.errT)
       case whileStmt@ast.While(cond, invs, body) =>
-        val newInvs = invs filter (isCrucialExp(_, crucialNodeSourceInfos))
+        val newInvs = invs.filter(isCrucialExp(_, crucialNodePositionStrings))
         total += 1 + invs.size
         removed += (invs.size - newInvs.size)
         ast.While(cond, newInvs, body)(whileStmt.pos, whileStmt.info, whileStmt.errT)
       case label@ast.Label(name, invs) =>
-        val newInvs = invs filter (isCrucialExp(_, crucialNodeSourceInfos))
+        val newInvs = invs.filter(isCrucialExp(_, crucialNodePositionStrings))
         total += 1 + invs.size
         removed += (invs.size - newInvs.size)
         ast.Label(name, newInvs)(label.pos, label.info, label.errT)
-      case s: ast.Package if !isCrucialStmt(s, crucialNodeSourceInfos) =>
+      case s: ast.Package if !isCrucialStmt(s, crucialNodePositionStrings) =>
         total += 1
         removed += 1
         ast.Inhale(ast.TrueLit()(s.pos, s.info, s.errT))(s.pos, s.info, s.errT)
-      case s: Stmt if !isCrucialStmt(s, crucialNodeSourceInfos) =>
+      case s: Stmt if !isCrucialStmt(s, crucialNodePositionStrings) =>
         total += 1
         removed += 1
         ast.Inhale(ast.TrueLit()(s.pos, s.info, s.errT))(s.pos, s.info, s.errT)

@@ -52,10 +52,10 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
   def toUserLevelNodes(nodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = UserLevelDependencyAnalysisNode.from(nodes)
 
   def getNodesByLine(line: Int): Set[DependencyAnalysisNode] =
-    getNodes.filter(n => !n.assumptionType.isInstanceOf[AssumptionType.InternalType]).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line)
+    getNodes.filter(isVisibleNode).filter(node => node.sourceInfo.getLineNumber.contains(line))
 
   def getNodesByPosition(file: String, line: Int): Set[DependencyAnalysisNode] =
-    getNodes.filter(n => !n.assumptionType.isInstanceOf[AssumptionType.InternalType]).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line && node.sourceInfo.getPositionString.startsWith(file + "."))
+    getNodes.filter(isVisibleNode).filter(node => node.sourceInfo.getLineNumber.contains(line) && node.sourceInfo.getPositionString.startsWith(file + "."))
 
 
   def getNodesByLabel(label: String): Set[DependencyAnalysisNode] = {
@@ -104,19 +104,31 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
     getExplicitAssertionNodes.filter(node => allDeps.contains(node.id))
   }
 
+  private def isVisibleNode(node: DependencyAnalysisNode): Boolean =
+    !node.assumptionType.isInstanceOf[AssumptionType.InternalType]
+
   def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = nonInternalAssumptionNodesMap.values.toSet
 
-  def getNonInternalAssumptionNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes filter (node =>
-    (node.isInstanceOf[GeneralAssumptionNode] && !node.assumptionType.isInstanceOf[AssumptionType.InternalType])
-      || node.assumptionType.isInstanceOf[AssumptionType.PostconditionType] || node.joinInfos.nonEmpty // TODO ake: find a better way to include the join nodes
-    )
+  def getNonInternalAssumptionNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes.filter(isNonInternalAssumptionNode)
 
-  def getExplicitAssumptionNodes: Set[DependencyAnalysisNode] = getNonInternalAssumptionNodes filter (node =>
-    node.isInstanceOf[GeneralAssumptionNode] && node.assumptionType.isInstanceOf[AssumptionType.ExplicitAssumptionType]
-    )
+  private def isNonInternalAssumptionNode(node: DependencyAnalysisNode): Boolean = {
+    val hasPostconditionType = node.assumptionType.isInstanceOf[AssumptionType.PostconditionType]
+    val hasJoinInfo = node.joinInfos.nonEmpty
+    node match {
+      case _: GeneralAssumptionNode if isVisibleNode(node) => true
+      case _ => hasPostconditionType || hasJoinInfo
+    }
+  }
 
-  def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] = getAssertionNodes filter (node =>
-    !node.assumptionType.isInstanceOf[AssumptionType.InternalType] || node.joinInfos.nonEmpty)
+  def getExplicitAssumptionNodes: Set[DependencyAnalysisNode] =
+    getNonInternalAssumptionNodes.collect {
+      case node: GeneralAssumptionNode if node.assumptionType.isInstanceOf[AssumptionType.ExplicitAssumptionType] => node
+    }
+
+  def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] =
+    getAssertionNodes.collect {
+      case node: GeneralAssertionNode if isVisibleNode(node) || node.joinInfos.nonEmpty => node
+    }
 
   def getExplicitAssertionNodes: Set[DependencyAnalysisNode] =
     getNonInternalAssertionNodes.filter(node => node.assumptionType.isInstanceOf[AssumptionType.ExplicitAssertionType])
