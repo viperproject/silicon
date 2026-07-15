@@ -138,7 +138,7 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
   def exportGraph(program: ast.Program, exportPath: String): Unit = {
     if (exportPath.isEmpty) return
     val directory = Paths.get(exportPath).toFile
-    directory.mkdir()
+    directory.mkdirs()
     dependencyGraph.exportGraph(exportPath)
     exportProgram(program, exportPath)
   }

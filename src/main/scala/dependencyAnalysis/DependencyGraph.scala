@@ -356,7 +356,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
 
   def exportGraph(dirName: String): Unit = {
     val directory = Paths.get(dirName).toFile
-    directory.mkdir()
+    directory.mkdirs()
     exportNodes(dirName + "/nodes.csv")
     exportEdges(dirName + "/edges.csv")
   }
