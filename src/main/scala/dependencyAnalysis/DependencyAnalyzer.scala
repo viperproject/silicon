@@ -381,7 +381,6 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
     val newAssertionNodeId = addAssertNode(False, analysisInfos)
     addDependency(infeasNodeId, newAssertionNodeId)
   }
-
 }
 
 /**

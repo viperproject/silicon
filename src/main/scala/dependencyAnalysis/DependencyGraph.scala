@@ -35,8 +35,6 @@ trait ReadOnlyDependencyGraph[T <: DependencyGraphState] {
   def getAssumptionNodes: Set[GeneralAssumptionNode]
   def getAssertionNodes: Set[GeneralAssertionNode]
 
-  def getAssumptionNodeById(id: Int): Option[DependencyAnalysisNode]
-  def getAssertionNodeById(id: Int): Option[DependencyAnalysisNode]
   def getNodeById(id: Int): Option[DependencyAnalysisNode]
 
   /**
@@ -115,9 +113,10 @@ trait ReadOnlyDependencyGraph[T <: DependencyGraphState] {
 }
 
 class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph[T] {
-  private val edges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
+  private val intraMethodEdges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
   private val edgesConnectingMethodsDownwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // e.g. edges connecting POSTcondition with method/function calls
   private val edgesConnectingMethodsUpwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // e.g. edges connecting PREconditions with method/function calls
+  private val allEdges: mutable.Map[Int, Set[Int]] = mutable.Map.empty // should contain exactly all edges from intraMethodEdges, edgesConnectingMethodsDownwards, edgesConnectingMethodsUpwards
   private var vacuousProofs: mutable.Set[Int] = mutable.Set()
 
   private val assumptionNodes: mutable.Map[Int, GeneralAssumptionNode] = mutable.HashMap.empty
@@ -126,26 +125,20 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   def getNodes: Set[DependencyAnalysisNode] = getAssumptionNodes ++ getAssertionNodes
   def getAssumptionNodes: Set[GeneralAssumptionNode] = assumptionNodes.values.toSet
   def getAssertionNodes: Set[GeneralAssertionNode] = assertionNodes.values.toSet
-  def getIntraMethodEdges: Map[Int, Set[Int]] = edges.toMap
+
+  def getIntraMethodEdges: Map[Int, Set[Int]] = intraMethodEdges.toMap
   def getEdgesConnectingMethodsDownwards: Map[Int, Set[Int]] = edgesConnectingMethodsDownwards.toMap
   def getEdgesConnectingMethodsUpwards: Map[Int, Set[Int]] = edgesConnectingMethodsUpwards.toMap
 
-  def getAssumptionNodeById(id: Int): Option[GeneralAssumptionNode] = assumptionNodes.get(id)
-  def getAssertionNodeById(id: Int): Option[GeneralAssertionNode] = assertionNodes.get(id)
   def getNodeById(id: Int): Option[DependencyAnalysisNode] = assumptionNodes.get(id).orElse(assertionNodes.get(id))
 
-
   def getAllEdges: Map[Int, Set[Int]] = {
-    val intraMethodEdges = getIntraMethodEdges
-    val keys = intraMethodEdges.keySet ++ edgesConnectingMethodsDownwards.keySet ++ edgesConnectingMethodsUpwards.keySet
-    val allEdges = mutable.Map[Int, Set[Int]]()
-    keys foreach {key =>
-      allEdges.update(key, intraMethodEdges.getOrElse(key, Set()) ++ edgesConnectingMethodsDownwards.getOrElse(key, Set()) ++ edgesConnectingMethodsUpwards.getOrElse(key, Set()))
-    }
     allEdges.toMap
   }
 
   def getAllEdges(includeDownwardEdges: Boolean, includeUpwardEdges: Boolean): Map[Int, Set[Int]] = {
+    if(includeUpwardEdges && includeDownwardEdges) return getAllEdges // avoids expensive computation
+
     val intraMethodEdges = getIntraMethodEdges
     val upwardEdges: mutable.Map[Int, Set[Int]] = if (includeUpwardEdges) edgesConnectingMethodsUpwards else mutable.Map.empty
     val downwardEdges: mutable.Map[Int, Set[Int]]  = if (includeDownwardEdges) edgesConnectingMethodsDownwards else mutable.Map.empty
@@ -187,10 +180,18 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   }
 
   def addEdges(sources: Iterable[Int], target: Int): Unit = {
-    val oldSources = edges.getOrElse(target, Set.empty)
+    addToAllEdges(sources, target)
+    val oldSources = intraMethodEdges.getOrElse(target, Set.empty)
     val newSources = sources.filter(_ != target)
     if (newSources.nonEmpty)
-      edges.update(target, oldSources ++ newSources)
+      intraMethodEdges.update(target, oldSources ++ newSources)
+  }
+
+  private def addToAllEdges(sources: Iterable[Int], target: Int): Unit = {
+    val oldSources = allEdges.getOrElse(target, Set.empty)
+    val newSources = sources.filter(_ != target)
+    if (newSources.nonEmpty)
+      allEdges.update(target, oldSources ++ newSources)
   }
 
   def addEdges(sources: Iterable[Int], targets: Iterable[Int]): Unit = {
@@ -198,6 +199,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   }
 
   def addEdgesConnectingMethodsDownwards(sources: Iterable[Int], target: Int): Unit = {
+    addToAllEdges(sources, target)
     val oldSources = edgesConnectingMethodsDownwards.getOrElse(target, Set.empty)
     val newSources = sources.filter(_ != target)
     if (newSources.nonEmpty)
@@ -213,6 +215,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   }
 
   def addEdgesConnectingMethodsUpwards(sources: Iterable[Int], target: Int): Unit = {
+    addToAllEdges(sources, target)
     val oldSources = edgesConnectingMethodsUpwards.getOrElse(target, Set.empty)
     val newSources = sources.filter(_ != target)
     if (newSources.nonEmpty)
@@ -312,10 +315,10 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
    */
   private def removeAllEdgesForNode(node: DependencyAnalysisNode): Unit = {
     val id = node.id
-    val predecessors = (edges filter { case (_, t) => t.contains(id) }).keys
-    val successors = edges.getOrElse(id, Set.empty)
-    edges.remove(id)
-    predecessors foreach (pid => edges.update(pid, edges.getOrElse(pid, Set.empty).filter(_ != id) ++ successors))
+    val predecessors = (intraMethodEdges filter { case (_, t) => t.contains(id) }).keys
+    val successors = intraMethodEdges.getOrElse(id, Set.empty)
+    intraMethodEdges.remove(id)
+    predecessors foreach (pid => intraMethodEdges.update(pid, intraMethodEdges.getOrElse(pid, Set.empty).filter(_ != id) ++ successors))
   }
 
 

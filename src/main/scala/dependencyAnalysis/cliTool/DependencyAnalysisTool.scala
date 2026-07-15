@@ -6,10 +6,9 @@
 
 package viper.silicon.dependencyAnalysis.cliTool
 
-import dependencyAnalysis.DependencyGraphJoiner
 import viper.silicon.dependencyAnalysis.cliTool.DependencyGraphImporter.{importGraphFromCsv, importProgram}
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisResult, Final}
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisResult, DependencyGraphJoiner, Final}
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
