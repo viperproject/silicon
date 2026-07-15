@@ -9,6 +9,7 @@ package viper.silicon.dependencyAnalysis.graphInterpretation
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.graphInterpretation.DATraversalMode.DATraversalMode
 import viper.silver.dependencyAnalysis
+import viper.silver.dependencyAnalysis.AssumptionType.PreconditionType
 import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType}
 
 import scala.collection.mutable
@@ -119,8 +120,10 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
   }
 
   private def getAssertionsRelevantForProgress: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = {
-    val excludedAssertionTypes = AssumptionType.importedTypes ++ AssumptionType.preconditionTypes
-    sourceToAssertionNodesMap.filter(ass => ass._2.map(_.assumptionType).intersect(excludedAssertionTypes).isEmpty)
+    sourceToAssertionNodesMap.filter(ass => {
+      !ass._2.map(_.assumptionType).exists(assumptionType =>
+        assumptionType.isInstanceOf[AssumptionType.ImportedType] || assumptionType.isInstanceOf[PreconditionType])
+    })
   }
 
   /**
@@ -178,7 +181,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
   private def computeSpecQuality(coveredNodes: Set[CompactUserLevelDependencyAnalysisNode], enableDebugOutput: Boolean = false): Double = {
 
     val explicitAssertions = toCompactUserLevelNodes(interpreter.getExplicitAssertionNodes)
-    val allSourceCodeNodes = toCompactUserLevelNodes(interpreter.getNonInternalAssumptionNodes).filter(n => AssumptionType.sourceCodeTypes.intersect(n.assumptionTypes).nonEmpty).map(_.source).diff(explicitAssertions.map(_.source))
+    val allSourceCodeNodes = toCompactUserLevelNodes(interpreter.getNonInternalAssumptionNodes).filter(n => n.assumptionTypes.exists(_.isInstanceOf[AssumptionType.SourceCodeType])).map(_.source).diff(explicitAssertions.map(_.source))
 
     if (allSourceCodeNodes.isEmpty) return 1.0
 
@@ -206,7 +209,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
     val numAssertions = relevantDependenciesPerAssertion.size.toDouble
 
     val assumptionImpacts = relevantDependenciesPerAssertion.toList.flatMap { case (_, assumptions) =>
-      val explicitDeps = UserLevelDependencyAnalysisNode.extractByAssumptionType(assumptions, AssumptionType.explicitAssumptionTypes)
+      val explicitDeps = UserLevelDependencyAnalysisNode.extractByAssumptionType(assumptions, _.isInstanceOf[AssumptionType.ExplicitAssumptionType])
       explicitDeps.map(node => (node.source, 1.0 / assumptions.size / numAssertions)).toList
     }
 
@@ -232,7 +235,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 
     val explicitAssertions = interpreter.toUserLevelNodes(interpreter.getExplicitAssertionNodes)
     val allNodes = interpreter.toUserLevelNodes(interpreter.getNonInternalAssumptionNodes)
-    val allSourceCodeStmts = UserLevelDependencyAnalysisNode.extractByAssumptionType(allNodes, AssumptionType.sourceCodeTypes).getSourceMemberSet().diff(explicitAssertions.getSourceMemberSet())
+    val allSourceCodeStmts = UserLevelDependencyAnalysisNode.extractByAssumptionType(allNodes, _.isInstanceOf[AssumptionType.SourceCodeType]).getSourceMemberSet().diff(explicitAssertions.getSourceMemberSet())
 
     val uncoveredSourceCodeStmts = allSourceCodeStmts.diff(allDependencies)
     uncoveredSourceCodeStmts.groupBy(_._2).map { case (member, sources) =>

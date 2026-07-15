@@ -52,10 +52,10 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
   def toUserLevelNodes(nodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = UserLevelDependencyAnalysisNode.from(nodes)
 
   def getNodesByLine(line: Int): Set[DependencyAnalysisNode] =
-    getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line)
+    getNodes.filter(n => !n.assumptionType.isInstanceOf[AssumptionType.InternalType]).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line)
 
   def getNodesByPosition(file: String, line: Int): Set[DependencyAnalysisNode] =
-    getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line && node.sourceInfo.getPositionString.startsWith(file + "."))
+    getNodes.filter(n => !n.assumptionType.isInstanceOf[AssumptionType.InternalType]).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line && node.sourceInfo.getPositionString.startsWith(file + "."))
 
 
   def getNodesByLabel(label: String): Set[DependencyAnalysisNode] = {
@@ -107,22 +107,24 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
   def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = nonInternalAssumptionNodesMap.values.toSet
 
   def getNonInternalAssumptionNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes filter (node =>
-    (node.isInstanceOf[GeneralAssumptionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
-      || AssumptionType.postconditionTypes.contains(node.assumptionType) || node.joinInfos.nonEmpty // TODO ake: find a better way to include the join nodes
+    (node.isInstanceOf[GeneralAssumptionNode] && !node.assumptionType.isInstanceOf[AssumptionType.InternalType])
+      || node.assumptionType.isInstanceOf[AssumptionType.PostconditionType] || node.joinInfos.nonEmpty // TODO ake: find a better way to include the join nodes
     )
 
   def getExplicitAssumptionNodes: Set[DependencyAnalysisNode] = getNonInternalAssumptionNodes filter (node =>
-    node.isInstanceOf[GeneralAssumptionNode] && AssumptionType.explicitAssumptionTypes.contains(node.assumptionType)
+    node.isInstanceOf[GeneralAssumptionNode] && node.assumptionType.isInstanceOf[AssumptionType.ExplicitAssumptionType]
     )
 
   def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] = getAssertionNodes filter (node =>
-    !AssumptionType.internalTypes.contains(node.assumptionType) || node.joinInfos.nonEmpty)
+    !node.assumptionType.isInstanceOf[AssumptionType.InternalType] || node.joinInfos.nonEmpty)
 
   def getExplicitAssertionNodes: Set[DependencyAnalysisNode] =
-    getNonInternalAssertionNodes.filter(node => AssumptionType.explicitAssertionTypes.contains(node.assumptionType))
+    getNonInternalAssertionNodes.filter(node => node.assumptionType.isInstanceOf[AssumptionType.ExplicitAssertionType])
 
   def getAssertionNodesWithFailures: Set[GeneralAssertionNode] =
-    getNonInternalAssertionNodes.filter(_.isInstanceOf[GeneralAssertionNode]).map(_.asInstanceOf[GeneralAssertionNode]).filter(_.hasFailed)
+    getNonInternalAssertionNodes.collect {
+      case node: GeneralAssertionNode if node.hasFailed => node
+    }
 
   def exportGraph(program: ast.Program, exportPath: String): Unit = {
     if (exportPath.isEmpty) return

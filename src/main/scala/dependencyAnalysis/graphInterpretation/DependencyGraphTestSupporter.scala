@@ -42,7 +42,7 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
       case Some(expectedTypeStr) =>
         val expectedType = AssumptionType.fromString(expectedTypeStr).get
         isTested = true
-        ulNode.assumptionTypes.diff(AssumptionType.internalTypes).equals(Set(expectedType))
+        ulNode.assumptionTypes.filterNot(_.isInstanceOf[AssumptionType.InternalType]).equals(Set(expectedType))
       case None => true
     }
 
@@ -51,7 +51,7 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
       case Some(expectedTypeStr) =>
         val expectedType = AssumptionType.fromString(expectedTypeStr).get
         isTested = true
-        ulNode.assertionTypes.diff(AssumptionType.internalTypes).equals(Set(expectedType))
+        ulNode.assertionTypes.filterNot(_.isInstanceOf[AssumptionType.InternalType]).equals(Set(expectedType))
       case None => true
     }
 

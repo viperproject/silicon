@@ -22,8 +22,8 @@ object UserLevelDependencyAnalysisNode {
     res
   }
 
-  def extractByAssumptionType(nodes: Set[UserLevelDependencyAnalysisNode], assumptionTypes: Set[AssumptionType]): Set[UserLevelDependencyAnalysisNode] = {
-    nodes.filter(node => assumptionTypes.intersect(node.assumptionTypes).nonEmpty)
+  def extractByAssumptionType(nodes: Set[UserLevelDependencyAnalysisNode], filterCriteria: AssumptionType => Boolean): Set[UserLevelDependencyAnalysisNode] = {
+    nodes.filter(node => node.assumptionTypes exists filterCriteria)
   }
 
   def mkUserLevelString(nodes: Set[DependencyAnalysisNode], sep: String = "\n"): String = {
