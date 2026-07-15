@@ -27,8 +27,8 @@ class DependencyGraphJoiner(name: String, dependencyGraphInterpreters: Set[Depen
     val newGraph = new DependencyGraph[Final]
 
     SiliconRunner.logger.info(s"INFO: Copying nodes...")
-    newGraph.addAssumptionNodes(dependencyGraphInterpreters.flatMap (_.getGraph.getAssumptionNodes))
-    newGraph.addAssertionNodes(dependencyGraphInterpreters.flatMap (_.getGraph.getAssertionNodes))
+    newGraph.addAssumptionNodes(dependencyGraphInterpreters.flatMap (_.getAssumptionNodes))
+    newGraph.addAssertionNodes(dependencyGraphInterpreters.flatMap (_.getAssertionNodes))
     SiliconRunner.logger.info(s"INFO: Copying edges...")
     dependencyGraphInterpreters foreach (interpreter => interpreter.getGraph.getAllEdges foreach {case (t, deps) => newGraph.addEdges(deps, t)})
 
@@ -70,7 +70,7 @@ class DependencyGraphJoiner(name: String, dependencyGraphInterpreters: Set[Depen
     if (edgeType.equals(EdgeType.Up)) {
       val directDepsOfSources = if(!Verifier.config.disableDependencyAnalysisJoinPrecisionOpt()) {
         // Preconditions are connected to the dependencies required to prove them at all call sites. However, they do not depend on the calls themselves.
-        sourceNodes.groupBy(_.sourceInfo).flatMap(t => getDirectDependencies(t._2.map(_.id), sourceInfoToNodeIds(t._1), newGraph))
+        sourceNodes.groupBy(_.sourceInfo).flatMap(t => getDirectIntraMethodDependencies(t._2.map(_.id), sourceInfoToNodeIds(t._1), newGraph))
       } else {
         // Connect preconditions directly to call and therefore, indirectly to all its dependencies -> imprecise but might be faster and
         // more user-friendly since it becomes apparent which call introduced these indirect dependencies.
@@ -82,12 +82,13 @@ class DependencyGraphJoiner(name: String, dependencyGraphInterpreters: Set[Depen
     }
   }
 
-  private def getDirectDependencies(initQueue: Set[Int], allNodesWithSameSource: Set[Int], graph: DependencyGraph[Final]): Set[Int] = {
+  private def getDirectIntraMethodDependencies(initQueue: Set[Int], allNodesWithSameSource: Set[Int], graph: DependencyGraph[Final]): Set[Int] = {
     assert(initQueue.subsetOf(allNodesWithSameSource), s"Target ids do not all belong to sourceInfo $allNodesWithSameSource")
     val visited: mutable.Set[Int] = mutable.Set.empty
     val result: mutable.Set[Int] = mutable.Set.empty
     val queue: mutable.Queue[Int] = mutable.Queue(initQueue.toSeq: _*)
-    val relevantEdges = graph.getIntraMethodEdges
+    val relevantEdges = graph.
+      getIntraMethodEdges
     while (queue.nonEmpty) {
       val curr = queue.dequeue()
       val newVisits = relevantEdges.getOrElse(curr, Set()).diff(visited)

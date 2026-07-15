@@ -38,7 +38,7 @@ class DebugDependencyAnalysisCliExtension(override val interpreter: DependencyGr
     private def getAssumptionTypesPerNode(): Map[AnalysisSourceInfo, Set[AssumptionType]] =
       getAssumptionTypesPerNode(interpreter.getAssumptionNodes)
 
-    private def getAssumptionTypesPerNode(nodes: Set[DependencyAnalysisNode]): Map[AnalysisSourceInfo, Set[AssumptionType]] =
+    private def getAssumptionTypesPerNode(nodes: Set[GeneralAssumptionNode]): Map[AnalysisSourceInfo, Set[AssumptionType]] =
       nodes.groupBy(_.sourceInfo).view.mapValues(_.map(_.assumptionType)).toMap
   }
 
@@ -59,7 +59,7 @@ class DebugDependencyAnalysisCliExtension(override val interpreter: DependencyGr
     private def getAssertionTypesPerNode(): Map[AnalysisSourceInfo, Set[AssumptionType]] =
       getAssertionTypesPerNode(interpreter.getAssertionNodes)
 
-    private def getAssertionTypesPerNode(nodes: Set[DependencyAnalysisNode]): Map[AnalysisSourceInfo, Set[AssumptionType]] =
+    private def getAssertionTypesPerNode(nodes: Set[GeneralAssertionNode]): Map[AnalysisSourceInfo, Set[AssumptionType]] =
       nodes.groupBy(_.sourceInfo).view.mapValues(_.map(_.assumptionType)).toMap
   }
 

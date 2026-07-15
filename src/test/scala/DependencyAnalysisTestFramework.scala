@@ -8,11 +8,7 @@ package viper.silicon.tests
 
 import viper.silicon.SiliconFrontend
 import viper.silicon.dependencyAnalysis._
-import viper.silicon.dependencyAnalysis.graphInterpretation.{
-  DependencyAnalysisProgressSupporter,
-  DependencyAnalysisPruningSupporter,
-  DependencyGraphInterpreter
-}
+import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisProgressSupporter, DependencyAnalysisPruningSupporter, DependencyGraphInterpreter}
 import viper.silver.ast.Program
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.verifier.VerificationResult
@@ -108,7 +104,7 @@ trait DependencyAnalysisTestFramework {
     protected def pruneAndVerify(relevantLines: Set[Int], exportFileName: String): Unit = {
       val relevantNodes = relevantLines.flatMap(line => fullGraphInterpreter.getNodesByLine(line))
 
-      val dependencies = fullGraphInterpreter.getAllNonInternalDependencies(relevantNodes.map(_.id))
+      val dependencies = fullGraphInterpreter.computeNonInternalDependencies(relevantNodes)
 
       val crucialNodes = relevantNodes ++ dependencies
       val (newProgram, pruningFactor) = pruningSupporter.getPrunedProgram(crucialNodes, program)

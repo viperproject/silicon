@@ -105,7 +105,7 @@ class DependencyAnalysisPruningSupporter[T <: DependencyGraphState](interpreter:
   }
 
   def getCrucialNodes(queriedNodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = {
-    val dependencies = interpreter.getAllNonInternalDependencies(queriedNodes.map(_.id))
+    val dependencies = interpreter.computeNonInternalDependencies(queriedNodes)
     queriedNodes ++ dependencies
   }
 

@@ -17,7 +17,7 @@ import scala.collection.mutable
 class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter: DependencyGraphInterpreter[T]) {
 
   private val dependencyGraph = interpreter.getGraph
-  private lazy val sourceToAssertionNodesMap: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = interpreter.getNonInternalAssertionNodes.groupBy(_.sourceInfo)
+  private lazy val sourceToAssertionNodesMap: Map[AnalysisSourceInfo, Set[GeneralAssertionNode]] = interpreter.getNonInternalAssertionNodes.groupBy(_.sourceInfo)
 
   def computeVerificationProgress(enableDebugging: Boolean = false): (VerificationProgress, VerificationProgress) = {
     computeVerificationProgressOptimized(enableDebugging)
@@ -43,20 +43,20 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
       val allNonInternalAssertions = sourceToAssertionNodesMap.getOrElse(currentNode, Set.empty)
 
       // compute intraprocedural dependencies without caching any intermediate results
-      val intraMethodDependencyIds = dependencyGraph.getAllDependencies(allNonInternalAssertions.map(_.id), includeInfeasibilityNodes=true, includeUpwardEdges=false, includeDownwardEdges=false)
-      val intraMethodDependencies = intraMethodDependencyIds.flatMap(interpreter.nonInternalAssumptionNodesMap.get).filterNot(_.sourceInfo.equals(currentNode))
+      val intraMethodDependency = dependencyGraph.computeDependencies(allNonInternalAssertions.toSet, includeInfeasibilityNodes=true, includeUpwardEdges=false, includeDownwardEdges=false)
+      val intraMethodDependenciesWithoutCurr = intraMethodDependency.filter(interpreter.isNonInternalAssumptionNode).filterNot(_.sourceInfo.equals(currentNode))
 
       // recursively compute all interprocedural dependencies and cache results at procedure-boundaries
       val relevantInterProceduralEdges = traversalMode match {
         case DATraversalMode.Upwards   => dependencyGraph.getEdgesConnectingMethodsUpwards
         case DATraversalMode.Downwards => dependencyGraph.getEdgesConnectingMethodsDownwards
       }
-      val interProceduralNodeIds = intraMethodDependencyIds.flatMap(n => relevantInterProceduralEdges.getOrElse(n, Set.empty))
-      val interProceduralNodes = interProceduralNodeIds.flatMap(interpreter.nodesMap.get)
+      val interProceduralNodeIds = intraMethodDependency.flatMap(n => relevantInterProceduralEdges.getOrElse(n.id, Set.empty))
+      val interProceduralNodes = interProceduralNodeIds.flatMap(interpreter.getGraph.getNodeById)
       val interProceduralDependencies = interProceduralNodes.map(_.sourceInfo).filterNot(_.equals(currentNode)).flatMap(node => computeDependencies(node, updatedVisited, traversalMode))
 
       // put together all identified dependencies and cache the result
-      val result = reduceCompactUserLevelNodes(toCompactUserLevelNodes(intraMethodDependencies ++ interProceduralNodes) ++ interProceduralDependencies)
+      val result = reduceCompactUserLevelNodes(toCompactUserLevelNodes(intraMethodDependenciesWithoutCurr ++ interProceduralNodes) ++ interProceduralDependencies)
       deps.put((currentNode, traversalMode), result)
       result
     }
@@ -111,7 +111,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
     Some((numDepsTotal - explicitDeps.size).toDouble / numDepsTotal.toDouble)
   }
 
-  private def getAssertionsRelevantForProgress: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = {
+  private def getAssertionsRelevantForProgress: Map[AnalysisSourceInfo, Set[GeneralAssertionNode]] = {
     sourceToAssertionNodesMap.filter {
       case (_, assertionNodes) => !assertionNodes.exists(node =>
         node.assumptionType.isInstanceOf[AssumptionType.ImportedType] || node.assumptionType.isInstanceOf[PreconditionType])
@@ -172,7 +172,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
    */
   private def computeSpecQuality(coveredNodes: Set[CompactUserLevelDependencyAnalysisNode], enableDebugOutput: Boolean = false): Double = {
 
-    val explicitAssertions = toCompactUserLevelNodes(interpreter.getExplicitAssertionNodes)
+    val explicitAssertions = toCompactUserLevelNodes(interpreter.getExplicitAssertionNodes.toSet)
     val allSourceCodeNodes = toCompactUserLevelNodes(interpreter.getNonInternalAssumptionNodes).filter(n => n.assumptionTypes.exists(_.isInstanceOf[AssumptionType.SourceCodeType])).map(_.source).diff(explicitAssertions.map(_.source))
 
     if (allSourceCodeNodes.isEmpty) return 1.0
@@ -196,7 +196,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
     val allAssertions = interpreter.toUserLevelNodes(getAssertionsRelevantForProgress.values.flatten)
 
     val relevantDependenciesPerAssertion = allAssertions
-      .map(ass => (ass, interpreter.toUserLevelNodes(interpreter.getAllNonInternalDependencies(ass.lowerLevelNodes.map(_.id))).diffBySource(Set(ass)))).toMap
+      .map(ass => (ass, interpreter.toUserLevelNodes(interpreter.computeNonInternalDependencies(ass.lowerLevelNodes)).diffBySource(Set(ass)))).toMap
       .filter { case (assertion, assumptions) => assumptions.nonEmpty || assertion.hasFailures || assertion.assertionTypes.contains(AssumptionType.ExplicitPostcondition) }
     val numAssertions = relevantDependenciesPerAssertion.size.toDouble
 
@@ -223,7 +223,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
    */
   def computeUncoveredStatementsPerMember(): Map[String, List[AnalysisSourceInfo]] = {
     val allAssertions = interpreter.toUserLevelNodes(getAssertionsRelevantForProgress.values.flatten)
-    val allDependencies = allAssertions.flatMap(ass => interpreter.toUserLevelNodes(interpreter.getAllNonInternalDependencies(ass.lowerLevelNodes.map(_.id))).diffBySource(Set(ass))).getSourceMemberSet()
+    val allDependencies = allAssertions.flatMap(ass => interpreter.toUserLevelNodes(interpreter.computeNonInternalDependencies(ass.lowerLevelNodes)).diffBySource(Set(ass))).getSourceMemberSet()
 
     val explicitAssertions = interpreter.toUserLevelNodes(interpreter.getExplicitAssertionNodes)
     val allNodes = interpreter.toUserLevelNodes(interpreter.getNonInternalAssumptionNodes)

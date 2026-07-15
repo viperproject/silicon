@@ -120,10 +120,10 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
     val queriedNodes = getQueriedNodesFromInput(inputs)
     val queriedAssertions = queriedNodes.filter(node => node.isInstanceOf[GeneralAssertionNode])
 
-    val (directDependencies, timeDirect) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getDirectDependencies(queriedAssertions.map(_.id)))
-    val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedAssertions.map(_.id)))
-    val (allDependenciesWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedAssertions.map(_.id), includeInfeasibilityNodes=false))
-    val (explicitDependencies, timeExplicit) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllExplicitDependencies(queriedAssertions.map(_.id)))
+    val (directDependencies, timeDirect) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.computeDirectDependencies(queriedAssertions))
+    val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.computeNonInternalDependencies(queriedAssertions))
+    val (allDependenciesWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.computeNonInternalDependencies(queriedAssertions, includeInfeasibilityNodes=false))
+    val (explicitDependencies, timeExplicit) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.computeExplicitDependencies(queriedAssertions))
 
     println(s"Queried:\n\t${getSourceInfoString(queriedNodes)}")
 
@@ -140,7 +140,7 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
     val queriedNodes = getQueriedNodesFromInput(inputs)
     val queriedAssertions = queriedNodes.filter(node => node.isInstanceOf[GeneralAssertionNode])
 
-    val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedAssertions.map(_.id)))
+    val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.computeNonInternalDependencies(queriedAssertions))
 
     println(s"Queried:\n\t${getSourceInfoString(queriedNodes)}")
 
@@ -151,12 +151,12 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
 
   private def handleDependentsQuery(inputs: Set[String]): Unit = {
 
-    val queriedNodes = getQueriedNodesFromInput(inputs).intersect(fullGraphInterpreter.getNonInternalAssumptionNodes)
+    val queriedNodes = getQueriedNodesFromInput(inputs).filter(fullGraphInterpreter.isNonInternalAssumptionNode)
 
-    val (directDependents, timeDirect) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getDirectDependents(queriedNodes.map(_.id)))
-    val (allDependents, timeAll) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id)))
-    val (dependentsWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id), includeInfeasibilityNodes=false))
-    val (explicitDependents, timeExplicit) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllExplicitDependents(queriedNodes.map(_.id)))
+    val (directDependents, timeDirect) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.computeDirectDependents(queriedNodes))
+    val (allDependents, timeAll) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.computeNonInternalDependents(queriedNodes))
+    val (dependentsWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.computeNonInternalDependents(queriedNodes, includeInfeasibilityNodes=false))
+    val (explicitDependents, timeExplicit) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.computeExplicitDependents(queriedNodes))
 
     println(s"Queried:\n\t${getSourceInfoString(queriedNodes)}")
 

@@ -31,15 +31,11 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
 
   def getMember: Option[ast.Member] = member
 
-  lazy val nodesMap: Map[Int, DependencyAnalysisNode] = getNodes.map(node => (node.id, node)).toMap
-  lazy val nonInternalAssumptionNodesMap: Map[Int, DependencyAnalysisNode] = getNonInternalAssumptionNodes(getNodes).map(node => (node.id, node)).toMap
-  lazy val assertionNodesMap: Map[Int, DependencyAnalysisNode] = getAssertionNodes.map(node => (node.id, node)).toMap
-
   def getNodes: Set[DependencyAnalysisNode] = dependencyGraph.getNodes
 
-  def getAssumptionNodes: Set[DependencyAnalysisNode] = dependencyGraph.getAssumptionNodes.toSet
+  def getAssumptionNodes: Set[GeneralAssumptionNode] = dependencyGraph.getAssumptionNodes
 
-  def getAssertionNodes: Set[DependencyAnalysisNode] = dependencyGraph.getAssertionNodes.toSet
+  def getAssertionNodes: Set[GeneralAssertionNode] = dependencyGraph.getAssertionNodes
 
   def getErrors: List[Failure] = errors
 
@@ -63,55 +59,53 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
     getNodes.filter(node => fullAnnotation.findFirstIn(node.toString).isDefined)
   }
 
-  def getDirectDependencies(nodeIdsToAnalyze: Set[Int]): Set[DependencyAnalysisNode] = {
-    val result: Set[Int] = dependencyGraph.getDirectDependenciesById(nodeIdsToAnalyze, true, true, true)
-    getNonInternalAssumptionNodes.filter(node => result.contains(node.id))
+  def computeDirectDependencies(nodesToAnalyze: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = {
+    val result = dependencyGraph.computeDirectDependencies(nodesToAnalyze, true, true, true)
+    result filter isNonInternalAssumptionNode
   }
 
-  private def getAllDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true) = {
-    val allDependenciesUpwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
-    val allDependenciesDownwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze ++ allDependenciesUpwards, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
+  private def computeDependencies(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean = true) = {
+    val allDependenciesUpwards = dependencyGraph.computeDependencies(nodesToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
+    val allDependenciesDownwards = dependencyGraph.computeDependencies(nodesToAnalyze ++ allDependenciesUpwards, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
     allDependenciesUpwards ++ allDependenciesDownwards
   }
 
-  def getAllNonInternalDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-    getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes) flatMap nonInternalAssumptionNodesMap.get
+  def computeNonInternalDependencies(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+    computeDependencies(nodesToAnalyze, includeInfeasibilityNodes) filter isNonInternalAssumptionNode
   }
 
-  def getAllExplicitDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-    val allDeps = getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes)
-    getExplicitAssumptionNodes.filter(node => allDeps.contains(node.id))
+  def computeExplicitDependencies(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+    val allDeps = computeDependencies(nodesToAnalyze, includeInfeasibilityNodes)
+    allDeps filter isExplicitAssumptionNode
   }
 
-  def getDirectDependents(nodeIdsToAnalyze: Set[Int]): Set[DependencyAnalysisNode] = {
-    val result: Set[Int] = dependencyGraph.getDirectDependents(nodeIdsToAnalyze, true, true, true)
-    getNonInternalAssertionNodes.filter(node => result.contains(node.id))
+  def computeDirectDependents(nodesToAnalyze: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = {
+    val result = dependencyGraph.computeDirectDependents(nodesToAnalyze, true, true, true)
+    result filter isNonInternalAssertionNode
   }
 
-  private def getAllDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true) = {
-    val allDependentsDownwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
-    val allDependentsUpwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze ++ allDependentsDownwards, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
+  private def computeDependents(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+    val allDependentsDownwards = dependencyGraph.computeDependents(nodesToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
+    val allDependentsUpwards = dependencyGraph.computeDependents(nodesToAnalyze ++ allDependentsDownwards, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
     allDependentsUpwards ++ allDependentsDownwards
   }
 
-  def getAllNonInternalDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-    val allDeps = getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes)
-    getNonInternalAssertionNodes.filter(node => allDeps.contains(node.id))
+  def computeNonInternalDependents(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+    val allDeps = computeDependents(nodesToAnalyze, includeInfeasibilityNodes)
+    allDeps filter isNonInternalAssertionNode
   }
 
-  def getAllExplicitDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-    val allDeps = getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes)
-    getExplicitAssertionNodes.filter(node => allDeps.contains(node.id))
+  def computeExplicitDependents(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+    val allDeps = computeDependents(nodesToAnalyze, includeInfeasibilityNodes)
+    allDeps filter isExplicitAssertionNode
   }
 
   private def isVisibleNode(node: DependencyAnalysisNode): Boolean =
     !node.assumptionType.isInstanceOf[AssumptionType.InternalType]
 
-  def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = nonInternalAssumptionNodesMap.values.toSet
+  def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = getNodes filter isNonInternalAssumptionNode
 
-  def getNonInternalAssumptionNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes.filter(isNonInternalAssumptionNode)
-
-  private def isNonInternalAssumptionNode(node: DependencyAnalysisNode): Boolean = {
+  def isNonInternalAssumptionNode(node: DependencyAnalysisNode): Boolean = {
     val hasPostconditionType = node.assumptionType.isInstanceOf[AssumptionType.PostconditionType]
     val hasJoinInfo = node.joinInfos.nonEmpty
     node match {
@@ -120,23 +114,26 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
     }
   }
 
-  def getExplicitAssumptionNodes: Set[DependencyAnalysisNode] =
-    getNonInternalAssumptionNodes.collect {
-      case node: GeneralAssumptionNode if node.assumptionType.isInstanceOf[AssumptionType.ExplicitAssumptionType] => node
-    }
+  def isExplicitAssumptionNode(node: DependencyAnalysisNode): Boolean = node match {
+    case node: GeneralAssumptionNode => node.assumptionType.isInstanceOf[AssumptionType.ExplicitAssumptionType]
+    case _ => false
+  }
 
-  def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] =
-    getAssertionNodes.collect {
-      case node: GeneralAssertionNode if isVisibleNode(node) || node.joinInfos.nonEmpty => node
-    }
+  def getNonInternalAssertionNodes: Set[GeneralAssertionNode] =
+    getAssertionNodes filter isNonInternalAssertionNode
 
-  def getExplicitAssertionNodes: Set[DependencyAnalysisNode] =
-    getNonInternalAssertionNodes.filter(node => node.assumptionType.isInstanceOf[AssumptionType.ExplicitAssertionType])
+  def isNonInternalAssertionNode(node: DependencyAnalysisNode): Boolean = node match {
+    case node: GeneralAssertionNode if isVisibleNode(node) || node.joinInfos.nonEmpty => true
+    case _ => false
+  }
+
+  def getExplicitAssertionNodes: Set[GeneralAssertionNode] =
+    getAssertionNodes filter isExplicitAssertionNode
+
+  def isExplicitAssertionNode(node: DependencyAnalysisNode): Boolean = node.assumptionType.isInstanceOf[AssumptionType.ExplicitAssertionType]
 
   def getAssertionNodesWithFailures: Set[GeneralAssertionNode] =
-    getNonInternalAssertionNodes.collect {
-      case node: GeneralAssertionNode if node.hasFailed => node
-    }
+    getNonInternalAssertionNodes filter (_.hasFailed)
 
   def exportGraph(program: ast.Program, exportPath: String): Unit = {
     if (exportPath.isEmpty) return

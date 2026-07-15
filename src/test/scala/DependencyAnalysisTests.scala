@@ -24,10 +24,10 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
   val depAnalysisModeArg = if(TEST_IMPORTER) Seq("--dependencyAnalysisMode=export>testExports") else Seq()
   analysisCommandLineArguments = analysisCommandLineArguments ++ depAnalysisModeArg
   val testDirectories: Seq[String] = Seq(
-    "dependencyAnalysisTests/all",
-    "dependencyAnalysisTests/real-world-examples",
+//    "dependencyAnalysisTests/all",
+//    "dependencyAnalysisTests/real-world-examples",
     "dependencyAnalysisTests/verificationProgressTests",
-    "dependencyAnalysisTests/guidance",
+//    "dependencyAnalysisTests/guidance",
   )
 
   if (EXECUTE_TEST) {

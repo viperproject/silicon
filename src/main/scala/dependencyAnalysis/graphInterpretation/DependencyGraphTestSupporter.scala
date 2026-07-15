@@ -78,7 +78,7 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
     val expectedLabels = expectedLabelsOpt.get
 
     val queriedAssertions = assertionNode.lowLevelAssertionNodes
-    val allDependencies = interpreter.getAllNonInternalDependencies(queriedAssertions.map(_.id))
+    val allDependencies = interpreter.computeNonInternalDependencies(queriedAssertions.toSet)
     val sourceDependencies = UserLevelDependencyAnalysisNode.from(allDependencies).getSourceSet().diff(UserLevelDependencyAnalysisNode.from(queriedAssertions).getSourceSet())
 
     val labelsInReportedDeps: Set[Set[String]] = sourceDependencies.map(node => nodeLabelRegex.findAllMatchIn(node.toString).map(_.group(1)).toSet)

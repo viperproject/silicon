@@ -58,7 +58,7 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
           var numLowLevelDeps = 0
 
           for (_ <- 0 to N) {
-            val (allDependencies, time) = measureTime[Set[DependencyAnalysisNode]](interpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
+            val (allDependencies, time) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeNonInternalDependencies(queriedNodes))
             allTimes = allTimes :+ time
             numLowLevelDeps = allDependencies.size
             numDeps = UserLevelDependencyAnalysisNode.from(allDependencies).size
@@ -111,7 +111,7 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
       def evalSingleAssertion(assertionLabel: String, groundTruthLabels: Set[String], callGraphLabels: Set[String], bw: BufferedWriter): Unit = {
         val startAnalysis = System.nanoTime()
         val queriedAssertions = interpreter.getNodesByLabel(assertionLabel)
-        val allDependencies = interpreter.getAllNonInternalDependencies(queriedAssertions.map(_.id))
+        val allDependencies = interpreter.computeNonInternalDependencies(queriedAssertions)
         val sourceDependencies = UserLevelDependencyAnalysisNode.from(allDependencies).getSourceSet().diff(UserLevelDependencyAnalysisNode.from(queriedAssertions).getSourceSet())
 
         val endAnalysis = System.nanoTime()
@@ -234,7 +234,7 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
       val assumptions = UserLevelDependencyAnalysisNode.from(allAssumptions)
       val allAssertions = interpreter.getNonInternalAssertionNodes
       val assertions = UserLevelDependencyAnalysisNode.from(allAssertions)
-      val nodes = UserLevelDependencyAnalysisNode.from(allAssertions.union(allAssumptions))
+      val nodes = UserLevelDependencyAnalysisNode.from(allAssertions.toSet[DependencyAnalysisNode].union(allAssumptions))
       println(s"#Assumptions = ${assumptions.size}")
       println(s"#Assertions = ${assertions.size}")
       println(s"#Nodes = ${nodes.size}")
