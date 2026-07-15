@@ -71,6 +71,7 @@ case class SiliconRawCounterexample(model: Model,
   val allSequences: Seq[CECollection] = SiliconRawCounterexample.detSequences(model)
   val allSets: Seq[CECollection] = SiliconRawCounterexample.detSets(model)
   val allMultisets: Seq[CECollection] = SiliconRawCounterexample.detMultisets(model)
+  val allMaps: Seq[CECollection] = SiliconRawCounterexample.detMaps(model)
   var allRawHeaps: Seq[(String, RawHeap)] = Seq(("current", RawHeap(SiliconRawCounterexample.detHeap(model, heap, program.predicatesByName))))
   oldHeaps.foreach {case (n, h) => allRawHeaps +:= ((n, RawHeap(SiliconRawCounterexample.detHeap(model, h.values, program.predicatesByName))))}
 
@@ -470,6 +471,116 @@ object SiliconRawCounterexample {
         ans +:= CECollection(n, value)
     }
     ans
+  }
+
+  /**
+    * Reconstructs map values from the model, analogously to [[detSets]]. A map is built up from the
+    * empty map `Map_empty()` by a chain of updates `Map_update(m, k, v)`, each of which adds (or
+    * overwrites) the binding k -> v. The key/value types are taken from the map sort name when
+    * available (e.g. `Map<Int~_Int>`), otherwise the key/value literals are inferred.
+    */
+  def detMaps(model: Model): Seq[CECollection] = {
+    var res = Map[String, scala.collection.immutable.Map[String, String]]()
+    // Seed empty maps: Map_empty is the empty map for some key/value sort, and any map whose
+    // cardinality is zero is empty as well.
+    for ((opName, opValues) <- model.entries) {
+      if (opName == "Map_empty") {
+        opValues match {
+          case me: MapEntry => for ((_, v) <- me.options) res += (v.toString -> scala.collection.immutable.Map.empty)
+          case ce: ConstantEntry if ce.value != "false" && ce.value != "true" => res += (ce.value -> scala.collection.immutable.Map.empty)
+          case _ =>
+        }
+      }
+      if (opName == "Map_card") {
+        opValues match {
+          case me: MapEntry => for ((k, v) <- me.options) if (v.toString.startsWith("0")) res += (k(0).toString -> scala.collection.immutable.Map.empty)
+          case _ =>
+        }
+      }
+    }
+    // Collect the update facts Map_update(base, key, value) = result.
+    var tempMap = Map[Seq[String], String]()
+    for ((opName, opValues) <- model.entries) {
+      if (opName == "Map_update") {
+        opValues match {
+          case me: MapEntry => for ((k, v) <- me.options) tempMap += (k.map(x => x.toString) -> v.toString)
+          case _ =>
+        }
+      }
+    }
+    // Apply updates to a fixpoint: a result map becomes known as soon as its base map is known.
+    var progress = true
+    while (tempMap.nonEmpty && progress) {
+      progress = false
+      for ((k, v) <- tempMap) {
+        res.get(k(0)) match {
+          case Some(base) =>
+            res += (v -> base.updated(k(1), k(2)))
+            tempMap -= k
+            progress = true
+          case None => //
+        }
+      }
+    }
+    // Maps that are not built from an update chain (e.g. a bare parameter constrained only via
+    // `m[k] == v` / `k in domain(m)`) have no entry above. Reconstruct them the way partial sets are
+    // recovered from membership: the domain `Map_domain(m)` is a set whose members come from `Set_in`
+    // facts, and for each such key `Map_apply(m, k)` gives the value. Only keys that are both in the
+    // domain and have a known value are shown (analogous to a set only listing its known members).
+    val mapDomain = model.entries.get("Map_domain") match {
+      case Some(me: MapEntry) => me.options.collect { case (k, v) if k.nonEmpty => (k(0).toString, v.toString) }
+      case _ => Map.empty[String, String]
+    }
+    if (mapDomain.nonEmpty) {
+      val setMembers = model.entries.get("Set_in") match {
+        case Some(me: MapEntry) =>
+          me.options.toSeq.collect { case (k, v) if v.toString == "true" && k.length >= 2 => (k(1).toString, k(0).toString) }
+            .groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap
+        case _ => Map.empty[String, Set[String]]
+      }
+      val mapApply = model.entries.get("Map_apply") match {
+        case Some(me: MapEntry) => me.options.collect { case (k, v) if k.length >= 2 => ((k(0).toString, k(1).toString), v.toString) }
+        case _ => Map.empty[(String, String), String]
+      }
+      for ((mapId, domainSetId) <- mapDomain if !res.contains(mapId)) {
+        val entries = setMembers.getOrElse(domainSetId, Set.empty).flatMap(key =>
+          mapApply.get((mapId, key)).map(value => key -> value)).toMap
+        res += (mapId -> entries)
+      }
+    }
+    var ans = Seq[CECollection]()
+    res.foreach {
+      case (n, m) =>
+        val (keyTyp, valueTyp) = detMapTypesFromString(n.replaceAll(".*?<(.*)>.*", "$1"))
+        val maplets: Seq[ast.Exp] = m.toSeq.map { case (k, v) =>
+          ast.Maplet(CounterexampleValue.literal(k, keyTyp), CounterexampleValue.literal(v, valueTyp))()
+        }
+        val value = if (maplets.isEmpty) ast.EmptyMap(keyTyp.getOrElse(ast.InternalType), valueTyp.getOrElse(ast.InternalType))()
+                    else ast.ExplicitMap(maplets)()
+        ans +:= CECollection(n, value)
+    }
+    ans
+  }
+
+  /**
+    * Splits the inner part of a map sort name (e.g. `Int~_Int`) into its key and value types at the
+    * top-level `~_` separator, ignoring `~_` that occurs inside nested type arguments. Returns
+    * (None, None) when the types cannot be determined (e.g. Boogie value ids that carry no type).
+    */
+  def detMapTypesFromString(inner: String): (Option[Type], Option[Type]) = {
+    var depth = 0
+    var i = 0
+    while (i + 1 < inner.length) {
+      inner(i) match {
+        case '<' | '[' => depth += 1
+        case '>' | ']' => depth -= 1
+        case '~' if depth == 0 && inner(i + 1) == '_' =>
+          return (detASTTypeFromString(inner.substring(0, i)), detASTTypeFromString(inner.substring(i + 2)))
+        case _ =>
+      }
+      i += 1
+    }
+    (None, None)
   }
 
   /**

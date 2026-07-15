@@ -388,6 +388,7 @@ object Converter {
       case AtMost(t0, t1)  => intComparison(t0, t1, model, env)(_ <= _)
       case AtLeast(t0, t1) => intComparison(t0, t1, model, env)(_ >= _)
       case Less(t0, t1)    => intComparison(t0, t1, model, env)(_ < _)
+      case t: Greater      => intComparison(t.p0, t.p1, model, env)(_ > _)
       case BuiltinEquals(t0, t1) =>
         val e0 = evaluateTerm(t0, model, env)
         val e1 = evaluateTerm(t1, model, env)
@@ -409,9 +410,50 @@ object Converter {
       case PermTimes(t0, t1) => permArithmetic(t0, t1, model, env)(_ * _)
       case PermMin(t0, t1)   => permArithmetic(t0, t1, model, env)((a, b) => if (a < b) a else b)
 
+      // Integer arithmetic. Div/Mod follow the SMT-LIB `div`/`mod` (Euclidean) semantics that
+      // Silicon translates them to, so the results agree with the solver's model.
+      case t: Plus  => intArithmetic(t.p0, t.p1, model, env)(_ + _)
+      case t: Minus => intArithmetic(t.p0, t.p1, model, env)(_ - _)
+      case t: Times => intArithmetic(t.p0, t.p1, model, env)(_ * _)
+      case t: Div   => intDivMod(t.p0, t.p1, model, env)(euclideanDiv)
+      case t: Mod   => intDivMod(t.p0, t.p1, model, env)(euclideanMod)
+
+      // Multiset containment: `e in ms` is the count of `e` in `ms`.
+      case t: MultisetCount =>
+        getFunctionValue(model, "Multiset_count",
+          Seq(evaluateTerm(t.p0, model, env).asValueEntry, evaluateTerm(t.p1, model, env).asValueEntry), sorts.Int)
+
+      // Map operations. `r in domain(m)` desugars to SetIn(r, MapDomain(m)), so evaluating the
+      // domain to its set value lets the existing SetIn case take over.
+      case t: MapDomain =>
+        getFunctionValue(model, "Map_domain", Seq(evaluateTerm(t.p, model, env).asValueEntry), t.sort)
+      case t: MapLookup =>
+        getFunctionValue(model, "Map_apply",
+          Seq(evaluateTerm(t.base, model, env).asValueEntry, evaluateTerm(t.key, model, env).asValueEntry), t.sort)
+      case t: MapCardinality =>
+        getFunctionValue(model, "Map_card", Seq(evaluateTerm(t.p, model, env).asValueEntry), sorts.Int)
+
       case _ => OtherEntry(term.toString, "unhandled")
     }
   }
+
+  private def euclideanMod(a: BigInt, b: BigInt): BigInt = { val r = a % b; if (r < 0) r + b.abs else r }
+  private def euclideanDiv(a: BigInt, b: BigInt): BigInt = (a - euclideanMod(a, b)) / b
+
+  private def intArithmetic(t0: Term, t1: Term, model: Model, env: Map[Var, ExtractedModelEntry])
+                           (op: (BigInt, BigInt) => BigInt): ExtractedModelEntry =
+    (evaluateTerm(t0, model, env), evaluateTerm(t1, model, env)) match {
+      case (LitIntEntry(a), LitIntEntry(b)) => LitIntEntry(op(a, b))
+      case _                                => OtherEntry(s"integer arithmetic on $t0 and $t1", "not evaluable")
+    }
+
+  private def intDivMod(t0: Term, t1: Term, model: Model, env: Map[Var, ExtractedModelEntry])
+                       (op: (BigInt, BigInt) => BigInt): ExtractedModelEntry =
+    (evaluateTerm(t0, model, env), evaluateTerm(t1, model, env)) match {
+      case (LitIntEntry(_), LitIntEntry(b)) if b == 0 => OtherEntry(s"division of $t0 by zero", "not evaluable")
+      case (LitIntEntry(a), LitIntEntry(b))           => LitIntEntry(op(a, b))
+      case _                                          => OtherEntry(s"division of $t0 by $t1", "not evaluable")
+    }
 
   private def intComparison(t0: Term, t1: Term, model: Model, env: Map[Var, ExtractedModelEntry])
                            (op: (BigInt, BigInt) => Boolean): ExtractedModelEntry =
