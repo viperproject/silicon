@@ -130,7 +130,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                 case Some(v) =>
                   ReusedSummarisingSnapshot(v)
                 case None =>
-                  val ss = v.decider.appliedFresh("ss", sort, s.functionRecorderQuantifiedVariables().map(_._1) ++ s.quantifiedVariables.map(_._1))
+                  val ss = v.decider.appliedFresh("ss", sort, s.functionRecorderQuantifiedVariables().map(_._1) ++ s.packagingWandSnapshots.map(_._1) ++ s.quantifiedVariables.map(_._1))
                   FreshSummarisingSnapshot(ss)
               }
           }
@@ -327,7 +327,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           definiteAlias.contains(ch1) || !definiteAlias.contains(ch2) && ch1.args == args
         }
 
-        val additionalArgs = s.relevantQuantifiedVariables.map(_._1)
+        // Permission maps deliberately exclude packagingWandSnapshots (would break permission matching after a package).
+        val additionalArgs = (s.functionRecorderQuantifiedVariables() ++ s.quantifiedVariables).map(_._1)
         var currentFunctionRecorder = s.functionRecorder
 
         relevantChunks.sortWith(sortFunction) foreach { ch =>

@@ -35,8 +35,9 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
   private var ignoreAccessPredicates = false
   private var failed = false
   private var context: Seq[ExpContext] = Seq.empty
+  private var checkInnerContexts: Boolean = false
 
-  var functionData: Map[ast.Function, FunctionData] = _
+  var functionData: Map[String, FunctionData] = _
 
   def translate(program: ast.Program,
                 func: ast.Function,
@@ -123,6 +124,8 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
          * 'x' is bound by the surrounding quantifier.
          */
         context = context :+ QuantifierContext(eQuant)
+        val oldCheckInnerContext = checkInnerContexts
+        checkInnerContexts = true
         val tQuant = super.translate(symbolConverter.toSort)(eQuant).asInstanceOf[Quantification]
         val names = tQuant.vars.map(_.id.name)
 
@@ -134,6 +137,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
           }
         })()
         context = context.init
+        checkInnerContexts = oldCheckInnerContext
         res
 
       case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, context, toSort(loc.typ), Option.when(Verifier.config.enableDebugging())(extractPTypeFromExp(loc)))
@@ -158,7 +162,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         val fapp = App(fun, snap +: args)
 
         val callerHeight = data.height
-        val calleeHeight = functionData(eFApp.func(program)).height
+        val calleeHeight = functionData(eFApp.funcname).height
 
         if (callerHeight < calleeHeight)
           fapp
@@ -173,6 +177,16 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
       case Some(s) =>
         s.convert(sort)
       case None =>
+        if (checkInnerContexts) {
+          // Sometimes, we also want to check if the expression can be found in some nested context inside
+          // the current one, so we check for any contexts in the map that start with the current one.
+          // See issue #967.
+          val innerContextVals = map.find({ case ((k, c), _) => k == key && c.startsWith(ctx) })
+          if (innerContextVals.nonEmpty) {
+            return innerContextVals.get._2.convert(sort)
+          }
+        }
+
         if (!failed && data.verificationFailures.isEmpty) {
           val msg = resolutionFailureMessage(key, data)
 
