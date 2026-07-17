@@ -693,7 +693,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val enableUnsatCores: ScallopOption[Boolean] = opt[Boolean]("enableUnsatCores",
-    descr = "Enable UNSAT cores",
+    descr = "Compute UNSAT cores. Useful for evaluating the overhead of this feature in an isolated manner.",
     default = Some(false),
     noshort = true
   )
@@ -723,7 +723,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val dependencyAnalysisMode: ScallopOption[String] = opt[String]("dependencyAnalysisMode",
-    descr = "Set verification dependency analysis commands (separated by ;) to be executed after verification. Available are `interactive` and all commands supported by the interactive CLI tool",
+    descr = "Set verification dependency analysis commands (separated by ;) to be executed after verification. The available commands are `interactive` " +
+      "and all commands supported by the interactive CLI tool",
     default = None,
     noshort = true
   )

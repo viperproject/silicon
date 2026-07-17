@@ -9,8 +9,4 @@ package viper.silicon.dependencyAnalysis
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silver.ast.Program
 
-case class DependencyAnalysisResult(program: Program, fullDependencyGraphInterpreter: DependencyGraphInterpreter[Final]) {
-
-  def getFullDependencyGraphInterpreter: DependencyGraphInterpreter[Final] = fullDependencyGraphInterpreter
-
-}
+case class DependencyAnalysisResult(program: Program, dependencyGraphInterpreter: DependencyGraphInterpreter[Final])

@@ -26,7 +26,7 @@ object DependencyGraphHelper {
   }
 }
 
-trait DependencyGraphState
+sealed trait DependencyGraphState
 class Init extends DependencyGraphState
 class IntraProcedural extends DependencyGraphState
 class Final extends DependencyGraphState
@@ -341,7 +341,9 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
    */
   def removeInternalNodes(): Unit = {
     def filterCriteria(n: DependencyAnalysisNode) = {
-      n.assumptionType.isInstanceOf[AssumptionType.InternalType] && !n.isInstanceOf[InfeasibilityNode]
+      n.assumptionType.isInstanceOf[AssumptionType.InternalType] &&
+        !n.isInstanceOf[InfeasibilityNode] && // infeasibility nodes are required for some of the graph queries
+        n.joinInfos.isEmpty // join nodes must not be removed because we need them for joining the graphs later on
     }
 
     val nodesToRemove = getNodes filter filterCriteria

@@ -6,7 +6,7 @@
 
 package viper.silicon.dependencyAnalysis
 
-import viper.silicon.decider.{Decider, DependencyAnalysisDeciderFeatures}
+import viper.silicon.decider.{Decider, DependencyAnalysisHandler}
 import viper.silicon.state.chunks.{Chunk, GeneralChunk}
 import viper.silicon.state.terms.{Implies, NoPerm, _}
 import viper.silicon.verifier.Verifier
@@ -112,18 +112,18 @@ object DependencyAnalyzer {
   }
 
   def addAssumption(decider: Decider, assumption: Term, analysisInfos: DependencyAnalysisInfos, description: Option[String] = None): Option[Int] = decider match {
-    case daDecider: DependencyAnalysisDeciderFeatures => daDecider.getDependencyAnalyzer.addAssumption(assumption, analysisInfos, description)
+    case daDecider: DependencyAnalysisHandler => daDecider.getDependencyAnalyzer.addAssumption(assumption, analysisInfos, description)
     case _ => None
   }
 
   def addCustomDependenciesBetweenMergeInfos(decider: Decider, sourceExps: Seq[Exp], targetExps: Seq[Exp]): Unit = decider match {
-    case daDecider: DependencyAnalysisDeciderFeatures => daDecider.getDependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(sourceExps, targetExps)
+    case daDecider: DependencyAnalysisHandler => daDecider.getDependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(sourceExps, targetExps)
     case _ =>
   }
 
 
   def wrapWithDependencyAnalysisLabel(decider: Decider, term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term = decider match {
-    case daDecider: DependencyAnalysisDeciderFeatures =>
+    case daDecider: DependencyAnalysisHandler =>
       if (!daDecider.isDependencyAnalysisEnabled || term.equals(True) || sourceChunks.size + sourceTerms.size == 0)
         return term
 
@@ -133,7 +133,7 @@ object DependencyAnalyzer {
   }
 
   def handleAndGetUpdatedAnalysisInfos(decider: Decider, analysisInfos: DependencyAnalysisInfos, info: Info, node: ast.Node): DependencyAnalysisInfos = decider match {
-    case daDecider: DependencyAnalysisDeciderFeatures =>
+    case daDecider: DependencyAnalysisHandler =>
       val newAnalysisInfos = analysisInfos.addInfo(info, node)
       info.getAllInfos[AdditionalDependencyNodeInfo].foreach {
         case AdditionalAssertionNode() => daDecider.getDependencyAnalyzer.createAssertOrCheckNode(True, newAnalysisInfos, isCheck = false).foreach(n => {
@@ -157,7 +157,7 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
 
   private def getNodeIdsByTerm(terms: Set[Term]): Set[Int] = {
     dependencyGraph.getNodes
-      .filter(t => terms.contains(t.getTerm))
+      .filter(t => terms.contains(t.term))
       .map(_.id)
   }
 

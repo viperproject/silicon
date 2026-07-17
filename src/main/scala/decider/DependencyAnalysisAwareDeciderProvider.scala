@@ -14,7 +14,7 @@ import viper.silicon.verifier.{DependencyAnalysisAwareVerifier, Verifier}
 import viper.silver.ast
 import viper.silver.ast.Member
 
-trait DependencyAnalysisDeciderFeatures {
+trait DependencyAnalysisHandler {
 
   def isDependencyAnalysisEnabled: Boolean
 
@@ -33,7 +33,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
 
   protected object DADecider extends DependencyAnalysisAwareDecider
 
-  trait DependencyAnalysisAwareDecider extends AbstractDecider with DependencyAnalysisDeciderFeatures {
+  trait DependencyAnalysisAwareDecider extends AbstractDecider with DependencyAnalysisHandler {
 
     override def isDependencyAnalysisEnabled: Boolean = Verifier.config.enableDependencyAnalysis() && !dependencyAnalyzer.isInstanceOf[NoDependencyAnalyzer]
 
