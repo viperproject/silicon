@@ -106,11 +106,9 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
   def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = getNodes filter isNonInternalAssumptionNode
 
   def isNonInternalAssumptionNode(node: DependencyAnalysisNode): Boolean = {
-    val hasPostconditionType = node.assumptionType.isInstanceOf[AssumptionType.PostconditionType]
-    val hasJoinInfo = node.joinInfos.nonEmpty
     node match {
       case _: GeneralAssumptionNode if isVisibleNode(node) => true
-      case _ => hasPostconditionType || hasJoinInfo
+      case _ => false
     }
   }
 
@@ -123,7 +121,7 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
     getAssertionNodes filter isNonInternalAssertionNode
 
   private def isNonInternalAssertionNode(node: DependencyAnalysisNode): Boolean = node match {
-    case node: GeneralAssertionNode if isVisibleNode(node) || node.joinInfos.nonEmpty => true
+    case node: GeneralAssertionNode if isVisibleNode(node) => true
     case _ => false
   }
 

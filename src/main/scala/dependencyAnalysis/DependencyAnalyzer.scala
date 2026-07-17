@@ -77,6 +77,9 @@ trait DependencyAnalyzer {
 
 object DependencyAnalyzer {
   val analysisLabelName: String = "$$analysisLabel$$"
+  private val assumptionLabelPrefix = "assumption"
+  private val assertionLabelPrefix = "assertion"
+  private val axiomLabelPrefix = "axiom"
   private val enableDependencyAnalysisAnnotationKey = "enableDependencyAnalysis"
 
   private def extractAnnotationFromInfo(info: ast.Info, annotationKey: String): Option[Seq[String]] = {
@@ -91,15 +94,15 @@ object DependencyAnalyzer {
   }
 
   def createAssumptionLabel(id: Option[Int]): String = {
-    createLabel("assumption", id)
+    createLabel(assumptionLabelPrefix, id)
   }
 
   def createAssertionLabel(id: Option[Int]): String = {
-    createLabel("assertion", id)
+    createLabel(assertionLabelPrefix, id)
   }
 
   def createAxiomLabel(id: Option[Int]): String = {
-    createLabel("axiom", id)
+    createLabel(axiomLabelPrefix, id)
   }
 
   private def createLabel(description: String, id: Option[Int]): String = {
@@ -107,8 +110,13 @@ object DependencyAnalyzer {
     else ""
   }
 
-  def getIdFromLabel(label: String): Int = {
-    label.split("_")(1).toInt
+  private lazy val labelPrefixes = Seq(assumptionLabelPrefix, assertionLabelPrefix, axiomLabelPrefix)
+  def getIdFromLabel(label: String): Option[Int] = {
+    val parts = label.split("_")
+    if (labelPrefixes.exists(parts(0).startsWith))
+      parts(1).toIntOption
+    else
+      None
   }
 
   def addAssumption(decider: Decider, assumption: Term, analysisInfos: DependencyAnalysisInfos, description: Option[String] = None): Option[Int] = decider match {
@@ -260,8 +268,8 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
 
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {
     val assumptionLabels = dep.replace("(", "").replace(")", "").split(" ")
-    val assertionId = DependencyAnalyzer.getIdFromLabel(assertionLabel)
-    val assumptionIds = assumptionLabels.map(DependencyAnalyzer.getIdFromLabel).toSet
+    val assertionId = DependencyAnalyzer.getIdFromLabel(assertionLabel).get
+    val assumptionIds = assumptionLabels.flatMap(DependencyAnalyzer.getIdFromLabel).toSet
     if (!assumptionIds.contains(assertionId))
       dependencyGraph.addVacuousProof(assertionId)
     dependencyGraph.addEdges(assumptionIds.diff(Set(assertionId)), assertionId)
@@ -270,7 +278,7 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
   override def addDependenciesForAbstractMembers(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], analysisInfos: DependencyAnalysisInfos): Unit = {
     val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, analysisInfos.addInfo(e.info, e).withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Up))))
     val targetNodes = targetExps.flatMap(e => addAssertNode(True, analysisInfos.addInfo(e.info, e).withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))))
-    dependencyGraph.addEdges(sourceNodeIds, targetNodes)
+    dependencyGraph.addEdges(sourceNodeIds.toSet, targetNodes.toSet)
   }
 
   override def addCustomDependenciesBetweenMergeInfos(sourceExps: Seq[Exp], targetExps: Seq[Exp]): Unit = {

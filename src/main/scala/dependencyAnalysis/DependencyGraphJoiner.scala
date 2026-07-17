@@ -74,7 +74,7 @@ class DependencyGraphJoiner(name: String, dependencyGraphInterpreters: Set[Depen
         // more user-friendly since it becomes apparent which call introduced these indirect dependencies.
         sourceNodes.map(_.id)
       }
-      newGraph.addEdgesConnectingMethodsUpwards(directDepsOfSources, sinkNodes.map(_.id))
+      newGraph.addEdgesConnectingMethodsUpwards(directDepsOfSources.toSet, sinkNodes.map(_.id))
     } else {
       newGraph.addEdgesConnectingMethodsDownwards(sourceNodes.map(_.id), sinkNodes.map(_.id))
     }

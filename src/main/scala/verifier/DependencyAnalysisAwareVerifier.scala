@@ -44,7 +44,8 @@ class DependencyAnalysisAwareMainVerifier(config: Config,
   override def verifyMember(doVerify: Unit => Seq[VerificationResult], v: Verifier, member: ast.Member): Seq[VerificationResult] = {
     v match {
       case daVerifier: DependencyAnalysisAwareVerifier =>
-        daVerifier.decider.initDependencyAnalyzer(member, allProvers.getPreambleAnalysisNodes ++ daVerifier.decider.prover.getPreambleAnalysisNodes)
+        daVerifier.decider.initDependencyAnalyzer(member, allProvers.getPreambleAnalysisNodes ++ daVerifier.decider.prover.getPreambleAnalysisNodes
+        ++ _verificationPoolManager.getAllDAAxiomNodes)
         val result = super.verifyMember(doVerify, daVerifier, member)
         daVerifier.decider.resetDependencyAnalyzer()
         result

@@ -85,9 +85,9 @@ object DependencyGraphImporter {
       val Array(sourceId, targetId, tag) = line.split(",").map(_.trim)
 
       tag match {
-        case "direct" => graph.addEdges(List(sourceId.toInt), targetId.toInt)
-        case "interprocedural downward" => graph.addEdgesConnectingMethodsDownwards(List(sourceId.toInt), targetId.toInt)
-        case "interprocedural upward" => graph.addEdgesConnectingMethodsUpwards(List(sourceId.toInt), targetId.toInt)
+        case "direct" => graph.addEdges(Set(sourceId.toInt), targetId.toInt)
+        case "interprocedural downward" => graph.addEdgesConnectingMethodsDownwards(Set(sourceId.toInt), targetId.toInt)
+        case "interprocedural upward" => graph.addEdgesConnectingMethodsUpwards(Set(sourceId.toInt), targetId.toInt)
         case _ => throw new IllegalArgumentException(s"Unknown tag: $tag")
       }
 

@@ -108,7 +108,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
     override protected def proverAssert(t: Term, timeout: Option[Mark], label: String): Boolean = {
       val result = super.proverAssert(t, timeout, label)
       if (isPathMarkedInfeasible)
-        dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, Some(DependencyAnalyzer.getIdFromLabel(label)))
+        dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, DependencyAnalyzer.getIdFromLabel(label))
       else if (result)
         dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
       result

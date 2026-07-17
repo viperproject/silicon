@@ -43,20 +43,20 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
       val allNonInternalAssertions = sourceToAssertionNodesMap.getOrElse(currentNode, Set.empty)
 
       // compute intraprocedural dependencies without caching any intermediate results
-      val intraMethodDependency = dependencyGraph.computeDependencies(allNonInternalAssertions.toSet, includeInfeasibilityNodes=true, includeUpwardEdges=false, includeDownwardEdges=false)
-      val intraMethodDependenciesWithoutCurr = intraMethodDependency.filter(interpreter.isNonInternalAssumptionNode).filterNot(_.sourceInfo.equals(currentNode))
+      val intraMethodDependencies = dependencyGraph.computeDependencies(allNonInternalAssertions.toSet, includeInfeasibilityNodes=true, includeUpwardEdges=false, includeDownwardEdges=false)
+      val nonInternalIntraMethodDependencies = intraMethodDependencies.filter(interpreter.isNonInternalAssumptionNode)
 
       // recursively compute all interprocedural dependencies and cache results at procedure-boundaries
       val relevantInterProceduralEdges = traversalMode match {
         case DATraversalMode.Upwards   => dependencyGraph.getEdgesConnectingMethodsUpwards
         case DATraversalMode.Downwards => dependencyGraph.getEdgesConnectingMethodsDownwards
       }
-      val interProceduralNodeIds = intraMethodDependency.flatMap(n => relevantInterProceduralEdges.getOrElse(n.id, Set.empty))
+      val interProceduralNodeIds = intraMethodDependencies.flatMap(n => relevantInterProceduralEdges.getOrElse(n.id, Set.empty))
       val interProceduralNodes = interProceduralNodeIds.flatMap(interpreter.getGraph.getNodeById)
-      val interProceduralDependencies = interProceduralNodes.map(_.sourceInfo).filterNot(_.equals(currentNode)).flatMap(node => computeDependencies(node, updatedVisited, traversalMode))
+      val interProceduralDependencies = interProceduralNodes.map(_.sourceInfo).flatMap(node => computeDependencies(node, updatedVisited, traversalMode))
 
       // put together all identified dependencies and cache the result
-      val result = reduceCompactUserLevelNodes(toCompactUserLevelNodes(intraMethodDependenciesWithoutCurr ++ interProceduralNodes) ++ interProceduralDependencies)
+      val result = reduceCompactUserLevelNodes(toCompactUserLevelNodes(nonInternalIntraMethodDependencies ++ interProceduralNodes) ++ interProceduralDependencies).filterNot(_.source.equals(currentNode))
       deps.put((currentNode, traversalMode), result)
       result
     }

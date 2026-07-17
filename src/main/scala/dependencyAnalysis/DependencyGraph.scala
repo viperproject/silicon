@@ -182,11 +182,11 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
     newNodes foreach addAssertionNode
   }
 
-  def addEdges(source: Int, targets: Iterable[Int]): Unit = {
+  def addEdges(source: Int, targets: Set[Int]): Unit = {
     addEdges(Set(source), targets)
   }
 
-  def addEdges(sources: Iterable[Int], target: Int): Unit = {
+  def addEdges(sources: Set[Int], target: Int): Unit = {
     addToAllEdges(sources, target)
     val oldSources = intraMethodEdges.getOrElse(target, Set.empty)
     val newSources = sources.filter(_ != target)
@@ -194,18 +194,18 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
       intraMethodEdges.update(target, oldSources ++ newSources)
   }
 
-  private def addToAllEdges(sources: Iterable[Int], target: Int): Unit = {
+  private def addToAllEdges(sources: Set[Int], target: Int): Unit = {
     val oldSources = allEdges.getOrElse(target, Set.empty)
     val newSources = sources.filter(_ != target)
     if (newSources.nonEmpty)
       allEdges.update(target, oldSources ++ newSources)
   }
 
-  def addEdges(sources: Iterable[Int], targets: Iterable[Int]): Unit = {
+  def addEdges(sources: Set[Int], targets: Set[Int]): Unit = {
     targets foreach (addEdges(sources, _))
   }
 
-  def addEdgesConnectingMethodsDownwards(sources: Iterable[Int], target: Int): Unit = {
+  def addEdgesConnectingMethodsDownwards(sources: Set[Int], target: Int): Unit = {
     addToAllEdges(sources, target)
     val oldSources = edgesConnectingMethodsDownwards.getOrElse(target, Set.empty)
     val newSources = sources.filter(_ != target)
@@ -213,15 +213,15 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
       edgesConnectingMethodsDownwards.update(target, oldSources ++ newSources)
   }
 
-  def addEdgesConnectingMethodsDownwards(sources: Iterable[Int], targets: Iterable[Int]): Unit = {
+  def addEdgesConnectingMethodsDownwards(sources: Set[Int], targets: Set[Int]): Unit = {
     targets foreach (addEdgesConnectingMethodsDownwards(sources, _))
   }
 
-  def addEdgesConnectingMethodsDownwards(source: Int, targets: Iterable[Int]): Unit = {
+  def addEdgesConnectingMethodsDownwards(source: Int, targets: Set[Int]): Unit = {
     addEdgesConnectingMethodsDownwards(Set(source), targets)
   }
 
-  def addEdgesConnectingMethodsUpwards(sources: Iterable[Int], target: Int): Unit = {
+  def addEdgesConnectingMethodsUpwards(sources: Set[Int], target: Int): Unit = {
     addToAllEdges(sources, target)
     val oldSources = edgesConnectingMethodsUpwards.getOrElse(target, Set.empty)
     val newSources = sources.filter(_ != target)
@@ -229,11 +229,11 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
       edgesConnectingMethodsUpwards.update(target, oldSources ++ newSources)
   }
 
-  def addEdgesConnectingMethodsUpwards(sources: Iterable[Int], targets: Iterable[Int]): Unit = {
+  def addEdgesConnectingMethodsUpwards(sources: Set[Int], targets: Set[Int]): Unit = {
     targets foreach (addEdgesConnectingMethodsUpwards(sources, _))
   }
 
-  def addEdgesConnectingMethodsUpwards(source: Int, targets: Iterable[Int]): Unit = {
+  def addEdgesConnectingMethodsUpwards(source: Int, targets: Set[Int]): Unit = {
     addEdgesConnectingMethodsUpwards(Set(source), targets)
   }
 
@@ -318,10 +318,18 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
    */
   private def removeAllEdgesForNode(node: DependencyAnalysisNode): Unit = {
     val id = node.id
-    val predecessors = (intraMethodEdges filter { case (_, t) => t.contains(id) }).keys
-    val successors = intraMethodEdges.getOrElse(id, Set.empty)
-    intraMethodEdges.remove(id)
-    predecessors foreach (pid => intraMethodEdges.update(pid, intraMethodEdges.getOrElse(pid, Set.empty).filter(_ != id) ++ successors))
+
+    def removeEdgesFromMap(edges: mutable.Map[Int, Set[Int]]): Unit = {
+      val predecessors = (edges filter { case (_, t) => t.contains(id) }).keys
+      val successors = edges.getOrElse(id, Set.empty)
+      edges.remove(id)
+      predecessors foreach (pid => edges.update(pid, edges.getOrElse(pid, Set.empty).filter(_ != id) ++ successors))
+    }
+
+    removeEdgesFromMap(intraMethodEdges)
+    removeEdgesFromMap(edgesConnectingMethodsDownwards)
+    removeEdgesFromMap(edgesConnectingMethodsUpwards)
+    removeEdgesFromMap(allEdges)
   }
 
 
