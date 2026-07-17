@@ -285,8 +285,6 @@ class DefaultMainVerifier(config: Config,
     _verificationPoolManager.pooledVerifiers.comment("End function- and predicate-related preamble")
     _verificationPoolManager.pooledVerifiers.comment("-" * 60)
 
-    beforeMethodVerification()
-
     val verificationTaskFutures: Seq[Future[Seq[VerificationResult]]] =
       program.methods.filterNot(excludeMethod).map(method => {
         val s = createInitialState(method, program, functionData, predicateData).copy(parallelizeBranches =
@@ -356,8 +354,6 @@ class DefaultMainVerifier(config: Config,
 
     verificationResults
   }
-
-  protected def beforeMethodVerification(): Unit  = {}
 
   def afterVerification(verificationResults: List[VerificationResult], program: ast.Program, inputFile: Option[String]): Unit = {}
 
