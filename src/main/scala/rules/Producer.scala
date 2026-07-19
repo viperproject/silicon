@@ -8,16 +8,9 @@ package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.{
-  DependencyAnalysisInfos,
-  DependencyAnalyzer
-}
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
-import viper.silicon.logger.records.data.{
-  CondExpRecord,
-  ImpliesRecord,
-  ProduceRecord
-}
+import viper.silicon.logger.records.data.{CondExpRecord, ImpliesRecord, ProduceRecord}
 import viper.silicon.state._
 import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.state.terms._
@@ -26,10 +19,7 @@ import viper.silver.ast
 import viper.silver.ast.utility.Expressions
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.{
-  NegativePermission,
-  QPAssertionNotInjective
-}
+import viper.silver.verifier.reasons.{NegativePermission, QPAssertionNotInjective}
 
 import scala.collection.mutable
 
@@ -190,7 +180,7 @@ object producer extends ProductionRules {
           // This should never happen if we're in a reachable state, so here we check for that
           // (without timeout, since there is no fallback) and stop verifying the current branch.
           case _: IllegalArgumentException if v.decider.checkSmoke(analysisInfos) =>
-            if (Verifier.config.analyzeInfeasiblePaths()) Q(s,v) else Unreachable()
+            if (Verifier.config.analyzeInfeasiblePaths) Q(s,v) else Unreachable()
         }
 
       }

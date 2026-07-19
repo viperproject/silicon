@@ -8,7 +8,7 @@ package viper.silicon.supporters
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.collections.immutable.MultiMap._
-import viper.silicon.decider.DependencyAnalysisProverFeatures
+import viper.silicon.decider.DependencyAnalysisProverHandler
 import viper.silicon.dependencyAnalysis.{DependencyAnalysisAxiomInfo, DependencyAnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
@@ -127,7 +127,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
   def axiomsAfterAnalysis: Iterable[terms.Term] = collectedAxioms.map(_._1)
 
   def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = sink match {
-    case daSink: DependencyAnalysisProverFeatures =>
+    case daSink: DependencyAnalysisProverHandler =>
       daSink.assumeAxiomsWithAnalysisInfo(collectedAxioms, "Domain axioms")
     case _ =>
       sink.assumeAxioms(collectedAxioms.map(_._1), "Domain axioms")

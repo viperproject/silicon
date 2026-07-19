@@ -7,7 +7,7 @@
 package viper.silicon.verifier
 
 import viper.silicon.Config
-import viper.silicon.decider.{DependencyAnalysisAwareDeciderProvider, DependencyAnalysisProverFeatures}
+import viper.silicon.decider.{DependencyAnalysisAwareDeciderProvider, DependencyAnalysisProverHandler}
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.cliTool.DependencyAnalysisTool
 import viper.silicon.interfaces.VerificationResult
@@ -37,9 +37,9 @@ class DependencyAnalysisAwareMainVerifier(config: Config,
 
   override def createWorkerVerifier(): DependencyAnalysisAwareWorkerVerifier = new DependencyAnalysisAwareWorkerVerifier(this, nextUniqueVerifierId(), reporter, debugMode)
 
-  override def allProvers: AllProvers with DependencyAnalysisProverFeatures = DependencyAnalysisAwareAllProvers
+  override def allProvers: AllProvers with DependencyAnalysisProverHandler = DependencyAnalysisAwareAllProvers
 
-  private object DependencyAnalysisAwareAllProvers extends AllProvers with DependencyAnalysisProverFeatures
+  private object DependencyAnalysisAwareAllProvers extends AllProvers with DependencyAnalysisProverHandler
 
   override def verifyMember(doVerify: Unit => Seq[VerificationResult], v: Verifier, member: ast.Member): Seq[VerificationResult] = {
     v match {

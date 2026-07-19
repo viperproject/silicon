@@ -29,7 +29,7 @@ trait DependencyAnalysisTestFramework {
   val ignores: Seq[String]
   var baseCommandLineArguments: Seq[String] = Seq("--timeout", "300" /* seconds */)
   var analysisCommandLineArguments: Seq[String] =
-    baseCommandLineArguments ++ Seq("--enableDependencyAnalysis", "--analyzeInfeasiblePaths", "--proverArgs", "proof=true unsat-core=true")
+    baseCommandLineArguments ++ Seq("--proverArgs", "proof=true unsat-core=true")
 
   def visitFiles(dirName: String, function: (String, String) => Unit): Unit = {
     val path = Paths.get(getClass.getClassLoader.getResource(dirName).toURI)

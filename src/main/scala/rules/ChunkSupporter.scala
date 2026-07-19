@@ -152,7 +152,7 @@ object chunkSupporter extends ChunkSupportRules {
               }
               QS(s2.copy(h = s.h), h2, snap, v1)
             case (_, s2, h2, _) if v1.decider.checkSmoke(analysisInfos, isAssert = true) =>
-              if (Verifier.config.analyzeInfeasiblePaths())
+              if (Verifier.config.analyzeInfeasiblePaths)
                 QS(s2.copy(h = s.h), h2, None, v1)
               else
                 Success() // TODO: Mark branch as dead?
@@ -163,7 +163,7 @@ object chunkSupporter extends ChunkSupportRules {
                 v1.decider.handleFailedAssertion(False, falseExp, falseExp, analysisInfos, v1.reportFurtherErrors())
               }
 
-              if (s1.retryLevel == 0 && v1.reportFurtherErrors() && Verifier.config.analyzeInfeasiblePaths()) {
+              if (s1.retryLevel == 0 && v1.reportFurtherErrors() && Verifier.config.analyzeInfeasiblePaths) {
                 failure combine QS(s1.copy(h = s.h), s1.h, None, v1)
               } else {
                 failure
@@ -288,7 +288,7 @@ object chunkSupporter extends ChunkSupportRules {
       case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.assertTimeout.getOrElse(0), analysisInfos) =>
         Q(s, ch.snap, v)
       case _ if v.decider.checkSmoke(analysisInfos, isAssert = true) =>
-        if (s.isInPackage || Verifier.config.analyzeInfeasiblePaths()) {
+        if (s.isInPackage || Verifier.config.analyzeInfeasiblePaths) {
           val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
           Q(s, snap, v)
         } else {
@@ -300,7 +300,7 @@ object chunkSupporter extends ChunkSupportRules {
           val falseExp = Option.when(withExp)(FalseLit()())
           v.decider.handleFailedAssertion(False, falseExp, falseExp, analysisInfos, v.reportFurtherErrors())
         }
-        if (s.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.analyzeInfeasiblePaths()) {
+        if (s.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.analyzeInfeasiblePaths) {
           val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
           failure combine Q(s, snap, v)
         } else {

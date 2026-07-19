@@ -251,7 +251,7 @@ abstract class ProverStdIO(uniqueId: String,
   def assume(term: String, label: String): Unit = {
 //    bookkeeper.assumptionCounter += 1
 
-    if ((Verifier.config.enableDependencyAnalysis() && label.nonEmpty) ||  Verifier.config.enableUnsatCores()) {
+    if ((Verifier.config.dependencyAnalysisMode.isDefined && label.nonEmpty) ||  Verifier.config.enableUnsatCores()) {
       writeLine("(assert (! " + term + " :named " + (if (label.nonEmpty) label else nextProverLabel()) + "))")
     } else {
       writeLine("(assert " + term + ")")
@@ -281,7 +281,7 @@ abstract class ProverStdIO(uniqueId: String,
     push()
     setTimeout(timeout)
 
-    if ((Verifier.config.enableDependencyAnalysis() && label.nonEmpty) || Verifier.config.enableUnsatCores()) {
+    if ((Verifier.config.dependencyAnalysisMode.isDefined && label.nonEmpty) || Verifier.config.enableUnsatCores()) {
       writeLine("(assert (! (not " + goal + ") :named " + (if (label.nonEmpty) label else nextProverLabel()) + "))")
     } else {
       writeLine("(assert (not " + goal + "))")
@@ -297,7 +297,7 @@ abstract class ProverStdIO(uniqueId: String,
     if (!result) {
       retrieveAndSaveModel()
       retrieveReasonUnknown()
-    } else if (Verifier.config.enableDependencyAnalysis()) {
+    } else if (Verifier.config.dependencyAnalysisMode.isDefined) {
       lastUnsatCore_ = extractUnsatCore()
     }
 
@@ -391,7 +391,7 @@ abstract class ProverStdIO(uniqueId: String,
       case "unknown" => Unknown
     }
 
-    if (result == Unsat && Verifier.config.enableDependencyAnalysis())
+    if (result == Unsat && Verifier.config.dependencyAnalysisMode.isDefined)
       lastUnsatCore_ = extractUnsatCore()
 
     result

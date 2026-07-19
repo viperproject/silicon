@@ -46,7 +46,7 @@ trait DependencyAnalysisCliToolExtension extends AbstractDependencyAnalysisCliTo
 
   def getInfoString(separator: String): String = s"$name$separator\t${commands.map(_.description).mkString(s"$separator\t")}"
 
-  def visit(inputs: Seq[String]): Unit = commands foreach (_.visit(inputs))
+  def visit(inputs: Seq[String]): Boolean = commands map (_.visit(inputs)) exists identity
 }
 
 trait DependencyAnalysisCliCommand {
@@ -56,6 +56,9 @@ trait DependencyAnalysisCliCommand {
 
   def accept(inputs: Seq[String]): Boolean = inputs.nonEmpty && inputs.head.equalsIgnoreCase(cmdName)
 
-  def visit(inputs: Seq[String]): Unit = if (accept(inputs)) cmd(inputs.tail)
-
+  def visit(inputs: Seq[String]): Boolean = {
+    val accepted = accept(inputs)
+    if (accepted) cmd(inputs.tail)
+    accepted
+  }
 }

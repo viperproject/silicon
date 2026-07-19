@@ -7,7 +7,7 @@
 package viper.silicon.supporters.functions
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider.DependencyAnalysisProverFeatures
+import viper.silicon.decider.DependencyAnalysisProverHandler
 import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.dependencyAnalysis.{DependencyAnalysisAxiomInfo, DependencyAnalyzer}
@@ -45,7 +45,7 @@ trait DependencyAnalysisAwareFunctionVerificationUnitProvider extends DefaultFun
 
     override protected def emitAndRecordFunctionAxioms(axiom: (Term, DependencyAnalysisAxiomInfo)*): Unit = {
       val cleanAxiom =
-        if (!Verifier.config.enableDependencyAnalysis()) axiom
+        if (!Verifier.config.dependencyAnalysisMode.isDefined) axiom
         else axiom.map(a => (a._1.transform {
           case Var(name, _, _) if name.name.startsWith(DependencyAnalyzer.analysisLabelName) => True // replace dependency analysis labels by True to avoid errors
         }(), a._2))
@@ -55,7 +55,7 @@ trait DependencyAnalysisAwareFunctionVerificationUnitProvider extends DefaultFun
     }
 
     override def emitAxiomsAfterVerification(sink: ProverLike): Unit = sink match {
-      case daSink: DependencyAnalysisProverFeatures =>
+      case daSink: DependencyAnalysisProverHandler =>
         daSink.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(emittedFunctionAxiomsWithInfo), "Function axioms")
       case _ => super.emitAxiomsAfterVerification(sink)
     }

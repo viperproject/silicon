@@ -13,11 +13,7 @@ import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider._
-import viper.silicon.logger.records.data.{
-  DeciderAssertRecord,
-  DeciderAssumeRecord,
-  ProverAssertRecord
-}
+import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Term, _}
 import viper.silicon.utils.ast.{extractPTypeFromExp, simplifyVariableName}
@@ -296,7 +292,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
     }
 
-    def isPathMarkedInfeasible: Boolean = Verifier.config.analyzeInfeasiblePaths() && pcs.isPathMarkedInfeasible
+    def isPathMarkedInfeasible: Boolean = Verifier.config.analyzeInfeasiblePaths && pcs.isPathMarkedInfeasible
 
     def handleInfeasiblePath(hasAssertions: Boolean, hasAssumptions: Boolean, analysisInfos: DependencyAnalysisInfos): Unit = {}
 

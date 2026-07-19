@@ -25,21 +25,22 @@ class DependencyAnalysisCliTool(override val interpreter: DependencyGraphInterpr
   )
 
   def run(commandStr: String): Unit = {
-    if (commandStr.equalsIgnoreCase("interactive"))
-      handleInteractiveMode()
-    else
-      handleCommand(commandStr)
+    commandStr.toLowerCase() match {
+      case "interactive" => handleInteractiveMode()
+      case _ => handleCommand(commandStr)
+    }
   }
 
   private val infoString = "Enter " +
-    "\n\t'dep [line numbers]' to print the direct, explicit, and all dependencies of the given line numbers or" +
-    "\n\t'allDeps [line numbers]' (short: 'ad') to print all dependencies of the given line numbers or" +
-    "\n\t'downDep [line numbers]' to print the dependents of the given line numbers or" +
-    "\n\t'progress' to compute the verification progress of the program or" +
-    "\n\t'guide' to compute verification guidance or" +
-    "\n\t'prune [line numbers] > [file]' to prune the program with respect to the given line numbers and export the new program to file or" +
-    "\n\t'export > [folder]' to export the dependency graph to the given folder or" +
-    "\n\t'failures' to print the verification failures or" +
+    "\n\t`help` to print this command overview" +
+    "\n\t'dep [line numbers]' to print the direct, explicit, and all dependencies of the given line numbers" +
+    "\n\t'allDeps [line numbers]' (short: 'ad') to print all dependencies of the given line numbers" +
+    "\n\t'downDep [line numbers]' to print the dependents of the given line numbers" +
+    "\n\t'progress' to compute the verification progress of the program" +
+    "\n\t'guide' to compute verification guidance" +
+    "\n\t'prune [line numbers] > [file]' to prune the program with respect to the given line numbers and export the new program to file" +
+    "\n\t'export > [folder]' to export the dependency graph to the given folder" +
+    "\n\t'failures' to print the verification failures" +
     (if (extensions.nonEmpty) "\n\t" else "") +
     extensions.map(_.getInfoString("\n\t")).mkString("\n\t") +
     "\n\t'q' to quit"
@@ -77,7 +78,7 @@ class DependencyAnalysisCliTool(override val interpreter: DependencyGraphInterpr
     val cmdParts = cmd.takeWhile(_ != '>').split(" ").toSeq
     if (cmdParts.nonEmpty) {
       cmdParts.head.toLowerCase match {
-        case "help" => println(infoString)
+        case "help" | "h" => println(infoString)
         case "dep" => handleDependencyQuery(cmdParts.tail.toSet)
         case "ad" | "alldeps" => handleAllDependenciesQuery(cmdParts.tail.toSet)
         case "downdep" => handleDependentsQuery(cmdParts.tail.toSet)
@@ -86,11 +87,12 @@ class DependencyAnalysisCliTool(override val interpreter: DependencyGraphInterpr
         case "guidance" | "guide" => handleVerificationGuidanceQuery(cmdParts.tail)
         case "prune" => handlePruningRequest(cmdParts.tail, exportFileName.get)
         case "failures" => handleFailuresRequest()
-        case _ => extensions.foreach(_.visit(cmdParts))
+        case "computegraphonly" => println("Command computeGraphOnly executed.")
+        case _ =>
+          val visitedExtensions = extensions.map(_.visit(cmdParts))
+          if (!visitedExtensions.exists(identity)) println(s"Unknown command $cmd.\n$infoString")
       }
       println("Done.")
-    } else {
-      println("Invalid input."); println(infoString)
     }
   }
 

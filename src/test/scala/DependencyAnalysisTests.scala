@@ -21,7 +21,10 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
   val TEST_IMPORTER = false // if true, the tests are executed on the graph that got exported and then imported via the GraphImporter
   override val EXPORT_PRUNED_PROGRAMS: Boolean = false
   val ignores: Seq[String] = Seq()
-  val depAnalysisModeArg = if(TEST_IMPORTER) Seq("--dependencyAnalysisMode=export>testExports") else Seq()
+  val depAnalysisModeArg =
+    if(TEST_IMPORTER) Seq("--dependencyAnalysisMode=export>testExports")
+    else Seq("--dependencyAnalysisMode=computeGraphOnly")
+
   analysisCommandLineArguments = analysisCommandLineArguments ++ depAnalysisModeArg
   val testDirectories: Seq[String] = Seq(
     "dependencyAnalysisTests/all",

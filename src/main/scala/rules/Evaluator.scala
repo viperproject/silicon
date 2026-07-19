@@ -572,7 +572,7 @@ object evaluator extends EvaluationRules {
           case (s1, _, _, _, _, None, v1) =>
             // This should not happen unless the current path is dead.
             if (v1.decider.checkSmoke(analysisInfos, isAssert = true)) {
-              if (Verifier.config.analyzeInfeasiblePaths()) {
+              if (Verifier.config.analyzeInfeasiblePaths) {
                 val freshVar = v1.decider.fresh(v1.symbolConverter.toSort(sourceQuant.typ), None)
                 Q(s1, freshVar, None, v1)
               } else Unreachable()
@@ -805,7 +805,7 @@ object evaluator extends EvaluationRules {
                   val failure = createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2a, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))
                   if (s2a.retryLevel == 0) v2.decider.handleFailedAssertion(False, Option.when(withExp)(FalseLit()()), Option.when(withExp)(FalseLit()()), analysisInfos, v2.reportFurtherErrors())
                   val freshVar = v2.decider.fresh(v2.symbolConverter.toSort(e.typ), None)
-                  if (s2a.retryLevel == 0 && v2.reportFurtherErrors() && Verifier.config.analyzeInfeasiblePaths()) failure combine Q(s2a, freshVar, None, v2) else failure
+                  if (s2a.retryLevel == 0 && v2.reportFurtherErrors() && Verifier.config.analyzeInfeasiblePaths) failure combine Q(s2a, freshVar, None, v2) else failure
               }}))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables.map(_._1))
@@ -1427,7 +1427,7 @@ object evaluator extends EvaluationRules {
     assert(entries.nonEmpty, "Expected at least one join data entry")
 
     // join entries coming from feasible paths only!
-    val feasibleEntries = entries filter (!Verifier.config.analyzeInfeasiblePaths() || _.pathConditions.infeasibilityNodeId.isEmpty)
+    val feasibleEntries = entries filter (!Verifier.config.analyzeInfeasiblePaths || _.pathConditions.infeasibilityNodeId.isEmpty)
 
     feasibleEntries match {
       case Seq() =>

@@ -52,20 +52,23 @@ object DependencyAnalysisTool {
   }
 
   def runDependencyAnalysisWorkflow(verificationResults: List[VerificationResult], program: ast.Program, inputFile: Option[String]): Option[DependencyAnalysisResult] = {
-    if (!Verifier.config.enableDependencyAnalysis()) return None
+    Verifier.config.dependencyAnalysisMode.toOption match {
+      case None => None
+      case Some(cmds) =>
+        val dependencyGraphInterpreters = verificationResults.filter(_.dependencyGraphInterpreter.isDefined).map(_.dependencyGraphInterpreter.get)
+        val verificationErrors: List[Failure] = (verificationResults filter (_.isInstanceOf[Failure])) map (_.asInstanceOf[Failure])
+        // TODO ake: make sure we can access the name of frontend programs (instead of naming it "joined")
+        val programName = inputFile.map(_.replaceAll("\\\\", "_").replaceAll("/", "_").replaceAll(".vpr", "")).getOrElse("joined")
 
-    val dependencyGraphInterpreters = verificationResults.filter(_.dependencyGraphInterpreter.isDefined).map(_.dependencyGraphInterpreter.get)
-    val verificationErrors: List[Failure] = (verificationResults filter (_.isInstanceOf[Failure])) map (_.asInstanceOf[Failure])
-    // TODO ake: make sure we can access the name of frontend programs (instead of naming it "joined")
-    val programName = inputFile.map(_.replaceAll("\\\\", "_").replaceAll("/", "_").replaceAll(".vpr", "")).getOrElse("joined")
+        val fullGraphInterpreter = new DependencyGraphJoiner(programName, dependencyGraphInterpreters.toSet).joinGraphsAndGetInterpreter()
 
-    val fullGraphInterpreter =  new DependencyGraphJoiner(programName, dependencyGraphInterpreters.toSet).joinGraphsAndGetInterpreter()
 
-    val userTool = new DependencyAnalysisCliTool(fullGraphInterpreter, program, verificationErrors)
-    runUserTool(Verifier.config.dependencyAnalysisMode.getOrElse(""), userTool)
+        val userTool = new DependencyAnalysisCliTool(fullGraphInterpreter, program, verificationErrors)
+        runUserTool(cmds, userTool)
 
-    val result = DependencyAnalysisResult(program, fullGraphInterpreter)
-    Some(result)
+        val result = DependencyAnalysisResult(program, fullGraphInterpreter)
+        Some(result)
+    }
   }
 
   private def runUserTool(cmdStr: String, userTool: DependencyAnalysisCliTool): Unit = {
