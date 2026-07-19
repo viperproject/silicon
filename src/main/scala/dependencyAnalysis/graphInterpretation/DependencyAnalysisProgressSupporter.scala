@@ -7,6 +7,7 @@
 package viper.silicon.dependencyAnalysis.graphInterpretation
 
 import viper.silicon.dependencyAnalysis._
+import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.dependencyAnalysis.graphInterpretation.DATraversalMode.DATraversalMode
 import viper.silver.dependencyAnalysis
 import viper.silver.dependencyAnalysis.AssumptionType.PreconditionType

@@ -4,7 +4,7 @@
 //
 // Copyright (c) 2011-2026 ETH Zurich.
 
-package viper.silicon.dependencyAnalysis
+package viper.silicon.dependencyAnalysis.graph
 
 import viper.silicon.state.chunks.Chunk
 import viper.silicon.state.terms.{False, Term, Var}
@@ -17,8 +17,7 @@ trait DependencyAnalysisNode {
   /**
    * The unique node id, which is also given to the SMT solver such that unsat cores can be mapped back to dependency nodes.
    */
-  protected val _id: Option[Int]
-  val id: Int = if (_id.isEmpty) DependencyGraphHelper.nextId() else _id.get
+  val id: Int
 
 
   /**
@@ -89,65 +88,77 @@ trait ChunkAnalysisInfo {
   val labelNode: LabelNode
 }
 
-class SimpleAssumptionNode(override val term: Term, description: Option[String], override val sourceInfo: DependencyAnalysisSourceInfo,
+case class SimpleAssumptionNode private[graph] (override val id: Int, override val term: Term,
+                           description: Option[String], override val sourceInfo: DependencyAnalysisSourceInfo,
                            override val assumptionType: AssumptionType, override val mergeInfo: DependencyAnalysisMergeInfo,
-                           override val joinInfos: List[SimpleDependencyAnalysisJoin], override val memberStr: String, override val _id: Option[Int]=None
+                           override val joinInfos: List[SimpleDependencyAnalysisJoin], override val memberStr: String
                           ) extends GeneralAssumptionNode {
   override def getNodeString: String = "assume " + term.toString + description.map(" (" + _ + ")").getOrElse("")
 }
 
-class AxiomAssumptionNode(override val term: Term, description: Option[String], override val sourceInfo: DependencyAnalysisSourceInfo,
+case class AxiomAssumptionNode private[graph] (override val id: Int, override val term: Term,
+                          description: Option[String], override val sourceInfo: DependencyAnalysisSourceInfo,
                           override val assumptionType: AssumptionType, override val mergeInfo: DependencyAnalysisMergeInfo,
-                          override val joinInfos: List[SimpleDependencyAnalysisJoin], override val memberStr: String, override val _id: Option[Int]=None
+                          override val joinInfos: List[SimpleDependencyAnalysisJoin], override val memberStr: String
                          ) extends GeneralAssumptionNode {
   override def getNodeString: String = "assume axiom " + term.toString + description.map(" (" + _ + ")").getOrElse("")
   override def getNodeType: String = "Axiom"
 }
 
-class SimpleAssertionNode(override val term: Term, override val sourceInfo: DependencyAnalysisSourceInfo, override val assumptionType: AssumptionType,
+case class SimpleAssertionNode private[graph] (override val id: Int, override val term: Term,
+                          override val sourceInfo: DependencyAnalysisSourceInfo, override val assumptionType: AssumptionType,
                           override val mergeInfo: DependencyAnalysisMergeInfo, override val joinInfos: List[SimpleDependencyAnalysisJoin],
-                          override val memberStr: String, override val hasFailed: Boolean = false, override val _id: Option[Int]=None
+                          override val memberStr: String, override val hasFailed: Boolean = false
                          ) extends GeneralAssertionNode {
   override def getNodeString: String = "assert " + term.toString
 
-  override def getAssertFailedNode: GeneralAssertionNode = new SimpleAssertionNode(term, sourceInfo, assumptionType, mergeInfo, hasFailed=true, joinInfos=joinInfos, memberStr=memberStr)
+  override def getAssertFailedNode: GeneralAssertionNode =
+    SimpleAssertionNode(id, term, sourceInfo, assumptionType, mergeInfo,
+      hasFailed = true, joinInfos = joinInfos, memberStr = memberStr)
 }
 
-class SimpleCheckNode(override val term: Term, override val sourceInfo: DependencyAnalysisSourceInfo, override val assumptionType: AssumptionType,
+case class SimpleCheckNode private[graph] (override val id: Int, override val term: Term,
+                      override val sourceInfo: DependencyAnalysisSourceInfo, override val assumptionType: AssumptionType,
                       override val mergeInfo: DependencyAnalysisMergeInfo, override val joinInfos: List[SimpleDependencyAnalysisJoin],
-                      override val memberStr: String, override val hasFailed: Boolean = false, override val _id: Option[Int]=None
+                      override val memberStr: String, override val hasFailed: Boolean = false
                      ) extends GeneralAssertionNode {
   override def getNodeString: String = "check " + term
   override def getNodeType: String = "Check"
 
-  override def getAssertFailedNode: GeneralAssertionNode = new SimpleCheckNode(term, sourceInfo, assumptionType, mergeInfo, joinInfos, memberStr=memberStr, hasFailed=true)
+  override def getAssertFailedNode: GeneralAssertionNode =
+    SimpleCheckNode(id, term, sourceInfo, assumptionType, mergeInfo, joinInfos,
+      memberStr = memberStr, hasFailed = true)
 }
 
-class PermissionInhaleNode(override val chunk: Chunk, override val term: Term, override val sourceInfo: DependencyAnalysisSourceInfo,
+case class PermissionInhaleNode private[graph] (override val id: Int, override val chunk: Chunk,
+                           override val term: Term, override val sourceInfo: DependencyAnalysisSourceInfo,
                            override val assumptionType: AssumptionType, override val mergeInfo: DependencyAnalysisMergeInfo,
                            override val labelNode: LabelNode, override val joinInfos: List[SimpleDependencyAnalysisJoin],
-                           override val memberStr: String, override val _id: Option[Int]=None
+                           override val memberStr: String
                           ) extends GeneralAssumptionNode with ChunkAnalysisInfo {
   override def getNodeString: String = "inhale " + chunk.toString
   override def getNodeType: String = "Inhale"
 }
 
-class PermissionExhaleNode(override val chunk: Chunk, override val term: Term, override val sourceInfo: DependencyAnalysisSourceInfo,
+case class PermissionExhaleNode private[graph] (override val id: Int, override val chunk: Chunk,
+                           override val term: Term, override val sourceInfo: DependencyAnalysisSourceInfo,
                            override val assumptionType: AssumptionType, override val mergeInfo: DependencyAnalysisMergeInfo,
                            override val labelNode: LabelNode, override val joinInfos: List[SimpleDependencyAnalysisJoin],
-                           override val memberStr: String, override val hasFailed: Boolean = false, override val _id: Option[Int]=None
+                           override val memberStr: String, override val hasFailed: Boolean = false
                           ) extends GeneralAssertionNode with ChunkAnalysisInfo {
   override def getNodeType: String = "Exhale"
   override def getNodeString: String = "exhale " + chunk.toString
 
-  override def getAssertFailedNode: GeneralAssertionNode = new PermissionExhaleNode(chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinInfos, memberStr, hasFailed=true, _id=_id)
+  override def getAssertFailedNode: GeneralAssertionNode =
+    PermissionExhaleNode(id, chunk, term, sourceInfo, assumptionType,
+      mergeInfo, labelNode, joinInfos, memberStr, hasFailed = true)
 }
 
 /**
  * Label nodes are nodes used internally, mostly used to improve precision of the dependency analysis.
  * By default, they get removed from the final graph. When debugging the DA is enabled, they are kept but still marked internal.
  */
-class LabelNode(override val term: Var, override val memberStr: String, override val _id: Option[Int]=None) extends GeneralAssumptionNode {
+case class LabelNode private[graph] (override val id: Int, override val term: Var, override val memberStr: String) extends GeneralAssumptionNode {
   override val sourceInfo: DependencyAnalysisSourceInfo = NoDependencyAnalysisSourceInfo()
   override val assumptionType: AssumptionType = AssumptionType.Internal
   override val mergeInfo: DependencyAnalysisMergeInfo = NoDependencyAnalysisMerge()
@@ -165,8 +176,9 @@ class LabelNode(override val term: Var, override val memberStr: String, override
  * Infeasibility nodes should always depend on the proof of false.
  * All subsequent assertions on the infeasible path should depend on the infeasibility node.
  */
-class InfeasibilityNode(override val sourceInfo: DependencyAnalysisSourceInfo, override val assumptionType: AssumptionType, override val memberStr: String,
-                        override val _id: Option[Int]=None) extends GeneralAssumptionNode {
+case class InfeasibilityNode private[graph] (override val id: Int, override val sourceInfo: DependencyAnalysisSourceInfo,
+                        override val assumptionType: AssumptionType, 
+                        override val memberStr: String) extends GeneralAssumptionNode {
   override val term: Term = False
   override val mergeInfo: DependencyAnalysisMergeInfo = NoDependencyAnalysisMerge()
   val description: String = "False"
@@ -174,4 +186,45 @@ class InfeasibilityNode(override val sourceInfo: DependencyAnalysisSourceInfo, o
 
   override def getNodeType: String = "Infeasible"
   override def getNodeString: String = "infeasible"
+}
+
+object DependencyNodeFactory {
+
+  def createSimpleAssumptionNode(term: Term, description: Option[String], sourceInfo: DependencyAnalysisSourceInfo,
+                                  assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo,
+                                  joinInfos: List[SimpleDependencyAnalysisJoin], memberStr: String): SimpleAssumptionNode =
+    SimpleAssumptionNode(DependencyGraphHelper.nextId(), term, description, sourceInfo, assumptionType, mergeInfo, joinInfos, memberStr)
+
+  def createAxiomAssumptionNode(term: Term, description: Option[String], sourceInfo: DependencyAnalysisSourceInfo,
+                                 assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo,
+                                 joinInfos: List[SimpleDependencyAnalysisJoin], memberStr: String): AxiomAssumptionNode =
+    AxiomAssumptionNode(DependencyGraphHelper.nextId(), term, description, sourceInfo, assumptionType, mergeInfo, joinInfos, memberStr)
+
+  def createSimpleAssertionNode(term: Term, sourceInfo: DependencyAnalysisSourceInfo, assumptionType: AssumptionType,
+                                 mergeInfo: DependencyAnalysisMergeInfo, joinInfos: List[SimpleDependencyAnalysisJoin],
+                                 memberStr: String, hasFailed: Boolean = false): SimpleAssertionNode =
+    SimpleAssertionNode(DependencyGraphHelper.nextId(), term, sourceInfo, assumptionType, mergeInfo, joinInfos, memberStr, hasFailed)
+
+  def createSimpleCheckNode(term: Term, sourceInfo: DependencyAnalysisSourceInfo, assumptionType: AssumptionType,
+                             mergeInfo: DependencyAnalysisMergeInfo, joinInfos: List[SimpleDependencyAnalysisJoin],
+                             memberStr: String, hasFailed: Boolean = false): SimpleCheckNode =
+    SimpleCheckNode(DependencyGraphHelper.nextId(), term, sourceInfo, assumptionType, mergeInfo, joinInfos, memberStr, hasFailed)
+
+  def createPermissionInhaleNode(chunk: Chunk, term: Term, sourceInfo: DependencyAnalysisSourceInfo,
+                                  assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo,
+                                  labelNode: LabelNode, joinInfos: List[SimpleDependencyAnalysisJoin],
+                                  memberStr: String): PermissionInhaleNode =
+    PermissionInhaleNode(DependencyGraphHelper.nextId(), chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinInfos, memberStr)
+
+  def createPermissionExhaleNode(chunk: Chunk, term: Term, sourceInfo: DependencyAnalysisSourceInfo,
+                                  assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo,
+                                  labelNode: LabelNode, joinInfos: List[SimpleDependencyAnalysisJoin],
+                                  memberStr: String, hasFailed: Boolean = false): PermissionExhaleNode =
+    PermissionExhaleNode(DependencyGraphHelper.nextId(), chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinInfos, memberStr, hasFailed)
+
+  def createLabelNode(term: Var, memberStr: String): LabelNode =
+    LabelNode(DependencyGraphHelper.nextId(), term, memberStr)
+
+  def createInfeasibilityNode(sourceInfo: DependencyAnalysisSourceInfo, assumptionType: AssumptionType, memberStr: String): InfeasibilityNode =
+    InfeasibilityNode(DependencyGraphHelper.nextId(), sourceInfo, assumptionType, memberStr)
 }

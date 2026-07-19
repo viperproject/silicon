@@ -6,6 +6,7 @@
 
 package viper.silicon.dependencyAnalysis
 
+import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.verifier.Verifier
 import viper.silver.dependencyAnalysis.EdgeType.EdgeType

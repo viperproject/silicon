@@ -6,8 +6,9 @@
 
 package viper.silicon.dependencyAnalysis.cliTool
 
+import viper.silicon.dependencyAnalysis.UserLevelDependencyAnalysisNode
+import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyGraphInterpreter, DependencyGraphTestSupporter}
-import viper.silicon.dependencyAnalysis.{Final, UserLevelDependencyAnalysisNode}
 
 class TestDependencyAnalysisCliExtension(override val interpreter: DependencyGraphInterpreter[Final]) extends DependencyAnalysisCliToolExtension{
   override val name: String = "Test Features"

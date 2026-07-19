@@ -8,7 +8,8 @@ package viper.silicon.decider
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugAxiom
-import viper.silicon.dependencyAnalysis.{DefaultDependencyAnalyzer, DependencyAnalysisAxiomInfo, DependencyAnalysisNode, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis.graph._
+import viper.silicon.dependencyAnalysis.{DefaultDependencyAnalyzer, DependencyAnalysisAxiomInfo, DependencyAnalyzer}
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms.Term

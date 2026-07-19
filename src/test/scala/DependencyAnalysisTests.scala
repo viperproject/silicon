@@ -9,11 +9,11 @@ package viper.silicon.tests
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.cliTool.DependencyGraphImporter
+import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyGraphInterpreter, DependencyGraphTestSupporter}
 import viper.silver.ast._
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier
-
 
 class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFramework {
 

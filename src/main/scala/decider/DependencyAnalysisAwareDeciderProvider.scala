@@ -8,6 +8,7 @@ package viper.silicon.decider
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.dependencyAnalysis._
+import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.state.chunks.{Chunk, GeneralChunk}
 import viper.silicon.state.terms.{False, Term, True}
 import viper.silicon.verifier.{DependencyAnalysisAwareVerifier, Verifier}

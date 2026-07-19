@@ -6,7 +6,8 @@
 
 package viper.silicon.dependencyAnalysis.graphInterpretation
 
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisNode, Final, UserLevelDependencyAnalysisNode}
+import viper.silicon.dependencyAnalysis.UserLevelDependencyAnalysisNode
+import viper.silicon.dependencyAnalysis.graph._
 import viper.silver.dependencyAnalysis.AssumptionType
 
 class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final]) {

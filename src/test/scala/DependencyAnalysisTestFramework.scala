@@ -8,6 +8,7 @@ package viper.silicon.tests
 
 import viper.silicon.SiliconFrontend
 import viper.silicon.dependencyAnalysis._
+import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisProgressSupporter, DependencyAnalysisPruningSupporter, DependencyGraphInterpreter}
 import viper.silver.ast.Program
 import viper.silver.ast.utility.ViperStrategy

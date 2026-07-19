@@ -7,6 +7,7 @@
 package viper.silicon.dependencyAnalysis.graphInterpretation
 
 import viper.silicon.dependencyAnalysis._
+import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.interfaces.Failure
 import viper.silver.ast
 import viper.silver.ast.Program

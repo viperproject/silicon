@@ -4,7 +4,7 @@
 //
 // Copyright (c) 2011-2026 ETH Zurich.
 
-package viper.silicon.dependencyAnalysis
+package viper.silicon.dependencyAnalysis.graph
 
 import viper.silver.dependencyAnalysis.{AssumptionType, DependencyAnalysisSourceInfo}
 

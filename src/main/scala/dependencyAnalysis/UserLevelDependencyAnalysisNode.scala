@@ -6,6 +6,7 @@
 
 package viper.silicon.dependencyAnalysis
 
+import viper.silicon.dependencyAnalysis.graph._
 import viper.silver.ast.Position
 import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silver.dependencyAnalysis.{DependencyAnalysisSourceInfo, StringDependencyAnalysisSourceInfo}

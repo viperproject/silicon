@@ -6,7 +6,7 @@
 
 package viper.silicon.supporters
 
-import viper.silicon.dependencyAnalysis.SimpleAssertionNode
+import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.state.State
@@ -24,7 +24,7 @@ trait DependencyAnalysisAwareMethodVerificationUnitProvider extends DefaultMetho
 
       val presAssertionNodeForJoin = method.pres.flatMap(_.topLevelConjuncts).map(pc => {
         val analysisSourceInfo = DependencyAnalysisSourceInfo.createAnalysisSourceInfo(pc)
-        new SimpleAssertionNode(True,
+        DependencyNodeFactory.createSimpleAssertionNode(True,
           analysisSourceInfo,
           AssumptionType.Precondition,
           SimpleDependencyAnalysisMerge(analysisSourceInfo),

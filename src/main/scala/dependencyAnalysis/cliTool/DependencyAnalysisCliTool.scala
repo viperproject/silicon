@@ -6,7 +6,7 @@
 
 package viper.silicon.dependencyAnalysis.cliTool
 
-import viper.silicon.dependencyAnalysis._
+import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisProgressSupporter, DependencyGraphInterpreter}
 import viper.silicon.interfaces.Failure
 import viper.silver.ast

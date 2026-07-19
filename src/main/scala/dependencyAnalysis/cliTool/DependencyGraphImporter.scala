@@ -9,6 +9,7 @@ package viper.silicon.dependencyAnalysis.cliTool
 import viper.silicon
 import viper.silicon.SiliconFrontend
 import viper.silicon.dependencyAnalysis._
+import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.state.SimpleIdentifier
 import viper.silicon.state.chunks.Chunk
 import viper.silicon.state.terms.sorts.Bool
@@ -56,20 +57,20 @@ object DependencyGraphImporter {
       val chunk: Chunk = DummyChunk()
       val description: Option[String] = None
       val mergeInfo: SimpleDependencyAnalysisMerge = SimpleDependencyAnalysisMerge(sourceInfo)
-      val labelNode: LabelNode = new LabelNode(dummyVar, memberStr)
+      val labelNode: LabelNode = LabelNode(-1, dummyVar, memberStr)
       val joinNodeInfos: List[SimpleDependencyAnalysisJoin] = List.empty
 
-      val nodeId = Some(nodeIdStr.toInt)
+      val nodeId = nodeIdStr.toInt
       // Create node based on type
       val node = nodeType match {
-        case "Assumption" => new SimpleAssumptionNode(term, description, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr, _id=nodeId)
-        case "Axiom" => new AxiomAssumptionNode(term, description, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr, _id=nodeId)
-        case "Assertion" => new SimpleAssertionNode(term, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr, hasFailed, _id=nodeId)
-        case "Check" => new SimpleCheckNode(term, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr, hasFailed, _id=nodeId)
-        case "Inhale" => new PermissionInhaleNode(chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinNodeInfos, memberStr, _id=nodeId)
-        case "Exhale" => new PermissionExhaleNode(chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinNodeInfos, memberStr, hasFailed, _id=nodeId)
-        case "Label" => new LabelNode(dummyVar, memberStr, _id=nodeId)
-        case "Infeasible" => new InfeasibilityNode(sourceInfo, assumptionType, memberStr, _id=nodeId)
+        case "Assumption" => SimpleAssumptionNode(nodeId, term, description, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr)
+        case "Axiom" => AxiomAssumptionNode(nodeId, term, description, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr)
+        case "Assertion" => SimpleAssertionNode(nodeId, term, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr, hasFailed)
+        case "Check" => SimpleCheckNode(nodeId, term, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr, hasFailed)
+        case "Inhale" => PermissionInhaleNode(nodeId, chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinNodeInfos, memberStr)
+        case "Exhale" => PermissionExhaleNode(nodeId, chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinNodeInfos, memberStr, hasFailed)
+        case "Label" => LabelNode(nodeId, dummyVar, memberStr)
+        case "Infeasible" => InfeasibilityNode(nodeId, sourceInfo, assumptionType, memberStr)
         case _ => throw new IllegalArgumentException(s"Unknown node type: $nodeType")
       }
 
