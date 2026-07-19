@@ -52,7 +52,7 @@ object DependencyAnalysisTool {
   }
 
   def runDependencyAnalysisWorkflow(verificationResults: List[VerificationResult], program: ast.Program, inputFile: Option[String]): Option[DependencyAnalysisResult] = {
-    Verifier.config.dependencyAnalysisMode.toOption match {
+    Verifier.config.dependencyAnalysis.toOption match {
       case None => None
       case Some(cmds) =>
         val dependencyGraphInterpreters = verificationResults.filter(_.dependencyGraphInterpreter.isDefined).map(_.dependencyGraphInterpreter.get)

@@ -131,7 +131,7 @@ class FunctionData(val programFunction: ast.Function,
     else
       Seq.fill(1 + formalArgs.size)(None)
 
-  val isAnalysisEnabled: Boolean = Verifier.config.dependencyAnalysisMode.isDefined && DependencyAnalyzer.extractEnableAnalysisFromInfo(programFunction.info).getOrElse(true)
+  val isAnalysisEnabled: Boolean = Verifier.config.dependencyAnalysis.isDefined && DependencyAnalyzer.extractEnableAnalysisFromInfo(programFunction.info).getOrElse(true)
   val defaultAnalysisInfo: DependencyAnalysisInfos = DependencyAnalysisInfos.DefaultInfos.withEnabled(isAnalysisEnabled)
 
   val functionApplication = App(function, `?s` +: formalArgs.values.toSeq)
@@ -197,7 +197,7 @@ class FunctionData(val programFunction: ast.Function,
       ++ freshConstrainedVars.map(_._2)
       ++ freshConstraints)
 
-    val nested = if (!Verifier.config.dependencyAnalysisMode.isDefined) nestedTmp
+    val nested = if (!Verifier.config.dependencyAnalysis.isDefined) nestedTmp
       else nestedTmp.map(_.transform{
         case Var(name, _, _) if name.name.startsWith(DependencyAnalyzer.analysisLabelName) => True // replace dependency analysis labels by True to avoid errors
       }())

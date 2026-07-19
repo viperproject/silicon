@@ -1,28 +1,28 @@
 # Dependency Analysis
 
-
 # Running Silicon with Dependency Analysis
 
 Dependency Analysis is enabled thorough the following configuration options:
-`--enableDependencyAnalysis --analyzeInfeasiblePaths --proverArgs "proof=true unsat-core=true"`
-
-Commands to be executed on the final dependency graph can be input via the `--dependencyAnalysisMode` config flag.
-Available commands are `interactive` and any command supported by the CLI tool. For example,
-- `--dependencyAnalysisMode=interactive` 
+`--dependencyAnalysis [CMDS] --proverArgs "proof=true unsat-core=true"`
+The available commands are `interactive` and any command supported by the CLI tool. For example,
+- `--dependencyAnalysis=interactive` 
   - Automatically starts the command-line tool once verification terminates.
-- `--dependencyAnalysisMode=export>[folder]`
-  - e.g., `--dependencyAnalysisMode=export>graphExports`
+- `--dependencyAnalysis=export>[folder]`
+  - e.g., `--dependencyAnalysis=export>graphExports`
   - Exports the graph to a folder named after the verified program under the given path (e.g. `graphExports/src_test_resources_andrea_quickTest` for input program `src/test/resources/andrea/quickTest.vpr`)
 - Several modes can be combined by `;`
-  - e.g. `--dependencyAnalysisMode=export>graphExports/viperTest;progress;interactive`
+  - e.g. `--dependencyAnalysis=export>graphExports/viperTest;progress;interactive`
 
 For debugging dependency analysis results, the option `--enableDependencyAnalysisDebugging` can be used which disables the merging of nodes.
 As a result, the graph used for query computation and the exported graph contain all low-level details.
 
+The dependency analysis steps through all paths (including provably infeasible paths).
+This behavior can be disabled by setting the flat `--disableInfeasiblePaths`, which might be faster but results in unsound dependency results.
+
 
 # Command-Line Tool
 
-Requires `--dependencyAnalysisMode=interactive`.
+Requires `--dependencyAnalysis=interactive`.
 
 Example queries for program `src/test/resources/dependencyAnalysisTests/unitTests/B-permissions.vpr`:
 - `dep 99` 
@@ -47,7 +47,7 @@ Example queries for program `src/test/resources/dependencyAnalysisTests/unitTest
 
 # Neo4j Scripts and Usage
 
-Graphs exported when using `--dependencyAnalysisMode=export>[PATH TO EXPORT FOLDER]` can be imported to a [Neo4j database]({https://neo4j.com/) using the `neo4j_importer.py` script.
+Graphs exported when using `--dependencyAnalysis=export>[PATH TO EXPORT FOLDER]` can be imported to a [Neo4j database]({https://neo4j.com/) using the `neo4j_importer.py` script.
 
 Importing dependency graphs to Neo4j:
 

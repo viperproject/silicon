@@ -19,7 +19,7 @@ import viper.silver.dependencyAnalysis._
  */
 case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInfo], dependencyTypes: List[DependencyTypeInfo], mergeInfos: List[DependencyAnalysisMergeInfo], joinInfos: List[DependencyAnalysisJoinInfo], nodes: List[ast.Node], analysisEnabled: Boolean = true) {
 
-  private def isAnalysisEnabled = Verifier.config.dependencyAnalysisMode.isDefined && analysisEnabled
+  private def isAnalysisEnabled = Verifier.config.dependencyAnalysis.isDefined && analysisEnabled
 
   def addInfo(info: ast.Info, node: ast.Node): DependencyAnalysisInfos = {
     if (isAnalysisEnabled) {

@@ -22,8 +22,8 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
   override val EXPORT_PRUNED_PROGRAMS: Boolean = false
   val ignores: Seq[String] = Seq()
   val depAnalysisModeArg =
-    if(TEST_IMPORTER) Seq("--dependencyAnalysisMode=export>testExports")
-    else Seq("--dependencyAnalysisMode=computeGraphOnly")
+    if(TEST_IMPORTER) Seq("--dependencyAnalysis=export>testExports")
+    else Seq("--dependencyAnalysis=computeGraphOnly")
 
   analysisCommandLineArguments = analysisCommandLineArguments ++ depAnalysisModeArg
   val testDirectories: Seq[String] = Seq(

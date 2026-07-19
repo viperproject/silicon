@@ -36,7 +36,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
 
   trait DependencyAnalysisAwareDecider extends AbstractDecider with DependencyAnalysisHandler {
 
-    override def isDependencyAnalysisEnabled: Boolean = Verifier.config.dependencyAnalysisMode.isDefined && !dependencyAnalyzer.isInstanceOf[NoDependencyAnalyzer]
+    override def isDependencyAnalysisEnabled: Boolean = Verifier.config.dependencyAnalysis.isDefined && !dependencyAnalyzer.isInstanceOf[NoDependencyAnalyzer]
 
     override def defaultAnalysisInfos: DependencyAnalysisInfos = DependencyAnalysisInfos.DefaultInfos.withEnabled(isDependencyAnalysisEnabled)
 
@@ -60,7 +60,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
     override def getDependencyAnalyzer: DependencyAnalyzer = dependencyAnalyzer
 
     override def initDependencyAnalyzer(member: Member, preambleNodes: Iterable[DependencyAnalysisNode]): Unit = {
-      val isAnalysisEnabled = DependencyAnalyzer.extractEnableAnalysisFromInfo(member.info).getOrElse(Verifier.config.dependencyAnalysisMode.isDefined)
+      val isAnalysisEnabled = DependencyAnalyzer.extractEnableAnalysisFromInfo(member.info).getOrElse(Verifier.config.dependencyAnalysis.isDefined)
       if (isAnalysisEnabled) {
         dependencyAnalyzer = new DefaultDependencyAnalyzer(Some(member))
         dependencyAnalyzer.addNodes(preambleNodes)

@@ -156,7 +156,7 @@ object brancher extends BranchingRules {
           executionFlowController.locally(s, v0)((s1, v1) => {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
             v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew), analysisInfos1)
-            if (Verifier.config.dependencyAnalysisMode.isDefined && !executeElseBranch) v.decider.checkSmoke(analysisInfos1.withDependencyType(AssumptionType.Internal).withMergeInfo(NoDependencyAnalysisMerge()))
+            if (Verifier.config.dependencyAnalysis.isDefined && !executeElseBranch) v.decider.checkSmoke(analysisInfos1.withDependencyType(AssumptionType.Internal).withMergeInfo(NoDependencyAnalysisMerge()))
 
             var functionsOfElseBranchdDeciderBefore: Set[FunctionDecl] = null
             var nMacrosOfElseBranchDeciderBefore: Int = 0
@@ -207,7 +207,7 @@ object brancher extends BranchingRules {
           executionFlowController.locally(s, v)((s1, v1) => {
             v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
             v1.decider.setCurrentBranchCondition(condition, conditionExp, analysisInfos1)
-            if (Verifier.config.dependencyAnalysisMode.isDefined && !executeThenBranch) v.decider.checkSmoke(analysisInfos1.withDependencyType(AssumptionType.Internal).withMergeInfo(NoDependencyAnalysisMerge()))
+            if (Verifier.config.dependencyAnalysis.isDefined && !executeThenBranch) v.decider.checkSmoke(analysisInfos1.withDependencyType(AssumptionType.Internal).withMergeInfo(NoDependencyAnalysisMerge()))
 
             fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
           })

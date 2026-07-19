@@ -45,7 +45,7 @@ trait DependencyAnalysisAwareFunctionVerificationUnitProvider extends DefaultFun
 
     override protected def emitAndRecordFunctionAxioms(axiom: (Term, DependencyAnalysisAxiomInfo)*): Unit = {
       val cleanAxiom =
-        if (!Verifier.config.dependencyAnalysisMode.isDefined) axiom
+        if (!Verifier.config.dependencyAnalysis.isDefined) axiom
         else axiom.map(a => (a._1.transform {
           case Var(name, _, _) if name.name.startsWith(DependencyAnalyzer.analysisLabelName) => True // replace dependency analysis labels by True to avoid errors
         }(), a._2))

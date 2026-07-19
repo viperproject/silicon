@@ -702,7 +702,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
    * For benchmarking and testing purposes one can also use the command `computeGraphOnly` that enables dep analysis
    * and computes the final dependency graph but does not run any graph queries.
    */
-  val dependencyAnalysisMode: ScallopOption[String] = opt[String]("dependencyAnalysisMode",
+  val dependencyAnalysis: ScallopOption[String] = opt[String]("dependencyAnalysis",
     descr = "Enable dependency analysis and set the commands (separated by ;) to be executed after verification. The available commands are `interactive` " +
       "and all commands supported by the interactive CLI tool",
     default = None,
@@ -716,7 +716,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val enableDependencyAnalysisDebugging: ScallopOption[Boolean] = opt[Boolean]("enableDependencyAnalysisDebugging",
-    descr = "Enable debugging for the verification dependency analysis mode",
+    descr = "Enable debugging for the verification dependency analysis",
     default = Some(false),
     noshort = true
   )
@@ -732,7 +732,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
    * If true, verification always steps through all paths; even if provably infeasible. Might have a huge performance penalty!
    * Note: analyzeInfeasiblePaths might be used independent of the dependency analysis but this has not been tested yet.
    */
-  lazy val analyzeInfeasiblePaths: Boolean = dependencyAnalysisMode.isDefined && !disableInfeasiblePaths()
+  lazy val analyzeInfeasiblePaths: Boolean = dependencyAnalysis.isDefined && !disableInfeasiblePaths()
 
   /* Option validation (trailing file argument is validated by parent class) */
 
@@ -781,28 +781,28 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   validateFileOpt(multisetAxiomatizationFile)
   validateFileOpt(sequenceAxiomatizationFile)
 
-  validateOpt(dependencyAnalysisMode, parallelizeBranches) {
+  validateOpt(dependencyAnalysis, parallelizeBranches) {
     case (dam, Some(true)) if dam.isDefined =>
-      Left(s"Option ${dependencyAnalysisMode.name} is not supported in combination with ${parallelizeBranches.name}")
+      Left(s"Option ${dependencyAnalysis.name} is not supported in combination with ${parallelizeBranches.name}")
     case (_, Some(false)) => Right(())
   }
 
-  validateOpt(rawProverArgs, dependencyAnalysisMode) {
+  validateOpt(rawProverArgs, dependencyAnalysis) {
     case (_, dam) if dam.isEmpty => Right(())
     case (Some(args), dam) if dam.isDefined && args.toLowerCase.contains("proof=true") && args.toLowerCase.contains("unsat-core=true") => Right(())
     case (_, _) =>
-      Left(s"Option ${dependencyAnalysisMode.name} requires ${rawProverArgs.name} with \"proof=true unsat-core=true\"")
+      Left(s"Option ${dependencyAnalysis.name} requires ${rawProverArgs.name} with \"proof=true unsat-core=true\"")
   }
 
-  validateOpt(prover, dependencyAnalysisMode) {
+  validateOpt(prover, dependencyAnalysis) {
     case (p, dam) if !p.contains(Z3ProverStdIO.name) && dam.isDefined =>
       Left(s"Dependency analysis is only supported with ${Z3ProverStdIO.name}")
     case _ => Right(())
   }
 
-  validateOpt(disableInfeasiblePaths, dependencyAnalysisMode) {
+  validateOpt(disableInfeasiblePaths, dependencyAnalysis) {
     case (Some(true), dam) if dam.isEmpty =>
-      Left(s"The ${disableInfeasiblePaths.name} is currently only supported in combination with ${dependencyAnalysisMode.name}")
+      Left(s"The ${disableInfeasiblePaths.name} is currently only supported in combination with ${dependencyAnalysis.name}")
     case _ => Right(())
   }
 
