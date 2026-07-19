@@ -122,21 +122,21 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       if (isPathMarkedInfeasible) {
         checkNode foreach dependencyAnalyzer.addAssertionNode
         dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, checkNode.map(_.id))
-        return true
-      }
+        true
+      } else {
+        val result = super.checkSmokeInternal(isAssert, label)
 
-      val result = super.checkSmokeInternal(isAssert, label)
-
-      if (result) {
-        checkNode foreach dependencyAnalyzer.addAssertionNode
-        dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
-        val infeasibleNodeId = dependencyAnalyzer.addInfeasibilityNode(!isAssert, analysisInfos)
-        dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibleNodeId)
-        pcs.setCurrentInfeasibilityNode(infeasibleNodeId)
-      } else if (isAssert) {
-        checkNode foreach (node => dependencyAnalyzer.addAssertionNode(node.getAssertFailedNode))
+        if (result) {
+          checkNode foreach dependencyAnalyzer.addAssertionNode
+          dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
+          val infeasibleNodeId = dependencyAnalyzer.addInfeasibilityNode(!isAssert, analysisInfos)
+          dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibleNodeId)
+          pcs.setCurrentInfeasibilityNode(infeasibleNodeId)
+        } else if (isAssert) {
+          checkNode foreach (node => dependencyAnalyzer.addAssertionNode(node.getAssertFailedNode))
+        }
+        result
       }
-      result
     }
 
     override def handleFailedAssertion(failedAssertion: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit = {

@@ -33,33 +33,31 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
     // TODO ake: maybe this should be moved to the DependencyGraphInterpreter such that other queries can be optimized as well.
     def computeDependencies(currentNode: DependencyAnalysisSourceInfo, visited: Set[(DependencyAnalysisSourceInfo, DATraversalMode)], traversalMode: DATraversalMode): Set[CompactUserLevelDependencyAnalysisNode] = {
       if (visited.contains((currentNode, traversalMode))) {
-        return Set.empty // break cycles to avoid infinite loops
+        Set.empty // break cycles to avoid infinite loops
+      } else if (deps.contains(currentNode, traversalMode)) {
+        deps((currentNode, traversalMode))
+      } else {
+        val updatedVisited = visited ++ Set((currentNode, traversalMode))
+        val allNonInternalAssertions = sourceToAssertionNodesMap.getOrElse(currentNode, Set.empty)
+
+        // compute intraprocedural dependencies without caching any intermediate results
+        val intraMethodDependencies = dependencyGraph.computeDependencies(allNonInternalAssertions.toSet, includeInfeasibilityNodes = true, includeUpwardEdges = false, includeDownwardEdges = false)
+        val nonInternalIntraMethodDependencies = intraMethodDependencies.filter(interpreter.isNonInternalAssumptionNode)
+
+        // recursively compute all interprocedural dependencies and cache results at procedure-boundaries
+        val relevantInterProceduralEdges = traversalMode match {
+          case DATraversalMode.Upwards => dependencyGraph.getEdgesConnectingMethodsUpwards
+          case DATraversalMode.Downwards => dependencyGraph.getEdgesConnectingMethodsDownwards
+        }
+        val interProceduralNodeIds = intraMethodDependencies.flatMap(n => relevantInterProceduralEdges.getOrElse(n.id, Set.empty))
+        val interProceduralNodes = interProceduralNodeIds.flatMap(interpreter.getGraph.getNodeById)
+        val interProceduralDependencies = interProceduralNodes.map(_.sourceInfo).flatMap(node => computeDependencies(node, updatedVisited, traversalMode))
+
+        // put together all identified dependencies and cache the result
+        val result = reduceCompactUserLevelNodes(toCompactUserLevelNodes(nonInternalIntraMethodDependencies ++ interProceduralNodes) ++ interProceduralDependencies).filterNot(_.source.equals(currentNode))
+        deps.put((currentNode, traversalMode), result)
+        result
       }
-
-      if (deps.contains(currentNode, traversalMode)) {
-        return deps((currentNode, traversalMode))
-      }
-
-      val updatedVisited = visited ++  Set((currentNode, traversalMode))
-      val allNonInternalAssertions = sourceToAssertionNodesMap.getOrElse(currentNode, Set.empty)
-
-      // compute intraprocedural dependencies without caching any intermediate results
-      val intraMethodDependencies = dependencyGraph.computeDependencies(allNonInternalAssertions.toSet, includeInfeasibilityNodes=true, includeUpwardEdges=false, includeDownwardEdges=false)
-      val nonInternalIntraMethodDependencies = intraMethodDependencies.filter(interpreter.isNonInternalAssumptionNode)
-
-      // recursively compute all interprocedural dependencies and cache results at procedure-boundaries
-      val relevantInterProceduralEdges = traversalMode match {
-        case DATraversalMode.Upwards   => dependencyGraph.getEdgesConnectingMethodsUpwards
-        case DATraversalMode.Downwards => dependencyGraph.getEdgesConnectingMethodsDownwards
-      }
-      val interProceduralNodeIds = intraMethodDependencies.flatMap(n => relevantInterProceduralEdges.getOrElse(n.id, Set.empty))
-      val interProceduralNodes = interProceduralNodeIds.flatMap(interpreter.getGraph.getNodeById)
-      val interProceduralDependencies = interProceduralNodes.map(_.sourceInfo).flatMap(node => computeDependencies(node, updatedVisited, traversalMode))
-
-      // put together all identified dependencies and cache the result
-      val result = reduceCompactUserLevelNodes(toCompactUserLevelNodes(nonInternalIntraMethodDependencies ++ interProceduralNodes) ++ interProceduralDependencies).filterNot(_.source.equals(currentNode))
-      deps.put((currentNode, traversalMode), result)
-      result
     }
 
     computeDependencies(assertionNode, Set.empty, mode)
@@ -103,13 +101,14 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
     val failedAssertionNodes = assertionNodes.filter(node => node.hasFailed || node.assumptionType.equals(AssumptionType.ExplicitPostcondition))
     // assertions with failures have quality of 0.0
     if (failedAssertionNodes.nonEmpty)
-      return Some(0.0)
-
-    if (allDependencies.isEmpty) return None // we filter out trivial assertions, e.g. assertions that do not have any dependencies
-
-    val explicitDeps = allDependencies.filter(_.assumptionTypes.exists(_.isInstanceOf[dependencyAnalysis.AssumptionType.ExplicitAssumptionType])).map(_.source)
-    val numDepsTotal = allDependencies.size
-    Some((numDepsTotal - explicitDeps.size).toDouble / numDepsTotal.toDouble)
+      Some(0.0)
+    else if (allDependencies.isEmpty)
+      None // we filter out trivial assertions, e.g. assertions that do not have any dependencies
+    else {
+      val explicitDeps = allDependencies.filter(_.assumptionTypes.exists(_.isInstanceOf[dependencyAnalysis.AssumptionType.ExplicitAssumptionType])).map(_.source)
+      val numDepsTotal = allDependencies.size
+      Some((numDepsTotal - explicitDeps.size).toDouble / numDepsTotal.toDouble)
+    }
   }
 
   private def getAssertionsRelevantForProgress: Map[DependencyAnalysisSourceInfo, Set[GeneralAssertionNode]] = {
@@ -176,17 +175,19 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
     val explicitAssertions = toCompactUserLevelNodes(interpreter.getExplicitAssertionNodes.toSet)
     val allSourceCodeNodes = toCompactUserLevelNodes(interpreter.getNonInternalAssumptionNodes).filter(n => n.assumptionTypes.exists(_.isInstanceOf[AssumptionType.SourceCodeType])).map(_.source).diff(explicitAssertions.map(_.source))
 
-    if (allSourceCodeNodes.isEmpty) return 1.0
-
-    val coveredSourceCodeNodes = coveredNodes.map(_.source).intersect(allSourceCodeNodes)
-    if (enableDebugOutput)
+    if (allSourceCodeNodes.isEmpty)
+      1.0
+    else {
+      val coveredSourceCodeNodes = coveredNodes.map(_.source).intersect(allSourceCodeNodes)
+      if (enableDebugOutput)
         println(
           s"Covered Source Code:\n\t${coveredSourceCodeNodes.toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}\n" +
-          s"Uncovered Source Code:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}"
+            s"Uncovered Source Code:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}"
         )
 
-    println(s"Spec Quality = ${coveredSourceCodeNodes.size} / ${allSourceCodeNodes.size}")
-    coveredSourceCodeNodes.size.toDouble / allSourceCodeNodes.size.toDouble
+      println(s"Spec Quality = ${coveredSourceCodeNodes.size} / ${allSourceCodeNodes.size}")
+      coveredSourceCodeNodes.size.toDouble / allSourceCodeNodes.size.toDouble
+    }
   }
 
 

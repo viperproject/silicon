@@ -143,17 +143,18 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   }
 
   def getAllEdges(includeDownwardEdges: Boolean, includeUpwardEdges: Boolean): Map[Int, Set[Int]] = {
-    if(includeUpwardEdges && includeDownwardEdges) return getAllEdges // avoids expensive computation
-
-    val intraMethodEdges = getIntraMethodEdges
-    val upwardEdges: mutable.Map[Int, Set[Int]] = if (includeUpwardEdges) edgesConnectingMethodsUpwards else mutable.Map.empty
-    val downwardEdges: mutable.Map[Int, Set[Int]]  = if (includeDownwardEdges) edgesConnectingMethodsDownwards else mutable.Map.empty
-    val keys = intraMethodEdges.keySet ++ downwardEdges.keySet ++ upwardEdges.keySet
-    val allEdges = mutable.Map[Int, Set[Int]]()
-    keys foreach {key =>
-      allEdges.update(key, intraMethodEdges.getOrElse(key, Set()) ++ downwardEdges.getOrElse(key, Set()) ++ upwardEdges.getOrElse(key, Set()))
+    if(includeUpwardEdges && includeDownwardEdges)  getAllEdges // avoids expensive computation
+    else {
+      val intraMethodEdges = getIntraMethodEdges
+      val upwardEdges: mutable.Map[Int, Set[Int]] = if (includeUpwardEdges) edgesConnectingMethodsUpwards else mutable.Map.empty
+      val downwardEdges: mutable.Map[Int, Set[Int]] = if (includeDownwardEdges) edgesConnectingMethodsDownwards else mutable.Map.empty
+      val keys = intraMethodEdges.keySet ++ downwardEdges.keySet ++ upwardEdges.keySet
+      val allEdges = mutable.Map[Int, Set[Int]]()
+      keys foreach { key =>
+        allEdges.update(key, intraMethodEdges.getOrElse(key, Set()) ++ downwardEdges.getOrElse(key, Set()) ++ upwardEdges.getOrElse(key, Set()))
+      }
+      allEdges.toMap
     }
-    allEdges.toMap
   }
 
   @unused

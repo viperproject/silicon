@@ -22,47 +22,47 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
   private def isAnalysisEnabled = Verifier.config.dependencyAnalysisMode.isDefined && analysisEnabled
 
   def addInfo(info: ast.Info, node: ast.Node): DependencyAnalysisInfos = {
-    if (!isAnalysisEnabled) return this
-
-    val newSourceInfos = sourceInfos ++ info.getUniqueInfo[DependencyAnalysisSourceInfo].toList
-    val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
-    val newMergeInfos = mergeInfos ++ info.getUniqueInfo[DependencyAnalysisMergeInfo].toList
-    val newJoinInfos = joinInfos ++ info.getUniqueInfo[DependencyAnalysisJoinInfo].toList
-    this.copy(sourceInfos=newSourceInfos, dependencyTypes=newDependencyInfos, mergeInfos=newMergeInfos, joinInfos=newJoinInfos, nodes=nodes ++ List(node))
+    if (isAnalysisEnabled) {
+      val newSourceInfos = sourceInfos ++ info.getUniqueInfo[DependencyAnalysisSourceInfo].toList
+      val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
+      val newMergeInfos = mergeInfos ++ info.getUniqueInfo[DependencyAnalysisMergeInfo].toList
+      val newJoinInfos = joinInfos ++ info.getUniqueInfo[DependencyAnalysisJoinInfo].toList
+      this.copy(sourceInfos=newSourceInfos, dependencyTypes=newDependencyInfos, mergeInfos=newMergeInfos, joinInfos=newJoinInfos, nodes=nodes ++ List(node))
+    } else {
+      this
+    }
   }
 
   def addInfo(info: ast.Info): DependencyAnalysisInfos = {
-    if (!isAnalysisEnabled) return this
-
-    val newSourceInfos = sourceInfos ++ info.getUniqueInfo[DependencyAnalysisSourceInfo].toList
-    val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
-    val newMergeInfos = mergeInfos ++ info.getUniqueInfo[DependencyAnalysisMergeInfo].toList
-    val newJoinInfos = joinInfos ++ info.getUniqueInfo[DependencyAnalysisJoinInfo].toList
-    this.copy(sourceInfos=newSourceInfos, dependencyTypes=newDependencyInfos, mergeInfos=newMergeInfos, joinInfos=newJoinInfos)
+    if (isAnalysisEnabled) {
+      val newSourceInfos = sourceInfos ++ info.getUniqueInfo[DependencyAnalysisSourceInfo].toList
+      val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
+      val newMergeInfos = mergeInfos ++ info.getUniqueInfo[DependencyAnalysisMergeInfo].toList
+      val newJoinInfos = joinInfos ++ info.getUniqueInfo[DependencyAnalysisJoinInfo].toList
+      this.copy(sourceInfos=newSourceInfos, dependencyTypes=newDependencyInfos, mergeInfos=newMergeInfos, joinInfos=newJoinInfos)
+    } else {
+      this
+    }
   }
 
-  def addInfo(infoString: String, pos: ast.Position, dependencyType: DependencyType): DependencyAnalysisInfos = {
-    if (!isAnalysisEnabled) return this
+  def addInfo(infoString: String, pos: ast.Position, dependencyType: DependencyType): DependencyAnalysisInfos = if (isAnalysisEnabled) {
     this.copy(sourceInfos = sourceInfos ++ List(StringDependencyAnalysisSourceInfo(infoString, pos)), dependencyTypes = dependencyTypes ++ List(DependencyTypeInfo(dependencyType)))
+  } else {
+    this
   }
 
   def withDependencyType(dependencyType: DependencyType): DependencyAnalysisInfos = {
-    if (!isAnalysisEnabled) return this
-
-    this.copy(dependencyTypes = DependencyTypeInfo(dependencyType) +: dependencyTypes)
+    if (isAnalysisEnabled) this.copy(dependencyTypes = DependencyTypeInfo(dependencyType) +: dependencyTypes)
+    else this
   }
 
   def withDependencyType(assumptionType: AssumptionType): DependencyAnalysisInfos = {
-    if (!isAnalysisEnabled) return this
-
-    this.copy(dependencyTypes = DependencyTypeInfo(DependencyType(assumptionType)) +: dependencyTypes)
+    if (isAnalysisEnabled) this.copy(dependencyTypes = DependencyTypeInfo(DependencyType(assumptionType)) +: dependencyTypes)
+    else this
   }
 
-  def withSource(source: DependencyAnalysisSourceInfo): DependencyAnalysisInfos = {
-    if (!isAnalysisEnabled) return this
-
-    this.copy(sourceInfos = source +: sourceInfos)
-  }
+  def withSource(source: DependencyAnalysisSourceInfo): DependencyAnalysisInfos =
+    if (isAnalysisEnabled) this.copy(sourceInfos = source +: sourceInfos) else this
 
   private def getNodeInfo(n: ast.Node): String = {
     n match {
@@ -80,53 +80,54 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
   }
 
   def getSourceInfo: DependencyAnalysisSourceInfo = {
-    if (!isAnalysisEnabled) return StringDependencyAnalysisSourceInfo("Unknown", NoPosition)
-    val sourceInfoOpt = sourceInfos.headOption
-    if (sourceInfoOpt.isDefined) {
-      sourceInfoOpt.get
+    if (isAnalysisEnabled) {
+      val sourceInfoOpt = sourceInfos.headOption
+      if (sourceInfoOpt.isDefined) {
+        sourceInfoOpt.get
+      } else {
+        SiliconRunner.logger.warn(s"WARN: Missing source info for $getDebugInfo")
+        nodes.headOption.map(DependencyAnalysisSourceInfo.createAnalysisSourceInfo).getOrElse(StringDependencyAnalysisSourceInfo("Unknown", NoPosition))
+      }
     } else {
-      SiliconRunner.logger.warn(s"WARN: Missing source info for $getDebugInfo")
-      nodes.headOption.map(DependencyAnalysisSourceInfo.createAnalysisSourceInfo).getOrElse(StringDependencyAnalysisSourceInfo("Unknown", NoPosition))
+      StringDependencyAnalysisSourceInfo("Unknown", NoPosition)
     }
   }
 
   def getDependencyType: DependencyType = {
-    if (!isAnalysisEnabled) return AssumptionType.Unknown.asDepType()
-    val dependencyTypeOpt = dependencyTypes.headOption.map(_.dependencyType)
-    if (dependencyTypeOpt.isDefined) {
-      dependencyTypeOpt.get
+    if (isAnalysisEnabled) {
+      val dependencyTypeOpt = dependencyTypes.headOption.map(_.dependencyType)
+      if (dependencyTypeOpt.isDefined) {
+        dependencyTypeOpt.get
+      } else {
+        SiliconRunner.logger.warn(s"WARN: Missing dependency type for $getDebugInfo")
+        AssumptionType.Unknown.asDepType()
+      }
     } else {
-      SiliconRunner.logger.warn(s"WARN: Missing dependency type for $getDebugInfo")
       AssumptionType.Unknown.asDepType()
     }
   }
 
   def getMergeInfo: DependencyAnalysisMergeInfo = {
-    if (!isAnalysisEnabled) return NoDependencyAnalysisMerge()
-    mergeInfos.headOption.getOrElse(SimpleDependencyAnalysisMerge(getSourceInfo))
+    if (isAnalysisEnabled) mergeInfos.headOption.getOrElse(SimpleDependencyAnalysisMerge(getSourceInfo))
+    else NoDependencyAnalysisMerge()
   }
 
   def getJoinInfo: List[SimpleDependencyAnalysisJoin] = {
-    if (!isAnalysisEnabled) return List.empty
-    joinInfos.map {
-      case EvalStackDependencyAnalysisJoin(joinType, edgeType) =>
-        if (sourceInfos.lastOption.isEmpty) SiliconRunner.logger.warn(s"WARN: Missing source info for $getDebugInfo")
-        SimpleDependencyAnalysisJoin(sourceInfos.lastOption.orElse(nodes.lastOption.map(DependencyAnalysisSourceInfo.createAnalysisSourceInfo)).getOrElse(StringDependencyAnalysisSourceInfo("Unknown", NoPosition)), joinType, edgeType)
-      case a: SimpleDependencyAnalysisJoin => a
-    }
+    if (isAnalysisEnabled) {
+      joinInfos.map {
+        case EvalStackDependencyAnalysisJoin(joinType, edgeType) =>
+          if (sourceInfos.lastOption.isEmpty) SiliconRunner.logger.warn(s"WARN: Missing source info for $getDebugInfo")
+          SimpleDependencyAnalysisJoin(sourceInfos.lastOption.orElse(nodes.lastOption.map(DependencyAnalysisSourceInfo.createAnalysisSourceInfo)).getOrElse(StringDependencyAnalysisSourceInfo("Unknown", NoPosition)), joinType, edgeType)
+        case a: SimpleDependencyAnalysisJoin => a
+      }
+    } else List.empty
   }
 
-  def withMergeInfo(mergeInfo: DependencyAnalysisMergeInfo): DependencyAnalysisInfos = {
-    if (!isAnalysisEnabled) return this
+  def withMergeInfo(mergeInfo: DependencyAnalysisMergeInfo): DependencyAnalysisInfos =
+    if (isAnalysisEnabled) this.copy(mergeInfos = mergeInfo +: mergeInfos) else this
 
-    this.copy(mergeInfos = mergeInfo +: mergeInfos)
-  }
-
-  def withJoinInfo(joinInfo: DependencyAnalysisJoinInfo): DependencyAnalysisInfos = {
-    if (!isAnalysisEnabled) return this
-
-    this.copy(joinInfos = joinInfo +: joinInfos)
-  }
+  def withJoinInfo(joinInfo: DependencyAnalysisJoinInfo): DependencyAnalysisInfos =
+    if (isAnalysisEnabled) this.copy(joinInfos = joinInfo +: joinInfos) else this
 
   def withEnabled(analysisEnabled: Boolean): DependencyAnalysisInfos = this.copy(analysisEnabled=analysisEnabled)
 

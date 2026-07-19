@@ -269,9 +269,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       //symbExLog.closeScope(sepIdentifier)
     }
 
-    def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp]), analysisInfos: DependencyAnalysisInfos): Unit = {
-      if (isPathMarkedInfeasible) return
-
+    def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp]), analysisInfos: DependencyAnalysisInfos): Unit =
+      if (!isPathMarkedInfeasible) {
       pathConditions.setCurrentBranchCondition(t, te)
       assume(t, Option.when(te._2.isDefined)(te._1), te._2, analysisInfos)
     }
@@ -345,12 +344,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         if (enforceAssumption) assumptions
         else assumptions filterNot isKnownToBeTrue
 
-      if (filteredTerms.isEmpty) return
+      if (filteredTerms.nonEmpty) {
+        assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms.map(t => (t, ""))), analysisInfos)
 
-      assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms.map(t => (t, ""))), analysisInfos)
-
-      if (debugMode && debugExp.isDefined) {
-        addDebugExp(debugExp.get)
+        if (debugMode && debugExp.isDefined) {
+          addDebugExp(debugExp.get)
+        }
       }
     }
 
@@ -360,13 +359,13 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         if (enforceAssumption) terms
         else terms filterNot isKnownToBeTrue
 
-      if (filteredTerms.isEmpty) return
+      if (filteredTerms.nonEmpty) {
+        if (debugMode) {
+          addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
+        }
 
-      if (debugMode) {
-        addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
+        assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms.map(t => (t, ""))), analysisInfos)
       }
-
-      assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms.map(t => (t, ""))), analysisInfos)
     }
 
     def debuggerAssume(terms: Iterable[Term], de: DebugExp) = {
@@ -379,25 +378,24 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       })
     }
 
-    protected def assumeWithoutSmokeChecks(termsWithLabel: InsertionOrderedSet[(Term, String)], analysisInfos: DependencyAnalysisInfos, isDefinition: Boolean = false): Unit = {
-      if (isPathMarkedInfeasible) return
+    protected def assumeWithoutSmokeChecks(termsWithLabel: InsertionOrderedSet[(Term, String)], analysisInfos: DependencyAnalysisInfos, isDefinition: Boolean = false): Unit =
+      if (!isPathMarkedInfeasible) {
+        val terms = termsWithLabel map (_._1)
+        val assumeRecord = new DeciderAssumeRecord(terms)
+        val sepIdentifier = symbExLog.openScope(assumeRecord)
 
-      val terms = termsWithLabel map (_._1)
-      val assumeRecord = new DeciderAssumeRecord(terms)
-      val sepIdentifier = symbExLog.openScope(assumeRecord)
+        /* Add terms to Silicon-managed path conditions */
+        if (isDefinition) {
+          terms foreach pathConditions.addDefinition
+        } else {
+          terms foreach pathConditions.add
+        }
 
-      /* Add terms to Silicon-managed path conditions */
-      if (isDefinition) {
-        terms foreach pathConditions.addDefinition
-      } else {
-        terms foreach pathConditions.add
+        /* Add terms to the prover's assumptions */
+        termsWithLabel foreach { case (t, label) => prover.assume(t, label) }
+
+        symbExLog.closeScope(sepIdentifier)
       }
-
-      /* Add terms to the prover's assumptions */
-      termsWithLabel foreach { case (t, label) => prover.assume(t, label) }
-
-      symbExLog.closeScope(sepIdentifier)
-    }
 
     /* Asserting facts */
 

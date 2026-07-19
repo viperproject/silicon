@@ -134,8 +134,8 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
   def getAssertionNodesWithFailures: Set[GeneralAssertionNode] =
     getNonInternalAssertionNodes filter (_.hasFailed)
 
-  def exportGraph(program: ast.Program, exportPath: String): Unit = {
-    if (exportPath.isEmpty) return
+  def exportGraph(program: ast.Program, exportPath: String): Unit =
+    if (exportPath.nonEmpty) {
     val directory = Paths.get(exportPath).toFile
     directory.mkdirs()
     dependencyGraph.exportGraph(exportPath)

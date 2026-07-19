@@ -60,8 +60,7 @@ class DependencyAnalysisCliTool(override val interpreter: DependencyGraphInterpr
       val userInput = readLine()
       if (userInput.equalsIgnoreCase("q") || userInput.equalsIgnoreCase("quit")) {
         return
-      }
-      if (userInput.nonEmpty) {
+      } else if (userInput.nonEmpty) {
         handleCommand(userInput, isInteractive = true)
       } else {
         println(infoString)

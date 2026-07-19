@@ -33,32 +33,33 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
 
   private def testUserLevelNode(ulNode: UserLevelDependencyAnalysisNode): Option[Boolean] = {
     val dependencyInfoOpt = dependencyInfoRegex.findFirstMatchIn(ulNode.source.toString).map(_.group(1))
-    if (dependencyInfoOpt.isEmpty) return None
+    dependencyInfoOpt match {
+      case None => None
+      case Some(dependencyInfo) =>
+        var isTested = false
 
-    val dependencyInfo = dependencyInfoOpt.get
-    var isTested = false
+        val expectedAssumptionTypeOpt: Option[String] = assumptionTypeRegex.findFirstMatchIn(dependencyInfo).map(_.group(1))
+        val isAssumptionTypeCorrect = expectedAssumptionTypeOpt match {
+          case Some(expectedTypeStr) =>
+            val expectedType = AssumptionType.fromString(expectedTypeStr).get
+            isTested = true
+            ulNode.assumptionTypes.filterNot(_.isInstanceOf[AssumptionType.InternalType]).equals(Set(expectedType))
+          case None => true
+        }
 
-    val expectedAssumptionTypeOpt: Option[String] = assumptionTypeRegex.findFirstMatchIn(dependencyInfo).map(_.group(1))
-    val isAssumptionTypeCorrect = expectedAssumptionTypeOpt match {
-      case Some(expectedTypeStr) =>
-        val expectedType = AssumptionType.fromString(expectedTypeStr).get
-        isTested = true
-        ulNode.assumptionTypes.filterNot(_.isInstanceOf[AssumptionType.InternalType]).equals(Set(expectedType))
-      case None => true
+        val expectedAssertionTypeOpt: Option[String] = assertionTypeRegex.findFirstMatchIn(dependencyInfo).map(_.group(1))
+        val isAssertionTypeCorrect = expectedAssertionTypeOpt match {
+          case Some(expectedTypeStr) =>
+            val expectedType = AssumptionType.fromString(expectedTypeStr).get
+            isTested = true
+            ulNode.assertionTypes.filterNot(_.isInstanceOf[AssumptionType.InternalType]).equals(Set(expectedType))
+          case None => true
+        }
+
+        printIfFalse(isAssumptionTypeCorrect, s"Wrong assumption type for node ${ulNode.source.toString} having assumption types ${ulNode.assumptionTypes}.")
+        printIfFalse(isAssertionTypeCorrect, s"Wrong assertion type for node ${ulNode.source.toString} having assertion types ${ulNode.assertionTypes}.")
+        Option.when(isTested)(isAssumptionTypeCorrect && isAssertionTypeCorrect)
     }
-
-    val expectedAssertionTypeOpt: Option[String] = assertionTypeRegex.findFirstMatchIn(dependencyInfo).map(_.group(1))
-    val isAssertionTypeCorrect = expectedAssertionTypeOpt match {
-      case Some(expectedTypeStr) =>
-        val expectedType = AssumptionType.fromString(expectedTypeStr).get
-        isTested = true
-        ulNode.assertionTypes.filterNot(_.isInstanceOf[AssumptionType.InternalType]).equals(Set(expectedType))
-      case None => true
-    }
-
-    printIfFalse(isAssumptionTypeCorrect, s"Wrong assumption type for node ${ulNode.source.toString} having assumption types ${ulNode.assumptionTypes}.")
-    printIfFalse(isAssertionTypeCorrect, s"Wrong assertion type for node ${ulNode.source.toString} having assertion types ${ulNode.assertionTypes}.")
-    Option.when(isTested)(isAssumptionTypeCorrect && isAssertionTypeCorrect)
   }
 
   private def printIfFalse(test: Boolean, message: String): Unit =
@@ -75,19 +76,20 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
 
   def testDependencies(assertionNode: UserLevelDependencyAnalysisNode): Option[Boolean] = {
     val expectedLabelsOpt = expectedDependenciesRegex.findFirstMatchIn(assertionNode.source.toString).map(_.group(1).split(",").map(_.trim).toSet)
-    if (expectedLabelsOpt.isEmpty) return None
-    val expectedLabels = expectedLabelsOpt.get
+    expectedLabelsOpt match {
+      case None => None
+      case Some(expectedLabels) =>
+        val queriedAssertions = assertionNode.lowLevelAssertionNodes
+        val allDependencies = interpreter.computeNonInternalDependencies(queriedAssertions.toSet)
+        val sourceDependencies = UserLevelDependencyAnalysisNode.from(allDependencies).toSourceSet().diff(UserLevelDependencyAnalysisNode.from(queriedAssertions).toSourceSet())
 
-    val queriedAssertions = assertionNode.lowLevelAssertionNodes
-    val allDependencies = interpreter.computeNonInternalDependencies(queriedAssertions.toSet)
-    val sourceDependencies = UserLevelDependencyAnalysisNode.from(allDependencies).toSourceSet().diff(UserLevelDependencyAnalysisNode.from(queriedAssertions).toSourceSet())
+        val labelsInReportedDeps: Set[Set[String]] = sourceDependencies.map(node => nodeLabelRegex.findAllMatchIn(node.toString).map(_.group(1)).toSet)
+        val actualLabelInReportedDeps = labelsInReportedDeps.filter(_.size == 1).flatten
 
-    val labelsInReportedDeps: Set[Set[String]] = sourceDependencies.map(node => nodeLabelRegex.findAllMatchIn(node.toString).map(_.group(1)).toSet)
-    val actualLabelInReportedDeps = labelsInReportedDeps.filter(_.size == 1).flatten
-
-    val labelDiff = expectedLabels.diff(actualLabelInReportedDeps)
-    val isSound = labelDiff.isEmpty
-    printIfFalse(isSound, s"Missing dependencies (${labelDiff.mkString(", ")}) for ${assertionNode.source.toString}. Reported dependencies: ${actualLabelInReportedDeps.mkString(", ")}")
-    Some(isSound)
+        val labelDiff = expectedLabels.diff(actualLabelInReportedDeps)
+        val isSound = labelDiff.isEmpty
+        printIfFalse(isSound, s"Missing dependencies (${labelDiff.mkString(", ")}) for ${assertionNode.source.toString}. Reported dependencies: ${actualLabelInReportedDeps.mkString(", ")}")
+        Some(isSound)
+    }
   }
 }

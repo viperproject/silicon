@@ -71,14 +71,13 @@ object DependencyAnalysisTool {
     }
   }
 
-  private def runUserTool(cmdStr: String, userTool: DependencyAnalysisCliTool): Unit = {
-    if (cmdStr.isEmpty) return
+  private def runUserTool(cmdStr: String, userTool: DependencyAnalysisCliTool): Unit =
+    if (cmdStr.nonEmpty) {
+      val cmds = cmdStr.split(";").map(_.trim)
 
-    val cmds = cmdStr.split(";").map(_.trim)
-
-    cmds foreach {c =>
-      println(s"\n--------\nProcessing command \"$c\"...")
-      userTool.run(c)
+      cmds foreach {c =>
+        println(s"\n--------\nProcessing command \"$c\"...")
+        userTool.run(c)
+      }
     }
-  }
 }
