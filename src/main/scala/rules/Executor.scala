@@ -650,8 +650,7 @@ object executor extends ExecutionRules {
         magicWandSupporter.packageWand(s0.copy(isInPackage = true), wand, proofScript, pve, v)((s1, chWand, v1) => {
           val hOps = s1.reserveHeaps.head + chWand
           assert(s.exhaleExt || s1.reserveHeaps.length == 1)
-          val s2 =
-            if (s.exhaleExt) {
+          val s2 = if (s.exhaleExt) {
               s1.copy(h = v1.heapSupporter.getEmptyHeap(s1.program),
                       exhaleExt = true,
                         /* It is assumed, that s.reserveHeaps.head (hUsed) is not used or changed
@@ -668,9 +667,9 @@ object executor extends ExecutionRules {
                         exhaleExt = false,
                         reserveHeaps = Nil)
               }
-            assert(s2.reserveHeaps.length == s.reserveHeaps.length)
+          assert(s2.reserveHeaps.length == s.reserveHeaps.length)
 
-            val s3 = v1.heapSupporter.triggerWandIfNeeded(s2, wand, chWand, v1)
+          val s3 = v1.heapSupporter.triggerWandIfNeeded(s2, wand, chWand, v1)
 
           val s4 = if (debugOn) v1.finishKeyHeap(s3) else s3
           continuation(s4.copy(isInPackage = s.isInPackage), v1)

@@ -72,27 +72,25 @@ object predicateSupporter extends PredicateSupportRules {
     else
       tArgs zip Seq.fill(tArgs.length)(None)
     val gIns = s.g + Store(predicate.formalArgs map (_.localVar) zip tArgsWithE)
-    val s1 = s.copy(g = gIns,
+    val s0 = s.copy(g = gIns,
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm, ePerm)
 
-    consume(s1, body, true, pve, v)((s1a, snap, v1) => {
+    consume(s0, body, true, pve, v)((s1, snap, v1) => {
       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
-        val predTrigger = App(s1a.predicateData(predicate.name).triggerFunction,
+        val predTrigger = App(s1.predicateData(predicate.name).triggerFunction,
           snap.get.convert(terms.sorts.Snap) +: tArgs)
         val eArgsString = eArgs.mkString(", ")
         v1.decider.assume(predTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
       }
-      val s2 = s1a.copy(g = s.g,
+      val s1a = s1.copy(g = s.g,
                         smDomainNeeded = s.smDomainNeeded,
                         permissionScalingFactor = s.permissionScalingFactor,
                         permissionScalingFactorExp = s.permissionScalingFactorExp).setConstrainable(constrainableWildcards, false)
-      lazy val oldHeap = magicWandSupporter.getEvalHeap(s2)
-      lazy val oldPCS = v1.decider.pcs.duplicate()
 
-      v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snap.get.convert(s2.predicateSnapMap(predicate.name)), None, tPerm, ePerm, pve, true, v1)((s3, v3) => {
-        val s4 = v3.heapSupporter.triggerResourceIfNeeded(s3, pa, tArgs, eArgs, v3)
-        Q(s4, v3)
+      v1.heapSupporter.produceSingle(s1a, predicate, tArgs, eArgs, snap.get.convert(s1a.predicateSnapMap(predicate.name)), None, tPerm, ePerm, pve, true, v1)((s2, v2) => {
+        val s2a = v2.heapSupporter.triggerResourceIfNeeded(s2, pa, tArgs, eArgs, v2)
+        Q(s2a, v2)
       })
     })
   }
@@ -199,40 +197,38 @@ object predicateSupporter extends PredicateSupportRules {
       tArgs zip Seq.fill(tArgs.length)(None)
     val gIns = s.g + Store(predicate.formalArgs map (_.localVar) zip tArgsWithE)
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
-    val s1 = s.scalePermissionFactor(tPerm, ePerm)
-    lazy val oldHeap = magicWandSupporter.getEvalHeap(s)
-    lazy val oldPCS = v.decider.pcs.duplicate()
+    val s0 = s.scalePermissionFactor(tPerm, ePerm)
 
-    v.heapSupporter.consumeSingle(s1, s1.h, pa, tArgs, eArgs, tPerm, ePerm, true, pve, v)((s2, h2, snap, v1) => {
-      val s3 = s2.copy(g = gIns, h = h2)
+    v.heapSupporter.consumeSingle(s0, s0.h, pa, tArgs, eArgs, tPerm, ePerm, true, pve, v)((s1, h1, snap, v1) => {
+      val s1a = s1.copy(g = gIns, h = h1)
         .setConstrainable(constrainableWildcards, false)
-      if (s3.predicateData(predicate.name).predContents.isDefined) {
-        val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s3.predicateData(predicate.name).params.get.zip(Seq(snap.get) ++ tArgs))
-        producePredicateContents(s3, s3.predicateData(predicate.name).predContents.get, toReplace, v1, false)((s4, v4) => {
-          v4.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
-          if (!Verifier.config.disableFunctionUnfoldTrigger()) {
-            val predicateTrigger =
-              App(s4.predicateData(predicate.name).triggerFunction,
-                snap.get.convert(terms.sorts.Snap) +: tArgs)
-            val eargs = eArgs.mkString(", ")
-            v4.decider.assume(predicateTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
-          }
-          Q(s4.copy(g = s.g,
-            permissionScalingFactor = s.permissionScalingFactor,
-            permissionScalingFactorExp = s.permissionScalingFactorExp),
-            v4)
-        })
-      } else {
-        produce(s3, toSf(snap.get), body, pve, v1)((s4, v2) => {
+      if (s1a.predicateData(predicate.name).predContents.isDefined) {
+        val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s1a.predicateData(predicate.name).params.get.zip(Seq(snap.get) ++ tArgs))
+        producePredicateContents(s1a, s1a.predicateData(predicate.name).predContents.get, toReplace, v1)((s2, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =
-              App(s4.predicateData(predicate.name).triggerFunction,
+              App(s2.predicateData(predicate.name).triggerFunction,
                 snap.get.convert(terms.sorts.Snap) +: tArgs)
             val eargs = eArgs.mkString(", ")
             v2.decider.assume(predicateTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
           }
-          Q(s4.copy(g = s.g,
+          Q(s2.copy(g = s.g,
+            permissionScalingFactor = s.permissionScalingFactor,
+            permissionScalingFactorExp = s.permissionScalingFactorExp),
+            v2)
+        })
+      } else {
+        produce(s1a, toSf(snap.get), body, pve, v1)((s2, v2) => {
+          v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
+          if (!Verifier.config.disableFunctionUnfoldTrigger()) {
+            val predicateTrigger =
+              App(s2.predicateData(predicate.name).triggerFunction,
+                snap.get.convert(terms.sorts.Snap) +: tArgs)
+            val eargs = eArgs.mkString(", ")
+            v2.decider.assume(predicateTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
+          }
+          Q(s2.copy(g = s.g,
             permissionScalingFactor = s.permissionScalingFactor,
             permissionScalingFactorExp = s.permissionScalingFactorExp),
             v2)
