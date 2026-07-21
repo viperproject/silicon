@@ -110,9 +110,10 @@ case class ProofObligation(s: State,
   private def tempHeapString(tempRecord: Option[TemporaryRecord]): String = {
     tempRecord match {
       case None => ""
-      case Some((label, cause, pcs, heaps)) =>
+      case Some((label, cause, _, heaps)) =>
         s"Current intermediate heaps:\n" +
-          s"\tCause: ${causeToString(cause)}\n" +
+          s"\tParent: $label\n" +
+          s"\tCause: ${causeToString(cause)}\n\n" +
           heaps.map { case (l, r) => intermediateHeapString(l, r) + "\n" }.mkString("")
     }
   }
@@ -121,7 +122,8 @@ case class ProofObligation(s: State,
     if (!printConfig.printOldHeaps)
       s"Heap:\n${heapChunksString(s.h)}\n"
     else {
-      s"Current Heap:\n${heapChunksString(s.h)}\n" +
+      val currLabel = v.getDebugHeapLabel(s).map(" (" + _ + ")").getOrElse("")
+      s"Current Heap$currLabel:\n${heapChunksString(s.h)}\n" +
         s.debugOldHeaps.map { case (label, dh) => debugHeapString(label, dh) }.mkString("") +
         tempHeapString(s.temporaryHeapRecord)
     }
@@ -130,11 +132,15 @@ case class ProofObligation(s: State,
   private def simplify[N <: Node](n: N): N = Simplifier.simplify(n, assumeWelldefinedness = true)
 
   private def branchConditionString: String = {
-    if (printConfig.printInternalTermRepresentation)
-      s"Branch Conditions:\n\t\t${branchConditions.filter(bc => bc != True).mkString("\n\t\t")}\n\n"
-    else
-      s"Branch Conditions:\n\t\t${branchConditionExps.map(bc => simplify(bc._2))
-        .filter(bc => bc != ast.TrueLit()()).mkString("\n\t\t")}\n\n"
+    if (printConfig.printInternalTermRepresentation) {
+      val bcs = branchConditions.filter(bc => bc != True)
+      val bcString = if (bcs.nonEmpty) bcs.mkString("\n\t\t") else "(none)"
+      s"Branch Conditions:\n\t\t$bcString\n\n"
+    } else {
+      val bcs = branchConditionExps.map(bc => simplify(bc._2)).filter(bc => bc != ast.TrueLit()())
+      val bcString = if (bcs.nonEmpty) bcs.mkString("\n\t\t") else "(none)"
+      s"Branch Conditions:\n\t\t$bcString\n\n"
+    }
   }
 
   private def chunkString(c: Chunk): String = {

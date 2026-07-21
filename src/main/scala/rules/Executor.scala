@@ -462,11 +462,12 @@ object executor extends ExecutionRules {
         }
         val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
         val esNew = eRcvrNew.map(rcvr => BigAnd(viper.silicon.state.utils.computeReferenceDisjointnessesExp(s, rcvr)))
-        addFieldPerms(s, fields, v)((s0, v0) => {
-          val s1 = s0.copy(g = s0.g + (x, (tRcvr, eRcvrNew)))
-          val s2 = if (debugOn) v0.recordHeap(s1, oldLabel, ExecStmt(stmt), oldPCS) else s1
-          v0.decider.assume(ts, Option.when(debugOn)(DebugExp.createInstance(Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false)
-          Q(s2, v0)
+        addFieldPerms(s, fields, v)((s1, v1) => {
+          val s1a = s1.copy(g = s1.g + (x, (tRcvr, eRcvrNew)))
+          val s1b = if (debugOn) v1.recordHeap(s1a, oldLabel, ExecStmt(stmt), oldPCS) else s1a
+          v1.decider.assume(ts, Option.when(debugOn)(DebugExp.createInstance(
+            Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false)
+          Q(s1b, v1)
         })
 
       case inhale @ ast.Inhale(a) => a match {
@@ -603,7 +604,7 @@ object executor extends ExecutionRules {
               val s3b = if (debugOn) v3.finishKeyHeap(s3a) else s3a
               Q(s3b, v3)})})})
 
-      case fold @ ast.Fold(pap @ ast.PredicateAccessPredicate(predAcc @ ast.PredicateAccess(eArgs, predicateName), _)) =>
+      case fold @ ast.Fold(pap @ ast.PredicateAccessPredicate(predAcc @ ast.PredicateAccess(eArgs, _), _)) =>
         assert(s.constrainableARPs.isEmpty)
         v.decider.startDebugSubExp()
         val ePerm = pap.perm

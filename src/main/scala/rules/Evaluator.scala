@@ -319,10 +319,10 @@ object evaluator extends EvaluationRules {
               case _ =>
                 sys.error(s"Unexpected join data entries: $entries")}
             (s2, (result, resultExp))
-          })((s4, r, v3) => {
+          })((s4, r, v4) => {
             val (t3, eNew) = r
-            v3.symbExLog.closeScope(uidCondExp)
-            Q(s4, t3, eNew, v3)
+            v4.symbExLog.closeScope(uidCondExp)
+            Q(s4, t3, eNew, v4)
           }))
 
       /* Integers */
@@ -620,7 +620,7 @@ object evaluator extends EvaluationRules {
               ErrorWrapperWithExampleTransformer(PreconditionInAppFalse(fapp).withReasonNodeTransformed(reasonOffendingNode =>
                 reasonOffendingNode.replace(formalsToActuals)), exampleTrafo)
             val argsPairs: Seq[(Term, Option[ast.Exp])] = if (debugOn) tArgs.zip(eArgsNew.get.map(Some(_))) else tArgs.zip(Seq.fill(tArgs.size)(None))
-            val s3 = s2.copy(g = Store(fargs.zip(argsPairs)),
+            val s2a = s2.copy(g = Store(fargs.zip(argsPairs)),
                              recordVisited = true,
                              functionRecorder = s2.functionRecorder.changeDepthBy(+1),
                                 /* Temporarily disable the recorder: when recording (to later on
@@ -649,7 +649,7 @@ object evaluator extends EvaluationRules {
                              moreJoins = JoinMode.Off,
                              assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts())
                                s2.assertReadAccessOnly /* should currently always be false */ else true)
-            consumes(s3, pres, true, _ => pvePre, v2)((s4, snap, v3) => {
+            consumes(s2a, pres, true, _ => pvePre, v2)((s3, snap, v3) => {
               val snap1 = snap.get.convert(sorts.Snap)
               val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
               val preExp = Option.when(debugOn)({
@@ -667,9 +667,9 @@ object evaluator extends EvaluationRules {
                 case _ => App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
               }
               val fr5 =
-                s4.functionRecorder.changeDepthBy(-1)
+                s3.functionRecorder.changeDepthBy(-1)
                                    .recordSnapshot(fapp, v3.decider.pcs.branchConditions, snap1)
-              val s5 = s4.copy(g = s2.g,
+              val s3a = s3.copy(g = s2.g,
                                h = s2.h,
                                recordVisited = s2.recordVisited,
                                functionRecorder = fr5,
@@ -677,15 +677,15 @@ object evaluator extends EvaluationRules {
                                moreJoins = s2.moreJoins,
                                assertReadAccessOnly = s2.assertReadAccessOnly)
               val funcAppNewOld = Option.when(debugOn)({
-                if (s5.isEvalInOld || pres.forall(_.isPure)) funcAppNew.get
+                if (s3a.isEvalInOld || pres.forall(_.isPure)) funcAppNew.get
                 else ast.DebugLabelledOld(funcAppNew.get, debugLabel)(fapp.pos, fapp.info, fapp.errT)
               })
-              QB(s5, (tFApp, funcAppNewOld), v3)})
+              QB(s3a, (tFApp, funcAppNewOld), v3)})
             /* TODO: The join-function is heap-independent, and it is not obvious how a
              *       joined snapshot could be defined and represented
              */
-            })(join(func.typ, s"joined_${func.name}", joinFunctionArgs, joinExp, v1))((s6, r, v4)
-              => Q(s6, r._1, r._2, v4))
+            })(join(func.typ, s"joined_${func.name}", joinFunctionArgs, joinExp, v1))((s4, r, v4)
+              => Q(s4, r._1, r._2, v4))
         })
 
       case uf@ast.Unfolding(
@@ -708,7 +708,7 @@ object evaluator extends EvaluationRules {
               v2.decider.assert(IsPositive(tPerm)) { // TODO: Replace with permissionSupporter.assertNotNegative
                 case true =>
                   joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s2a, v2)((s3, v3, QB) => {
-                    val s4 = s3.incCycleCounter(predicate)
+                    val s3a = s3.incCycleCounter(predicate)
                                .copy(recordVisited = true)
                       /* [2014-12-10 Malte] The commented code should replace the code following
                        * it, but using it slows down RingBufferRd.sil significantly. The generated
@@ -719,11 +719,11 @@ object evaluator extends EvaluationRules {
 //                        val c4 = c3.decCycleCounter(predicate)
 //                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                          QB(tIn, c5))})
-                    consume(s4, acc, true, pve, v3)((s5, snap, v4) => {
+                    consume(s3a, acc, true, pve, v3)((s4, snap, v4) => {
                       val fr6 =
-                        s5.functionRecorder.recordSnapshot(pa, v4.decider.pcs.branchConditions, snap.get)
+                        s4.functionRecorder.recordSnapshot(pa, v4.decider.pcs.branchConditions, snap.get)
                                            .changeDepthBy(+1)
-                      val s6 = s5.copy(functionRecorder = fr6,
+                      val s4a = s4.copy(functionRecorder = fr6,
                                        constrainableARPs = s1.constrainableARPs)
 
                         /* Recording the unfolded predicate's snapshot is necessary in order to create the
@@ -737,44 +737,43 @@ object evaluator extends EvaluationRules {
                         v4.decider.assume(App(s.predicateData(predicate.name).triggerFunction, snap.get.convert(terms.sorts.Snap) +: tArgs), debugExp)
                       }
                       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
-                      val s7 = s6.scalePermissionFactor(tPerm, ePermNew)
+                      val s4b = s4a.scalePermissionFactor(tPerm, ePermNew)
                       val argsPairs: List[(Term, Option[ast.Exp])] = if (debugOn) tArgs zip eArgsNew.get.map(Some(_)) else tArgs zip Seq.fill(tArgs.size)(None)
-                      val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip argsPairs)
-                      val s7a = s7.copy(g = insg).setConstrainable(s7.constrainableARPs, false)
+                      val insg = s4b.g + Store(predicate.formalArgs map (_.localVar) zip argsPairs)
+                      val s4c = s4b.copy(g = insg).setConstrainable(s4b.constrainableARPs, false)
 
-                      if (s7a.predicateData(predicate.name).predContents.isDefined) {
-                        val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s7a.predicateData(predicate.name).params.get.zip(Seq(snap.get) ++ tArgs))
-                        predicateSupporter.producePredicateContents(s7a, s7a.predicateData(predicate.name).predContents.get, toReplace, v4, true)((s8, v5) => {
-                          val s9 = s8.copy(g = s7.g,
-                            functionRecorder = s8.functionRecorder.changeDepthBy(-1),
+                      if (s4c.predicateData(predicate.name).predContents.isDefined) {
+                        val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s4c.predicateData(predicate.name).params.get.zip(Seq(snap.get) ++ tArgs))
+                        predicateSupporter.producePredicateContents(s4c, s4c.predicateData(predicate.name).predContents.get, toReplace, v4, true)((s5, v5) => {
+                          val s5a = s5.copy(g = s4b.g,
+                            functionRecorder = s5.functionRecorder.changeDepthBy(-1),
                             recordVisited = s3.recordVisited,
-                            permissionScalingFactor = s6.permissionScalingFactor,
-                            permissionScalingFactorExp = s6.permissionScalingFactorExp,
+                            permissionScalingFactor = s4a.permissionScalingFactor,
+                            permissionScalingFactorExp = s4a.permissionScalingFactorExp,
                             constrainableARPs = s1.constrainableARPs)
                             .decCycleCounter(predicate)
-                          val s10 = if (debugOn && s9.recordIntermediateHeaps) v5.recordIntermediateHeap(s9, EvalExp(uf)) else s9
-                          val s11 = v5.stateConsolidator(s10).consolidateOptionally(s10, v5)
-                          eval(s11, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))
+                          val s5b = if (debugOn && s5a.recordIntermediateHeaps) v5.recordIntermediateHeap(s5a, EvalExp(uf)) else s5a
+                          val s5c = v5.stateConsolidator(s5b).consolidateOptionally(s5b, v5)
+                          eval(s5c, eIn, pve, v5)((s6, t6, e6, v6) => QB(s6, (t6, e6), v6))
                         })
                       } else {
-                        produce(s7a, toSf(snap.get), body, pve, v4)((s8, v5) => {
-                          val s9 = s8.copy(g = s7.g,
-                                           functionRecorder = s8.functionRecorder.changeDepthBy(-1),
+                        produce(s4c, toSf(snap.get), body, pve, v4)((s5, v5) => {
+                          val s5a = s5.copy(g = s4b.g,
+                                           functionRecorder = s5.functionRecorder.changeDepthBy(-1),
                                            recordVisited = s3.recordVisited,
-                                           permissionScalingFactor = s6.permissionScalingFactor,
-                                           permissionScalingFactorExp = s6.permissionScalingFactorExp,
+                                           permissionScalingFactor = s4a.permissionScalingFactor,
+                                           permissionScalingFactorExp = s4a.permissionScalingFactorExp,
                                            constrainableARPs = s1.constrainableARPs)
                                      .decCycleCounter(predicate)
-                          val s10 = if (debugOn && s9.recordIntermediateHeaps) v5.recordIntermediateHeap(s9, EvalExp(uf)) else s9
-                          val s11 = v5.stateConsolidator(s10).consolidateOptionally(s10, v5)
-                          eval(s11, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))})
+                          val s5b = if (debugOn && s5a.recordIntermediateHeaps) v5.recordIntermediateHeap(s5a, EvalExp(uf)) else s5a
+                          val s5c = v5.stateConsolidator(s5b).consolidateOptionally(s5b, v5)
+                          eval(s5c, eIn, pve, v5)((s6, t6, e6, v6) => QB(s6, (t6, e6), v6))})
                       }
                     })
                   })(join(eIn.typ, "joined_unfolding", s2.relevantQuantifiedVariables.map(_._1),
-                    joinExp, v2))((s12, r12, v7)
-                    => {
-                    v7.decider.finishDebugSubExp(s"unfolding of ${predicate.name}(${eArgs.mkString(", ")}) in heap $s2Label")
-                    Q(s12, r12._1, r12._2, v7)})
+                    joinExp, v2))((s7, r7, v7) => {
+                      v7.decider.finishDebugSubExp(s"unfolding of ${predicate.name}(${eArgs.mkString(", ")}) in heap $s2Label")
+                      Q(s7, r7._1, r7._2, v7)})
                 case false =>
                   v2.decider.finishDebugSubExp(s"unfolding of ${predicate.name}(${eArgs.mkString(", ")}) in heap $s2Label")
                   createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))}}))

@@ -12,10 +12,10 @@ import viper.silver.cfg
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
 import viper.silicon.interfaces._
-import viper.silicon.decider.{Decider, LayeredPathConditionStack}
+import viper.silicon.decider.Decider
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
-import viper.silicon.state.{ExhalePost, InhalePre, State, Store}
+import viper.silicon.state.{CreateLabel, ExhalePost, InhalePre, State, Store}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
@@ -42,7 +42,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       _units = program.methods
     }
 
-    def units = _units
+    def units: Seq[ast.Method] = _units
 
     def verify(sInit: State, method: ast.Method): Seq[VerificationResult] = {
       logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
@@ -105,7 +105,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
             val s2b = if (producer.debugOn) {
               val tmp = v2.finishKeyHeap(s2a)
               val parentLabel = v2.getDebugHeapLabel(tmp).getOrElse("nil")
-              v2.recordHeap(tmp, Verifier.PRE_STATE_LABEL, parentLabel, InhalePre, emptyPCS)
+              v2.recordHeap(tmp, Verifier.PRE_STATE_LABEL, parentLabel, CreateLabel, emptyPCS)
             } else s2a
             (  executionFlowController.locally(s2b, v2)((s3, v3) => {
                   val s4 = s3.copy(h = v3.heapSupporter.getEmptyHeap(s3.program))
