@@ -225,13 +225,14 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
    */
   def computeUncoveredStatementsPerMember(): Map[String, List[DependencyAnalysisSourceInfo]] = {
     val allAssertions = interpreter.toUserLevelNodes(getAssertionsRelevantForProgress.values.flatten)
-    val allDependencies = allAssertions.flatMap(ass => interpreter.toUserLevelNodes(interpreter.computeNonInternalDependencies(ass.lowerLevelNodes)).diffBySource(Set(ass))).toSourceMemberSet()
+    val allDependencies = allAssertions.flatMap(ass => interpreter.computeNonInternalDependencies(ass.lowerLevelNodes).filterNot(_.sourceInfo == ass.source))
+      .groupBy(_.sourceInfo)
 
-    val explicitAssertions = interpreter.toUserLevelNodes(interpreter.getExplicitAssertionNodes)
-    val allNodes = interpreter.toUserLevelNodes(interpreter.getNonInternalAssumptionNodes)
-    val allSourceCodeStmts = UserLevelDependencyAnalysisNode.extractByAssumptionType(allNodes, _.isInstanceOf[AssumptionType.SourceCodeType]).toSourceMemberSet().diff(explicitAssertions.toSourceMemberSet())
+    val explicitAssertions = interpreter.getExplicitAssertionNodes.groupBy(_.sourceInfo)
+    val allNodes = interpreter.getNonInternalAssumptionNodes.groupBy(n => (n.sourceInfo, n.memberStr))
+    val allSourceCodeStmts = allNodes.filter(_._2.exists(_.assumptionType.isInstanceOf[AssumptionType.SourceCodeType])).filterNot(n => explicitAssertions.contains(n._1._1)).keySet
 
-    val uncoveredSourceCodeStmts = allSourceCodeStmts.diff(allDependencies)
+    val uncoveredSourceCodeStmts = allSourceCodeStmts.filterNot(n => allDependencies.contains(n._1))
     uncoveredSourceCodeStmts.groupBy(_._2).map { case (member, sources) =>
       (member, sources.map(_._1).toList.sortBy(_.getLineNumber))
     }

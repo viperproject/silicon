@@ -6,7 +6,6 @@
 
 package viper.silicon.supporters
 
-import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.state.State
@@ -22,16 +21,10 @@ trait DependencyAnalysisAwareMethodVerificationUnitProvider extends DefaultMetho
 
     override def verify(sInit: State, method: Method): Seq[VerificationResult] = {
 
-      val presAssertionNodeForJoin = method.pres.flatMap(_.topLevelConjuncts).map(pc => {
-        val analysisSourceInfo = DependencyAnalysisSourceInfo.createAnalysisSourceInfo(pc)
-        DependencyNodeFactory.createSimpleAssertionNode(True,
-          analysisSourceInfo,
-          AssumptionType.Precondition,
-          SimpleDependencyAnalysisMerge(analysisSourceInfo),
-          List(SimpleDependencyAnalysisJoin(analysisSourceInfo, JoinType.Sink, EdgeType.Up)),
-          method.name)
-      })
-      presAssertionNodeForJoin foreach decider.getDependencyAnalyzer.addAssertionNode
+      method.pres.flatMap(_.topLevelConjuncts).flatMap(pc => {
+        val analysisInfos = decider.defaultAnalysisInfos.addInfo(pc.info, pc).withJoinInfo(SimpleDependencyAnalysisJoin(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up))
+        decider.getDependencyAnalyzer.createAssertOrCheckNode(True, analysisInfos, isCheck = false)
+      }).foreach(decider.getDependencyAnalyzer.addAssertionNode)
 
       val result = super.verify(sInit, method)
 

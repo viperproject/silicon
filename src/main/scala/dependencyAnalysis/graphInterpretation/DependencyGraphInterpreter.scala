@@ -121,7 +121,7 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
   def getNonInternalAssertionNodes: Set[GeneralAssertionNode] =
     getAssertionNodes filter isNonInternalAssertionNode
 
-  private def isNonInternalAssertionNode(node: DependencyAnalysisNode): Boolean = node match {
+  def isNonInternalAssertionNode(node: DependencyAnalysisNode): Boolean = node match {
     case node: GeneralAssertionNode if isVisibleNode(node) => true
     case _ => false
   }

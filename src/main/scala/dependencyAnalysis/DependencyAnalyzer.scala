@@ -176,7 +176,8 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
     nodes foreach dependencyGraph.addNode
   }
 
-  override def addAssumptionNode(node: GeneralAssumptionNode): Unit = dependencyGraph.addAssumptionNode(node)
+  override def addAssumptionNode(node: GeneralAssumptionNode): Unit =
+    dependencyGraph.addAssumptionNode(node)
 
   override def addAssertionNode(node: GeneralAssertionNode): Unit = dependencyGraph.addAssertionNode(node)
 

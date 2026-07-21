@@ -8,7 +8,6 @@ package viper.silicon.supporters.functions
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.DependencyAnalysisProverHandler
-import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.dependencyAnalysis.{DependencyAnalysisAxiomInfo, DependencyAnalyzer}
 import viper.silicon.interfaces.decider.ProverLike
@@ -26,8 +25,10 @@ trait DependencyAnalysisAwareFunctionVerificationUnitProvider extends DefaultFun
   object DependencyAnalysisAwareFunctionSupporter extends FunctionsSupporter {
     override protected def handleFunction(sInit: State, function: ast.Function): VerificationResult = {
 
-      val presAssertionNodeForJoin = function.pres.flatMap(_.topLevelConjuncts).map(pc => DependencyNodeFactory.createSimpleAssertionNode(True, DependencyAnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, SimpleDependencyAnalysisMerge(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(pc)), List(SimpleDependencyAnalysisJoin(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up)), function.name))
-      presAssertionNodeForJoin foreach decider.getDependencyAnalyzer.addAssertionNode
+      function.pres.flatMap(_.topLevelConjuncts).flatMap(pc => {
+        val analysisInfos = decider.defaultAnalysisInfos.addInfo(pc.info, pc).withJoinInfo(SimpleDependencyAnalysisJoin(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up))
+        decider.getDependencyAnalyzer.createAssertOrCheckNode(True, analysisInfos, isCheck = false)
+      }).foreach(decider.getDependencyAnalyzer.addAssertionNode)
 
       val result = super.handleFunction(sInit, function)
 

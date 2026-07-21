@@ -15,9 +15,9 @@ object UserLevelDependencyAnalysisNode {
 
   def from(dependencyNodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = {
     val res = dependencyNodes
-      .map(n => ((StringDependencyAnalysisSourceInfo(n.sourceInfo.getDescription, n.sourceInfo.getPosition), n.memberStr), n))
+      .map(n => ((StringDependencyAnalysisSourceInfo(n.sourceInfo.getDescription, n.sourceInfo.getPosition)), n))
       .groupBy(_._1).map { case (key, nodes) =>
-      UserLevelDependencyAnalysisNode(key._1, key._2, nodes.map(_._2).toSet)
+      UserLevelDependencyAnalysisNode(key, nodes.map(_._2).toSet)
     }.toSet
     res
   }
@@ -40,13 +40,13 @@ object UserLevelDependencyAnalysisNode {
       left.map(_.source)
     }
 
-    def toSourceMemberSet(): Set[(DependencyAnalysisSourceInfo, String)] = {
-      left.map(n => (n.source, n.member))
+    def toSourceMemberSet: Set[DependencyAnalysisSourceInfo] = {
+      left.map(_.source)
     }
   }
 }
 
-case class UserLevelDependencyAnalysisNode(source: DependencyAnalysisSourceInfo, member: String, lowerLevelNodes: Set[DependencyAnalysisNode]) {
+case class UserLevelDependencyAnalysisNode(source: DependencyAnalysisSourceInfo, lowerLevelNodes: Set[DependencyAnalysisNode]) {
 
   def position: Position = source.getPosition
 

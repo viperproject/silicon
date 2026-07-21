@@ -119,7 +119,7 @@ class DependencyAnalysisCliTool(override val interpreter: DependencyGraphInterpr
 
   private def handleDependencyQuery(inputs: Set[String]): Unit = {
     val queriedNodes = getQueriedNodesFromInput(inputs)
-    val queriedAssertions = queriedNodes.filter(node => node.isInstanceOf[GeneralAssertionNode])
+    val queriedAssertions = queriedNodes.filter(interpreter.isNonInternalAssertionNode)
 
     val (directDependencies, timeDirect) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeDirectDependencies(queriedAssertions))
     val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeNonInternalDependencies(queriedAssertions))
@@ -139,7 +139,7 @@ class DependencyAnalysisCliTool(override val interpreter: DependencyGraphInterpr
 
   private def handleAllDependenciesQuery(inputs: Set[String]): Unit = {
     val queriedNodes = getQueriedNodesFromInput(inputs)
-    val queriedAssertions = queriedNodes.filter(node => node.isInstanceOf[GeneralAssertionNode])
+    val queriedAssertions = queriedNodes.filter(interpreter.isNonInternalAssertionNode)
 
     val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeNonInternalDependencies(queriedAssertions))
 
