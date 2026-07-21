@@ -376,7 +376,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val freshSnapRoot = freshSnap(sorts.Snap, v1)
 
       // Produce the wand's LHS.
-      val analysisInfosLeft = analysisInfos.withSource(ExpDependencyAnalysisSourceInfo(wand.left, wand.left.pos))
+      val analysisInfosLeft = analysisInfos.overrideSourceInfo(ExpDependencyAnalysisSourceInfo(wand.left, wand.left.pos))
       produce(s1.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1, analysisInfosLeft)((sLhs, v2) => {
         val proofScriptCfg = proofScript.toCfg()
         val emptyHeap = v2.heapSupporter.getEmptyHeap(sLhs.program)
@@ -432,7 +432,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
     }
 
     // some of the analysis labels, introduced while verifying the package statement, might be needed later on -> reassume them
-    analysisLabels foreach (l => v.decider.assume(DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v.decider, l, Set.empty, Set(l)), None, analysisInfos.withDependencyType(AssumptionType.Internal)))
+    analysisLabels foreach (l => v.decider.assume(DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v.decider, l, Set.empty, Set(l)), None, analysisInfos.overrideDependencyType(AssumptionType.Internal)))
 
     recordedBranches.foldLeft(tempResult)((prevRes, recordedState) => {
       prevRes combine {
@@ -450,7 +450,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           v1.decider.setCurrentBranchCondition(And(branchConditions map (t => DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v1.decider, t, Set.empty, Set(t)))), (exp, expNew), analysisInfos)
 
           // Recreate all path conditions in the Z3 proof script that we recorded for that branch
-          v1.decider.assume(conservedPcs._1 map (t => DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v1.decider, t, Set.empty, Set(t))), conservedPcs._2, analysisInfos.withDependencyType(AssumptionType.Internal))
+          v1.decider.assume(conservedPcs._1 map (t => DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v1.decider, t, Set.empty, Set(t))), conservedPcs._2, analysisInfos.overrideDependencyType(AssumptionType.Internal))
 
           // Execute the continuation Q
           Q(s2, magicWandChunk, v1)

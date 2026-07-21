@@ -111,7 +111,7 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
   def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos): GeneralChunk = {
     val newChunk = decider.registerDerivedChunk(Set(chunk), {finalPerm =>
       chunk.permMinus(finalPerm, newPermExp)},
-      newPerm, analysisInfos.withDependencyType(AssumptionType.Internal), isExhale=false, createLabel=false) // TODO ake: assumption type? maybe for exhale we want to have Implicit?
+      newPerm, analysisInfos.overrideDependencyType(AssumptionType.Internal), isExhale=false, createLabel=false) // TODO ake: assumption type? maybe for exhale we want to have Implicit?
     @unused // we need to register the chunk to have a sound analysis
     val exhaledChunk = decider.registerDerivedChunk(Set(chunk), { finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},
@@ -122,7 +122,7 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
   def permMinus(chunk: QuantifiedBasicChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos): QuantifiedBasicChunk = {
     val newChunk = decider.registerDerivedChunk(Set(chunk), {finalPerm =>
       chunk.permMinus(finalPerm, newPermExp)},
-      newPerm, analysisInfos.withDependencyType(AssumptionType.Internal), isExhale=false, createLabel=false) // TODO ake: assumption type? maybe for exhale we want to have Implicit?
+      newPerm, analysisInfos.overrideDependencyType(AssumptionType.Internal), isExhale=false, createLabel=false) // TODO ake: assumption type? maybe for exhale we want to have Implicit?
     @unused // we need to register the chunk to have a sound analysis
     val exhaledChunk = decider.registerDerivedChunk(Set(chunk), { finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},

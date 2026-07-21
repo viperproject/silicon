@@ -216,7 +216,7 @@ object predicateSupporter extends PredicateSupportRules {
               App(s4.predicateData(predicate.name).triggerFunction,
                 snap.get.convert(terms.sorts.Snap) +: tArgs)
             val eargs = eArgs.mkString(", ")
-            v4.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), analysisInfos.withDependencyType(AssumptionType.Trigger))
+            v4.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), analysisInfos.overrideDependencyType(AssumptionType.Trigger))
           }
           Q(s4.copy(g = s.g,
             permissionScalingFactor = s.permissionScalingFactor,
@@ -231,7 +231,7 @@ object predicateSupporter extends PredicateSupportRules {
               App(s4.predicateData(predicate.name).triggerFunction,
                 snap.get.convert(terms.sorts.Snap) +: tArgs)
             val eargs = eArgs.mkString(", ")
-            v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), analysisInfos.withDependencyType(AssumptionType.Trigger))
+            v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), analysisInfos.overrideDependencyType(AssumptionType.Trigger))
           }
           Q(s4.copy(g = s.g,
             permissionScalingFactor = s.permissionScalingFactor,

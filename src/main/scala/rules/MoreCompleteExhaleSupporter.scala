@@ -180,7 +180,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     }
 
     val (s1, taggedSnap, snapDefs, permSum, permSumExp) = summariseOnly(s, relevantChunks, resource, args, argsExp, knownValue, v)
-    v.decider.assumeDefinition(And(snapDefs), Option.when(withExp)(DebugExp.createInstance("Snapshot", isInternal_ = true)), analysisInfos.withDependencyType(AssumptionType.Internal))
+    v.decider.assumeDefinition(And(snapDefs), Option.when(withExp)(DebugExp.createInstance("Snapshot", isInternal_ = true)), analysisInfos.overrideDependencyType(AssumptionType.Internal))
     //    v.decider.assume(PermAtMost(permSum, FullPerm())) /* Done in StateConsolidator instead */
 
     val s2 =
@@ -401,7 +401,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             pNeeded = PermMinus(pNeeded, pTaken)
             pNeededExp = permsExp.map(pe => ast.PermSub(pNeededExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT))
 
-            if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout(), analysisInfos.withDependencyType(AssumptionType.Internal))) {
+            if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout(), analysisInfos.overrideDependencyType(AssumptionType.Internal))) {
               newChunks.append(newChunk)
             }
 
@@ -428,7 +428,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         if (returnSnap) {
           summarise(s0, relevantChunks.toSeq, resource, args, argsExp, Some(definiteAlias.map(_.snap)), v)((s1, snap, _, _, v1) => {
-            val condSnap = Some(if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout(), analysisInfos.withDependencyType(AssumptionType.Internal))) {
+            val condSnap = Some(if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout(), analysisInfos.overrideDependencyType(AssumptionType.Internal))) {
               snap
             } else {
               Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit)
@@ -593,7 +593,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       relevantChunks foreach (chunk => {
         val instantiatedPermSum = permissionSum.replace(freeReceiver, chunk.args.head)
         val exp = permissionSumExp.map(pse => ast.PermLeCmp(replaceVarsInExp(pse, Seq(freeReceiverExp.name), Seq(chunk.argsExp.get.head)), ast.FullPerm()())())
-        v.decider.assume(PermAtMost(instantiatedPermSum, FullPerm), exp, exp, analysisInfos.withDependencyType(AssumptionType.Internal))
+        v.decider.assume(PermAtMost(instantiatedPermSum, FullPerm), exp, exp, analysisInfos.overrideDependencyType(AssumptionType.Internal))
       })
     }
   }

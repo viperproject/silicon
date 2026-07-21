@@ -412,7 +412,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     override def handleFailedAssertion(failedAssertion: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit = {
       if (assumeFailedAssertion) {
-        assume(failedAssertion, e, finalExp, analysisInfos.withDependencyType(AssumptionType.Explicit))
+        assume(failedAssertion, e, finalExp, analysisInfos.overrideDependencyType(AssumptionType.Explicit))
         failedAssertion match {
           case False => checkSmoke(analysisInfos)
           case _ =>

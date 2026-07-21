@@ -208,7 +208,7 @@ object chunkSupporter extends ChunkSupportRules {
           val newChunk = v.chunkFactory.withPermNonQuantifiedChunk(ch, PermMinus(ch.perm, toTake), newPermExp, analysisInfos)
           val takenChunk = Some(v.chunkFactory.withPermNonQuantifiedChunk(ch, toTake, toTakeExp, analysisInfos, isExhale=true))
           var newHeap = h - ch
-          if (!v.decider.check(newChunk.perm === NoPerm, Verifier.config.checkTimeout(), analysisInfos.withDependencyType(AssumptionType.Internal))) {
+          if (!v.decider.check(newChunk.perm === NoPerm, Verifier.config.checkTimeout(), analysisInfos.overrideDependencyType(AssumptionType.Internal))) {
             newHeap = newHeap + newChunk
             assumeProperties(newChunk, newHeap)
           }

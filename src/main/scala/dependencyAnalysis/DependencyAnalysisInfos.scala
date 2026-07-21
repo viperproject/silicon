@@ -13,9 +13,28 @@ import viper.silver.ast._
 import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silver.dependencyAnalysis._
 
+/*
+
+ */
+
 /**
- * Stores all information about the currently evaluated statement/expression such that the dependency analysis can
- * correctly add nodes and edges to the graph.
+ * Stores all information about the currently evaluated/executed Viper AST node. This info is used to derive the parameters for the low-level dependency nodes.
+ *
+ * @param sourceInfos list of sourceInfos encountered during execution/evaluation of the current Viper AST node.
+ *                    The head of the list corresponds to the first source info that was encountered (unless it got overridden at some point).
+ *                    This head is used as the sourceInfo when creating dependency nodes, indicating the user-level dependency node they belong to.
+ *                    The tail of sourceInfos is mainly used for debugging purposes or might be used for more fine-grained tracking in the future.
+ * @param dependencyTypes list of dependencyTypes encountered during execution/evaluation of the current Viper AST node.
+ *                        Similarly to sourceInfos, the head is the first dependency type encountered (unless overridden) and determines the
+ *                        dependency type when creating dependency nodes. We keep the tail for debugging purposes.
+ * @param mergeInfos list of mergeInfos encountered during execution/evaluation of the current Viper AST node. They indicate which edges need to be added to the
+ *                   lower-level, intraprocedural graph. All merge infos are relevant and thus propagated to newly created dependency nodes.
+ * @param joinInfos list of joinInfos encountered during execution/evaluation of the current Viper AST node.
+ *                  They indicate how to join graphs of different procedures.
+ *                  All join infos are relevant and thus propagated to newly created dependency nodes.
+ * @param nodes  list of Viper AST nodes indicating the evaluation stack. The head of this list corresponds to the current Viper AST node being evaluated/executed.
+ *              The tail indicates its subexpressions in the order they got evaluated.
+ * @param analysisEnabled boolean flag indicating whether the analysis is currently enabled; might change at runtime.
  */
 case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInfo], dependencyTypes: List[DependencyTypeInfo], mergeInfos: List[DependencyAnalysisMergeInfo], joinInfos: List[DependencyAnalysisJoinInfo], nodes: List[ast.Node], analysisEnabled: Boolean = true) {
 
@@ -51,17 +70,17 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
     this
   }
 
-  def withDependencyType(dependencyType: DependencyType): DependencyAnalysisInfos = {
+  def overrideDependencyType(dependencyType: DependencyType): DependencyAnalysisInfos = {
     if (isAnalysisEnabled) this.copy(dependencyTypes = DependencyTypeInfo(dependencyType) +: dependencyTypes)
     else this
   }
 
-  def withDependencyType(assumptionType: AssumptionType): DependencyAnalysisInfos = {
+  def overrideDependencyType(assumptionType: AssumptionType): DependencyAnalysisInfos = {
     if (isAnalysisEnabled) this.copy(dependencyTypes = DependencyTypeInfo(DependencyType(assumptionType)) +: dependencyTypes)
     else this
   }
 
-  def withSource(source: DependencyAnalysisSourceInfo): DependencyAnalysisInfos =
+  def overrideSourceInfo(source: DependencyAnalysisSourceInfo): DependencyAnalysisInfos =
     if (isAnalysisEnabled) this.copy(sourceInfos = source +: sourceInfos) else this
 
   private def getNodeInfo(n: ast.Node): String = {
@@ -132,10 +151,10 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
   def withEnabled(analysisEnabled: Boolean): DependencyAnalysisInfos = this.copy(analysisEnabled=analysisEnabled)
 
   def withInfo(sourceInfo: DependencyAnalysisSourceInfo, dependencyType: DependencyType): DependencyAnalysisInfos =
-    this.withSource(sourceInfo).withDependencyType(dependencyType)
+    this.overrideSourceInfo(sourceInfo).overrideDependencyType(dependencyType)
 
   def withInfo(sourceInfo: DependencyAnalysisSourceInfo, assumptionType: AssumptionType): DependencyAnalysisInfos =
-    this.withSource(sourceInfo).withDependencyType(assumptionType)
+    this.overrideSourceInfo(sourceInfo).overrideDependencyType(assumptionType)
 }
 
 object DependencyAnalysisInfos {

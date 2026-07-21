@@ -384,7 +384,7 @@ object consumer extends ConsumptionRules {
                 entry1.data._1, And(entry1.pathConditions.branchConditions), Option.when(withExp)(BigAnd(entry1.pathConditions.branchConditionExps.map(_._2.get))),
                 entry2.data._1, And(entry2.pathConditions.branchConditions), Option.when(withExp)(BigAnd(entry2.pathConditions.branchConditionExps.map(_._2.get))),
                 v1,
-                analysisInfos.withSource(StringDependencyAnalysisSourceInfo("conditional join", e0.pos))
+                analysisInfos.overrideSourceInfo(StringDependencyAnalysisSourceInfo("conditional join", e0.pos))
               ),
               // Assume that entry1.pcs is inverse of entry2.pcs
               (entry1.data._2, entry2.data._2) match {
@@ -435,7 +435,7 @@ object consumer extends ConsumptionRules {
         }
         v2.decider.assert(termToAssert, analysisInfos) {
           case true =>
-            v2.decider.assume(t, Option.when(withExp)(e), eNew, analysisInfos.withDependencyType(AssumptionType.Internal))
+            v2.decider.assume(t, Option.when(withExp)(e), eNew, analysisInfos.overrideDependencyType(AssumptionType.Internal))
             QS(s3, v2)
           case false =>
             val failure = createFailure(pve dueTo AssertionFalse(e), v2, s3, termToAssert, eNew)
