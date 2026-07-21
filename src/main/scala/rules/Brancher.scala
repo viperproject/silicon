@@ -50,10 +50,11 @@ object brancher extends BranchingRules {
      *   (1) the branching is due to the short-circuiting evaluation of a conjunction
      *   (2) the branch condition contains a quantified variable
      */
+    val allQuantifiedVariables = s.quantifiedVariables ++ s.packagingWandSnapshots
     val skipPathFeasibilityCheck = (
          fromShortCircuitingAnd
-      || (   s.quantifiedVariables.nonEmpty
-          && s.quantifiedVariables.map(_._1).exists(condition.freeVariables.contains))
+      || (   allQuantifiedVariables.nonEmpty
+          && allQuantifiedVariables.map(_._1).exists(condition.freeVariables.contains))
     )
 
     /* True if the then-branch is to be explored */

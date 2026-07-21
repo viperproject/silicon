@@ -501,7 +501,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     // TODO: Consider if axioms can be simplified in case codomainQVars is empty
 
     val snapshotMaps = relevantChunks.map(_.snapshotMap)
-    val relevantQvars = s.quantifiedVariables.map(_._1).filter(qvar =>
+    // packagingWandSnapshots are always relevant; regular quantified variables only if they occur.
+    val relevantQvars = s.packagingWandSnapshots.map(_._1) ++ s.quantifiedVariables.map(_._1).filter(qvar =>
       snapshotMaps.exists(sm => sm.contains(qvar)) || optSmDomainDefinitionCondition.exists(_.contains(qvar)))
     val additionalFvfArgs = s.functionRecorderQuantifiedVariables().map(_._1) ++ relevantQvars
     val sm = freshSnapshotMap(s, resource, additionalFvfArgs, v)
@@ -668,7 +669,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                            v: Verifier)
                           : (Term, Term) = {
 
-    val additionalSmArgs = s.relevantQuantifiedVariables(arguments).map(_._1)
+    val additionalSmArgs = s.packagingWandSnapshots.map(_._1) ++ s.relevantQuantifiedVariables(arguments).map(_._1)
     val sm = freshSnapshotMap(s, resource, additionalSmArgs, v)
     val smValueDef = BuiltinEquals(ResourceLookup(resource, sm, arguments, s.program), value)
 
@@ -1421,7 +1422,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       })((s4, optCh, v2) =>
         optCh match {
           case Some(ch) if returnSnap =>
-            val snap = ResourceLookup(resource, ch.snapshotMap, arguments, s4.program).convert(sorts.Snap)
+            val lookup = ResourceLookup(resource, ch.snapshotMap, arguments, s4.program)
+            // For magic wands the lookup is already the MWSF (applied directly by applyWand).
+            val snap = if (resource.isInstanceOf[ast.MagicWand]) lookup else lookup.convert(sorts.Snap)
             Q(s4, s4.h, Some(snap), v2)
           case None if returnSnap =>
             Q(s4, s4.h, Some(freshSnap(sorts.Snap, v2)), v2)
@@ -1461,7 +1464,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 v = v)
             val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef1),
               smCache = smCache1)
-            val snap = ResourceLookup(resource, smDef1.sm, arguments, s2.program).convert(sorts.Snap)
+            val lookup = ResourceLookup(resource, smDef1.sm, arguments, s2.program)
+            // For magic wands the lookup is already the MWSF (applied directly by applyWand).
+            val snap = if (resource.isInstanceOf[ast.MagicWand]) lookup else lookup.convert(sorts.Snap)
             Q(s2, h1, Some(snap), v)
           } else {
             Q(s1, h1, None, v)
@@ -1551,7 +1556,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     v.decider.prover.comment("Precomputing data for removing quantified permissions")
 
-    val additionalArgs = s.relevantQuantifiedVariables.map(_._1)
+    val additionalArgs = (s.packagingWandSnapshots ++ s.functionRecorderQuantifiedVariables() ++ s.quantifiedVariables).map(_._1)
     var currentFunctionRecorder = s.functionRecorder
 
     val precomputedData = candidates map { ch =>
@@ -1743,7 +1748,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           // TODO: Reconsider use of and general design behind s.predicateSnapMap
           sorts.PredicateSnapFunction(s.predicateSnapMap(predicate.name), predicate.name)
         case w: ast.MagicWand =>
-          sorts.PredicateSnapFunction(sorts.Snap, MagicWandIdentifier(w, s.program).toString)
+          sorts.PredicateSnapFunction(sorts.MagicWandSnapFunction, MagicWandIdentifier(w, s.program).toString)
         case _ =>
           sys.error(s"Found yet unsupported resource $resource (${resource.getClass.getSimpleName})")
       }
