@@ -1095,7 +1095,7 @@ object evaluator extends EvaluationRules {
     }){
       case (s2, ts1, es1New1, Some((ts2, es2New1, tTriggers, (tAuxGlobal, tAux), eAuxExps, additionalPossibleTriggers))) =>
         val s3 = s.preserveAfterLocalEvaluation(s2).copy(possibleTriggers = s.possibleTriggers ++ additionalPossibleTriggers)
-        Q(s3, tVars, Option.when(debugOn)(varPairs map (e => ast.LocalVarDecl(e._2.get.name, e._2.get.typ)(e._2.get.pos, e._2.get.info, e._2.get.errT))), ts1, es1New1, Some((ts2, es2New1, tTriggers, (tAuxGlobal, tAux), Option.when(withExp)((eAuxExps.get._1, eAuxExps.get._2)))), v)
+        Q(s3, tVars, Option.when(debugOn)(varPairs map (e => ast.LocalVarDecl(e._2.get.name, e._2.get.typ)(e._2.get.pos, e._2.get.info, e._2.get.errT))), ts1, es1New1, Some((ts2, es2New1, tTriggers, (tAuxGlobal, tAux), Option.when(debugOn)((eAuxExps.get._1, eAuxExps.get._2)))), v)
       case (s2, ts1, es1New1, None) =>
         val s3 = s.preserveAfterLocalEvaluation(s2).copy(possibleTriggers = s.possibleTriggers)
         Q(s3, tVars, Option.when(debugOn)(varPairs map (e => ast.LocalVarDecl(e._2.get.name, e._2.get.typ)(e._2.get.pos, e._2.get.info, e._2.get.errT))), ts1, es1New1, None, v)

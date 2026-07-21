@@ -454,19 +454,19 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                       v: Verifier): (Chunk, Seq[Term], Option[Seq[DebugExp]]) = {
     if (s.isQuantifiedResource(wand)) {
       val formalVars = s.getFormalArgVars(wand, v)
-      val formalVarExps = Option.when(withExp)(s.getFormalArgDecls(wand))
+      val formalVarExps = Option.when(debugOn)(s.getFormalArgDecls(wand))
       // The singleton snapshot map maps the wand's arguments to its magic wand snap function.
       val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, wand, tArgs, snapshot.mwsf, v)
       v.decider.prover.comment("Definitional axioms for singleton-SM's value")
-      val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
+      val debugExp = Option.when(debugOn)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
       v.decider.assumeDefinition(smValueDef, debugExp)
       val chunk = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, tArgs,
-        eArgs, FullPerm, Option.when(withExp)(ast.FullPerm()()), sm, s.program)
-      (chunk, Seq(smValueDef), Option.when(withExp)(Seq(debugExp.get)))
+        eArgs, FullPerm, Option.when(debugOn)(ast.FullPerm()()), sm, s.program)
+      (chunk, Seq(smValueDef), Option.when(debugOn)(Seq(debugExp.get)))
     } else {
       val chunk = MagicWandChunk(MagicWandIdentifier(wand, s.program), s.g.values, tArgs, eArgs, snapshot, FullPerm,
-        Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)))
-      (chunk, Seq.empty[Term], Option.when(withExp)(Seq.empty[DebugExp]))
+        Option.when(debugOn)(ast.FullPerm()(wand.pos, wand.info, wand.errT)))
+      (chunk, Seq.empty[Term], Option.when(debugOn)(Seq.empty[DebugExp]))
     }
   }
 
