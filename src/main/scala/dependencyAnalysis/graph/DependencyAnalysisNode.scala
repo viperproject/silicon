@@ -193,12 +193,12 @@ object DependencyNodeFactory {
   def createSimpleAssumptionNode(term: Term, description: Option[String], sourceInfo: DependencyAnalysisSourceInfo,
                                   assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo,
                                   joinInfos: List[SimpleDependencyAnalysisJoin], memberStr: String): SimpleAssumptionNode =
-    SimpleAssumptionNode(DependencyGraphHelper.nextId(), term, description, sourceInfo, assumptionType, mergeInfo, joinInfos, memberStr)
+    SimpleAssumptionNode(DependencyGraphHelper.nextId(), term, description, sourceInfo, assumptionType, mergeInfo, joinInfos.filterNot(_.assertOnly), memberStr)
 
   def createAxiomAssumptionNode(term: Term, description: Option[String], sourceInfo: DependencyAnalysisSourceInfo,
                                  assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo,
                                  joinInfos: List[SimpleDependencyAnalysisJoin], memberStr: String): AxiomAssumptionNode =
-    AxiomAssumptionNode(DependencyGraphHelper.nextId(), term, description, sourceInfo, assumptionType, mergeInfo, joinInfos, memberStr)
+    AxiomAssumptionNode(DependencyGraphHelper.nextId(), term, description, sourceInfo, assumptionType, mergeInfo, joinInfos.filterNot(_.assertOnly), memberStr)
 
   def createSimpleAssertionNode(term: Term, sourceInfo: DependencyAnalysisSourceInfo, assumptionType: AssumptionType,
                                  mergeInfo: DependencyAnalysisMergeInfo, joinInfos: List[SimpleDependencyAnalysisJoin],
@@ -214,7 +214,7 @@ object DependencyNodeFactory {
                                   assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo,
                                   labelNode: LabelNode, joinInfos: List[SimpleDependencyAnalysisJoin],
                                   memberStr: String): PermissionInhaleNode =
-    PermissionInhaleNode(DependencyGraphHelper.nextId(), chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinInfos, memberStr)
+    PermissionInhaleNode(DependencyGraphHelper.nextId(), chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinInfos.filterNot(_.assertOnly), memberStr)
 
   def createPermissionExhaleNode(chunk: Chunk, term: Term, sourceInfo: DependencyAnalysisSourceInfo,
                                   assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo,

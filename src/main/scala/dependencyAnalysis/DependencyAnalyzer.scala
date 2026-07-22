@@ -182,14 +182,14 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
   override def addAssertionNode(node: GeneralAssertionNode): Unit = dependencyGraph.addAssertionNode(node)
 
   override def addAssumption(assumption: Term, analysisInfos: DependencyAnalysisInfos, description: Option[String]): Option[Int] = {
-    val node = DependencyNodeFactory.createSimpleAssumptionNode(assumption, description, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assumptionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo, getMember.name)
+    val node = DependencyNodeFactory.createSimpleAssumptionNode(assumption, description, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assumptionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo.filterNot(_.assertOnly), getMember.name)
     addAssumptionNode(node)
     Some(node.id)
   }
 
   override def addAxiom(assumption: Term, analysisAxiomInfo: DependencyAnalysisAxiomInfo, description: Option[String]): Option[Int] = {
     val analysisInfos = analysisAxiomInfo.analysisInfos
-    val node = DependencyNodeFactory.createAxiomAssumptionNode(assumption, description, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assumptionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo, analysisAxiomInfo.memberStr)
+    val node = DependencyNodeFactory.createAxiomAssumptionNode(assumption, description, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assumptionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo.filterNot(_.assertOnly), analysisAxiomInfo.memberStr)
     addAssumptionNode(node)
     Some(node.id)
   }
@@ -255,7 +255,7 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
   }
 
   override def addAssertionFailedNode(failedAssertion: Term, analysisInfos: DependencyAnalysisInfos): Option[Int] = {
-    val assumeNode = DependencyNodeFactory.createSimpleAssumptionNode(failedAssertion, None, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assertionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo, getMember.name)
+    val assumeNode = DependencyNodeFactory.createSimpleAssumptionNode(failedAssertion, None, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assertionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo.filterNot(_.assertOnly), getMember.name)
     val assertFailedNode = DependencyNodeFactory.createSimpleAssertionNode(failedAssertion, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assertionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo, getMember.name, hasFailed=true)
     dependencyGraph.addNode(assumeNode)
     dependencyGraph.addNode(assertFailedNode)
