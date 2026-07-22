@@ -80,7 +80,7 @@ class DebugDependencyAnalysisCliExtension(override val interpreter: DependencyGr
     override val cmdName: String = "weirdNodes"
     override val cmd: Seq[String] => Unit = _ => printWeirdNodes()
     override val description: String = s"'$cmdName' to print weird nodes"
-    private val weirdNodePattern = """\b(function|func|method|axiom|if|else|while|for|interface|struct|package|import|type)\b""".r
+    private val weirdNodePattern = """\b(function|func|method|requires|ensures|preserves|pure|axiom|if|else|while|for|interface|domain|adt|struct|package|import|type)\b""".r
 
     private def printWeirdNodes(): Unit = {
       interpreter.getNodes.filter(n => !n.assumptionType.isInstanceOf[AssumptionType.InternalType]).groupBy(_.sourceInfo)

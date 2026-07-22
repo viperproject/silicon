@@ -20,6 +20,7 @@ import viper.silver.verifier.{Model, DefaultDependency => SilDefaultDependency}
 import java.io._
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
 
 abstract class ProverStdIO(uniqueId: String,
@@ -38,7 +39,7 @@ abstract class ProverStdIO(uniqueId: String,
   protected var output: PrintWriter = _
   protected var allDecls: Seq[Decl] = Seq()
   protected var allEmits: Seq[String] = Seq()
-  protected var proverLabelId: Int = 0
+  protected var proverLabelId: AtomicInteger = new AtomicInteger(0)
 
   var proverPath: Path = _
   var lastReasonUnknown : String = _
@@ -243,8 +244,7 @@ abstract class ProverStdIO(uniqueId: String,
   }
 
   def nextProverLabel(): String = {
-    val label = "prover_" + proverLabelId
-    proverLabelId += 1
+    val label = "prover_" + proverLabelId.getAndIncrement()
     label
   }
 
