@@ -388,7 +388,7 @@ object Converter {
       case AtMost(t0, t1)  => intComparison(t0, t1, model, env)(_ <= _)
       case AtLeast(t0, t1) => intComparison(t0, t1, model, env)(_ >= _)
       case Less(t0, t1)    => intComparison(t0, t1, model, env)(_ < _)
-      case t: Greater      => intComparison(t.p0, t.p1, model, env)(_ > _)
+      case Greater(t0, t1) => intComparison(t0, t1, model, env)(_ > _)
       case BuiltinEquals(t0, t1) =>
         val e0 = evaluateTerm(t0, model, env)
         val e1 = evaluateTerm(t1, model, env)
@@ -412,26 +412,26 @@ object Converter {
 
       // Integer arithmetic. Div/Mod follow the SMT-LIB `div`/`mod` (Euclidean) semantics that
       // Silicon translates them to, so the results agree with the solver's model.
-      case t: Plus  => intArithmetic(t.p0, t.p1, model, env)(_ + _)
-      case t: Minus => intArithmetic(t.p0, t.p1, model, env)(_ - _)
-      case t: Times => intArithmetic(t.p0, t.p1, model, env)(_ * _)
-      case t: Div   => intDivMod(t.p0, t.p1, model, env)(euclideanDiv)
-      case t: Mod   => intDivMod(t.p0, t.p1, model, env)(euclideanMod)
+      case Plus(t0, t1)  => intArithmetic(t0, t1, model, env)(_ + _)
+      case Minus(t0, t1) => intArithmetic(t0, t1, model, env)(_ - _)
+      case Times(t0, t1) => intArithmetic(t0, t1, model, env)(_ * _)
+      case Div(t0, t1)   => intDivMod(t0, t1, model, env)(euclideanDiv)
+      case Mod(t0, t1)   => intDivMod(t0, t1, model, env)(euclideanMod)
 
       // Multiset containment: `e in ms` is the count of `e` in `ms`.
-      case t: MultisetCount =>
+      case MultisetCount(ms, e) =>
         getFunctionValue(model, "Multiset_count",
-          Seq(evaluateTerm(t.p0, model, env).asValueEntry, evaluateTerm(t.p1, model, env).asValueEntry), sorts.Int)
+          Seq(evaluateTerm(ms, model, env).asValueEntry, evaluateTerm(e, model, env).asValueEntry), sorts.Int)
 
       // Map operations. `r in domain(m)` desugars to SetIn(r, MapDomain(m)), so evaluating the
       // domain to its set value lets the existing SetIn case take over.
-      case t: MapDomain =>
-        getFunctionValue(model, "Map_domain", Seq(evaluateTerm(t.p, model, env).asValueEntry), t.sort)
-      case t: MapLookup =>
+      case md: MapDomain =>
+        getFunctionValue(model, "Map_domain", Seq(evaluateTerm(md.p, model, env).asValueEntry), md.sort)
+      case MapLookup(base, key) =>
         getFunctionValue(model, "Map_apply",
-          Seq(evaluateTerm(t.base, model, env).asValueEntry, evaluateTerm(t.key, model, env).asValueEntry), t.sort)
-      case t: MapCardinality =>
-        getFunctionValue(model, "Map_card", Seq(evaluateTerm(t.p, model, env).asValueEntry), sorts.Int)
+          Seq(evaluateTerm(base, model, env).asValueEntry, evaluateTerm(key, model, env).asValueEntry), term.sort)
+      case mc: MapCardinality =>
+        getFunctionValue(model, "Map_card", Seq(evaluateTerm(mc.p, model, env).asValueEntry), sorts.Int)
 
       case _ => OtherEntry(term.toString, "unhandled")
     }

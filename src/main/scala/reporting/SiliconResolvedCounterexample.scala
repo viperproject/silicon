@@ -1,3 +1,9 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2026 ETH Zurich.
+
 package viper.silicon.reporting
 
 import viper.silver.verifier.{ApplicationEntry, ConstantEntry, MapEntry, Model, ValueEntry}
@@ -19,12 +25,12 @@ import viper.silver.verifier._
 import viper.silver.verifier.Rational
 
 /**
-  * Transforms a counterexample returned by Boogie back to a Viper counterexample. The programmer can choose between an
-  * "intermediate" CE or an "extended" CE.
+  * Transforms the model returned by the SMT solver into a Viper counterexample. One can choose
+  * between a "raw" CE and a "resolved" CE (see [[viper.silver.verifier.Counterexample]]).
   */
 
 /**
-  * CounterexampleGenerator class used for generating an "extended" CE.
+  * CounterexampleGenerator class used for generating a "resolved" CE.
   */
 case class SiliconResolvedCounterexample(model: Model,
                                          internalStore: Store,
@@ -60,7 +66,7 @@ case class SiliconResolvedCounterexample(model: Model,
 }
 
 /**
-  * CounterexampleGenerator class used for generating an "intermediate" CE.
+  * CounterexampleGenerator class used for generating a "raw" CE.
   */
 case class SiliconRawCounterexample(model: Model,
                                              internalStore: Store,
@@ -146,7 +152,7 @@ object SiliconRawCounterexample {
   /**
     * Defines every sequence that can be extracted in the model. The entries of the sequences still consist of identifiers
     * and are not assigned to their actual value. Additionally, not every sequence in the output set will be mentioned
-    * in the "extended" CE as only sequences that are used in the method containing the verification error will be mentioned there.
+    * in the "resolved" CE as only sequences that are used in the method containing the verification error will be mentioned there.
     */
   def detSequences(model: Model): Seq[CECollection] = {
     var res = Map[String, Seq[String]]()
@@ -261,7 +267,7 @@ object SiliconRawCounterexample {
   /**
     * Defines every set that can be extracted in the model. The entries of the sets still consist of identifiers
     * and are not assigned to their actual value. Additionally, not every set in the output set will be mentioned
-    * in the "extended" CE as only sets that are used in the method containing the verification error will be mentioned there.
+    * in the "resolved" CE as only sets that are used in the method containing the verification error will be mentioned there.
     */
   def detSets(model: Model): Seq[CECollection] = {
     var res = Map[String, Set[String]]()
@@ -367,7 +373,7 @@ object SiliconRawCounterexample {
   /**
     * Defines every multiset that can be extracted in the model. The entries of the multisets still consist of identifiers
     * and are not assigned to their actual value. Additionally, not every multiset in the output set will be mentioned
-    * in the "extended" CE as only multisets that are used in the method containing the verification error will be mentioned there.
+    * in the "resolved" CE as only multisets that are used in the method containing the verification error will be mentioned there.
     */
   def detMultisets(model: Model): Seq[CECollection] = {
     var res = Map[String, scala.collection.immutable.Map[String, Int]]()
@@ -608,6 +614,8 @@ object SiliconRawCounterexample {
     // Quantified predicate permissions are likewise computed per argument tuple and summed across
     // all quantified predicate chunks for the same (predicate, arguments) instance.
     val qpPreds = scala.collection.mutable.LinkedHashMap[(String, Seq[String]), Rational]()
+    // Quantified magic wand instances, summed per (wand id, arguments) like quantified predicates.
+    val qpWands = scala.collection.mutable.LinkedHashMap[(String, Seq[String]), Rational]()
     h foreach {
       case c@BasicChunk(FieldID, _, _, _, _, _, _, _) =>
         heap += detField(model, c)
@@ -624,19 +632,26 @@ object SiliconRawCounterexample {
           qpFields(key) = (summedPerm, knownValue)
         }
       case c: st.QuantifiedPredicateChunk =>
-        for ((args, perm) <- detQPPredEntries(c, model)) {
+        for ((args, perm) <- detQPArgEntries(c.quantifiedVars, c.invs, c.singletonArguments, c.perm, model)) {
           val key = (c.id.name, args)
           qpPreds(key) = qpPreds.get(key).getOrElse(Rational.zero) + perm
         }
       case c@MagicWandChunk(_, _, _, _, _, _, _) =>
         heap += detMagicWand(model, c)
-      case _ => //println("This case is not supported in detHeap")
+      case c: st.QuantifiedMagicWandChunk =>
+        for ((args, perm) <- detQPArgEntries(c.quantifiedVars, c.invs, c.singletonArguments, c.perm, model)) {
+          val key = (c.id.toString, args)
+          qpWands(key) = qpWands.get(key).getOrElse(Rational.zero) + perm
+        }
     }
     for (((recv, field), (perm, value)) <- qpFields) {
       heap += RawHeapEntry(Seq(recv), Seq(field), value, Some(perm), QPFieldType, None)
     }
     for (((predName, args), perm) <- qpPreds) {
       heap += RawHeapEntry(Seq(predName), args, "#undefined", Some(perm), QPPredicateType, None)
+    }
+    for (((wandId, args), perm) <- qpWands) {
+      heap += RawHeapEntry(Seq(wandId), args, "#undefined", Some(perm), QPMagicWandType, None)
     }
     heap
   }
@@ -680,14 +695,16 @@ object SiliconRawCounterexample {
   }
 
   /**
-    * Extracts, for a single quantified predicate chunk, the (arguments, permission) pairs it
-    * contributes. Candidate argument tuples are the keys for which the model instantiated the
-    * chunk's inverse/image functions; for each tuple the chunk's permission term is evaluated with
-    * the quantified variables bound to the tuple's values.
+    * Extracts, for a single quantified predicate or magic wand chunk, the (arguments, permission)
+    * pairs it contributes. Candidate argument tuples are the keys for which the model instantiated
+    * the chunk's inverse/image functions; for each tuple the chunk's permission term is evaluated
+    * with the quantified variables bound to the tuple's values. Predicates and magic wands share
+    * this logic because both are identified by an argument tuple (unlike fields, which also carry a
+    * value — see [[detQPFieldEntries]]).
     */
-  def detQPPredEntries(c: st.QuantifiedPredicateChunk, model: Model): Seq[(Seq[String], Rational)] = {
-    val qvars = c.quantifiedVars
-    val invImgNames = c.invs.toSeq.flatMap(i => (i.inverses ++ i.images).map(_.id.toString))
+  def detQPArgEntries(quantifiedVars: Seq[Var], invs: Option[viper.silicon.rules.InverseFunctions],
+                      singletonArguments: Option[Seq[Term]], perm: Term, model: Model): Seq[(Seq[String], Rational)] = {
+    val invImgNames = invs.toSeq.flatMap(i => (i.inverses ++ i.images).map(_.id.toString))
     var argTuples: Set[Seq[String]] = invImgNames.flatMap { fn =>
       model.entries.get(fn) match {
         case Some(MapEntry(m, _)) => m.keys.map(_.map(_.toString))
@@ -695,16 +712,16 @@ object SiliconRawCounterexample {
       }
     }.toSet
     if (argTuples.isEmpty) {
-      c.singletonArguments.map(_.map(t => evaluateTerm(t, model).asValueEntry.toString)).foreach(t => argTuples += t)
+      singletonArguments.map(_.map(t => evaluateTerm(t, model).asValueEntry.toString)).foreach(t => argTuples += t)
     }
     argTuples.toSeq.flatMap { tuple =>
-      if (tuple.length < qvars.length) None
+      if (tuple.length < quantifiedVars.length) None
       else {
-        val env = Map[Var, ExtractedModelEntry](qvars.zip(tuple).map { case (qv, v) => qv -> UnprocessedModelEntry(ConstantEntry(v)) }: _*)
-        evaluateTerm(c.perm, model, env) match {
+        val env = Map[Var, ExtractedModelEntry](quantifiedVars.zip(tuple).map { case (qv, v) => qv -> UnprocessedModelEntry(ConstantEntry(v)) }: _*)
+        evaluateTerm(perm, model, env) match {
           case LitPermEntry(p) =>
             val perm = Rational(p.numerator, p.denominator)
-            if (perm > Rational.zero) Some((tuple.take(qvars.length), perm)) else None
+            if (perm > Rational.zero) Some((tuple.take(quantifiedVars.length), perm)) else None
           case _ => None
         }
       }
@@ -746,9 +763,9 @@ object SiliconRawCounterexample {
         var assignedPredBody = scala.collection.immutable.Map[Exp, ModelEntry]()
         for ((exp, value) <- insPred) {
           if (value.toString.startsWith("$Snap") || value.toString.startsWith("($Snap")) {
-            assignedPredBody += evalBody(exp, UnspecifiedEntry, assignedPredBody)
+            assignedPredBody += resolveBodyEntry(exp, UnspecifiedEntry, assignedPredBody)
           } else {
-            assignedPredBody += evalBody(exp, value, assignedPredBody)
+            assignedPredBody += resolveBodyEntry(exp, value, assignedPredBody)
           }
         }
         ans = assignedPredBody
@@ -758,20 +775,22 @@ object SiliconRawCounterexample {
   }
 
   /**
-    * Compare the snapshot of a predicate to its actual body (accessed through its ast node).
+    * Walks a predicate's body AST (not SMT terms — unlike [[Converter.evaluateTerm]] above) and pairs
+    * the body location reached with the snapshot `value` that belongs to it, following conditionals
+    * and implications by checking their guards against the already-resolved body entries in `lookup`.
     */
-  def evalBody(exp: Exp, value: ModelEntry, lookup: scala.collection.immutable.Map[Exp, ModelEntry]): (Exp, ModelEntry) = {
+  def resolveBodyEntry(exp: Exp, value: ModelEntry, lookup: scala.collection.immutable.Map[Exp, ModelEntry]): (Exp, ModelEntry) = {
     exp match {
       case FieldAccessPredicate(predAcc, _) => (predAcc, value)
       case CondExp(cond, thn, els) =>
-        if (evalExp(cond, lookup)) {
-          evalBody(thn, value, lookup)
+        if (bodyConditionHolds(cond, lookup)) {
+          resolveBodyEntry(thn, value, lookup)
         } else {
-          evalBody(els, value, lookup)
+          resolveBodyEntry(els, value, lookup)
         }
       case ast.Implies(left, right) =>
-        if (evalExp(left, lookup)) {
-          evalBody(right, value, lookup)
+        if (bodyConditionHolds(left, lookup)) {
+          resolveBodyEntry(right, value, lookup)
         } else {
           (left, ConstantEntry("False"))
         }
@@ -779,7 +798,7 @@ object SiliconRawCounterexample {
     }
   }
 
-  def evalExp(exp: Exp, lookup: scala.collection.immutable.Map[Exp, ModelEntry]): Boolean = exp match {
+  def bodyConditionHolds(exp: Exp, lookup: scala.collection.immutable.Map[Exp, ModelEntry]): Boolean = exp match {
     case NeCmp(left, right) => !(lookup.getOrElse(left, ConstantEntry(left.toString)).toString.equalsIgnoreCase(lookup.getOrElse(right, ConstantEntry(right.toString)).toString))
     case ast.EqCmp(left, right) => (lookup.getOrElse(left, ConstantEntry(left.toString)).toString.equalsIgnoreCase(lookup.getOrElse(right, ConstantEntry(right.toString)).toString))
     case _ => false
@@ -827,13 +846,9 @@ object SiliconRawCounterexample {
       val tempArg = evaluateTerm(x, model)
       var arg = tempArg.toString
       if (tempArg.isInstanceOf[OtherEntry]) {
-        if (evalTermToModelEntry(x, model).isDefined) {
-          arg = evalTermToModelEntry(x, model).get.toString
-        } else if (evalPerm(x, model).isDefined) {
-          arg = evalPerm(x, model).get.toString
-        } else {
-          arg = x.toString
-        }
+        // evaluateTerm handles the argument sorts directly; the only remaining special case is a
+        // permission-sorted argument, whose rational value we render explicitly.
+        arg = evalPerm(x, model).map(_.toString).getOrElse(x.toString)
       }
       args ++= Seq(arg)
     }
@@ -848,44 +863,6 @@ object SiliconRawCounterexample {
   def evalPerm(value: Term, model: Model): Option[Rational] = evaluateTerm(value, model) match {
     case LitPermEntry(r) => Some(Rational(r.numerator, r.denominator))
     case _ => None
-  }
-
-  /**
-    * Evaluates a Term to a value of the counterexample from the SMT solver.
-    */
-  def evalTermToModelEntry(value: Term, model: Model): Option[ModelEntry] = {
-    value match {
-      case v: Var =>
-        if (v.id.name.contains("@")) {
-          model.entries.get(v.id.name)
-        } else {
-          Some(ConstantEntry(v.id.name))
-        }
-      case a: App =>
-        if (model.entries.get(a.applicable.id.toString).isDefined && model.entries.get(a.applicable.id.toString).get.isInstanceOf[MapEntry]) {
-          val tempMap = model.entries.get(a.applicable.id.toString).get.asInstanceOf[MapEntry].options
-          tempMap.get(a.args.map(t => ConstantEntry(t.toString)))
-        } else {
-          None
-        }
-      case SeqLength(t) =>
-        val seqName = model.entries.get(t.toString)
-        val tempMap = model.entries.get("Seq_length")
-        if (seqName.isDefined && tempMap.isDefined && tempMap.get.isInstanceOf[MapEntry]) {
-          tempMap.get.asInstanceOf[MapEntry].options.get(Seq(ConstantEntry(seqName.get.toString)))
-        } else {
-          None
-        }
-      case IntLiteral(t) => Some(ConstantEntry(t.intValue.toString))
-      case SeqTake(t0, t1) =>
-        if (evalTermToModelEntry(t0, model).isDefined) {
-          Some(ConstantEntry(evalTermToModelEntry(t0, model).toString ++ " at idx " ++ t1.toString))
-        } else {
-          None
-        }
-      case SeqAt(t0, t1) => None
-      case _ => None
-    }
   }
 
   lazy val termconverter: TermConverter[String, String, String] = {
@@ -1058,7 +1035,7 @@ object SiliconResolvedCounterexample {
   }
 
   /**
-    * Match the collection type for the "extended" CE.
+    * Match the collection type for the "resolved" CE.
     */
   def detTranslationMap(variables: Seq[CEVariable], collections: Seq[CECollection], fields: Map[String, (String, Int)]): Map[String, String] = {
     var namesTranslation = Map[String, String]()
