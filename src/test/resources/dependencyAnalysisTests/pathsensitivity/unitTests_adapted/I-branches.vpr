@@ -1,0 +1,75 @@
+field f: Int
+
+method branch1(){
+    var x: Int, y: Int
+
+    if(@dependencyInfo("assumptionType:PathCondition, label:L1")(x > 0)){
+        @dependencyInfo("assumptionType:SourceCode, label:L2")
+        y := x + 1
+    }else{
+        @dependencyInfo("assumptionType:SourceCode, label:L3")
+        y := -x + 1
+
+    }
+
+    @dependencyInfo("assertionType:Explicit, label:L4, expectedDependencies:[L1,L2,L3]")
+    assert y > 0
+}
+
+method branch2(){
+    var x: Int, y: Int
+
+    if(@dependencyInfo("assumptionType:PathCondition, label:L5")(x > 0)){
+        assume @dependencyInfo("assumptionType:Explicit, label:L6") (y > 0)
+    }else{
+        assume @dependencyInfo("assumptionType:Explicit, label:L7") (y >= 10)
+    }
+
+    @dependencyInfo("assertionType:Explicit, label:L8, expectedDependencies:[L6,L7]")
+    assert y > 0
+}
+
+method branch3(){
+    var x: Int, y: Int
+
+
+    if(@dependencyInfo("assumptionType:PathCondition, label:L9")(x > 10)){
+        @dependencyInfo("assumptionType:SourceCode, label:L10")
+        y := x + 1
+    }else{
+        @dependencyInfo("assumptionType:SourceCode, label:L11")
+        y := 10
+        assume @dependencyInfo("assumptionType:Explicit, label:L12") (y > 0)
+    }
+
+    @dependencyInfo("assertionType:Explicit, label:L13, expectedDependencies:[L9,L10]")
+    assert x > 10 ==> y > 0
+}
+
+method branch4(){
+    var x: Int, y: Int
+
+    if(@dependencyInfo("assumptionType:PathCondition, label:L14")(x > 0)){
+        @dependencyInfo("assumptionType:SourceCode, label:L15")
+        y := x + 1
+    }else{
+        @dependencyInfo("assumptionType:SourceCode, label:L16")
+        y := 10 - x
+        @dependencyInfo("assertionType:Explicit, label:L17, expectedDependencies:[L14,L16]")
+        assert y > 0
+    }
+}
+
+method branch5(){
+    var x: Int, y: Int
+
+    assume @dependencyInfo("assumptionType:Explicit, label:L18") (y > 0)
+
+    if(@dependencyInfo("assumptionType:PathCondition, label:L19")(x > 0)){
+        @dependencyInfo("assumptionType:SourceCode, label:L20")
+        y := x + 1
+    }else{
+        @dependencyInfo("assertionType:Explicit, label:L21, expectedDependencies:[L18]")
+        assert y >= 0
+    }
+}

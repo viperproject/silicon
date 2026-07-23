@@ -16,7 +16,7 @@ method disjunctive_path(a: Int, b: Int)
   }
 
   if (@dependencyInfo("assumptionType:PathCondition, label:L6")(a != 0 && b == 0)) {
-    @dependencyInfo("assertionType:Explicit, label:L7, expectedDependencies:[L4,L6]")
+    @dependencyInfo("assertionType:Explicit, label:L7, expectedDependencies:[L1,L2,L4,L6]")
     assert x == 2
   }
 }

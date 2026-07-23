@@ -1,0 +1,126 @@
+field f: Int
+
+predicate greater0(n: Int){
+  n > 0
+}
+
+predicate greater5(n: Int){
+  n > 5
+}
+
+method foldP(n: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L1")(n > 10)
+{
+    var x: Int
+    @dependencyInfo("assumptionType:SourceCode, label:L2")
+    x := 1
+
+
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L3, expectedDependencies:[L1,L2]")
+    fold greater0(x + n)
+}
+
+method unfoldP(n: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L4")(greater0(n))
+{
+    var x: Int
+    @dependencyInfo("assumptionType:SourceCode, label:L5")
+    x := 1
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L6, expectedDependencies:[L4]")
+    unfold greater0(n)
+    @dependencyInfo("assumptionType:SourceCode, label:L7")
+    x := n + x
+
+
+    @dependencyInfo("assertionType:Explicit, label:L8, expectedDependencies:[L4,L5,L6,L7]")
+    assert x > 1
+}
+
+method unfoldFoldP(a: Int, b: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L9, expectedDependencies:[L16,L14]")(greater0(a))
+    requires @dependencyInfo("assumptionType:Precondition, label:L10, expectedDependencies:[L16,L15]")(greater5(b))
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L37, expectedDependencies:[L9,L10,L11,L12,L13,L14,L15,L16]")(greater5(a + b))
+{
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L11, expectedDependencies:[L9,L14,L16]")
+    unfold greater0(a)
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L12, expectedDependencies:[L10,L15,L16]")
+    unfold greater5(b)
+
+
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L13, expectedDependencies:[L9,L10,L11,L12,L14,L15,L16]")
+    fold greater5(a + b)
+}
+
+method callWithPredicate(a: Int, b: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L14")(greater0(a))
+    requires @dependencyInfo("assumptionType:Precondition, label:L15")(greater5(b))
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L38, expectedDependencies:[L9,L10,L11,L12,L13,L14,L15,L16,L37]")(greater5(a + b))
+{
+    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L16, expectedDependencies:[L14,L15]")
+    unfoldFoldP(a, b)
+
+
+    @dependencyInfo("assertionType:Explicit, label:L17, expectedDependencies:[L9,L10,L11,L12,L13,L14,L15,L16,L37]")
+    assert greater5(a + b)
+}
+
+method unfoldPrecision(a: Int, b: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L18")(greater0(a))
+    requires @dependencyInfo("assumptionType:Precondition, label:L19")(greater5(b))
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L39, expectedDependencies:[L19,L21,L22]")(greater0(b))
+{
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L20, expectedDependencies:[L18]")
+    unfold greater0(a)
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L21, expectedDependencies:[L19]")
+    unfold greater5(b)
+
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L22, expectedDependencies:[L19,L21]")
+    fold greater0(b)
+}
+
+method foldPrecision(a: Int, b: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L23")(a > 5)
+    requires @dependencyInfo("assumptionType:Precondition, label:L24")(b > 5)
+{
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L25, expectedDependencies:[L24]")
+    fold greater0(b)
+}
+
+method unfolding1(n: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L26")(greater5(n))
+{
+    @dependencyInfo("assertionType:Explicit, label:L27, expectedDependencies:[L26]")
+    assert unfolding greater5(n) in n > 0
+}
+
+predicate implPred(a: Int, x: Ref){
+  a > 0 ==> acc(x.f)
+}
+
+method unfoldWithImpl(a: Int, x: Ref)
+  requires @dependencyInfo("assumptionType:Precondition, label:L28")(implPred(a, x))
+{
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L29, expectedDependencies:[L28]")
+  unfold implPred(a, x)
+  if(@dependencyInfo("assumptionType:PathCondition, label:L30")(a > 5)){
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L31, expectedDependencies:[L28,L29,L30]")
+    x.f := a
+
+  }
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L32, expectedDependencies:[L28,L29,L30]")
+  fold implPred(a, x)
+}
+
+method unfoldingWithImpl(a: Int, x: Ref)
+  requires @dependencyInfo("assumptionType:Precondition, label:L33")(implPred(a, x))
+{
+  var res: Int
+  if(@dependencyInfo("assumptionType:PathCondition, label:L34")(a > 5)){
+
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L35, expectedDependencies:[L33,L34]")
+    res := unfolding implPred(a, x) in x.f
+  }else{
+    @dependencyInfo("assumptionType:SourceCode, label:L36, expectedDependencies:[L34]")
+    res := a
+  }
+}

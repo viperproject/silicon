@@ -21,6 +21,6 @@ method client() {
     var res: Int
     @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L9, expectedDependencies:[L6,L7,L8]")
     res := compute(a, b, c)
-    @dependencyInfo("assertionType:Explicit, label:L10, expectedDependencies:[L6,L7,L9,L4,L5]")
+    @dependencyInfo("assertionType:Explicit, label:L10, expectedDependencies:[L6,L7,L8,L9,L4,L5]")
     assert res == 5
 }

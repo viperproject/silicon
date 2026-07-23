@@ -120,6 +120,41 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo],
 	}
 
 	def withEnabled(analysisEnabled: Boolean): DependencyAnalysisInfos = this.copy(analysisEnabled=analysisEnabled)
+
+	def intersectInfos(other: DependencyAnalysisInfos): DependencyAnalysisInfos = {
+		val intersectedMergeInfos = intersectMergeInfos(other)
+
+		this.copy(
+			sourceInfos = sourceInfos.intersect(other.sourceInfos),
+			dependencyTypes = dependencyTypes.intersect(other.dependencyTypes),
+			mergeInfos = intersectedMergeInfos,
+			joinInfos = joinInfos.intersect(other.joinInfos),
+			nodes = nodes.intersect(other.nodes),
+			analysisEnabled = analysisEnabled && other.analysisEnabled,
+			pathContextID = if(this.pathContextID == other.pathContextID) this.pathContextID else 0
+		)
+	}
+
+	private def intersectMergeInfos(other: DependencyAnalysisInfos): List[DependencyAnalysisMergeInfo] = {
+
+		val	info1 = this.getMergeInfo
+		val	info2 = other.getMergeInfo
+		(info1, info2) match {
+			case (SimpleDependencyAnalysisMerge(src1), SimpleDependencyAnalysisMerge(src2))
+				if src1 == src2 => List(SimpleDependencyAnalysisMerge(src1))
+			case (CompositeDependencyAnalysisMergeInfo(s1, s2), SimpleDependencyAnalysisMerge(src))
+				if (src == s1 || src == s2) => List(SimpleDependencyAnalysisMerge(src))
+			case (SimpleDependencyAnalysisMerge(src), CompositeDependencyAnalysisMergeInfo(s1, s2))
+				if (src == s1 || src == s2) => List(SimpleDependencyAnalysisMerge(src))
+			case (CompositeDependencyAnalysisMergeInfo(x1, x2), CompositeDependencyAnalysisMergeInfo(y1, y2)) =>
+				if (x1 == y1 && x2 == y2){ List(CompositeDependencyAnalysisMergeInfo(x1, x2))}
+				else if(x1 == y1){ List(SimpleDependencyAnalysisMerge(x1))}
+				else if(x2 == y2){ List(SimpleDependencyAnalysisMerge(x2))}
+				//TODO: jho: maybe consider cross-matching merge infos
+				else List.empty
+			case _ => List.empty
+		}
+	}
 }
 
 object DependencyAnalysisInfos {

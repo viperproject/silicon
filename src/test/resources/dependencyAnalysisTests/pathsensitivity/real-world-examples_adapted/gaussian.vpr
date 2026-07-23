@@ -1,0 +1,89 @@
+field f: Int
+
+method gaussianSimple(n: Int) returns (res: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L26")(0 <= n)
+  requires @dependencyInfo("assumptionType:Precondition, label:L1")(n <= 5)
+{
+  var i: Int
+  @dependencyInfo("assumptionType:SourceCode, label:L36")
+  res := 0
+  @dependencyInfo("assumptionType:SourceCode, label:L37")
+  i := 0
+  while(@dependencyInfo("assumptionType:PathCondition, label:L2")(i <= n))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L3, expectedDependencies:[L26,L2,L7,L37]")(i <= (n + 1))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L4, expectedDependencies:[L1,L2,L7,L37]")(i <= 6)
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L5, expectedDependencies:[L6,L7,L36,L37]")(res == (i - 1) * i / 2)
+  {
+    @dependencyInfo("assumptionType:SourceCode, label:L6")
+    res := res + i
+    @dependencyInfo("assumptionType:SourceCode, label:L7")
+    i := i + 1
+  }
+
+  @dependencyInfo("assertionType:Explicit, label:L8, expectedDependencies:[L2,L3,L5,L6,L7,L26,L36,L37]")
+  assert res == n * (n + 1) / 2
+}
+
+method gaussianPerm(a: Ref, p: Perm) returns (res: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L9")(none < p) && p < write
+  requires @dependencyInfo("assumptionType:Precondition, label:L10")(acc(a.f, p))
+  requires @dependencyInfo("assumptionType:Precondition, label:L27")(0 <= a.f)
+  requires @dependencyInfo("assumptionType:Precondition, label:L28")(a.f <= 5)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L29, expectedDependencies:[L9,L10,L12]")(acc(a.f, p))
+{
+  var i: Int
+  @dependencyInfo("assumptionType:SourceCode, label:L38")
+  res := 0
+  @dependencyInfo("assumptionType:SourceCode, label:L39")
+  i := 0
+  while(@dependencyInfo("assumptionType:PathCondition, assertionType:PathCondition, label:L11, expectedDependencies:[L9,L10,L12]")(i <= a.f))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L12, expectedDependencies:[L9,L10]")(acc(a.f, p))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L40, expectedDependencies:[L27,L28]")(0 <= a.f && a.f <= 5)
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L13, expectedDependencies:[L9,L10,L11,L12,L16,L27,L39]")(i <= (a.f + 1))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L41, expectedDependencies:[L9,L10,L12,L11,L16,L28,L39]")(i <= 6)
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L14, expectedDependencies:[L15,L16,L38,L39]")(res == (i - 1) * i / 2)
+  {
+    @dependencyInfo("assumptionType:SourceCode, label:L15")
+    res := res + i
+    @dependencyInfo("assumptionType:SourceCode, label:L16")
+    i := i + 1
+  }
+
+  @dependencyInfo("assertionType:Explicit, label:L17, expectedDependencies:[L9,L10,L11,L12,L13,L14,L15,L16,L27,L38,L39]")
+  assert res == a.f * (a.f + 1) / 2
+}
+
+predicate gaussianEq(res: Int, n: Int){
+  res == (n - 1) * n / 2 && n >= 0
+}
+
+method gaussianPred(n: Int) returns (res: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L30")(0 <= n)
+  requires @dependencyInfo("assumptionType:Precondition, label:L31")(n <= 5)
+{
+  @dependencyInfo("assumptionType:SourceCode, label:L42")
+  res := 0
+  var i: Int
+  @dependencyInfo("assumptionType:SourceCode, label:L18")
+  i := 0
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L19, expectedDependencies:[L18,L42]")
+  fold gaussianEq(res, i)
+  while(@dependencyInfo("assumptionType:PathCondition, label:L32")(i <= n))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L33, expectedDependencies:[L18,L23,L30,L32]")(i <= (n + 1))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L34, expectedDependencies:[L18,L23,L31,L32]")(i <= 6)
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L20, expectedDependencies:[L18,L19,L21,L22,L23,L24,L42]")(gaussianEq(res, i))
+  {
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L21, expectedDependencies:[L20,L19,L22,L23,L24,L42,L18]")
+    unfold gaussianEq(res, i)
+    @dependencyInfo("assumptionType:SourceCode, label:L22")
+    res := res + i
+    @dependencyInfo("assumptionType:SourceCode, label:L23")
+    i := i + 1
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L24, expectedDependencies:[L21,L22,L23,L20,L19,L42,L18]")
+    fold gaussianEq(res, i)
+  }
+  @dependencyInfo("assertionType:Explicit, label:L35, expectedDependencies:[L18,L23,L30,L32,L33]")
+  assert i == n+1
+  @dependencyInfo("assertionType:Explicit, label:L25, expectedDependencies:[L18,L19,L20,L21,L22,L23,L24,L30,L32,L33,L42]")
+  assert gaussianEq(res, n+1)
+}

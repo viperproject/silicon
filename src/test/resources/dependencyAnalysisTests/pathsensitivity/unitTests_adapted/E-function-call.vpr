@@ -1,0 +1,76 @@
+field f: Int
+
+function sum(x: Int, y: Int): Int
+  requires @dependencyInfo("assumptionType:Precondition, label:L20, expectedDependencies:[L1,L3,L4,L6,L8,L10,L11]")(x >= 0)
+  requires @dependencyInfo("assumptionType:Precondition, label:L40, expectedDependencies:[L2,L3,L5,L6,L9,L10,L11]")(y >= 0)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L21, expectedDependencies:[L20,L40,L22,L1,L2,L3,L4,L5,L6,L8,L9,L10,L11]")(result >= 0)
+{
+ @dependencyInfo("assumptionType:FunctionBody, label:L22")(x + y)
+}
+
+function sumUnverified(x: Int, y: Int): Int
+  requires @dependencyInfo("assumptionType:Precondition, label:L23, expectedDependencies:[L14,L15,L16,L17,L18]")(x >= 0 && y >= 0)
+  ensures @dependencyInfo("assertionType:ExplicitPostcondition, label:L24")(result >= 0)
+  ensures @dependencyInfo("assertionType:ExplicitPostcondition, label:L25")(result == x + y)
+
+method call1(){
+    var x: Int, y: Int
+
+    assume @dependencyInfo("assumptionType:Explicit, label:L1") (x > 10)
+    assume  @dependencyInfo("assumptionType:Explicit, label:L2") (y > 0)
+
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L3, expectedDependencies:[L1,L2]")
+    x := sum(x, y)
+}
+
+method call2(){
+    var x: Int, y: Int, z: Int
+
+    assume @dependencyInfo("assumptionType:Explicit, label:L4") (x > 10)
+    assume @dependencyInfo("assumptionType:Explicit, label:L5") (y > 0)
+
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L6, expectedDependencies:[L4,L5]")
+    z := sum(x, y)
+
+
+    @dependencyInfo("assertionType:Explicit, label:L7, expectedDependencies:[L4,L5,L6,L22]")
+    assert z == x + y
+}
+
+method call3(x: Int, y: Int)
+{
+  assume @dependencyInfo("assumptionType:Explicit, label:L8") (x > 0)
+  assume @dependencyInfo("assumptionType:Explicit, label:L9") (y > 0)
+
+  var n: Int, n2: Int
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L10, expectedDependencies:[L8,L9]")
+  n := sum(x, y)
+
+
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L11, expectedDependencies:[L8,L9]")
+  n2 := sum(x, y)
+  @dependencyInfo("assumptionType:SourceCode, label:L12")
+  n := n + n2
+
+  @dependencyInfo("assertionType:Explicit, label:L13, expectedDependencies:[L8,L9,L10,L11,L12,L22]")
+  assert n == 2*x + 2*y
+}
+
+
+method call4(x: Int, y: Int, z: Int)
+{
+  assume @dependencyInfo("assumptionType:Explicit, label:L14") (x > 0)
+  assume @dependencyInfo("assumptionType:Explicit, label:L15") (y > 0)
+  assume @dependencyInfo("assumptionType:Explicit, label:L16") (z > 0)
+
+  var n: Int, n2: Int
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L17, expectedDependencies:[L14,L15]")
+  n := sumUnverified(x, y)
+
+
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L18, expectedDependencies:[L14,L16]")
+  n2 := sumUnverified(x, z)
+
+  @dependencyInfo("assertionType:Explicit, label:L19, expectedDependencies:[L14,L15,L17,L25]")
+  assert n == x + y
+}

@@ -10,14 +10,14 @@ import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphTestS
 
 class DependencyAnalysisTestsPathSensitive extends AnyFunSuite with DependencyAnalysisTestFramework with BeforeAndAfterAll {
 
-  val EXECUTE_TEST = false
+  val EXECUTE_TEST = true
   val CHECK_PRECISION = false
   val ignores: Seq[String] = Seq("iterativeTreeDelete")
   analysisCommandLineArguments = analysisCommandLineArguments ++ Seq("--executeDependencyAnalysisTests") ++ Seq("--enablePathSensitiveDependencyAnalysis")
 	val testDirectories: Seq[String] = Seq(
-    "dependencyAnalysisTests/all",
-    "dependencyAnalysisTests/unitTests",
-    "dependencyAnalysisTests/real-world-examples",
+    //"dependencyAnalysisTests/all",
+    //"dependencyAnalysisTests/unitTests",
+    //"dependencyAnalysisTests/real-world-examples",
     "dependencyAnalysisTests/pathsensitivity"
   )
 

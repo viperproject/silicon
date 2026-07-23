@@ -262,6 +262,15 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
     visited
   }
 
+  def getDirectDependents(sources: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
+    val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
+    val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
+    allEdges.iterator.collect {
+      case (dependent, dependencies)
+        if dependencies.exists(sources.contains) => dependent
+    }.toSet.diff(infeasibilityNodeIds)
+  }
+
   def getAllDependents(sources: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
     val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
     var visited: Set[Int] = Set.empty

@@ -3,7 +3,7 @@ package viper.silicon.tests
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.dependencyAnalysis._
-import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
+import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyGraphInterpreter, DependencyGraphTestSupporter}
 import viper.silver.ast._
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier
@@ -33,6 +33,7 @@ object BenchmarkMode {
 case class FileStats(
                       verifyTimeNs: Long = 0L,
                       queryTimeNs: Long = 0L,
+                      precision: Float = 0,
                       graphSize: Int = 0,
                       assumptions: Int = 0,
                       assertions: Int = 0,
@@ -61,8 +62,8 @@ object BenchmarkCollector {
         Seq(
           "file",
           "config",
-          "verifying time [ms]",
-          "querying time [ms]",
+          "verification time [ms]",
+          "query time [ms]",
           "Graph Size",
           "Assumptions",
           "Assertions",
@@ -70,7 +71,8 @@ object BenchmarkCollector {
           "low-level Assertions (non-internal)",
           "low-level Assumptions (all)",
           "low-level Assertions (all)",
-          "graphInterpreterHash"
+          "graphInterpreterHash",
+          "precision [%]"
         ).mkString(",")
       )
 
@@ -88,7 +90,8 @@ object BenchmarkCollector {
             s.lowLevelNonInternalAssertions,
             s.lowLevelAllAssumptions,
             s.lowLevelAllAssertions,
-            s.graphInterpreterHash
+            s.graphInterpreterHash,
+            s.precision
           ).mkString(",")
         )
       }
@@ -101,7 +104,7 @@ object BenchmarkCollector {
 class DependencyAnalysisTestsBenchmark extends AnyFunSuite
   with DependencyAnalysisTestFramework with BeforeAndAfterAll {
 
-  val EXECUTE_TEST = false
+  val EXECUTE_TEST = true
   val EXPORT = true
   val ignores: Seq[String] = Seq("iterativeTreeDelete")
   analysisCommandLineArguments = analysisCommandLineArguments ++ Seq("--executeDependencyAnalysisTests")
@@ -110,9 +113,10 @@ class DependencyAnalysisTestsBenchmark extends AnyFunSuite
   val MODE: BenchmarkMode = BenchmarkMode.PathSensitive
 
   val testDirectories: Seq[String] = Seq(
-    "dependencyAnalysisTests/all",
-    "dependencyAnalysisTests/unitTests",
-    "dependencyAnalysisTests/real-world-examples"
+    //"dependencyAnalysisTests/all",
+    //"dependencyAnalysisTests/unitTests",
+    //"dependencyAnalysisTests/real-world-examples"
+    "dependencyAnalysisTests/pathsensitivity"
   )
 
   if (EXECUTE_TEST) {
@@ -167,6 +171,7 @@ class DependencyAnalysisTestsBenchmark extends AnyFunSuite
 
     val joinedDependencyGraphInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter.get :DependencyGraphInterpreter[Final]
 
+    val precision = new DependencyGraphTestSupporter(joinedDependencyGraphInterpreter).testPrecision()
     val allAssumptions = joinedDependencyGraphInterpreter.getNonInternalAssumptionNodes
     val assumptions = UserLevelDependencyAnalysisNode.from(allAssumptions)
     val allAssertions = joinedDependencyGraphInterpreter.getNonInternalAssertionNodes
@@ -182,6 +187,7 @@ class DependencyAnalysisTestsBenchmark extends AnyFunSuite
       FileStats(
         verifyTimeNs = vTime,
         queryTimeNs = qTime,
+        precision = precision,
         graphSize = nodes.size,
         assumptions = assumptions.size,
         assertions = assertions.size,

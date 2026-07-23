@@ -10,7 +10,8 @@ method loop_guard_path(n: Int)
   seen := false
 
   while (@dependencyInfo("assumptionType:PathCondition, label:L4")(i < n))
-    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L5")(0 <= i && i <= n)
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L5")(0 <= i)
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L51")(i <= n)
     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L6")(seen ==> n > 0)
   {
     if (@dependencyInfo("assumptionType:PathCondition, label:L7")(i == 0)) {

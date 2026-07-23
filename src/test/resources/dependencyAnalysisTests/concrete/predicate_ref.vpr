@@ -1,0 +1,38 @@
+predicate P(x: Ref, y: Ref) {
+  x != null && y != null
+}
+
+method calleeB(x: Ref, y: Ref)
+  requires P(x, y)
+{
+  unfold P(x, y)
+
+  //Depends only on the second conjunct.
+  assert y != null
+}
+
+method calleeA(x: Ref, y: Ref)
+  requires P(x, y)
+  ensures P(x, y)
+{
+  unfold P(x, y)
+
+  //Depends only on the first conjunct.
+  assert x != null
+
+  fold P(x,y)
+}
+
+method assignAndCall()
+{
+  var a: Ref
+  var b: Ref
+
+  a := new()
+  b := new()
+
+  fold P(a, b)
+
+  calleeA(a, b)
+  calleeB(a, b)
+}

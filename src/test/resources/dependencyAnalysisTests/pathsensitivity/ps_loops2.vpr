@@ -3,19 +3,26 @@ method test_input_guard(b: Bool)
   var x: Int
   var i: Int
 
-  if (b) {
+  if (@dependencyInfo("assumptionType:PathCondition, label:L1")(b)) {
+    @dependencyInfo("assumptionType:SourceCode, label:L2")
     x := 42
   } else {
+    @dependencyInfo("assumptionType:SourceCode, label:L3")
     x := 0
   }
 
+  @dependencyInfo("assumptionType:SourceCode, label:L4")
   i := 0
-  while (i < 1)
-    invariant 0 <= i && i <= 1
+
+  while (@dependencyInfo("assumptionType:PathCondition, label:L5")(i < 1))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L6, expectedDependencies:[L9,L4]") (0 <= i)
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L21, expectedDependencies:[L9,L4,L5]") (i <= 1)
   {
-    if (b) {
+    if (@dependencyInfo("assumptionType:PathCondition, label:L7")(b)) {
+      @dependencyInfo("assertionType:Explicit, label:L8, expectedDependencies:[L7,L1,L2]")
       assert x == 42
     }
+    @dependencyInfo("assumptionType:SourceCode, label:L9")
     i := i + 1
   }
 }
@@ -25,19 +32,26 @@ method test_guard_only(b: Bool)
   var p: Bool
   var i: Int
 
-  if (b) {
+  if (@dependencyInfo("assumptionType:PathCondition, label:L10")(b)) {
+    @dependencyInfo("assumptionType:SourceCode, label:L11")
     p := true
   } else {
+    @dependencyInfo("assumptionType:SourceCode, label:L12")
     p := false
   }
 
+  @dependencyInfo("assumptionType:SourceCode, label:L13")
   i := 0
-  while (i < 1)
-    invariant 0 <= i && i <= 1
+
+  while (@dependencyInfo("assumptionType:PathCondition, label:L14")(i < 1))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L15, expectedDependencies:[L13,L18]")(0 <= i)
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L20, expectedDependencies:[L13,L18,L14]")(i <= 1)
   {
-    if (p) {
+    if (@dependencyInfo("assumptionType:PathCondition, label:L16")(p)) {
+      @dependencyInfo("assertionType:Explicit, label:L17, expectedDependencies:[L16]")
       assert p
     }
+    @dependencyInfo("assumptionType:SourceCode, label:L18")
     i := i + 1
   }
 }

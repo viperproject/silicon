@@ -1,0 +1,70 @@
+
+method seq_merge(as: Seq[Int], bs: Seq[Int]) returns (cs: Seq[Int])
+  requires @dependencyInfo("assumptionType:Precondition, label:L1")(|as| >= 0 && |bs| >= 0)
+  requires @dependencyInfo("assumptionType:Precondition, label:L2")(forall i: Int :: {as[i]} 0 <= i && i <|as| ==> 0 <= as[i])
+  requires @dependencyInfo("assumptionType:Precondition, label:L3")(forall i: Int :: {as[i]} 0 < i && i <|as| ==> as[i-1] <= as[i])
+  requires @dependencyInfo("assumptionType:Precondition, label:L4")(forall j: Int :: {bs[j]} 0 <= j && j <|bs| ==> 0 <= bs[j])
+  requires @dependencyInfo("assumptionType:Precondition, label:L5")(forall j: Int :: {bs[j]} 0 < j && j <|bs| ==> bs[j-1] <= bs[j])
+
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L6, expectedDependencies:[L14,L20]")(|cs| == |as| + |bs| + 1)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L7, expectedDependencies:[L2,L4,L11,L12,L14,L15,L16,L22,L28,L29,L30,L31,L32,L33,L34,L35]")(forall k: Int :: {cs[k]} 0 <  k && k < |cs| ==> 0 <= cs[k])
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L8, expectedDependencies:[L2,L3,L4,L5,L11,L12,L14,L15,L16,L23,L24,L25,L28,L29,L30,L31,L32,L33,L34,L35]")(forall k: Int :: {cs[k]} 0 <  k && k < |cs| ==> cs[k-1] <= cs[k])
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L9, expectedDependencies:[L11,L12,L13,L16,L26,L28,L29,L30,L31,L34,L35]")(forall i: Int :: {as[i]} 0 <= i && i < |as| ==> as[i] in cs)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L10, expectedDependencies:[L11,L12,L13,L16,L27,L28,L31,L32,L33,L34,L35]")(forall j: Int :: {bs[j]} 0 <= j && j < |bs| ==> bs[j] in cs)
+{
+  var i: Int
+  var j: Int
+  var k: Int
+  @dependencyInfo("assumptionType:SourceCode, label:L11")
+  i := 0
+  @dependencyInfo("assumptionType:SourceCode, label:L12")
+  j := 0
+  @dependencyInfo("assumptionType:SourceCode, label:L13")
+  k := 1
+
+  @dependencyInfo("assumptionType:Explicit, label:L14")
+  inhale |cs| == |as| + |bs| + 1
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L15, expectedDependencies:[L14]")
+  cs := cs[0 := 0] // index 0 is a dummy value
+
+  while(@dependencyInfo("assumptionType:PathCondition, label:L16")(k < |cs|))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L17, expectedDependencies:[L11,L12,L16,L28,L31,L34]")(0 <= i && i <= |as|)
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L18, expectedDependencies:[L11,L12,L13,L14,L16,L20,L21,L28,L31,L34,L35]")(0 <= j && j <= |bs|)
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L19, expectedDependencies:[L13,L14,L16,L35]")(0 <= k && k <= |cs|)
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L20, expectedDependencies:[L14]")(|cs| == |as| + |bs| + 1)
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L21, expectedDependencies:[L11,L12,L13,L31,L34,L35]")(i + j + 1 == k)
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L22, expectedDependencies:[L2,L4,L11,L12,L14,L15,L16,L28,L29,L30,L31,L32,L33,L34,L35]")(forall k0: Int :: {cs[k0]} 0 <= k0 && k0 < k ==> 0 <= cs[k0])
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L23, expectedDependencies:[L2,L3,L11,L12,L14,L15,L16,L28,L29,L30,L31,L32,L33,L34,L35]")(forall k0: Int :: {cs[k0]} 0 <= k0 && k0 < k && i < |as| ==> cs[k0] <= as[i])
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L24, expectedDependencies:[L4,L5,L11,L12,L14,L15,L16,L28,L29,L30,L31,L32,L33,L34,L35]")(forall k0: Int :: {cs[k0]} 0 <= k0 && k0 < k && j < |bs| ==> cs[k0] <= bs[j])
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L25, expectedDependencies:[L2,L3,L4,L5,L11,L12,L14,L15,L16,L23,L24,L28,L29,L30,L31,L32,L33,L34,L35]")(forall k0: Int :: {cs[k0]} 0 < k0 && k0 < k ==> cs[k0-1] <= cs[k0])
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L26, expectedDependencies:[L11,L12,L13,L16,L28,L29,L30,L31,L34,L35]")(forall i0: Int :: {as[i0]} 0 <= i0 && i0 < i ==> as[i0] in cs[..k])
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L27, expectedDependencies:[L11,L12,L13,L16,L28,L31,L32,L33,L34,L35]")(forall j0: Int :: {bs[j0]} 0 <= j0 && j0 < j ==> bs[j0] in cs[..k])
+    {
+      if(@dependencyInfo("assumptionType:PathCondition, assertionType:PathCondition, label:L28, expectedDependencies:[L11,L12,L31,L34]")(i < |as| && (j >= |bs| || as[i] < bs[j]))){
+        var tmp: Int
+        @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L29, expectedDependencies:[L11,L12,L28,L31,L34]")
+        tmp := as[i]
+        @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L30, expectedDependencies:[L16]")
+        cs := cs[k := tmp]
+        @dependencyInfo("assumptionType:SourceCode, label:L31")
+        i := i + 1
+      }else {
+        var tmp: Int
+        @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L32, expectedDependencies:[L11,L12,L28,L31,L34]")
+        tmp := bs[j]
+        @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L33, expectedDependencies:[L16]")
+        cs := cs[k := tmp]
+        @dependencyInfo("assumptionType:SourceCode, label:L34")
+        j := j + 1
+      }
+      @dependencyInfo("assumptionType:SourceCode, label:L35")
+      k := k + 1
+    }
+
+  // assert i == |as| && j == |bs| && k == |cs|
+  // assert k == |as| + |bs| + 1
+
+  // assert forall i0: Int :: {as[i0]} 0 <= i0 && i0 < i ==> as[i0] in cs
+  // cs := cs[1..] // remove dummy value
+  // assert forall i0: Int :: {as[i0]} 0 <= i0 && i0 < i ==> as[i0] in cs
+}

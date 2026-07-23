@@ -1,0 +1,140 @@
+/* Finding the maximum in an array by elimination.
+ * Problem 1 from http://foveoos2011.cost-ic0701.org/verification-competition
+ */
+
+define access(a) forall j: Int :: 0 <= j && j < len(a) ==> acc(loc(a, j).val)
+define untouched(a) forall j: Int :: 0 <= j && j < len(a) ==> loc(a, j).val == old(loc(a, j).val)
+define is_max(i, a, u) forall j: Int :: 0 <= j && j < u ==> loc(a, j).val <= loc(a, i).val
+
+method max(a: IArray) returns (x: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L1, expectedDependencies:[L21,L23]")(access(a))
+  ensures  @dependencyInfo("assertionType:ImplicitPostcondition, label:L2, expectedDependencies:[L1,L11,L21,L23]")(access(a))
+  ensures  @dependencyInfo("assertionType:ImplicitPostcondition, label:L3, expectedDependencies:[L1,L12]")(untouched(a))
+  ensures  @dependencyInfo("assertionType:ImplicitPostcondition, label:L4, expectedDependencies:[L6,L7,L8,L9,L10,L13,L14,L15,L18,L19]")(len(a) == 0 ? x == -1 : (0 <= x && x < len(a)))
+  ensures  @dependencyInfo("assertionType:ImplicitPostcondition, label:L5, expectedDependencies:[L1,L6,L8,L9,L10,L11,L16,L17,L18,L19]")(is_max(x, a, len(a)))
+{
+  if (@dependencyInfo("assumptionType:PathCondition, label:L6")(len(a) == 0)) {
+    @dependencyInfo("assumptionType:SourceCode, label:L7")
+    x := -1
+  } else {
+    var y: Int
+    @dependencyInfo("assumptionType:SourceCode, label:L8")
+    x := 0;
+    @dependencyInfo("assumptionType:SourceCode, label:L9")
+    y := len(a) - 1;
+
+    while (@dependencyInfo("assumptionType:PathCondition, label:L10")(x != y))
+      invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L11, expectedDependencies:[L1]")(access(a))
+      invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L12, expectedDependencies:[L1]")(untouched(a))
+      invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L13, expectedDependencies:[L8,L18]")(0 <= x)
+      invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L14, expectedDependencies:[L8,L9,L10,L18,L19]")(x <= y)
+      invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L15, expectedDependencies:[L9,L19]")(y < len(a))
+      invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L16, expectedDependencies:[L1,L8,L9,L10,L11,L17,L18,L19]")((forall i: Int ::
+                          ((0 <= i && i < x) || (y < i && i < len(a)))
+                      ==> loc(a, i).val < loc(a, x).val)
+                || (forall i: Int ::
+                          ((0 <= i && i < x) || (y < i && i < len(a)))
+                      ==> loc(a, i).val <= loc(a, y).val))
+    {
+      if (@dependencyInfo("assumptionType:PathCondition, assertionType:PathCondition, label:L17, expectedDependencies:[L11,L13,L14,L15]")(loc(a, x).val <= loc(a, y).val)) {
+        @dependencyInfo("assumptionType:SourceCode, label:L18")
+        x := x + 1
+      } else {
+        @dependencyInfo("assumptionType:SourceCode, label:L19")
+        y := y - 1
+      }
+    }
+  }
+}
+
+method client() {
+  var a: IArray
+  @dependencyInfo("assumptionType:Explicit, label:L20")
+  inhale len(a) == 3
+  @dependencyInfo("assumptionType:Explicit, label:L21")
+  inhale access(a)
+  @dependencyInfo("assumptionType:Explicit, assertionType:Implicit, label:L22, expectedDependencies:[L21]")
+  inhale forall i: Int :: 0 <= i && i < len(a) ==> loc(a, i).val == i
+
+  var x: Int
+  @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L23, expectedDependencies:[L21]")
+  x := max(a)
+
+  @dependencyInfo("assertionType:Explicit, label:L24, expectedDependencies:[L20,L21,L22,L23,L2,L4,L1,L6,L7,L8,L9,L10,L11,L18,L19]")
+  assert loc(a, 0).val <= x
+
+  @trigger()
+  @dependencyInfo("assertionType:Explicit, label:L25, expectedDependencies:[L20,L21,L22,L23,L2,L4,L5,L1,L6,L7,L8,L9,L10,L11,L13,L14,L15,L16,L17,L18,L19]")
+  assert x == loc(a, len(a) - 1).val
+    /* Necessary to prove the final assertion (due to triggering) */
+    /* Is not reported by new dependencyTest Framework...) */
+
+  @dependencyInfo("assertionType:Explicit, label:L26, expectedDependencies:[L20,L22,L21,L23,L4,L5,L2,L1,L6,L7,L8,L9,L10,L11,L13,L14,L15,L16,L17,L18,L19]")  // L25 expected as well!
+  assert x == 2
+
+  @dependencyInfo("assertionType:Explicit, label:L27, expectedDependencies:[L20,L21,L22,L23,L2,L4,L5,L1,L6,L7,L8,L9,L10,L11,L13,L14,L15,L16,L17,L18,L19]")  // L25 expected as well!
+  assert loc(a, 1).val < x
+}
+
+/* Task A */
+
+// used to write matching trigger terms below
+function offset(k:Int, x:Int, y:Int) : Int {
+  @dependencyInfo("assumptionType:FunctionBody, label:L28")(y + k - x)
+}
+
+// longest common prefix
+method lcp(a: IArray, x: Int, y: Int) returns (n: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L29")(access(a))
+  requires @dependencyInfo("assumptionType:Precondition, label:L30")(0 <= x)
+  requires @dependencyInfo("assumptionType:Precondition, label:L31")(0 <= y)
+  requires @dependencyInfo("assumptionType:Precondition, label:L32")(x < len(a))
+  requires @dependencyInfo("assumptionType:Precondition, label:L33")(y < len(a))
+  ensures  @dependencyInfo("assertionType:ImplicitPostcondition, label:L34, expectedDependencies:[L29,L43]")(access(a))
+  ensures  @dependencyInfo("assertionType:ImplicitPostcondition, label:L35, expectedDependencies:[L40,L42,L47]")(0 <= n)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L36, expectedDependencies:[L30,L32,L40,L41,L44,L47]")(x + n <= len(a))
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L37, expectedDependencies:[L31,L33,L40,L41,L45,L47]")(y + n <= len(a))
+  ensures  @dependencyInfo("assertionType:ImplicitPostcondition, label:L38, expectedDependencies:[L28,L29,L30,L31,L40,L41,L43,L44,L45,L46,L47]")(forall k: Int :: {loc(a, offset(k,x,y))} // instantiation trigger term
+    x <= k && k < x + n ==> loc(a, k).val == loc(a, offset(k,x,y)).val)
+  /* The following postcondition is logically equivalent to the previous one, and a bit
+   * easier to understand. However, it can currently not be used because it contains
+   * no possible triggers (due to the arithmetic operations inside the loc-expressions).
+   */
+  // ensures  forall k: Int :: 0 <= k && k < n ==> loc(a, x + k).val == loc(a, y + k).val
+  ensures  @dependencyInfo("assertionType:ImplicitPostcondition, label:L39, expectedDependencies:[L29,L30,L31,L34,L35,L41,L42,L43,L47]")(x + n < len(a) && y + n < len(a) ==> loc(a, x + n).val != loc(a, y + n).val)
+{
+   @dependencyInfo("assumptionType:SourceCode, label:L40")
+   n := 0
+   while (@dependencyInfo("assumptionType:PathCondition, assertionType:PathCondition, label:L41, expectedDependencies:[L29,L30,L31,L40,L42,L43,L47]")(x + n < len(a) &&  y + n < len(a) && loc(a, x + n).val == loc(a, y + n).val))
+     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L42, expectedDependencies:[L40,L47]")(n >= 0)
+     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L43, expectedDependencies:[L29]")(access(a))
+     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L44, expectedDependencies:[L30,L32,L40,L41,L47]")(x + n <= len(a))
+     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L45, expectedDependencies:[L31,L33,L40,L41,L47]")(y + n <= len(a))
+     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L46, expectedDependencies:[L28,L29,L40,L41,L43,L44,L45,L47]")(forall k: Int :: {loc(a, offset(k,x,y))} // instantiation trigger term
+       x <= k && k < x + n ==> loc(a, k).val == loc(a, offset(k,x,y)).val)
+   {
+     @dependencyInfo("assumptionType:SourceCode, label:L47")
+     n := n + 1
+   }
+}
+
+
+/* Encoding of arrays */
+
+field val: Int
+
+domain IArray {
+  function loc(a: IArray, i: Int): Ref
+  function len(a: IArray): Int
+  function first(r: Ref): IArray
+  function second(r: Ref): Int
+
+  axiom all_diff {
+    forall a: IArray, i: Int :: {loc(a, i)}
+      first(loc(a, i)) == a && second(loc(a, i)) == i
+  }
+
+  axiom len_nonneg {
+    forall a: IArray :: len(a) >= 0
+  }
+}

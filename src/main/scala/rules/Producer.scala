@@ -158,8 +158,11 @@ object producer extends ProductionRules {
         })
       else {
         try {
+          val analysisInfos2 = v.decider.handleAndGetUpdatedAnalysisInfos(analysisInfos, as.tail.head.info, as.tail.head)
+          val intersect = analysisInfos1.intersectInfos(analysisInfos2)
+          val snapshotInfos = if(intersect.sourceInfos.nonEmpty) intersect else analysisInfos1
           val (sf0, sf1) =
-            v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v, analysisInfos1)
+            v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v, snapshotInfos)
           /* TODO: Refactor createSnapshotPair s.t. it can be used with Seq[Exp],
            *       then remove use of BigAnd; for one it is not efficient since
            *       the tail of the (decreasing list parameter as) is BigAnd-ed

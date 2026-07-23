@@ -154,7 +154,7 @@ object DependencyAnalyzer {
       .groupMapReduce(_._1)(x => Set(x._2))(_ ++ _)
     val reachableCache = mutable.HashMap[Set[Int], Set[Int]]()
 
-    // println("Combining graph with "+postCondNodes.length+" postCondNodes and "+all_nodes_map.size+" Nodes in total")
+    // println("Refining method/function dependencies for "+postCondNodes.length+" postCondNodes and "+all_nodes_map.size+" Nodes in total")
     dependencyGraphInterpreters foreach (interpreter => interpreter.getGraph.getCustomEdges foreach {
       case (t, deps) =>
         all_nodes_map.get(t) match {
@@ -164,12 +164,49 @@ object DependencyAnalyzer {
                 postCondNodeIdsBySourceInfo.getOrElse(sourceInfo1, Set.empty[Int])
               case _ => Set.empty[Int]
             }
-            val reachableFromPCs = reachableCache.getOrElseUpdate(methodPCs, newGraph.getAllDependencies(methodPCs, true, true, true))
+            val reachableFromPCs = reachableCache.getOrElseUpdate(methodPCs, newGraph.getAllDependencies(methodPCs, false, true, true))
             val unreachableDeps = deps.diff(reachableFromPCs.intersect(deps))
             newGraph.addCustomEdges(unreachableDeps, t)
             // println("found "+unreachableDeps.size+" unreachable out of "+deps.size)
           case None => ()
     }})
+
+
+    // predicate related post-processing
+    val predAssertionNodes = newGraph.getAssertionNodes
+      .filter(n => (n.assumptionType, n.mergeInfo) match {
+        case (AssumptionType.Rewrite, CompositeDependencyAnalysisMergeInfo(s1,s2)) => val str = s2.toString; str.contains("fold") && !str.contains("unfold")
+        case _ => false})
+    val predAssertionNodesIDs = predAssertionNodes.map(_.id).toSet
+    val predAssumptionNodes = newGraph.getAssumptionNodes.filter(n => n.assumptionType==AssumptionType.Rewrite && n.mergeInfo.isInstanceOf[CompositeDependencyAnalysisMergeInfo])
+
+
+    val assumptionDepsBySrc = predAssumptionNodes.groupBy(_.mergeInfo.asInstanceOf[CompositeDependencyAnalysisMergeInfo].sourceInfo2).flatMap( elem =>
+      if(elem._1.toString.contains("unfold")) {
+        val allDeps = newGraph.getAllDependencies(elem._2.map(_.id).toSet, false, true, true)
+        val depsWithIntersect = allDeps.intersect(predAssertionNodesIDs)
+        Option.when(depsWithIntersect.nonEmpty){ (elem._1,elem._2,depsWithIntersect,allDeps)}
+      }else{
+        None
+      }
+    ).toSeq.sortBy(_._3.size)
+
+    val relinkedTo = mutable.HashMap.empty[Int,Set[Int]]
+
+    assumptionDepsBySrc.foreach{ case (_,nodes,assertionDeps,allDeps) =>
+      val filteredAssertionsIDs = assertionDeps.filter(ass => !(relinkedTo.contains(ass)) || allDeps.intersect(relinkedTo(ass)).isEmpty)
+      val candidateAssertions = predAssertionNodes.filter(c => filteredAssertionsIDs.contains(c.id)).groupBy(_.mergeInfo.asInstanceOf[CompositeDependencyAnalysisMergeInfo].sourceInfo1)
+      val matchingPairs = nodes.flatMap{ node =>
+        val src = node.mergeInfo.asInstanceOf[CompositeDependencyAnalysisMergeInfo].sourceInfo1
+        candidateAssertions.getOrElse(src, Seq.empty).map(res => (node.id,res.id))
+      }
+      matchingPairs foreach { case (assumeNodeId, assertNodeId) =>
+        relinkedTo(assertNodeId) = relinkedTo.getOrElse(assertNodeId, Set.empty) + assumeNodeId
+        newGraph.addCustomEdges(List(assertNodeId),newGraph.getDirectDependents(Set(assertNodeId),true,false,false))
+      }
+    }
+    relinkedTo foreach(tpl => newGraph.addEdges(tpl._1,tpl._2))
+    // End of predicate post-processing
 
     val newInterpreter = new DependencyGraphInterpreter[Final](name, newGraph, dependencyGraphInterpreters.toList.flatMap(_.getErrors))
     newInterpreter
@@ -375,12 +412,20 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
 	 * and indirect dependencies.
 	 */
   private def addTransitiveEdges(mergedGraph: DependencyGraph[IntraProcedural]): Unit = {
-    val nodesPerSourceInfo =
+    val rawInfos :Map[(DependencyAnalysisMergeInfo,Int),Seq[DependencyAnalysisNode]] =
       if(isPathSensitive){
         mergedGraph.getNodes.filter(_.mergeInfo.isMerge).groupBy( n => (n.mergeInfo, pathContext.get.getPathContext(n.id)))
       }else{
-        mergedGraph.getNodes.filter(_.mergeInfo.isMerge).groupBy(_.mergeInfo)
+        mergedGraph.getNodes.filter(_.mergeInfo.isMerge).groupBy(n => (n.mergeInfo,0))
       }
+
+    val nodesPerSourceInfo = mutable.HashMap.from(rawInfos)
+
+    nodesPerSourceInfo.keys.filter(_._1.isInstanceOf[CompositeDependencyAnalysisMergeInfo]).foreach{
+      case (info: CompositeDependencyAnalysisMergeInfo,id: Int)  =>
+      val predNodes: Seq[DependencyAnalysisNode] = nodesPerSourceInfo((info,id)).foldLeft(List.empty[DependencyAnalysisNode])((acc,node) => if(node.assumptionType==AssumptionType.Rewrite) acc :+ node else acc)
+      nodesPerSourceInfo.updateWith((SimpleDependencyAnalysisMerge(info.sourceInfo2),id))(prev => Some(prev.getOrElse(Seq.empty) ++ predNodes))
+    }
 
     nodesPerSourceInfo foreach {case (_, nodes) =>
       val asserts = nodes.filter(_.isInstanceOf[GeneralAssertionNode])

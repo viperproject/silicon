@@ -1,0 +1,33 @@
+field f: Int
+field g: Int
+
+method wildcardPerm(x: Ref, y: Ref)
+  requires @dependencyInfo("assumptionType:Precondition, label:L1")(acc(x.f, wildcard))
+  requires @dependencyInfo("assumptionType:Precondition, label:L2")(acc(y.f, wildcard))
+  requires @dependencyInfo("assumptionType:Precondition, label:L12") (x != y)
+{
+  @dependencyInfo("assumptionType:Explicit, assertionType:Implicit, label:L3, expectedDependencies:[L1]")
+  inhale x.f > 0
+}
+
+
+method wildcardPermDistinctFields(x: Ref, y: Ref)
+  requires @dependencyInfo("assumptionType:Precondition, label:L4")(acc(x.f, wildcard))
+  requires @dependencyInfo("assumptionType:Precondition, label:L5")(acc(y.g, wildcard))
+{
+  @dependencyInfo("assumptionType:Explicit, assertionType:Implicit, label:L6, expectedDependencies:[L4]")
+  inhale x.f > 0
+}
+
+method quantifiedPermWildcard(xs: Seq[Ref], ys: Seq[Ref])
+  requires @dependencyInfo("assumptionType:Precondition, label:L7")(|xs| > 5)
+  requires @dependencyInfo("assumptionType:Precondition, label:L8")(|ys| > 3)
+{
+  @dependencyInfo("assumptionType:Explicit, label:L9")
+  inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
+  @dependencyInfo("assumptionType:Explicit, label:L10")
+  inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard))
+
+  @dependencyInfo("assertionType:Explicit, label:L11, expectedDependencies:[L7,L9]")
+  assert xs[0].f > 0
+}

@@ -21,7 +21,7 @@ import viper.silicon.supporters.{PredicateBranchNode, PredicateContentsTree, Pre
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.dependencyAnalysis.DependencyType
+import viper.silver.dependencyAnalysis.{CompositeDependencyAnalysisMergeInfo, DependencyAnalysisMergeInfo, DependencyType}
 import viper.silver.verifier.PartialVerificationError
 
 trait PredicateSupportRules extends SymbolicExecutionRules {
@@ -80,7 +80,9 @@ object predicateSupporter extends PredicateSupportRules {
     val s1 = s.copy(g = gIns,
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm, ePerm)
-    consume(s1, body, true, pve, v, analysisInfos)((s1a, snap, v1) => {
+    val bodyWithDAinfo = DependencyAnalysisMergeInfo.attachExpMergeInfo(body.topLevelConjuncts, Some(analysisInfos.getSourceInfo))
+    consumes(s1, bodyWithDAinfo, true, _ => pve, v, analysisInfos)((s1a, snap, v1) => {
+    // consume(s1, body, true, pve, v, analysisInfos)((s1a, snap, v1) => {
       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
         val predTrigger = App(s1a.predicateData(predicate.name).triggerFunction,
           snap.get.convert(terms.sorts.Snap) +: tArgs)
@@ -105,6 +107,9 @@ object predicateSupporter extends PredicateSupportRules {
     tree match {
       case PredicateLeafNode(h, assumptions) =>
         val debugExp = Option.when(withExp)(DebugExp.createInstance("Assumption from unfolded predicate body"))
+        // TODO: jho: replace infos here??
+        val defaultMergeInfos = analysisInfos.mergeInfos
+
         assumptions.foreach(a => v.decider.assume(a.replace(toReplace), debugExp, analysisInfos))
         val substChunks = h.values.map(chunk => GeneralChunk.permScale(GeneralChunk.substitute(chunk.asInstanceOf[GeneralChunk], toReplace, v.decider.getAnalysisInfo(analysisInfos)), s.permissionScalingFactor, s.permissionScalingFactorExp, v.decider.getAnalysisInfo(analysisInfos)))
 
@@ -224,7 +229,9 @@ object predicateSupporter extends PredicateSupportRules {
             v4)
         })
       } else {
-        produce(s3, toSf(snap.get), body, pve, v1, analysisInfos)((s4, v2) => {
+        val bodyWithDAinfo = DependencyAnalysisMergeInfo.attachExpMergeInfo(body.topLevelConjuncts, Some(analysisInfos.getSourceInfo))
+        produces(s3, toSf(snap.get), bodyWithDAinfo, _ => pve, v1, analysisInfos)((s4, v2) => {
+        // produce(s3, toSf(snap.get), body, pve, v1, analysisInfos)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =

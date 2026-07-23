@@ -1,13 +1,13 @@
 method compute_rec(a: Int, b: Int) returns (res: Int)
-    requires @dependencyInfo("assumptionType:Precondition, label:L1, expectedDependencies:[L9]")(b >= 0)
-    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L2, expectedDependencies:[L1,L3,L4,L5,L6,L9]")(res == a + b)
+    requires @dependencyInfo("assumptionType:Precondition, label:L1, expectedDependencies:[L3,L5,L9,L10]")(b >= 0)
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L2, expectedDependencies:[L1,L3,L4,L5,L6,L9,L10]")(res == a + b)
 {
     if(@dependencyInfo("assumptionType:PathCondition, label:L3")(b == 0)){
         @dependencyInfo("assumptionType:SourceCode, label:L4")
         res := a
     } else {
         var rec: Int
-        @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L5, expectedDependencies:[L1,L3]")
+        @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L5, expectedDependencies:[L1,L3,L9,L10]")
         rec := compute_rec(a, b-1)
         @dependencyInfo("assumptionType:SourceCode, label:L6")
         res := 1 + rec

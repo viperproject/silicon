@@ -1,8 +1,8 @@
 function pick(flag: Bool, a: Int, b: Int): Int
-  requires @dependencyInfo("assumptionType:Precondition, label:L1")(a == 3)
-  requires @dependencyInfo("assumptionType:Precondition, label:L2")(b == 4)
-  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L3")(flag ==> result == 3)
-  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L4")(!flag ==> result == 4)
+  requires @dependencyInfo("assumptionType:Precondition, label:L1, expectedDependencies:[L8,L6]")(a == 3)
+  requires @dependencyInfo("assumptionType:Precondition, label:L2, expectedDependencies:[L8,L7]")(b == 4)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L3, expectedDependencies:[L8,L5,L1,L6]")(flag ==> result == 3)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L4, expectedDependencies:[L8,L5,L2,L7]")(!flag ==> result == 4)
 {
   @dependencyInfo("assumptionType:FunctionBody, label:L5")(flag ? a : b)
 }
@@ -17,9 +17,9 @@ method client()
   x := 3
   @dependencyInfo("assumptionType:SourceCode, label:L7")
   y := 4
-  @dependencyInfo("assumptionType:SourceCode, label:L8")
+  @dependencyInfo("assumptionType:SourceCode, label:L8, expectedDependencies:[L6,L7]")
   z := pick(false, x, y)
 
-  @dependencyInfo("assertionType:Explicit, label:L9, expectedDependencies:[L8,L7,L5]")
+  @dependencyInfo("assertionType:Explicit, label:L9, expectedDependencies:[L8,L6,L7,L5]")
   assert z == 4
 }

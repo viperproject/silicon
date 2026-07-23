@@ -1,7 +1,7 @@
 method compute(a: Int, b: Int, c: Int) returns (res: Int)
-    requires @dependencyInfo("assumptionType:Precondition, label:L1, expectedDependencies:[L6,L9]")(a == 10)
-    requires @dependencyInfo("assumptionType:Precondition, label:L2, expectedDependencies:[L7,L10]")(b == 20)
-    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L3, expectedDependencies:[L4,L1,L2,L6,L7,L9,L10]")(res == 5)
+    requires @dependencyInfo("assumptionType:Precondition, label:L1, expectedDependencies:[L6,L9,L12,L13]")(a == 10)
+    requires @dependencyInfo("assumptionType:Precondition, label:L2, expectedDependencies:[L7,L10,L12,L13]")(b == 20)
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L3, expectedDependencies:[L4,L1,L2,L6,L7,L9,L10,L12,L13]")(res == 5)
 {
     @dependencyInfo("assumptionType:SourceCode, label:L4")
     res := (a + b) / 6
@@ -34,6 +34,6 @@ method client() {
     @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L13, expectedDependencies:[L9,L10]")
     r2 := compute(x, y, z)
 
-    @dependencyInfo("assertionType:Explicit, label:L14, expectedDependencies:[L12,L13,L3,L4]")
+    @dependencyInfo("assertionType:Explicit, label:L14, expectedDependencies:[L12,L13,L3,L4,L1,L2,L6,L7,L9,L10]")
     assert 10 == r1 + r2
 }

@@ -1,0 +1,32 @@
+import "seqMerge.vpr"
+import "binarySearchSeq.vpr"
+
+method client()
+{
+  var idx: Int
+  var as: Seq[Int]
+  var bs: Seq[Int]
+
+  @dependencyInfo("assumptionType:SourceCode, label:L1000")
+  as := Seq(4, 7, 9, 11, 14)
+  @dependencyInfo("assumptionType:SourceCode, label:L2000")
+  bs := Seq(1, 3, 7, 10, 17)
+
+  // idx := binary_search(as, 7)
+  // assert idx == 1
+
+  var cs: Seq[Int]
+  @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L3000, expectedDependencies:[L1000,L2000]")
+  cs := seq_merge(as, bs)
+
+  @dependencyInfo("assertionType:Explicit, label:L4, expectedDependencies:[L1000,L2000,L3000]")
+  assert 10 in cs
+  @dependencyInfo("assertionType:Explicit, label:L5, expectedDependencies:[L1000,L2000,L3000]")
+  assert 1 in cs
+
+  @dependencyInfo("assertionType:Explicit, label:L6, expectedDependencies:[L1000,L2000,L3000]")
+  assert |cs| == 11
+  // idx := binary_search(cs, 1)
+  // assert idx == 1
+
+}

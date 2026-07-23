@@ -1,0 +1,35 @@
+field f: Int
+
+method exhaleInhale(a: Ref)
+    requires @dependencyInfo("assumptionType:Precondition, label:L1")(acc(a.f))
+{
+    exhale @dependencyInfo("assertionType:Explicit, label:L30, expectedDependencies:[L1]") (acc(a.f, 1/2))
+    inhale @dependencyInfo("assumptionType:Explicit, label:L32") acc(a.f, 1/2)
+
+    @dependencyInfo("assertionType:Explicit, label:L2, expectedDependencies:[L1]")
+    assert perm(a.f) == write
+}
+
+method exhale1(){
+    var x: Ref
+
+    inhale @dependencyInfo("assumptionType:Explicit, label:L3") (acc(x.f))
+    inhale @dependencyInfo("assumptionType:Explicit, assertionType:Implicit, label:L4,expectedDependencies:[L3]") (x.f > 0)
+
+    exhale @dependencyInfo("assertionType:Explicit, label:L31, expectedDependencies:[L3]") (acc(x.f, 1/2))
+
+    @dependencyInfo("assertionType:Explicit, label:L5, expectedDependencies:[L3,L4]")
+    assert x.f > 0
+}
+
+method inhale1(){
+    var x: Ref
+
+    inhale @dependencyInfo("assumptionType:Explicit, label:L6") (acc(x.f, 1/2))
+    inhale @dependencyInfo("assumptionType:Explicit, assertionType:Implicit, label:L7,expectedDependencies:[L6]") (x.f > 0)
+
+    inhale @dependencyInfo("assumptionType:Explicit, label:L9") (acc(x.f, 1/2))
+
+    @dependencyInfo("assertionType:Explicit, label:L8, expectedDependencies:[L6,L7,L9]")
+    assert x.f > 0
+}

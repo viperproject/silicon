@@ -11,10 +11,10 @@ method mutually_exclusive(flag: Bool)
   }
 
   if (@dependencyInfo("assumptionType:PathCondition, label:L4")(!flag)) {
-    @dependencyInfo("assertionType:Explicit, label:L5, expectedDependencies:[L3]")
+    @dependencyInfo("assertionType:Explicit, label:L5, expectedDependencies:[L4,L3,L1]")
     assert x == 9
   } else {
-    @dependencyInfo("assertionType:Explicit, label:L6, expectedDependencies:[L2]")
+    @dependencyInfo("assertionType:Explicit, label:L6, expectedDependencies:[L4,L1,L2]")
     assert x == 7
   }
 }

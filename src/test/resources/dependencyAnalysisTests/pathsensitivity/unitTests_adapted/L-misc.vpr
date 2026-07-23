@@ -1,0 +1,22 @@
+field f: Int
+
+method divBy0(a: Ref, n: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L1")(n > 0)
+    requires @dependencyInfo("assumptionType:Precondition, label:L2")(acc(a.f))
+    requires @dependencyInfo("assumptionType:Precondition, label:L3")(a.f > 0)
+{
+    var res: Int
+
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L4, expectedDependencies:[L1,L2]")
+    res := a.f / n
+}
+
+method assumeFalse()
+{
+    var a: Int
+    assume @dependencyInfo("assumptionType:Explicit, label:L5") (false)
+
+
+    @dependencyInfo("assertionType:Explicit, label:L6, expectedDependencies:[L5]")
+    assert a == 2
+}

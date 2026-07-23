@@ -773,7 +773,8 @@ object evaluator extends EvaluationRules {
                           eval(s10, eIn, pve, v5, analysisInfos)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))
                         })
                       } else {
-                        produce(s7a, toSf(snap.get), body, pve, v4, analysisInfos)((s8, v5) => {
+                        val bodyWithDAinfo = DependencyAnalysisMergeInfo.attachExpMergeInfo(body.topLevelConjuncts, Some(analysisInfos.getSourceInfo))
+                        produces(s7a, toSf(snap.get), bodyWithDAinfo, _ => pve, v4, analysisInfos)((s8, v5) => {
                           val s9 = s8.copy(g = s7.g,
                                            functionRecorder = s8.functionRecorder.changeDepthBy(-1),
                                            recordVisited = s3.recordVisited,

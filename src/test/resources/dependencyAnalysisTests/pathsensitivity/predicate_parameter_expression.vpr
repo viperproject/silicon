@@ -1,0 +1,43 @@
+predicate P(x: Int, y: Int) {
+  x > 0 && y < 0
+}
+
+method calleeA(x: Int, y: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L1, expectedDependencies:[L10,L9,L6,L7,L8]") (P(x,y))
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L2, expectedDependencies:[L5,L3,L1,L10,L9,L6,L7,L8]") (P(x,y))
+{
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L3, expectedDependencies:[L1,L10,L9,L6,L7,L8]")
+  unfold P(x,y)
+
+  @dependencyInfo("assertionType:Explicit, label:L4, expectedDependencies:[L3,L1,L10,L9,L6,L7,L8]")
+  assert x > 0
+
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L5, expectedDependencies:[L3,L1,L10,L9,L6,L7,L8]")
+  fold P(x,y)
+}
+
+method assignAndCall()
+{
+  var a: Int
+  var b: Int
+  var c: Int
+
+  @dependencyInfo("assumptionType:SourceCode, label:L6")
+  a := 2
+  @dependencyInfo("assumptionType:SourceCode, label:L7")
+  b := 3
+  @dependencyInfo("assumptionType:SourceCode, label:L8")
+  c := -1
+
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L9, expectedDependencies:[L6,L7,L8]")
+  fold P( a + b, c)
+
+  @dependencyInfo("assumptionType:MethodCall, label:L10, expectedDependencies:[L9,L6,L7,L8]")
+  calleeA( a + b,c )
+
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L11, expectedDependencies:[L2,L5,L3,L1,L10,L9,L6,L7,L8]")
+  unfold P( a + b, c)
+
+  @dependencyInfo("assertionType:Explicit, label:L12, expectedDependencies:[L6,L7]")
+  assert a + b > 0
+}

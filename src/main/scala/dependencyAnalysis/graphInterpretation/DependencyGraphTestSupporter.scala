@@ -10,6 +10,8 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
 	private val nodeLabelRegex = """label:([^\s,)\"]+)""".r
 	private val expectedDependenciesRegex = """expectedDependencies:\[([^\]]+)\]""".r
 	private val dependencyInfoRegex = """@dependencyInfo\(([^()]*)\)""".r
+	private var expectedDependencies: Int = 0
+	private var reportedDependnecies: Int = 0
 
 	def testNodeTypes(): Unit = {
 		testNodeTypes(interpreter.getNonInternalAssertionNodes ++ interpreter.getNonInternalAssumptionNodes)
@@ -58,7 +60,16 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
 		if(!test)
 			println(message)
 
+	def testPrecision(): Float = {
+		testDependencies(true)
+		if (reportedDependnecies == 0) return 0
+		val res =expectedDependencies.toFloat/reportedDependnecies.toFloat
+		println(s"Reported dependencies with precision: $res / 1")
+		res
+	}
+
 	def testDependencies(checkPrecision:Boolean = false): Unit = {
+		expectedDependencies = 0; reportedDependnecies = 0
 		val testResults = UserLevelDependencyAnalysisNode.from(interpreter.getNonInternalAssertionNodes).toList map (e => testDependencies(e,checkPrecision))
 		val numExecutedTests = testResults.count(_.isDefined)
 		val numPassedTests = testResults.count(_.getOrElse(false))
@@ -80,15 +91,16 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
 		val labelsInReportedDeps: Set[Set[String]] = sourceDependencies.map(node => nodeLabelRegex.findAllMatchIn(node.toString).map(_.group(1)).toSet)
 		val actualLabelInReportedDeps = labelsInReportedDeps.filter(_.size == 1).flatten
 
-		val isSound = expectedLabels.diff(actualLabelInReportedDeps).isEmpty
-		printIfFalse(isSound, s"Missing dependencies for ${assertionNode.source.toString}. Reported dependencies: $actualLabelInReportedDeps")
+		val diff = expectedLabels.diff(actualLabelInReportedDeps)
+		val isSound = diff.isEmpty
+		printIfFalse(isSound, s"Missing labels: $diff for ${assertionNode.source.toString}. Reported dependencies: $actualLabelInReportedDeps")
 
 		if(checkPrecision){
 			val isPrecise = if(checkPrecision) actualLabelInReportedDeps.diff(expectedLabels).isEmpty else true
 			printIfFalse(isPrecise, s"Imprecise dependencies for ${assertionNode.source.toString}. Reported dependencies: $actualLabelInReportedDeps")
-			Some(isSound && isPrecise)
-		}else{
-			Some(isSound)
+			expectedDependencies += expectedLabels.size
+			reportedDependnecies += actualLabelInReportedDeps.size
 		}
+		Some(isSound)
 	}
 }

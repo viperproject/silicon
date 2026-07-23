@@ -1,0 +1,92 @@
+field f:Int
+
+method loop1(){
+    var i: Int
+    var res: Int
+    @dependencyInfo("assumptionType:SourceCode, label:L1")
+    res := 0
+    @dependencyInfo("assumptionType:SourceCode, label:L36")
+    i := 10
+    while(@dependencyInfo("assumptionType:PathCondition, label:L2")(i > 0))
+        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L3, expectedDependencies:[L36,L37]")(i <= 10)
+        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L4, expectedDependencies:[L2,L36,L37]")(i >= 0)
+        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L5, expectedDependencies:[L1,L2,L6,L36,L37]")(res >= 0)
+    {
+        @dependencyInfo("assumptionType:SourceCode, label:L6")
+        res := res + i
+        @dependencyInfo("assumptionType:SourceCode, label:L37")
+        i := i - 1
+    }
+
+
+    @dependencyInfo("assertionType:Explicit, label:L7, expectedDependencies:[L1,L2,L5,L6,L36,L37]")
+    assert res >= 0
+}
+
+method loop2(){
+    var i: Int
+    var res: Int
+    @dependencyInfo("assumptionType:SourceCode, label:L8")
+    res := 0
+    @dependencyInfo("assumptionType:SourceCode, label:L9")
+    i := 10
+    while(@dependencyInfo("assumptionType:PathCondition, label:L10")(i > 0))
+        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L11, expectedDependencies:[L9,L15]")(i <= 10)
+        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L12, expectedDependencies:[L9,L10,L15]")(i >= 0)
+        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L13, expectedDependencies:[L8,L14,L10]")(res >= 0)
+    {
+        @dependencyInfo("assumptionType:SourceCode, label:L14")
+        res := res + i
+        @dependencyInfo("assumptionType:SourceCode, label:L15")
+        i := i - 1
+        @dependencyInfo("assertionType:Explicit, label:L16, expectedDependencies:[L10,L15]")
+        assert i >= 0
+    }
+}
+
+method loop3(){
+    var i: Int
+    var res: Int
+    @dependencyInfo("assumptionType:SourceCode, label:L17")
+    res := 0
+    @dependencyInfo("assumptionType:SourceCode, label:L18")
+    i := 10
+    while(@dependencyInfo("assumptionType:PathCondition, label:L19")(i > 0))
+        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L20, expectedDependencies:[L18,L24]")(i <= 10)
+        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L21, expectedDependencies:[L18,L19,L24]")(i >= 0)
+        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L22, expectedDependencies:[L17,L19,L23]")(res >= 0)
+    {
+        @dependencyInfo("assumptionType:SourceCode, label:L23")
+        res := res + i
+        @dependencyInfo("assumptionType:SourceCode, label:L24")
+        i := i - 1
+        @dependencyInfo("assertionType:Explicit, label:L25, expectedDependencies:[L17,L19,L22,L23]")
+        assert res > 0
+    }
+}
+
+method loop4(){
+    var i: Int
+    var res: Int
+
+
+    @dependencyInfo("assumptionType:SourceCode, label:L26")
+    res := 0
+    @dependencyInfo("assumptionType:SourceCode, label:L27")
+    i := 10
+    while(@dependencyInfo("assumptionType:PathCondition, label:L28")(i > 0))
+        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L29, expectedDependencies:[L27,L33]")(i <= 10)
+        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L30, expectedDependencies:[L27,L28,L33]")(i >= 0)
+        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L31, expectedDependencies:[L26]")(res >= 0)
+    {
+        @dependencyInfo("assumptionType:SourceCode, label:L32")
+        res := res - 1
+        @dependencyInfo("assumptionType:SourceCode, label:L33")
+        i := i - 1
+
+        assume @dependencyInfo("assumptionType:Explicit, label:L34") (res > 0)
+    }
+
+    @dependencyInfo("assertionType:Explicit, label:L35, expectedDependencies:[L26,L31]")
+    assert res >= 0
+}

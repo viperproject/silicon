@@ -1,0 +1,122 @@
+field elem: Int
+field next: Ref
+
+predicate list(this: Ref) {
+  acc(this.elem) && acc(this.next) &&
+  (this.next != null ==> list(this.next))
+}
+
+function listLength(l:Ref) : Int
+  requires @dependencyInfo("assumptionType:Precondition, label:L34, expectedDependencies:[L36]")(list(l))
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L35, expectedDependencies:[L34,L36]")(result > 0)
+{
+  @dependencyInfo("assumptionType:FunctionBody, label:L36")(unfolding list(l) in l.next == null ? 1 : 1 + listLength(l.next))
+}
+
+method appendList1(this: Ref, e: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L1, expectedDependencies:[L3,L5,L39,L40]")(list(this))
+  requires @dependencyInfo("assumptionType:Precondition, label:L2, expectedDependencies:[L1,L3,L5,L39,L40]")(0 <= e)
+  requires @dependencyInfo("assumptionType:Precondition, label:L1112, expectedDependencies:[L1,L3,L5,L39,L40]")(e < 100)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L37, expectedDependencies:[L1,L2,L3,L5,L6,L8,L9,L10,L38,L39,L40,L1112]")(list(this))
+{
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L3, expectedDependencies:[L1,L5,L39,L40]")
+  unfold list(this)
+  @dependencyInfo("assumptionType:Explicit, assertionType:Implicit, label:L4, expectedDependencies:[L1,L2,L3,L5,L39,L40,L1112]")
+  assume 0 <= this.elem && this.elem < 100
+
+  if (@dependencyInfo("assumptionType:PathCondition, assertionType:PathCondition, label:L5, expectedDependencies:[L1,L3,L39,L40]")(this.next == null)) {
+    var n: Ref
+
+    @dependencyInfo("assumptionType:SourceCode, label:L6")
+    n := new(elem, next)
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode label:L7, expectedDependencies:[L6]")
+    n.elem := e
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode label:L8, expectedDependencies:[L6]")
+    n.next := null
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode label:L9, expectedDependencies:[L1,L3,L5,L39,L40]")
+    this.next := n
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L10, expectedDependencies:[L6,L8]")
+    fold list(n)
+  } else {
+    var l_next: Ref
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode label:L40, expectedDependencies:[L1,L3,L5,L39]")
+    l_next := this.next
+    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L39, expectedDependencies:[L1,L2,L3,L5,L40,L1112]")
+    appendList1(l_next, e)
+  }
+
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L38, expectedDependencies:[L1,L2,L3,L5,L6,L8,L9,L10,L39,L40,L1112]")
+  fold list(this)
+}
+
+method appendList2(this: Ref, e: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L11, expectedDependencies:[L13,L15,L21,L43]")(list(this))
+  requires @dependencyInfo("assumptionType:Precondition, label:L12, expectedDependencies:[L11,L13,L15,L21,L43]")(0 <= e)
+  requires @dependencyInfo("assumptionType:Precondition, label:L112, expectedDependencies:[L11,L13,L15,L21,L43]")(e < 100)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L41, expectedDependencies:[L11,L12,L13,L15,L16,L18,L19,L20,L21,L42,L43,L112]")(list(this))
+{
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L13, expectedDependencies:[L11,L15,L21,L43]")
+  unfold list(this)
+  @dependencyInfo("assumptionType:Explicit, assertionType:Implicit, label:L14, expectedDependencies:[L11,L12,L13,L15,L21,L43,L112]")
+  assume 0 <= this.elem && this.elem < 100
+
+  if (@dependencyInfo("assumptionType:PathCondition, assertionType:PathCondition, label:L15, expectedDependencies:[L11,L13,L21,L43]")(this.next == null)) {
+    var n: Ref
+
+    @dependencyInfo("assumptionType:SourceCode, label:L16")
+    n := new(elem, next)
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode label:L17, expectedDependencies:[L16]")
+    n.elem := e
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode label:L18, expectedDependencies:[L16]")
+    n.next := null
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode label:L19, expectedDependencies:[L11,L13,L15,L21,L43]")
+    this.next := n
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L20, expectedDependencies:[L16,L18]")
+    fold list(n)
+  } else {
+    var l_next: Ref
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode label:L43, expectedDependencies:[L11,L13,L15,L21]")
+    l_next := this.next
+    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L21, expectedDependencies:[L11,L12,L13,L15,L43,L112]")
+    appendList2(l_next, e)
+  }
+
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L42, expectedDependencies:[L11,L12,L13,L15,L16,L18,L19,L20,L21,L43,L112]")
+  fold list(this)
+}
+
+method appendListFull(this: Ref, e: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L22, expectedDependencies:[L24,L26,L32,L45]")(list(this))
+  requires @dependencyInfo("assumptionType:Precondition, label:L23, expectedDependencies:[L22,L24,L26,L32,L45]")(0 <= e)
+  requires @dependencyInfo("assumptionType:Precondition, label:L223, expectedDependencies:[L22,L24,L26,L32,L45]")(e < 100)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L44, expectedDependencies:[L22,L23,L24,L26,L27,L29,L30,L31,L32,L33,L45,L223]")(list(this))
+{
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L24, expectedDependencies:[L22,L26,L32,L45]")
+  unfold list(this)
+  @dependencyInfo("assumptionType:Explicit, assertionType:Implicit, label:L25, expectedDependencies:[L22,L23,L24,L26,L32,L45,L223]")
+  assume 0 <= this.elem && this.elem < 100
+
+  if (@dependencyInfo("assumptionType:PathCondition, assertionType:PathCondition, label:L26, expectedDependencies:[L22,L24,L32,L45]")(this.next == null)) {
+    var n: Ref
+
+    @dependencyInfo("assumptionType:SourceCode, label:L27")
+    n := new(elem, next)
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode label:L28, expectedDependencies:[L27]")
+    n.elem := e
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode label:L29, expectedDependencies:[L27]")
+    n.next := null
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode label:L30, expectedDependencies:[L22,L24,L26,L32,L45]")
+    this.next := n
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L31, expectedDependencies:[L27,L29]")
+    fold list(n)
+  } else {
+    var l_next: Ref
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode label:L45, expectedDependencies:[L22,L24,L26,L32]")
+    l_next:= this.next
+    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L32, expectedDependencies:[L22,L23,L24,L26,L45,L223]")
+    appendListFull(l_next, e)
+  }
+
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L33, expectedDependencies:[L22,L23,L24,L26,L27,L29,L30,L31,L32,L45,L223]")
+  fold list(this)
+}
