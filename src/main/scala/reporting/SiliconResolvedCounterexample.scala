@@ -731,7 +731,13 @@ object SiliconRawCounterexample {
   def detField(model: Model, chunk: BasicChunk): RawHeapEntry = {
     val recvVar = evaluateTerm(chunk.args(0), model).toString
     val fieldName = chunk.id.name
-    val value = evaluateTerm(chunk.snap, model).toString
+    // A field whose value the model does not determine (e.g. the opaque snapshot of a field obtained
+    // by applying a magic wand) evaluates to an OtherEntry; report it as the "#undefined" placeholder
+    // rather than leaking the internal term (e.g. "SortWrapper(First(Second(...))) [unapplicable]").
+    val value = evaluateTerm(chunk.snap, model) match {
+      case _: OtherEntry => "#undefined"
+      case e => e.toString
+    }
     val perm = evalPerm(chunk.perm, model)
     RawHeapEntry(Seq(recvVar), Seq(fieldName), value, perm, FieldType, None)
   }
