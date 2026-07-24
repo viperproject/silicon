@@ -486,7 +486,7 @@ object executor extends ExecutionRules {
         val pve = ExhaleFailed(exhale)
         val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(exhale)) else s
         consume(s0, a, false, pve, v)((s1, _, v1) => {
-          val s1a = if (debugOn) v1.finishKeyHeap(s) else s1
+          val s1a = if (debugOn) v1.finishKeyHeap(s1) else s1
           Q(s1a, v1)})
 
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
@@ -615,7 +615,7 @@ object executor extends ExecutionRules {
             permissionSupporter.assertPositive(s2, tPerm, if (debugOn) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
               predicateSupporter.fold(s3, predAcc, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3)((s4, v4) => {
-                v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
+                v4.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
                 val s4a = if (debugOn) v4.finishKeyHeap(s4) else s4
                 Q(s4a, v4)
               })
