@@ -1113,7 +1113,7 @@ object SiliconResolvedCounterexample {
           for ((mw, idx) <- program.magicWandStructures.zipWithIndex) {
             val wandName = "wand@" ++ idx.toString
             if (bhe.reference(0) == wandName) {
-              ans +:= (mw, WandResolvedEntry.fromStructure(wandName, mw, argValues, bhe.perm, bhe.het, program))
+              ans +:= (mw, WandResolvedEntry.fromStructure(mw, argValues, bhe.perm, bhe.het, program))
             }
           }
         case _ => println("This type of heap entry could not be matched correctly!")
