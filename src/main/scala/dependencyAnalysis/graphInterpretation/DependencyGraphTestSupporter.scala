@@ -10,10 +10,12 @@ import viper.silicon.dependencyAnalysis.UserLevelDependencyAnalysisNode
 import viper.silicon.dependencyAnalysis.graph._
 import viper.silver.dependencyAnalysis.AssumptionType
 
+import scala.util.matching.Regex
+
 class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final]) {
 
   private val assumptionTypeRegex = """assumptionType:([^\s,)\"]+)""".r
-  private val assertionTypeRegex = """assertionType:([^\s,)\"]+)""".r
+  private val assertionTypeRegex: Regex = """assertionType:([^\s,)\"]+)""".r
   private val nodeLabelRegex = """label:([^\s,)\"]+)""".r
   private val expectedDependenciesRegex = """expectedDependencies:\[([^\]]+)\]""".r
   private val dependencyInfoRegex = """@dependencyInfo\(([^()]*)\)""".r
@@ -36,31 +38,30 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
     dependencyInfoOpt match {
       case None => None
       case Some(dependencyInfo) =>
-        var isTested = false
-
-        val expectedAssumptionTypeOpt: Option[String] = assumptionTypeRegex.findFirstMatchIn(dependencyInfo).map(_.group(1))
-        val isAssumptionTypeCorrect = expectedAssumptionTypeOpt match {
-          case Some(expectedTypeStr) =>
-            val expectedType = AssumptionType.fromString(expectedTypeStr).get
-            isTested = true
-            ulNode.assumptionTypes.filterNot(_.isInstanceOf[AssumptionType.InternalType]).equals(Set(expectedType))
-          case None => true
-        }
-
-        val expectedAssertionTypeOpt: Option[String] = assertionTypeRegex.findFirstMatchIn(dependencyInfo).map(_.group(1))
-        val isAssertionTypeCorrect = expectedAssertionTypeOpt match {
-          case Some(expectedTypeStr) =>
-            val expectedType = AssumptionType.fromString(expectedTypeStr).get
-            isTested = true
-            ulNode.assertionTypes.filterNot(_.isInstanceOf[AssumptionType.InternalType]).equals(Set(expectedType))
-          case None => true
-        }
+        val (isAssumptionTypeCorrect, isTested) = testTypeInternal(dependencyInfo, assumptionTypeRegex, ulNode.assumptionTypes)
+        val (isAssertionTypeCorrect, isTested2) = testTypeInternal(dependencyInfo, assertionTypeRegex, ulNode.assertionTypes)
 
         printIfFalse(isAssumptionTypeCorrect, s"Wrong assumption type for node ${ulNode.source.toString} having assumption types ${ulNode.assumptionTypes}.")
         printIfFalse(isAssertionTypeCorrect, s"Wrong assertion type for node ${ulNode.source.toString} having assertion types ${ulNode.assertionTypes}.")
-        Option.when(isTested)(isAssumptionTypeCorrect && isAssertionTypeCorrect)
+        Option.when(isTested || isTested2)(isAssumptionTypeCorrect && isAssertionTypeCorrect)
     }
   }
+
+
+  /* returns (testSucceeded?, tested?) */
+  def testTypeInternal(dependencyInfo: String, pattern: Regex, reportedTypes: Set[AssumptionType.AssumptionType]): (Boolean, Boolean) =
+    pattern.findFirstMatchIn(dependencyInfo).map(_.group(1)) match {
+      case Some(expectedTypeStr) =>
+        val expectedTypeOpt = AssumptionType.fromString(expectedTypeStr)
+        expectedTypeOpt match {
+          case Some(expectedType) =>
+            (reportedTypes.filterNot(_.isInstanceOf[AssumptionType.InternalType]).equals(Set(expectedType)), true)
+          case None =>
+            print(s"ERROR: could not parse assumption type $expectedTypeStr.")
+            (false, true)
+        }
+      case None => (true, false) // not tested
+    }
 
   private def printIfFalse(test: Boolean, message: String): Unit =
     if (!test)
