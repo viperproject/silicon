@@ -9,18 +9,16 @@ package viper.silicon.dependencyAnalysis
 import viper.silicon.dependencyAnalysis.graph._
 import viper.silver.ast.Position
 import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silver.dependencyAnalysis.{DependencyAnalysisSourceInfo, StringDependencyAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.DependencyAnalysisSourceInfo
 
 object UserLevelDependencyAnalysisNode {
 
-  def from(dependencyNodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = {
-    val res = dependencyNodes
-      .map(n => ((StringDependencyAnalysisSourceInfo(n.sourceInfo.getDescription, n.sourceInfo.getPosition)), n))
-      .groupBy(_._1).map { case (key, nodes) =>
-      UserLevelDependencyAnalysisNode(key, nodes.map(_._2).toSet)
+  def from(dependencyNodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] =
+    dependencyNodes
+      .groupBy(_.sourceInfo).map { case (key, nodes) =>
+      UserLevelDependencyAnalysisNode(key, nodes.toSet)
     }.toSet
-    res
-  }
+
 
   def extractByAssumptionType(nodes: Set[UserLevelDependencyAnalysisNode], filterCriteria: AssumptionType => Boolean): Set[UserLevelDependencyAnalysisNode] = {
     nodes.filter(node => node.assumptionTypes exists filterCriteria)

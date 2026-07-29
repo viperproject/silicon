@@ -224,9 +224,10 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
    * Returns all uncovered source code statements.
    */
   def computeUncoveredStatementsPerMember(): Map[String, List[DependencyAnalysisSourceInfo]] = {
-    val allAssertions = interpreter.toUserLevelNodes(getAssertionsRelevantForProgress.values.flatten)
-    val allDependencies = allAssertions.flatMap(ass => interpreter.computeNonInternalDependencies(ass.lowerLevelNodes).filterNot(_.sourceInfo == ass.source))
-      .groupBy(_.sourceInfo)
+    val allAssertions = getAssertionsRelevantForProgress
+    val allDependencies = allAssertions.flatMap(ass => {
+      interpreter.computeNonInternalDependencies(ass._2.toSet).filterNot(_.sourceInfo == ass._1)
+    }).groupBy(_.sourceInfo)
 
     val explicitAssertions = interpreter.getExplicitAssertionNodes.groupBy(_.sourceInfo)
     val allNodes = interpreter.getNonInternalAssumptionNodes.groupBy(n => (n.sourceInfo, n.memberStr))
