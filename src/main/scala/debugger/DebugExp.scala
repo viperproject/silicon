@@ -142,6 +142,41 @@ class DebugExp(val id: Int,
     "\n\t" + ("\t"*currDepth) + "[" + id + "] " + description.getOrElse("") + delimiter + toDisplay.getOrElse("")
   }
 
+  /** The label of this node, i.e. `getTopLevelString` without indentation and without the `[id]` prefix. */
+  protected def topLevelLabel(filter: DebugNodeFilter): String = {
+    val toDisplay = if (filter.useTermRepresentation) term else finalExp
+    val delimiter = if (toDisplay.isDefined && description.isDefined) ": " else ""
+    description.getOrElse("") + delimiter + toDisplay.getOrElse("")
+  }
+
+  protected def sourcePos: Option[DebugSourcePos] =
+    finalExp.orElse(originalExp).flatMap(DebugSourcePos.from)
+
+  /** The counterpart of `childrenToString`: returns the child nodes, the total number of (non-internal)
+    * children, and whether the children were dropped because the maximal depth was reached. */
+  protected def childNodes(currDepth: Int, maxDepth: Int, filter: DebugNodeFilter): (Seq[DebugNode], Int, Boolean) = {
+    val nonInternalChildren = children.filter(de => filter.includeInternal || !de.isInternal)
+    if (nonInternalChildren.isEmpty) (Seq.empty, 0, false)
+    else if (maxDepth <= currDepth) (Seq.empty, nonInternalChildren.size, true)
+    else {
+      val childrenToShow =
+        if (filter.maxChildren > 0) nonInternalChildren.take(filter.maxChildren) else nonInternalChildren
+      (childrenToShow.toSeq.flatMap(_.toNode(currDepth + 1, maxDepth, filter)), nonInternalChildren.size, false)
+    }
+  }
+
+  /** The structured counterpart of `toString(currDepth, maxDepth, config)`. */
+  def toNode(currDepth: Int, maxDepth: Int, filter: DebugNodeFilter): Option[DebugNode] = {
+    if (isInternal_ && !filter.includeInternal) {
+      return None
+    }
+    val (cs, count, elided) = childNodes(currDepth, filter.depthFor(id), filter)
+    Some(DebugNode(id, DebugNodeKind.Assumption, topLevelLabel(filter), description,
+      finalExp.map(_.toString), term.map(_.toString), isInternal_, count, elided, "", sourcePos, cs))
+  }
+
+  def toNode(filter: DebugNodeFilter): Option[DebugNode] = toNode(0, filter.maxDepth, filter)
+
 
   def toString(currDepth: Int, maxDepth: Int, config: DebugExpPrintConfiguration): String = {
     if (isInternal_ && !config.isPrintInternalEnabled){
@@ -201,6 +236,19 @@ class ImplicationDebugExp(id: Int,
       "true"
     }
   }
+
+  override def toNode(currDepth: Int, maxDepth: Int, filter: DebugNodeFilter): Option[DebugNode] = {
+    if (isInternal_ && !filter.includeInternal) {
+      return None
+    }
+    if (children.nonEmpty) {
+      val (cs, count, elided) = childNodes(currDepth, filter.depthFor(id), filter)
+      Some(DebugNode(id, DebugNodeKind.Implication, topLevelLabel(filter), description,
+        finalExp.map(_.toString), term.map(_.toString), isInternal_, count, elided, " ==> ", sourcePos, cs))
+    } else {
+      Some(DebugNode(id, DebugNodeKind.Literal, "true", isInternal = isInternal_))
+    }
+  }
 }
 
 
@@ -232,6 +280,22 @@ class QuantifiedDebugExp(id: Int,
       getTopLevelString(currDepth, config)
     }
   }
+
+  override def toNode(currDepth: Int, maxDepth: Int, filter: DebugNodeFilter): Option[DebugNode] = {
+    if (isInternal_ && !filter.includeInternal) {
+      return None
+    }
+    if (qvars.nonEmpty) {
+      val (cs, count, elided) = childNodes(currDepth, filter.depthFor(id), filter)
+      val label = (if (quantifier == "QA") "forall" else "exists") + " " + qvars.mkString(", ")
+      Some(DebugNode(id, DebugNodeKind.Quantified, label, description, None, None, isInternal_,
+        count, elided, " :: ", qvars.headOption.flatMap(DebugSourcePos.from), cs))
+    } else {
+      // Matches `toString`, which does not print the children in this case.
+      Some(DebugNode(id, DebugNodeKind.Quantified, topLevelLabel(filter), description,
+        None, None, isInternal_, 0, childrenElided = false, "", None, Seq.empty))
+    }
+  }
 }
 
 
@@ -253,6 +317,19 @@ class DebugExpPrintConfiguration {
         case None    => printHierarchyLevel
       }
     }
+  }
+
+  def toModel: PrintConfigModel =
+    PrintConfigModel(isPrintInternalEnabled, nChildrenToShow, printHierarchyLevel, isPrintAxiomsEnabled,
+      printInternalTermRepresentation, printOldHeaps)
+
+  def applyModel(m: PrintConfigModel): Unit = {
+    isPrintInternalEnabled = m.printInternal
+    nChildrenToShow = m.nChildrenToShow
+    printHierarchyLevel = m.hierarchyLevel
+    isPrintAxiomsEnabled = m.printAxioms
+    printInternalTermRepresentation = m.printInternalTermRepresentation
+    printOldHeaps = m.printOldHeaps
   }
 
   def addHierarchyLevelForId(str: String): Unit ={

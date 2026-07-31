@@ -6,7 +6,7 @@
 
 package viper.silicon.verifier
 
-import viper.silicon.debugger.SiliconDebugger
+import viper.silicon.debugger.SiliconDebugSession
 import viper.silicon.Config.{ExhaleMode, JoinMode}
 
 import java.text.SimpleDateFormat
@@ -46,6 +46,10 @@ trait MainVerifier extends Verifier {
   def nextUniqueVerifierId(): String
   def verificationPoolManager: VerificationPoolManager
   def rootSymbExLogger: SymbExLogger[_ <: MemberSymbExLogger]
+
+  /** The debug session created by the last verification run, if debugging is enabled and the verification
+    * produced a failure that can be debugged. Consumed by Silicon's own CLI and by ViperServer. */
+  def debugSession: Option[SiliconDebugSession]
 }
 
 class DefaultMainVerifier(config: Config,
@@ -106,8 +110,18 @@ class DefaultMainVerifier(config: Config,
   }
 
   override def stop(): Unit = {
+    closeDebugSession()
     super.stop()
     statefulSubcomponents foreach (_.stop())
+  }
+
+  private var _debugSession: Option[SiliconDebugSession] = None
+
+  override def debugSession: Option[SiliconDebugSession] = _debugSession
+
+  private def closeDebugSession(): Unit = {
+    _debugSession.foreach(_.close())
+    _debugSession = None
   }
 
   def axiomsAfterAnalysis(): Iterable[Term] = this.domainsContributor.axiomsAfterAnalysis
@@ -329,9 +343,12 @@ class DefaultMainVerifier(config: Config,
      ++ predicateVerificationResults
      ++ methodVerificationResults)
 
-    if (Verifier.config.enableDebugging()){
-      val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
-      debugger.startDebugger()
+    if (config.enableDebugging()) {
+      // Rather than blocking on user input here, we publish a debug session that the CLI (see
+      // `SiliconRunnerInstance.runMain`) or ViperServer can pick up and drive.
+      closeDebugSession()
+      _debugSession = Some(new SiliconDebugSession(verificationResults, FrontendStateCache.resolver,
+        FrontendStateCache.pprogram, FrontendStateCache.translator, this, config))
     }
 
     verificationResults

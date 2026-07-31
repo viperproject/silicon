@@ -17,7 +17,13 @@ import viper.silver.verifier.errors.ErrorWrapperWithExampleTransformer
 import viper.silver.verifier.{Counterexample, CounterexampleTransformer, VerificationError}
 
 trait SymbolicExecutionRules {
-  lazy val withExp = Verifier.config.enableDebugging()
+  /** Whether expressions are tracked alongside terms, i.e. whether debugging is enabled.
+    *
+    * This must not be cached: the rules are singleton objects, so a cached value would be the one of the
+    * first verification in this JVM. A server that runs a verification without debugging and then one with
+    * debugging enabled would otherwise produce states whose expressions are missing.
+    */
+  def withExp: Boolean = Verifier.config.enableDebugging()
 
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssert: Term, failedAssertDescription: String, generateNewModel: Boolean): Failure = {
     createFailure(ve, v, s, failedAssert, Option.when(withExp)(DebugExp.createInstance(failedAssertDescription)), generateNewModel)

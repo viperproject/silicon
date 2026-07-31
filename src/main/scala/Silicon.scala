@@ -17,6 +17,7 @@ import viper.silver.ast
 import viper.silver.frontend.{DefaultStates, MinimalViperFrontendAPI, SilFrontend, ViperFrontendAPI}
 import viper.silver.reporter._
 import viper.silver.verifier.{AbstractVerificationError => SilAbstractVerificationError, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
+import viper.silicon.debugger.SiliconDebuggerCli
 import viper.silicon.interfaces.Failure
 import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
@@ -153,6 +154,14 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
   def stop(): Unit = {
     if (verifier != null) verifier.stop()
   }
+
+  /**
+    * The debug session of the last verification run, available if `--enableDebugging` was passed and the run
+    * produced a debuggable failure. The session keeps the symbolic state and a prover alive; it is closed
+    * when this Silicon instance is stopped.
+    */
+  def debugSession: Option[viper.silicon.debugger.SiliconDebugSession] =
+    if (verifier == null) None else verifier.debugSession
 
   /** Verifies a given SIL program and returns a sequence of verification errors.
     *
@@ -394,6 +403,11 @@ class SiliconRunnerInstance extends SiliconFrontend(StdIOReporter()) {
 
       if (state >= DefaultStates.Verification && result == SilSuccess) {
         exitCode = 0
+      }
+
+      /* If debugging is enabled and the verification failed, hand over to the interactive debugger. */
+      if (siliconInstance != null) {
+        siliconInstance.debugSession.foreach(session => new SiliconDebuggerCli(session).run())
       }
     } catch { /* Catch exceptions and errors thrown at any point of the execution of Silicon */
       case exception: Exception
