@@ -110,7 +110,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         (functionRecorder, hs :+ Heap(mergedChunks))
       }
 
-    val alreadyRecording = s.recordIntermediateHeaps
+    val alreadyRecording = s.isRecordingHeaps
     val s1 = if (debugOn && !alreadyRecording)
       v.startKeyHeap(s, v.getDebugHeapLabel(s).getOrElse("preConsolidateHeapMissing"), StateConsolidation)
     else s
@@ -282,7 +282,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
 
           val debugExp = if (debugOn) {
-            sf = if (sf.recordIntermediateHeaps) v.recordIntermediateHeap(sf, StateConsolidation) else sf
+            sf = if (sf.isRecordingHeaps) v.recordIntermediateHeap(sf, StateConsolidation) else sf
             val permExp = ast.DebugLabelledOld(ast.CurrentPerm(ast.FieldAccess(receiverExp.localVar, field)())(ast.NoPosition, ast.NoInfo, ast.NoTrafos),
               v.getDebugOldLabel(sf, ast.NoPosition))()
             val exp = ast.Forall(Seq(receiverExp), Seq(), ast.PermLeCmp(permExp, ast.FullPerm()())())()
@@ -300,7 +300,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           for (chunk <- fieldChunks) {
             if (chunk.singletonRcvr.isDefined){
               val debugExp = if (debugOn) {
-                sf = if (sf.recordIntermediateHeaps) v.recordIntermediateHeap(sf, StateConsolidation) else sf
+                sf = if (sf.isRecordingHeaps) v.recordIntermediateHeap(sf, StateConsolidation) else sf
                 val permExp = ast.DebugLabelledOld(ast.CurrentPerm(ast.FieldAccess(chunk.singletonRcvrExp.get, field)())(),
                   v.getDebugOldLabel(sf, ast.NoPosition))()
                 val exp = ast.PermLeCmp(permExp, ast.FullPerm()())()
@@ -313,7 +313,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
               val currentPermAmount = PermLookup(field.name, pmDef.pm, chunk.quantifiedVars.head)
               v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
               val debugExp = if (debugOn) {
-                sf = if (sf.recordIntermediateHeaps) v.recordIntermediateHeap(sf, StateConsolidation) else sf
+                sf = if (sf.isRecordingHeaps) v.recordIntermediateHeap(sf, StateConsolidation) else sf
                 val chunkReceiverExp = chunk.quantifiedVarExps.get.head.localVar
                 var permExp: ast.Exp = ast.CurrentPerm(ast.FieldAccess(chunkReceiverExp, field)())(chunkReceiverExp.pos, chunkReceiverExp.info, chunkReceiverExp.errT)
                 permExp = ast.DebugLabelledOld(permExp, v.getDebugOldLabel(sf, ast.NoPosition))()

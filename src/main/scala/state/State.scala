@@ -23,7 +23,7 @@ import viper.silicon.supporters.PredicateData
 import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
-import viper.silicon.{Map, Stack}
+import viper.silicon.{Map, SiliconRunner, Stack}
 import viper.silver.utility.Sanitizer
 
 final case class State(g: Store = Store(),
@@ -138,7 +138,7 @@ final case class State(g: Store = Store(),
 
   val isLastRetry: Boolean = retryLevel == 0
 
-  val recordIntermediateHeaps: Boolean = temporaryHeapRecord.isDefined
+  val isRecordingHeaps: Boolean = temporaryHeapRecord.isDefined
 
   def incCycleCounter(m: ast.Predicate) =
     if (recordVisited) copy(visited = m :: visited)
@@ -293,7 +293,11 @@ object State {
             )
             val temporaryHeapRecord3 = (temporaryHeapRecord1, temporaryHeapRecord2) match {
               case (Some((label1, cause1, pcs1, heaps1)), Some((label2, cause2, _, heaps2))) =>
-                if (label1 == label2 && cause1 == cause2) Some(label1, cause1, pcs1, heaps1 ++ heaps2) else None
+                if (label1 == label2 && cause1 == cause2) Some(label1, cause1, pcs1, heaps1 ++ heaps2) else {
+                  // This case should not occur if heaps have been recorded correctly
+                  SiliconRunner.logger.warn(s"Attempted to merge states with different temporary heap records: $label1 and $label2")
+                  None
+                }
               case (Some(tmp1), None) => Some(tmp1)
               case (None, Some(tmp2)) => Some(tmp2)
               case (None, None) => None
@@ -474,7 +478,11 @@ object State {
               )
             val temporaryHeapRecord3 = (temporaryHeapRecord1, temporaryHeapRecord2) match {
               case (Some((label1, cause1, pcs1, heaps1)), Some((label2, cause2, _, heaps2))) =>
-                if (label1 == label2 && cause1 == cause2) Some(label1, cause1, pcs1, heaps1 ++ heaps2) else None
+                if (label1 == label2 && cause1 == cause2) Some(label1, cause1, pcs1, heaps1 ++ heaps2) else {
+                  // This case should not occur if heaps have been recorded correctly
+                  SiliconRunner.logger.warn(s"Attempted to merge states with different temporary heap records: $label1 and $label2")
+                  None
+                }
               case (Some(tmp1), None) => Some(tmp1)
               case (None, Some(tmp2)) => Some(tmp2)
               case (None, None) => None

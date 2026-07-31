@@ -227,7 +227,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             v.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2)
           }
           val s4 = s3.copy(h = h3 + ch)
-          val s5 = if (debugOn && s4.recordIntermediateHeaps) v.recordIntermediateHeap(s4) else s4
+          val s5 = if (debugOn && s4.isRecordingHeaps) v.recordIntermediateHeap(s4) else s4
           Q(s5, v)
         case (Incomplete(_, _), s3, _) =>
           createFailure(ve, v, s3, "sufficient permission")
@@ -239,7 +239,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
         val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tRhs, eRhsNew, FullPerm, Option.when(debugOn)(ast.FullPerm()(ass.pos, ass.info, ass.errT)))
         chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
           val s5 = s4.copy(h = h4)
-          val s6 = if (debugOn && s5.recordIntermediateHeaps) v.recordIntermediateHeap(s5) else s5
+          val s6 = if (debugOn && s5.isRecordingHeaps) v.recordIntermediateHeap(s5) else s5
           Q(s6, v4)
         })
       })
