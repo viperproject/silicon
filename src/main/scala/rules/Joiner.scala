@@ -11,7 +11,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.logger.records.structural.JoiningRecord
-import viper.silicon.state.State
+import viper.silicon.state.{StateMerge, State}
 import viper.silicon.state.terms.{And, Or, Term}
 import viper.silicon.utils.ast.{BigAnd, BigOr}
 import viper.silicon.verifier.Verifier
@@ -92,6 +92,7 @@ object joiner extends JoiningRules {
         Success()
       } else {
         val (sJoined, dataJoined) = merge(entries)
+        val sJoined2 = if (debugOn) v.recordHeap(sJoined, "nil", StateMerge, v.decider.pcs.duplicate()) else sJoined
 
         var feasibleBranches: List[Term] = Nil
         var feasibleBranchesExp: Option[List[ast.Exp]] = Option.when(debugOn)(Nil)
@@ -109,7 +110,7 @@ object joiner extends JoiningRules {
         })
         // Assume we are in a feasible branch
         v.decider.assume(Or(feasibleBranches), Option.when(debugOn)(DebugExp.createInstance(Some("Feasible Branches"), feasibleBranchesExp.map(BigOr(_)), feasibleBranchesExpNew.map(BigOr(_)), InsertionOrderedSet.empty)))
-        Q(sJoined, dataJoined, v)
+        Q(sJoined2, dataJoined, v)
       }
     }
   }

@@ -203,7 +203,7 @@ case object InhalePre extends HeapCause
 case object ExhalePost extends HeapCause
 case object InhaleInv extends HeapCause
 case object ExhaleInv extends HeapCause
-case object MergeContext extends HeapCause
+case object StateMerge extends HeapCause
 case object CreateLabel extends HeapCause
 case object StateConsolidation extends HeapCause
 case class ExecStmt(stmt: ast.Stmt) extends HeapCause

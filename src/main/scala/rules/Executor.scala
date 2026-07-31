@@ -97,7 +97,7 @@ object executor extends ExecutionRules {
   def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
     edge.kind match {
       case cfg.Kind.Out =>
-        val s1 = if (debugOn) v.startKeyHeap(s, "nil", MergeContext) else s
+        val s1 = if (debugOn) v.startKeyHeap(s, "nil", StateMerge) else s
         val (fr1, h1) = v.stateConsolidator(s1).merge(s1.functionRecorder, s1, s1.h, s1.invariantContexts.head, v)
         val s2 = s1.copy(functionRecorder = fr1, h = h1, invariantContexts = s1.invariantContexts.tail)
         if (debugOn) v.finishKeyHeap(s2) else s2
