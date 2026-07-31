@@ -97,10 +97,10 @@ object executor extends ExecutionRules {
   def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
     edge.kind match {
       case cfg.Kind.Out =>
-        val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, s.invariantContexts.head, v)
-        val s1 = s.copy(functionRecorder = fr1, h = h1,
-          invariantContexts = s.invariantContexts.tail)
-        s1
+        val s1 = if (debugOn) v.startKeyHeap(s, "nil", StateMerge) else s
+        val (fr1, h1) = v.stateConsolidator(s1).merge(s1.functionRecorder, s1, s1.h, s1.invariantContexts.head, v)
+        val s2 = s1.copy(functionRecorder = fr1, h = h1, invariantContexts = s1.invariantContexts.tail)
+        if (debugOn) v.finishKeyHeap(s2) else s2
       case _ =>
         /* No need to do anything special. See also the handling of loop heads in exec below. */
         s
@@ -220,8 +220,8 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
-    var blockLabel: Option[String] = None 
-    var methodName: Option[String] = None 
+    var blockLabel: Option[String] = None
+    var methodName: Option[String] = None
     var sLocal = s
     if (Verifier.config.generateBlockMessages() && s.isMethodVerification && block.elements.length > 0) {
       block.elements.head match {
@@ -239,7 +239,7 @@ object executor extends ExecutionRules {
         case _ =>
       }
     }
-    
+
     val executed = block match {
       case cfg.StatementBlock(stmt) =>
         execs(sLocal, stmt, v)((s1, v1) =>
@@ -275,7 +275,8 @@ object executor extends ExecutionRules {
             val gBody = Store(wvs.foldLeft(sLocal.g.values)((map, x) => {
               val xNew = v.decider.fresh(x)
               map.updated(x, xNew)}))
-            val sBody = sLocal.copy(g = gBody, h = v.heapSupporter.getEmptyHeap(s.program))
+            val sBody0 = sLocal.copy(g = gBody, h = v.heapSupporter.getEmptyHeap(s.program))
+            val sBody = if (debugOn) v.startKeyHeap(sBody0, "nil", InhaleInv) else sBody0
 
             val edges = sLocal.methodCfg.outEdges(block)
             val (outEdges, otherEdges) = edges partition(_.kind == cfg.Kind.Out)
@@ -298,7 +299,9 @@ object executor extends ExecutionRules {
                 })})
             combine executionFlowController.locally(sLocal, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
-                consumes(s0, invs, false, LoopInvariantNotEstablished, v0)((sLeftover, _, v1) => {
+                val s0a = if (debugOn)
+                  v0.startKeyHeap(s0, v0.getDebugHeapLabel(s0).getOrElse("missingHeap"), ExhaleInv) else s0
+                consumes(s0a, invs, false, LoopInvariantNotEstablished, v0)((sLeftover, _, v1) => {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                   phase1data.foldLeft(Success(): VerificationResult) {
                     case (result, _) if !result.continueVerification => result
@@ -307,12 +310,13 @@ object executor extends ExecutionRules {
                       intermediateResult combine executionFlowController.locally(s2, v1)((s3, v2) => {
                         v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
                         v2.decider.declareAndRecordAsFreshMacros(fm1.filter(!v2.decider.freshMacros.contains(_)))  /* [BRANCH-PARALLELISATION] */
-                        v2.decider.assume(pcs.assumptions, Option.when(withExp)(DebugExp.createInstance("Loop invariant", pcs.assumptionExps)), false)
+                        v2.decider.assume(pcs.assumptions, Option.when(debugOn)(DebugExp.createInstance("Loop invariant", pcs.assumptionExps)), false)
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
                         if (v2.decider.checkSmoke())
                           Success()
                         else {
-                          execs(s3, stmts, v2)((s4, v3) => {
+                          val s3a = if (debugOn) v2.finishKeyHeap(s3) else s3
+                          execs(s3a, stmts, v2)((s4, v3) => {
                             val edgeCondWelldefinedness = {
                               v1.decider.prover.comment("Loop head block: Check well-definedness of edge conditions")
                               edgeConditions.foldLeft(Success(): VerificationResult) {
@@ -325,7 +329,8 @@ object executor extends ExecutionRules {
                               }
                             }
                             v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
-                            edgeCondWelldefinedness combine follows(s4, sortedEdges, WhileFailed, v3, joinPoint, pathId)(Q)})}})}})}))
+                            edgeCondWelldefinedness combine follows(s4, sortedEdges, WhileFailed, v3, joinPoint, pathId)(Q)})
+                        }})}})}))
 
           case _ =>
             /* We've reached a loop head block via an edge other than an in-edge: a normal edge or
@@ -377,6 +382,8 @@ object executor extends ExecutionRules {
     val s = state.copy(h = magicWandSupporter.getExecutionHeap(state))
     val Q: (State, Verifier) => VerificationResult = (s, v) => {
       continuation(magicWandSupporter.moveToReserveHeap(s, v), v)}
+    val oldLabel = v.getDebugHeapLabel(s).getOrElse("missingHeap")
+    val oldPCS = v.decider.pcs.duplicate()
 
     /* For debugging-purposes only */
     stmt match {
@@ -396,7 +403,8 @@ object executor extends ExecutionRules {
 
       case ast.Label(name, _) =>
         val s1 = s.copy(oldHeaps = s.oldHeaps + (name -> magicWandSupporter.getEvalHeap(s)))
-        Q(s1, v)
+        val s2 = if (debugOn) v.recordHeap(s, name, oldLabel, CreateLabel, oldPCS) else s1
+        Q(s2, v)
 
       case ast.LocalVarDeclStmt(decl) =>
         val x = decl.localVar
@@ -404,9 +412,11 @@ object executor extends ExecutionRules {
         Q(s.copy(g = s.g + (x -> (t, newExp))), v)
 
       case ass @ ast.LocalVarAssign(x, rhs) =>
-        eval(s, rhs, AssignmentFailed(ass), v)((s1, tRhs, rhsNew, v1) => {
+        val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(ass)) else s
+        eval(s0, rhs, AssignmentFailed(ass), v)((s1, tRhs, rhsNew, v1) => {
           val (t, e) = ssaifyRhs(tRhs, rhs, rhsNew, x.name, x.typ, v, s1)
-          Q(s1.copy(g = s1.g + (x, (t, e))), v1)})
+          val s1a = if (debugOn) v.finishKeyHeap(s1) else s1
+          Q(s1a.copy(g = s1a.g + (x, (t, e))), v1)})
 
       /* TODO: Encode assignments e1.f := e2 as
        *         exhale acc(e1.f)
@@ -418,22 +428,25 @@ object executor extends ExecutionRules {
         assert(!s.exhaleExt)
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) => {
-          eval(s1, rhs, pve, v1)((s2, tRhs, eRhsNew, v2) => {
+          val s1a = if (debugOn) v1.startKeyHeap(s1, oldLabel, ExecStmt(ass)) else s1
+          eval(s1a, rhs, pve, v1)((s2, tRhs, eRhsNew, v2) => {
             val (tSnap, _) = ssaifyRhs(tRhs, rhs, eRhsNew, field.name, field.typ, v2, s2)
-            v2.heapSupporter.execFieldAssign(s2, ass, tRcvr, eRcvrNew, tSnap, eRhsNew, pve, v2)(Q)
+            v2.heapSupporter.execFieldAssign(s2, ass, tRcvr, eRcvrNew, tSnap, eRhsNew, pve, v2)((s3, v3) => {
+              val s3a = if (debugOn) v3.finishKeyHeap(s3) else s3
+              Q(s3a, v3)})
           })
         })
 
       case stmt@ast.NewStmt(x, fields) =>
         val (tRcvr, eRcvrNew) = v.decider.fresh(x)
-        val debugExp = Option.when(withExp)(ast.NeCmp(x, ast.NullLit()())())
-        val debugExpSubst = Option.when(withExp)(ast.NeCmp(eRcvrNew.get, ast.NullLit()())())
+        val debugExp = Option.when(debugOn)(ast.NeCmp(x, ast.NullLit()())())
+        val debugExpSubst = Option.when(debugOn)(ast.NeCmp(eRcvrNew.get, ast.NullLit()())())
 
         v.decider.assume(tRcvr !== Null, debugExp, debugExpSubst)
 
-        val eRcvr = Option.when(withExp)(Seq(x))
+        val eRcvr = Option.when(debugOn)(Seq(x))
         val p = FullPerm
-        val pExp = Option.when(withExp)(ast.FullPerm()(stmt.pos, stmt.info, stmt.errT))
+        val pExp = Option.when(debugOn)(ast.FullPerm()(stmt.pos, stmt.info, stmt.errT))
 
         def addFieldPerms(s: State, flds: Seq[ast.Field], v: Verifier)
                          (QB: (State, Verifier) => VerificationResult): VerificationResult = {
@@ -441,7 +454,7 @@ object executor extends ExecutionRules {
             QB(s, v)
           } else {
             val fld = flds.head
-            val snap = v.decider.fresh(fld.name, v.symbolConverter.toSort(fld.typ), Option.when(withExp)(extractPTypeFromExp(x)))
+            val snap = v.decider.fresh(fld.name, v.symbolConverter.toSort(fld.typ), Option.when(debugOn)(extractPTypeFromExp(x)))
             v.heapSupporter.produceSingle(s, fld, Seq(tRcvr), eRcvr, snap, None, p, pExp, NullPartialVerificationError, false, v)((s1, v1) => {
               addFieldPerms(s1, flds.tail, v1)(QB)
             })
@@ -449,12 +462,12 @@ object executor extends ExecutionRules {
         }
         val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
         val esNew = eRcvrNew.map(rcvr => BigAnd(viper.silicon.state.utils.computeReferenceDisjointnessesExp(s, rcvr)))
-        addFieldPerms(s, fields, v)((s0, v0) => {
-          val s1 = s0.copy(g = s0.g + (x, (tRcvr, eRcvrNew)))
-          val (debugHeapName, _) = v.getDebugOldLabel(s1, stmt.pos, Some(magicWandSupporter.getEvalHeap(s1)))
-          val s2 = if (withExp) s1.copy(oldHeaps = s1.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s1))) else s1
-          v0.decider.assume(ts, Option.when(withExp)(DebugExp.createInstance(Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false)
-          Q(s2, v0)
+        addFieldPerms(s, fields, v)((s1, v1) => {
+          val s1a = s1.copy(g = s1.g + (x, (tRcvr, eRcvrNew)))
+          val s1b = if (debugOn) v1.recordHeap(s1a, oldLabel, ExecStmt(stmt), oldPCS) else s1a
+          v1.decider.assume(ts, Option.when(debugOn)(DebugExp.createInstance(
+            Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false)
+          Q(s1b, v1)
         })
 
       case inhale @ ast.Inhale(a) => a match {
@@ -462,15 +475,19 @@ object executor extends ExecutionRules {
           /* We're done */
           Success()
         case _ =>
-          produce(s, freshSnap, a, InhaleFailed(inhale), v)((s1, v1) => {
+          val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(inhale)) else s
+          produce(s0, freshSnap, a, InhaleFailed(inhale), v)((s1, v1) => {
             v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-            Q(s1, v1)})
+            val s1a = if (debugOn) v.finishKeyHeap(s1) else s1
+            Q(s1a, v1)})
       }
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-        consume(s, a, false, pve, v)((s1, _, v1) =>
-          Q(s1, v1))
+        val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(exhale)) else s
+        consume(s0, a, false, pve, v)((s1, _, v1) => {
+          val s1a = if (debugOn) v1.finishKeyHeap(s1) else s1
+          Q(s1a, v1)})
 
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
@@ -478,7 +495,7 @@ object executor extends ExecutionRules {
           if (v1.decider.checkSmoke(true))
             QS(s1.copy(h = s.h), v1)
           else
-            createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(withExp)(a))
+            createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(debugOn)(a))
         })((_, _) => Success())
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
@@ -490,6 +507,7 @@ object executor extends ExecutionRules {
 
       case assert @ ast.Assert(a) =>
         val pve = AssertFailed(assert)
+        val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(assert)) else s
 
         if (s.exhaleExt) {
           Predef.assert(s.h.values.isEmpty)
@@ -499,13 +517,16 @@ object executor extends ExecutionRules {
            * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
            * by s.h. By copying hUsed to s.h the contained permissions remain available inside the wand.
            */
-          consume(s, a, false, pve, v)((s2, _, v1) => {
-            Q(s2.copy(h = s2.reserveHeaps.head), v1)
+          consume(s0, a, false, pve, v)((s1, _, v1) => {
+            val s1a = s1.copy(h = s1.reserveHeaps.head)
+            val s1b = if (debugOn) v1.finishKeyHeap(s1a) else s1a
+            Q(s1b, v1)
           })
         } else
-          consume(s, a, false, pve, v)((s1, _, v1) => {
-            val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
-            Q(s2, v1)})
+          consume(s0, a, false, pve, v)((s1, _, v1) => {
+            val s1a = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
+            val s1b = if (debugOn) v1.finishKeyHeap(s1a) else s1a
+            Q(s1b, v1)})
 
       // Calling hack407_R() results in Silicon efficiently havocking all instances of resource R.
       // See also Silicon issue #407.
@@ -546,7 +567,9 @@ object executor extends ExecutionRules {
         val sepIdentifier = v.symbExLog.openScope(mcLog)
         val paramLog = new CommentRecord("Parameters", s, v.decider.pcs)
         val paramId = v.symbExLog.openScope(paramLog)
-        evals(s, eArgs, _ => pveCall, v)((s1, tArgs, eArgsNew, v1) => {
+        val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(call)) else s
+
+        evals(s0, eArgs, _ => pveCall, v)((s1, tArgs, eArgsNew, v1) => {
           v1.symbExLog.closeScope(paramId)
           val exampleTrafo = CounterexampleTransformer({
             case ce: SiliconCounterexample => ce.withStore(s1.g)
@@ -555,44 +578,48 @@ object executor extends ExecutionRules {
           val pvePre = ErrorWrapperWithExampleTransformer(PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer), exampleTrafo)
           val preCondLog = new CommentRecord("Precondition", s1, v1.decider.pcs)
           val preCondId = v1.symbExLog.openScope(preCondLog)
-          val argsWithExp = if (withExp)
+          val argsWithExp = if (debugOn)
             tArgs zip (eArgsNew.get.map(Some(_)))
           else
             tArgs zip Seq.fill(tArgs.size)(None)
-          val s2 = s1.copy(g = Store(fargs.zip(argsWithExp)),
+          val s1a = s1.copy(g = Store(fargs.zip(argsWithExp)),
                            recordVisited = true)
-          consumes(s2, meth.pres, false, _ => pvePre, v1)((s3, _, v2) => {
+          consumes(s1a, meth.pres, false, _ => pvePre, v1)((s2, _, v2) => {
             v2.symbExLog.closeScope(preCondId)
-            val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
+            val postCondLog = new CommentRecord("Postcondition", s2, v2.decider.pcs)
             val postCondId = v2.symbExLog.openScope(postCondLog)
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
-            val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
-            produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2)((s5, v3) => {
+            val s2a = s2.copy(g = s2.g + gOuts,
+                             oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
+            produces(s2a, freshSnap, meth.posts, _ => pveCallTransformed, v2)((s3, v3) => {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)
-                              .map(p => (p._1, s5.g.values(p._2))).toMap)
-              val s6 = s5.copy(g = s1.g + gLhs,
+                              .map(p => (p._1, s3.g.values(p._2))).toMap)
+              val s3a = s3.copy(g = s1.g + gLhs,
                                oldHeaps = s1.oldHeaps,
                                recordVisited = s1.recordVisited)
               v3.symbExLog.closeScope(sepIdentifier)
-              Q(s6, v3)})})})
+              val s3b = if (debugOn) v3.finishKeyHeap(s3a) else s3a
+              Q(s3b, v3)})})})
 
-      case fold @ ast.Fold(pap @ ast.PredicateAccessPredicate(predAcc @ ast.PredicateAccess(eArgs, predicateName), _)) =>
+      case fold @ ast.Fold(pap @ ast.PredicateAccessPredicate(predAcc @ ast.PredicateAccess(eArgs, _), _)) =>
         assert(s.constrainableARPs.isEmpty)
         v.decider.startDebugSubExp()
         val ePerm = pap.perm
         val pve = FoldFailed(fold)
-        evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
+        val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(fold)) else s
+        evals(s0, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) =>
-            permissionSupporter.assertPositive(s2, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
+            permissionSupporter.assertPositive(s2, tPerm, if (debugOn) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
               predicateSupporter.fold(s3, predAcc, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3)((s4, v4) => {
-                  v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
-                  Q(s4, v4)
-                }
-              )})))
+                v4.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
+                val s4a = if (debugOn) v4.finishKeyHeap(s4) else s4
+                Q(s4a, v4)
+              })
+            })))
 
       case unfold @ ast.Unfold(pap @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), _)) =>
         assert(s.constrainableARPs.isEmpty)
@@ -600,30 +627,32 @@ object executor extends ExecutionRules {
         val ePerm = pap.perm
         val predicate = s.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
-        evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
+        val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(unfold)) else s
+        evals(s0, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) => {
             val s2a = v2.heapSupporter.triggerResourceIfNeeded(s2, pa, tArgs, eArgsNew, v2)
 
-            permissionSupporter.assertPositive(s2a, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
+            permissionSupporter.assertPositive(s2a, tPerm, if (debugOn) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
               predicateSupporter.unfold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, pa)(
                 (s4, v4) => {
                   v2.decider.finishDebugSubExp(s"unfolded ${pa.toString}")
-                  Q(s4, v4)
+                  val s4a = if (debugOn) v4.finishKeyHeap(s4) else s4
+                  Q(s4a, v4)
                 })
             })
           }))
 
       case pckg @ ast.Package(wand, proofScript) =>
         val pve = PackageFailed(pckg)
-          magicWandSupporter.packageWand(s.copy(isInPackage = true), wand, proofScript, pve, v)((s1, chWand, v1) => {
+        val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(pckg)) else s
 
-            val hOps = s1.reserveHeaps.head + chWand
-            assert(s.exhaleExt || s1.reserveHeaps.length == 1)
-            val s2 =
-              if (s.exhaleExt) {
-                s1.copy(h = v1.heapSupporter.getEmptyHeap(s1.program),
-                        exhaleExt = true,
+        magicWandSupporter.packageWand(s0.copy(isInPackage = true), wand, proofScript, pve, v)((s1, chWand, v1) => {
+          val hOps = s1.reserveHeaps.head + chWand
+          assert(s.exhaleExt || s1.reserveHeaps.length == 1)
+          val s2 = if (s.exhaleExt) {
+              s1.copy(h = v1.heapSupporter.getEmptyHeap(s1.program),
+                      exhaleExt = true,
                         /* It is assumed, that s.reserveHeaps.head (hUsed) is not used or changed
                          * by the packageWand method. hUsed is normally used during transferring
                          * consume to store permissions that have already been consumed. The
@@ -638,16 +667,20 @@ object executor extends ExecutionRules {
                         exhaleExt = false,
                         reserveHeaps = Nil)
               }
-            assert(s2.reserveHeaps.length == s.reserveHeaps.length)
+          assert(s2.reserveHeaps.length == s.reserveHeaps.length)
 
-            val s3 = v1.heapSupporter.triggerWandIfNeeded(s2, wand, chWand, v1)
+          val s3 = v1.heapSupporter.triggerWandIfNeeded(s2, wand, chWand, v1)
 
-            continuation(s3.copy(isInPackage = s.isInPackage), v1)
-          })
+          val s4 = if (debugOn) v1.finishKeyHeap(s3) else s3
+          continuation(s4.copy(isInPackage = s.isInPackage), v1)
+        })
 
       case apply @ ast.Apply(e) =>
         val pve = ApplyFailed(apply)
-        magicWandSupporter.applyWand(s, e, pve, v)(Q)
+        val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(apply)) else s
+        magicWandSupporter.applyWand(s0, e, pve, v)((s1, v1) => {
+          val s1a = if (debugOn) v1.finishKeyHeap(s1) else s1
+          Q(s1a, v1)})
 
       case havoc: ast.Quasihavoc =>
         havocSupporter.execHavoc(havoc, v, s)(Q)
@@ -693,8 +726,8 @@ object executor extends ExecutionRules {
           *   performance; instead, it can cause an exponential blow-up in term size, as
           *   reported by Silicon issue #328.
           */
-         val t = v.decider.fresh(name, v.symbolConverter.toSort(typ), Option.when(withExp)(extractPTypeFromExp(rhsExp)))
-         val (eNew, debugExp) = if (withExp) {
+         val t = v.decider.fresh(name, v.symbolConverter.toSort(typ), Option.when(debugOn)(extractPTypeFromExp(rhsExp)))
+         val (eNew, debugExp) = if (debugOn) {
            val eRhs = rhsExp
            val eNew = ast.LocalVarWithVersion(simplifyVariableName(t.id.name), typ)(eRhs.pos, eRhs.info, eRhs.errT)
            val exp = ast.EqCmp(ast.LocalVar(name, typ)(), eRhs)(eRhs.pos, eRhs.info, eRhs.errT)

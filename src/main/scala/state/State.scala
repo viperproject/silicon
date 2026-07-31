@@ -12,9 +12,9 @@ import viper.silver.ast
 import viper.silver.cfg.silver.SilverCfg
 import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider.RecordedPathConditions
+import viper.silicon.decider.{PathConditionStack, RecordedPathConditions}
 import viper.silicon.interfaces.state.GeneralChunk
-import viper.silicon.state.State.OldHeaps
+import viper.silicon.state.State.{DebugOldHeaps, OldHeaps, TemporaryRecord}
 import viper.silicon.state.terms.{Term, Var}
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.predef.`?r`
@@ -23,7 +23,7 @@ import viper.silicon.supporters.PredicateData
 import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
-import viper.silicon.{Map, Stack}
+import viper.silicon.{Map, SiliconRunner, Stack}
 import viper.silver.utility.Sanitizer
 
 final case class State(g: Store = Store(),
@@ -34,6 +34,8 @@ final case class State(g: Store = Store(),
                        predicateData: Map[String, PredicateData],
                        functionData: Map[String, FunctionData],
                        oldHeaps: OldHeaps = Map.empty,
+                       debugOldHeaps: DebugOldHeaps = Map.empty,
+                       temporaryHeapRecord: Option[TemporaryRecord] = None,
 
                        parallelizeBranches: Boolean = false,
 
@@ -136,6 +138,8 @@ final case class State(g: Store = Store(),
 
   val isLastRetry: Boolean = retryLevel == 0
 
+  val isRecordingHeaps: Boolean = temporaryHeapRecord.isDefined
+
   def incCycleCounter(m: ast.Predicate) =
     if (recordVisited) copy(visited = m :: visited)
     else this
@@ -194,8 +198,32 @@ final case class State(g: Store = Store(),
   override val toString = s"${this.getClass.getSimpleName}(...)"
 }
 
+sealed trait HeapCause
+case object InhalePre extends HeapCause
+case object ExhalePost extends HeapCause
+case object InhaleInv extends HeapCause
+case object ExhaleInv extends HeapCause
+case object StateMerge extends HeapCause
+case object CreateLabel extends HeapCause
+case object StateConsolidation extends HeapCause
+case class ExecStmt(stmt: ast.Stmt) extends HeapCause
+case class EvalExp(exp: ast.Exp) extends HeapCause
+
+case class HeapRecord(heap: Heap,
+                      parentLabel: String,
+                      cause: HeapCause,
+                      branchConds: Seq[(ast.Exp, Term)],
+                      intermediateHeaps: Map[String, IntermediateHeapRecord])
+
+case class IntermediateHeapRecord(heap: Heap,
+                                  intermediateCause: Option[HeapCause],
+                                  newBranchConds: Seq[(ast.Exp, Term)])
+
 object State {
   type OldHeaps = Map[String, Heap]
+  type DebugOldHeaps = Map[String, HeapRecord]
+  type TemporaryRecord = (String, HeapCause, PathConditionStack, Map[String, IntermediateHeapRecord])
+
   val OldHeaps = Map
 
   def merge(s1: State, s2: State): State = {
@@ -206,6 +234,8 @@ object State {
                  predicateData,
                  functionData,
                  oldHeaps1,
+                 debugOldHeaps1,
+                 temporaryHeapRecord1,
                  parallelizeBranches1,
                  recordVisited1, visited1,
                  methodCfg1, invariantContexts1,
@@ -233,6 +263,8 @@ object State {
                      `block`,
                      `predicateData`, `functionData`,
                      oldHeaps2,
+                     debugOldHeaps2,
+                     temporaryHeapRecord2,
                      `parallelizeBranches1`,
                      `recordVisited1`, `visited1`,
                      `methodCfg1`, `invariantContexts1`,
@@ -254,6 +286,22 @@ object State {
                      moreCompleteExhale2, `moreJoins`) =>
 
             val oldHeaps3 = oldHeaps1 ++ oldHeaps2
+            val debugOldHeaps3 = mergeMaps(debugOldHeaps1, (), debugOldHeaps2, ())(
+              (record, _) => Some(record))(
+              (record1, _, record2, _) =>
+                Some(record1.copy(intermediateHeaps = record1.intermediateHeaps ++ record2.intermediateHeaps))
+            )
+            val temporaryHeapRecord3 = (temporaryHeapRecord1, temporaryHeapRecord2) match {
+              case (Some((label1, cause1, pcs1, heaps1)), Some((label2, cause2, _, heaps2))) =>
+                if (label1 == label2 && cause1 == cause2) Some(label1, cause1, pcs1, heaps1 ++ heaps2) else {
+                  // This case should not occur if heaps have been recorded correctly
+                  SiliconRunner.logger.warn(s"Attempted to merge states with different temporary heap records: $label1 and $label2")
+                  None
+                }
+              case (Some(tmp1), None) => Some(tmp1)
+              case (None, Some(tmp2)) => Some(tmp2)
+              case (None, None) => None
+            }
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
@@ -273,6 +321,8 @@ object State {
               .map({ case (pcs1, pcs2) => (pcs1 ++ pcs2).distinct })
 
             s1.copy(oldHeaps = oldHeaps3,
+                    debugOldHeaps = debugOldHeaps3,
+                    temporaryHeapRecord = temporaryHeapRecord3,
                     functionRecorder = functionRecorder3,
                     possibleTriggers = possibleTriggers3,
                     triggerExp = triggerExp3,
@@ -286,6 +336,7 @@ object State {
                     conservedPcs = conservedPcs3)
 
           case _ =>
+            println(s1.possibleTriggers.toString() + s2.possibleTriggers.toString())
             val err = new StringBuilder()
             for (ix <- 0 until s1.productArity) {
               val e1 = s1.productElement(ix)
@@ -370,6 +421,8 @@ object State {
       block,
       predicateData, functionData,
       oldHeaps1,
+      debugOldHeaps1,
+      temporaryHeapRecord1,
       parallelizeBranches1,
       recordVisited1, visited1,
       methodCfg1, invariantContexts1,
@@ -396,6 +449,8 @@ object State {
           `block`,
           `predicateData`, `functionData`,
           oldHeaps2,
+          debugOldHeaps2,
+          temporaryHeapRecord2,
           `parallelizeBranches1`,
           `recordVisited1`, `visited1`,
           `methodCfg1`, invariantContexts2,
@@ -416,6 +471,22 @@ object State {
           `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
           moreCompleteExhale2, `moreJoins`) =>
 
+            val debugOldHeaps3 = mergeMaps(debugOldHeaps1, (), debugOldHeaps2, ())(
+              (record, _) => Some(record))(
+              (record1, _, record2, _) =>
+                Some(record1.copy(intermediateHeaps = record1.intermediateHeaps ++ record2.intermediateHeaps))
+              )
+            val temporaryHeapRecord3 = (temporaryHeapRecord1, temporaryHeapRecord2) match {
+              case (Some((label1, cause1, pcs1, heaps1)), Some((label2, cause2, _, heaps2))) =>
+                if (label1 == label2 && cause1 == cause2) Some(label1, cause1, pcs1, heaps1 ++ heaps2) else {
+                  // This case should not occur if heaps have been recorded correctly
+                  SiliconRunner.logger.warn(s"Attempted to merge states with different temporary heap records: $label1 and $label2")
+                  None
+                }
+              case (Some(tmp1), None) => Some(tmp1)
+              case (None, Some(tmp2)) => Some(tmp2)
+              case (None, None) => None
+            }
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
@@ -498,6 +569,8 @@ object State {
                              g = g3,
                              h = h3,
                              oldHeaps = oldHeaps3,
+                             debugOldHeaps = debugOldHeaps3,
+                             temporaryHeapRecord = temporaryHeapRecord3,
                              partiallyConsumedHeap = partiallyConsumedHeap3,
                              smDomainNeeded = smDomainNeeded3,
                              invariantContexts = invariantContexts3,
