@@ -6,6 +6,7 @@ import viper.silicon.interfaces.state.Chunk
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, Success, VerificationResult}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.evaluator
+import viper.silicon.state.Heap
 import viper.silicon.state.terms.{Term, True}
 import viper.silicon.state.{BasicChunk, IdentifierFactory, MagicWandChunk, QuantifiedFieldChunk, QuantifiedMagicWandChunk, QuantifiedPredicateChunk, State}
 import viper.silicon.utils.ast.simplifyVariableName
@@ -46,21 +47,29 @@ case class ProofObligation(s: State,
   private lazy val originalErrorInfo: String =
     s"Original Error: " +
       s"\n\t\t${originalErrorReason.pos}" +
-        (if (s.currentMember.isDefined){
-         s" (inside ${s.currentMember.get.name})"
-        } else {
-          ""
-        }) +
+      (if (s.currentMember.isDefined){
+        s" (inside ${s.currentMember.get.name})"
+      } else {
+        ""
+      }) +
       s"\n\t\t${originalErrorReason.readableMessage}\n\n"
 
-  private lazy val stateString: String = {
-    if (printConfig.printInternalTermRepresentation)
-      s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._1}").mkString("\n\t\t")}\n\nHeap:\n\t\t${s.h.values.map(chunkString).mkString("\n\t\t")}\n\n"
+  private def stateString: String = {
+    val storeString = if (printConfig.printInternalTermRepresentation)
+      s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._1}").mkString("\n\t\t")}\n\n"
     else
-      s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._2.get}").mkString("\n\t\t")}\n\nHeap:\n\t\t${s.h.values.map(chunkString).mkString("\n\t\t")}\n\n"
+      s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._2.get}").mkString("\n\t\t")}\n\n"
+
+    def heapToString(h: Heap): String = h.values.map(chunkString).mkString("\n\t\t")
+    val heapString = if (printConfig.printOldHeaps)
+      s"Current Heap:\n\t\t${heapToString(s.h)}\n\n" + s.oldHeaps.map {case (k, v) => s"Heap $k:\n\t\t${heapToString(v)}\n\n"}.mkString("")
+    else
+      s"Heap:\n\t\t${s.h.values.map(chunkString).mkString("\n\t\t")}\n\n"
+
+    storeString + heapString
   }
 
-  private lazy val branchConditionString: String = {
+  private def branchConditionString: String = {
     if (printConfig.printInternalTermRepresentation)
       s"Branch Conditions:\n\t\t${branchConditions.filter(bc => bc != True).mkString("\n\t\t")}\n\n"
     else
@@ -524,7 +533,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
   }
 
   private def changePrintConfiguration(obl: ProofObligation): Unit = {
-    println(s"Current configuration: ${obl.printConfig}")
+    println(s"Current configuration:\n${obl.printConfig}")
     println(s"Enter the new value for isPrintInternalEnabled:")
     readLine().toLowerCase match {
       case "true" | "1" | "t" => obl.printConfig.isPrintInternalEnabled = true
@@ -552,6 +561,13 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     readLine().toLowerCase match {
       case "true" | "1" | "t" => obl.printConfig.printInternalTermRepresentation = true
       case "false" | "0" | "f" => obl.printConfig.printInternalTermRepresentation = false
+      case _ =>
+    }
+
+    println(s"Enter the new value for printOldHeaps:")
+    readLine().toLowerCase match {
+      case "true" | "1" | "t" => obl.printConfig.printOldHeaps = true
+      case "false" | "0" | "f" => obl.printConfig.printOldHeaps = false
       case _ =>
     }
 

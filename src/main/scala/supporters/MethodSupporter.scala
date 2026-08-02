@@ -8,18 +8,20 @@ package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
 import viper.silver.ast
+import viper.silver.cfg
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
 import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
-import viper.silicon.state.{Heap, State, Store}
+import viper.silicon.state.{State, Store}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
-import viper.silver.reporter.AnnotationWarning
-import viper.silicon.{Map, toMap}
+import viper.silicon.Map
+import viper.silver.reporter.WarningsDuringVerification
+import viper.silver.verifier.VerifierWarning
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
@@ -57,6 +59,16 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       val body = method.bodyOrAssumeFalse.toCfg()
         /* TODO: Might be worth special-casing on methods with empty bodies */
 
+      val ignoredInvLabels = body.blocks.collect {
+        case b: cfg.StatementBlock[ast.Stmt, ast.Exp] if b.invs.isDefined =>
+          b.stmts.collectFirst { case l: ast.Label => l }
+      }.flatten.toSeq
+      if (ignoredInvLabels.nonEmpty) {
+        val warnings = ignoredInvLabels.map(l =>
+          VerifierWarning(s"Label ${l.name} declares an invariant, but is not the head of a loop. The invariant will be ignored.", l.pos))
+        reporter report WarningsDuringVerification(warnings)
+      }
+
       val postViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, method)
 
       val ins = method.formalArgs.map(_.localVar)
@@ -67,7 +79,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     ++ method.scopedDecls.collect { case l: ast.LocalVarDecl => l }.map(_.localVar).map(x => (x, decider.fresh(x))))
 
       val s = sInit.copy(g = g,
-                         h = Heap(),
+                         h = v.heapSupporter.getEmptyHeap(sInit.program),
                          oldHeaps = OldHeaps(),
                          methodCfg = body)
 
@@ -87,7 +99,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
             (  executionFlowController.locally(s2a, v2)((s3, v3) => {
-                  val s4 = s3.copy(h = Heap())
+                  val s4 = s3.copy(h = v3.heapSupporter.getEmptyHeap(s3.program))
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
                   val sepIdentifier = symbExLog.openScope(impLog)
                   produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
@@ -109,9 +121,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
     def start(): Unit = {}
 
-    def reset(): Unit = {
-      _units = Seq.empty
-    }
+    def reset(): Unit = {}
 
     def stop(): Unit = {}
   }

@@ -15,6 +15,7 @@ import viper.silver.ast
 import viper.silver.frontend.{MappedModel, NativeModel, VariablesModel}
 import viper.silver.verifier.errors.ErrorWrapperWithExampleTransformer
 import viper.silver.verifier.{Counterexample, CounterexampleTransformer, VerificationError}
+import viper.silver.reporter.BlockFailureMessage
 
 trait SymbolicExecutionRules {
   lazy val withExp = Verifier.config.enableDebugging()
@@ -44,7 +45,19 @@ trait SymbolicExecutionRules {
   }
 
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssert: Term, failedAssertExp: Option[DebugExp], generateNewModel: Boolean): Failure = {
-    if (s.retryLevel == 0 && !ve.isExpected) v.errorsReportedSoFar.incrementAndGet()
+    if (s.retryLevel == 0 && !ve.isExpected) {
+      if (Verifier.config.generateBlockMessages()) {
+        s.currentMember.foreach((member) => {
+          val memberName = member.name
+          s.currentBlock.foreach((block) => 
+            v.reporter.report(BlockFailureMessage(memberName, block._1, block._2))
+          )
+        })
+      }
+
+      v.errorsReportedSoFar.incrementAndGet()
+    }
+
     var ceTrafo: Option[CounterexampleTransformer] = None
     val res = ve match {
       case ErrorWrapperWithExampleTransformer(wrapped, trafo) =>
@@ -87,11 +100,6 @@ trait SymbolicExecutionRules {
     val branchconditions = if (Verifier.config.enableBranchconditionReporting()) {
       v.decider.pcs.branchConditionExps.map(_._1)
         .filterNot(e => e.isInstanceOf[viper.silver.ast.TrueLit]) /* remove "true" bcs introduced by viper.silicon.utils.ast.BigAnd */
-        .sortBy(_.pos match {
-          /* Order branchconditions according to source position */
-          case pos: viper.silver.ast.HasLineColumn => (pos.line, pos.column)
-          case _ => (-1, -1)
-        })
     } else Seq()
 
     if (Verifier.config.enableDebugging()){

@@ -6,13 +6,15 @@
 
 package viper.silicon.interfaces.state
 
+import viper.silicon
 import viper.silicon.resources.ResourceID
 import viper.silicon.rules.InverseFunctions
 import viper.silicon.state.terms.{Term, Var}
 import viper.silver.ast
 
-trait Chunk
-
+trait Chunk {
+  def substitute(terms: silicon.Map[Term, Term]): Chunk
+}
 trait ChunkIdentifer
 
 trait GeneralChunk extends Chunk {
@@ -22,6 +24,8 @@ trait GeneralChunk extends Chunk {
   def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]): GeneralChunk
   def permMinus(perm: Term, permExp: Option[ast.Exp]): GeneralChunk
   def permPlus(perm: Term, permExp: Option[ast.Exp]): GeneralChunk
+
+  def permScale(perm: Term, permExp: Option[ast.Exp]): GeneralChunk
 
   val permExp: Option[ast.Exp]
   val tag: Option[Int]

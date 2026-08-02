@@ -224,8 +224,15 @@ class DefaultMainVerifier(config: Config,
      */
     val functionVerificationResults = functionsSupporter.units.toList flatMap (function => {
       val startTime = System.currentTimeMillis()
-      val results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
-        .flatMap(extractAllVerificationResults)
+      var results: Seq[VerificationResult] = null
+      try {
+        results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
+          .flatMap(extractAllVerificationResults)
+      } catch {
+        case e : Throwable =>
+          logger error s"An exception was thrown while verifying function `${function.name}`."
+          throw e
+      }
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of function `${function.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -234,8 +241,15 @@ class DefaultMainVerifier(config: Config,
 
     val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate => {
       val startTime = System.currentTimeMillis()
-      val results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
-        .flatMap(extractAllVerificationResults)
+      var results: Seq[VerificationResult] = null
+      try {
+        results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
+          .flatMap(extractAllVerificationResults)
+      } catch {
+        case e: Throwable =>
+          logger error s"An exception was thrown while verifying predicate `${predicate.name}`."
+          throw e
+      }
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -257,14 +271,20 @@ class DefaultMainVerifier(config: Config,
 
     val verificationTaskFutures: Seq[Future[Seq[VerificationResult]]] =
       program.methods.filterNot(excludeMethod).map(method => {
-
         val s = createInitialState(method, program, functionData, predicateData).copy(parallelizeBranches =
           Verifier.config.parallelizeBranches()) /* [BRANCH-PARALLELISATION] */
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
-          val results = v.methodSupporter.verify(s, method)
-            .flatMap(extractAllVerificationResults)
+          var results: Seq[VerificationResult] = null
+          try {
+            results = v.methodSupporter.verify(s, method)
+              .flatMap(extractAllVerificationResults)
+          } catch {
+            case e: Throwable =>
+              logger error s"An exception was thrown while verifying method `${method.name}`."
+              throw e
+          }
           val elapsed = System.currentTimeMillis() - startTime
 
           reporter report VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results))
@@ -277,8 +297,16 @@ class DefaultMainVerifier(config: Config,
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
-          val results = v.cfgSupporter.verify(s, cfg)
-            .flatMap(extractAllVerificationResults)
+
+          var results: Seq[VerificationResult] = null
+          try {
+            results = v.cfgSupporter.verify(s, cfg)
+              .flatMap(extractAllVerificationResults)
+          } catch {
+            case e: Throwable =>
+              logger error s"An exception was thrown while verifying a cfg."
+              throw e
+          }
           val elapsed = System.currentTimeMillis() - startTime
 
           reporter report VerificationResultMessage(s"silicon"/*, cfg*/, elapsed, condenseToViperResult(results))
@@ -312,8 +340,8 @@ class DefaultMainVerifier(config: Config,
 
     private def createInitialState(member: ast.Member,
                                  program: ast.Program,
-                                 functionData: Map[ast.Function, FunctionData],
-                                 predicateData: Map[ast.Predicate, PredicateData]): State = {
+                                 functionData: Map[String, FunctionData],
+                                 predicateData: Map[String, PredicateData]): State = {
     val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
     val quantifiedPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
     val quantifiedMagicWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(member, program)).map(MagicWandIdentifier(_, program))
@@ -374,6 +402,7 @@ class DefaultMainVerifier(config: Config,
     } else InsertionOrderedSet.empty
 
     State(program = program,
+          currentBlock = None,
           functionData = functionData,
           predicateData = predicateData,
           qpFields = quantifiedFields,
@@ -391,8 +420,8 @@ class DefaultMainVerifier(config: Config,
 
   private def createInitialState(@unused cfg: SilverCfg,
                                  program: ast.Program,
-                                 functionData: Map[ast.Function, FunctionData],
-                                 predicateData: Map[ast.Predicate, PredicateData]): State = {
+                                 functionData: Map[String, FunctionData],
+                                 predicateData: Map[String, PredicateData]): State = {
     val quantifiedFields = InsertionOrderedSet(program.fields)
     val quantifiedPredicates = InsertionOrderedSet(program.predicates)
     val quantifiedMagicWands = InsertionOrderedSet[MagicWandIdentifier]() // TODO: Implement support for quantified magic wands.
@@ -400,6 +429,7 @@ class DefaultMainVerifier(config: Config,
     State(
       program = program,
       currentMember = None,
+      currentBlock = None,
       functionData = functionData,
       predicateData = predicateData,
       qpFields = quantifiedFields,
@@ -422,8 +452,8 @@ class DefaultMainVerifier(config: Config,
     sink.comment(s"\n; ${decider.prover.staticPreamble}")
     preambleReader.emitPreamble(decider.prover.staticPreamble, sink, true)
 
-    if (config.proverRandomizeSeeds) {
-      sink.comment(s"\n; Randomise seeds [--${config.rawProverRandomizeSeeds.name}]")
+    if (config.proverRandomizeSeeds()) {
+      sink.comment(s"\n; Randomise seeds [--${config.proverRandomizeSeeds.name}]")
       val options = decider.prover.randomizeSeedsOptions
         .map (key => s"(set-option :$key ${Random.nextInt(10000)})")
 
@@ -431,11 +461,11 @@ class DefaultMainVerifier(config: Config,
     }
 
     val smt2ConfigOptions =
-      config.proverConfigArgs.map { case (k, v) => s"(set-option :$k $v)" }
+      config.proverConfigArgs().map { case (k, v) => s"(set-option :$k $v)" }
 
     if (smt2ConfigOptions.nonEmpty) {
       // One can pass options to the prover. This allows to check whether they have been received.
-      val msg = s"Additional prover configuration options are '${config.proverConfigArgs.mkString(", ")}'"
+      val msg = s"Additional prover configuration options are '${config.proverConfigArgs().mkString(", ")}'"
       reporter report ConfigurationConfirmation(msg)
       logger info msg
       preambleReader.emitPreamble(smt2ConfigOptions, sink, true)
