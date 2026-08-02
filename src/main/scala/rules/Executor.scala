@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.Config.JoinMode
+import viper.silicon.Config.{ExhaleMode, JoinMode}
 
 import scala.annotation.unused
 import viper.silver.cfg.silver.SilverCfg
@@ -381,7 +381,7 @@ object executor extends ExecutionRules {
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, rhsNew, v2) => {
-            executionFlowController.tryOrFail0(s2, v2)((s21, v21, QS) => {
+            val exhaleFieldPerm = (s21: State, v21: Verifier, QS: (State, Verifier) => VerificationResult) => {
             val (relevantChunks, otherChunks) =
               quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s21.h, BasicChunkIdentifier(field.name))
             val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
@@ -428,9 +428,17 @@ object executor extends ExecutionRules {
                   val s4 = s3.copy(h = h3 + ch)
                   val (debugHeapName, _) = v.getDebugOldLabel(s4, fa.pos)
                   val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s4
-                  Q(s5, v2)
+                  /* The action's continuation must be QS, not Q: otherwise the remainder of the
+                   * method runs inside the retryable action, and any later failure re-runs it. */
+                  QS(s5, v21)
                 case (Incomplete(_, _), s3, _, _) =>
-                  createFailure(pve dueTo InsufficientPermission(fa), v2, s3, "sufficient permission")}})(Q)
+                  createFailure(pve dueTo InsufficientPermission(fa), v2, s3, "sufficient permission")}}
+            /* See QuantifiedChunkSupport.consume: the extra retry level only serves the greedy
+             * QP modes. */
+            if (Verifier.config.exhaleModeQP == ExhaleMode.MoreComplete)
+              exhaleFieldPerm(s2, v2, Q)
+            else
+              executionFlowController.tryOrFail0(s2, v2)(exhaleFieldPerm)(Q)
             }))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>

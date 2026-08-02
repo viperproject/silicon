@@ -61,7 +61,7 @@ object SymbExLogReportWriter {
         "tag" -> JsString(tag.toString)
       )
 
-    case QuantifiedFieldChunk(id, fvf, _, condition, _, perm, _, invs, receivers, _, tag, hints) =>
+    case QuantifiedFieldChunk(id, fvf, _, condition, _, perm, _, invs, receiver, _, tag, hints) =>
       JsObject(
         "type" -> JsString("quantified_field_chunk"),
         "field" -> JsString(id.toString),
@@ -69,7 +69,7 @@ object SymbExLogReportWriter {
         "condition" -> TermWriter.toJSON(condition),
         "perm" -> TermWriter.toJSON(perm),
         "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
-        "receivers" -> JsArray(receivers.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).toVector),
+        "receiver" -> receiver.map(TermWriter.toJSON).getOrElse(JsNull),
         "tag" -> JsString(tag.toString),
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )

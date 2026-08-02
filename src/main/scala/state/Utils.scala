@@ -45,10 +45,8 @@ package object utils {
          * a single location (i.e. for a single receiver) only.
          */
         qch.singletonRcvr.foreach(rcvr => {
-          rcvr.foreach(rcvr2 => {
-            collect(rcvr2)
-            collect(qch.valueAt(rcvr2))
-          })
+          collect(rcvr)
+          collect(qch.valueAt(rcvr))
         })
       case _ =>
     }
@@ -86,11 +84,7 @@ package object utils {
       case bc: BasicChunk =>
         bc.argsExp.get foreach collect
       case qch: QuantifiedFieldChunk =>
-        qch.singletonRcvrExp.foreach(rcvr => {
-          rcvr.foreach(rcvr2 => {
-            collect(rcvr2)
-          })
-        })
+        qch.singletonRcvrExp.foreach(collect)
       case _ =>
     }
 

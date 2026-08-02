@@ -84,8 +84,8 @@ case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
                                 permValue: Term,
                                 permValueExp: Option[ast.Exp],
                                 invs: Option[InverseFunctions],
-                                singletonRcvr: Option[Seq[Term]],
-                                singletonRcvrExp: Option[Seq[ast.Exp]],
+                                singletonRcvr: Option[Term],
+                                singletonRcvrExp: Option[ast.Exp],
                                 tag: Option[Int],
                                 hints: Seq[Term] = Nil)
     extends QuantifiedBasicChunk {
@@ -101,9 +101,9 @@ case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
   override val quantifiedVarExps = if (Verifier.config.enableDebugging()) Some(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())) else None
 
   override def snapshotMap: Term = fvf
-  override def singletonArguments: Option[Seq[Term]] = singletonRcvr
+  override def singletonArguments: Option[Seq[Term]] = singletonRcvr.map(Seq(_))
 
-  override def singletonArgumentExps: Option[Seq[ast.Exp]] = singletonRcvrExp
+  override def singletonArgumentExps: Option[Seq[ast.Exp]] = singletonRcvrExp.map(Seq(_))
 
   def valueAt(rcvr: Term): Term = Lookup(id.name, fvf, rcvr)
 

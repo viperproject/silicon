@@ -8,6 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon.Config
+import viper.silicon.Config.ExhaleMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state._
 import viper.silicon.logger.records.data.{CommentRecord, SingleMergeRecord}
@@ -205,6 +206,32 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
       val (fr2, combinedSnap, snapEq) = combineSnapshots(fr1, snap1, snap2, perm1, perm2, qvars, v)
 
       Some(fr2, BasicChunk(rid1, id1, args1, args1Exp, combinedSnap, snap1Exp, PermPlus(perm1, perm2), perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)()), tag1), Seq(snapEq))
+    /* In the standard QP mode, quantified chunks are only matched by findChunkWithProvenAliases,
+     * i.e. they provably denote the same location(s) and have equal conditions. They can therefore
+     * be merged cheaply by summing their permissions and combining their snapshot maps, without
+     * emitting new summarisation axioms (mirrors Silicon master). */
+    case (l@QuantifiedFieldChunk(id1, fvf1, orgCondition1, condition1, condition1Exp, perm1, perm1Exp, invs1, singletonRcvr1, singletonRcvr1Exp, tag1, hints1),
+          r@QuantifiedFieldChunk(_, fvf2, _, _, _, _, _, _, _, _, _, hints2))
+        if Verifier.config.exhaleModeQP == ExhaleMode.MoreComplete =>
+      assert(l.quantifiedVars == Seq(`?r`))
+      assert(r.quantifiedVars == Seq(`?r`))
+      // We need to use l.perm/r.perm here instead of perm1 and r.permValue since the permission
+      // amount might be dependent on the condition/domain
+      val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combineFieldSnapshotMaps(fr1, id1.name, qvars, fvf1, fvf2, l.perm, r.perm, v)
+      val permSum = PermPlus(perm1, r.permValue)
+      val permSumExp = perm1Exp.map(p1 => ast.PermAdd(p1, r.permValueExp.get)())
+      val bestHints = if (hints1.nonEmpty) hints1 else hints2
+      Some(fr2, QuantifiedFieldChunk(id1, combinedSnap, orgCondition1, condition1, condition1Exp, permSum, permSumExp, invs1, singletonRcvr1, singletonRcvr1Exp, tag1, bestHints), Seq(snapEq))
+    case (l@QuantifiedPredicateChunk(id1, qVars1, qVars1Exp, psf1, _, _, _, perm1, perm1Exp, _, _, _, _, _),
+          r@QuantifiedPredicateChunk(_, qVars2, qVars2Exp, psf2, orgCondition2, condition2, condition2Exp, _, _, invs2, singletonArgs2, singletonArgs2Exp, tag2, hints2))
+        if Verifier.config.exhaleModeQP == ExhaleMode.MoreComplete =>
+      val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combinePredicateSnapshotMaps(fr1, id1.name, qVars2, qvars, psf1, psf2, l.perm.replace(qVars1, qVars2), r.perm, v)
+      val permSum = PermPlus(perm1.replace(qVars1, qVars2), r.permValue)
+      val permSumExp = perm1Exp.map(p1 => ast.PermAdd(p1.replace(qVars1Exp.get.zip(qVars2Exp.get).toMap), r.permValueExp.get)())
+      Some(fr2, QuantifiedPredicateChunk(id1, qVars2, qVars2Exp, combinedSnap, orgCondition2, condition2, condition2Exp, permSum, permSumExp, invs2, singletonArgs2, singletonArgs2Exp, tag2, hints2), Seq(snapEq))
+    case (_: QuantifiedBasicChunk, _: QuantifiedBasicChunk)
+        if Verifier.config.exhaleModeQP == ExhaleMode.MoreComplete =>
+      None
     case (l : QuantifiedBasicChunk, r: QuantifiedBasicChunk) =>
 
       val replacedPerm = r.perm.replace(r.quantifiedVars, l.quantifiedVars)
@@ -219,13 +246,20 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         case (None, Some(rInv)) => Some(rInv)
         case (None, None) => None
       }
+      /* The merged chunk may only be considered a singleton chunk if both parts syntactically
+       * denote the same single location. In all other cases (e.g. a singleton merged into a
+       * genuinely quantified chunk via a tag or original-condition match, which does not guarantee
+       * equal receivers), the result must be treated as a general quantified chunk: downstream
+       * code (e.g. NonQuantifiedPropertyInterpreter, chunk order heuristics) relies on
+       * singletonArguments being a single argument tuple that covers the chunk's entire
+       * permission footprint. */
       val combinedRecvr = (l.singletonArguments, r.singletonArguments) match {
-          case (None, None) => None
-          case (lsa, rsa) => Some((lsa.getOrElse(Seq()) ++ rsa.getOrElse(Seq())).distinct)
+        case (Some(lsa), Some(rsa)) if lsa == rsa => Some(lsa)
+        case _ => None
       }
       val combinedRecvrExp = (l.singletonArgumentExps, r.singletonArgumentExps) match {
-        case (None, None) => None
-        case (lsae, rsae) => Some((lsae.getOrElse(Seq()) ++ rsae.getOrElse(Seq())).distinct)
+        case (Some(lsae), Some(_)) if combinedRecvr.isDefined => Some(lsae)
+        case _ => None
       }
       val (resource, formalQVars) = l.resourceID match {
         case FieldID => (s.program.findField(l.id.toString), Seq(`?r`))
@@ -246,7 +280,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
       l.resourceID match {
         case FieldID => {
           Some(fr3, QuantifiedFieldChunk(BasicChunkIdentifier(l.id.toString), sm, l.orgCondition, True, condExp, permSum,
-            permSumExp, combinedInvs, combinedRecvr, combinedRecvrExp, l.tag, combinedHints), valueDefinitions)
+            permSumExp, combinedInvs, combinedRecvr.map(_.head), combinedRecvrExp.map(_.head), l.tag, combinedHints), valueDefinitions)
         }
         case PredicateID => {
           Some(fr3, QuantifiedPredicateChunk(BasicChunkIdentifier(l.id.toString), l.quantifiedVars, l.quantifiedVarExps, sm, l.orgCondition, True,
@@ -329,32 +363,38 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           forall r: Ref :: {inv(r)} perm(x.f) <= write
            */
           for (chunk <- fieldChunks) {
-            val triggers = if (chunk.invs.isDefined) {
+            /* Only assume the quantified bound for chunks that have inverse functions to trigger
+             * on: an untriggered quantifier here severely degrades prover performance. Singleton
+             * chunks instead get the pointwise bound below; chunks with neither inverse functions
+             * nor a singleton receiver (which can result from merging chunks in the greedy QP
+             * modes) get no bound assumption. */
+            if (chunk.invs.isDefined) {
               val chunkReceivers = chunk.invs.get.qvarsToInversesOf(chunk.quantifiedVars).flatMap(_.values)
-              chunkReceivers.map(r => Trigger(r))
-            } else { Seq() }
-            val currentPermAmount = PermLookup(field.name, pmDef.pm, chunk.quantifiedVars.head)
-            val debugExp = if (withExp) {
-              val chunkReceiverExp = chunk.quantifiedVarExps.get.head.localVar
-              var permExp: ast.Exp = ast.CurrentPerm(ast.FieldAccess(chunkReceiverExp, field)())(chunkReceiverExp.pos, chunkReceiverExp.info, chunkReceiverExp.errT)
-              val (debugHeapName, debugLabel) = v.getDebugOldLabel(sn, ast.NoPosition)
-              sf = sf.copy(oldHeaps = sf.oldHeaps + (debugHeapName -> sf.h))
-              permExp = ast.DebugLabelledOld(permExp, debugLabel)()
-              val exp = ast.Forall(chunk.quantifiedVarExps.get, Seq(), ast.PermLeCmp(permExp, ast.FullPerm()())())()
-              Some(DebugExp.createInstance(exp, exp))
-            } else { None }
-            v.decider.assume(
-              Forall(chunk.quantifiedVars, PermAtMost(currentPermAmount, FullPerm), triggers, "qp-fld-prm-bnd"), debugExp)
+              val triggers = chunkReceivers.map(r => Trigger(r))
+              val currentPermAmount = PermLookup(field.name, pmDef.pm, chunk.quantifiedVars.head)
+              v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
+              val debugExp = if (withExp) {
+                val chunkReceiverExp = chunk.quantifiedVarExps.get.head.localVar
+                var permExp: ast.Exp = ast.CurrentPerm(ast.FieldAccess(chunkReceiverExp, field)())(chunkReceiverExp.pos, chunkReceiverExp.info, chunkReceiverExp.errT)
+                val (debugHeapName, debugLabel) = v.getDebugOldLabel(sn, ast.NoPosition)
+                sf = sf.copy(oldHeaps = sf.oldHeaps + (debugHeapName -> sf.h))
+                permExp = ast.DebugLabelledOld(permExp, debugLabel)()
+                val exp = ast.Forall(chunk.quantifiedVarExps.get, Seq(), ast.PermLeCmp(permExp, ast.FullPerm()())())()
+                Some(DebugExp.createInstance(exp, exp))
+              } else { None }
+              v.decider.assume(
+                Forall(chunk.quantifiedVars, PermAtMost(currentPermAmount, FullPerm), triggers, "qp-fld-prm-bnd"), debugExp)
+            }
 
             chunk.singletonRcvr.foreach(rcvr => {
               val debugExp = if (withExp) {
                 val (debugHeapName, debugLabel) = v.getDebugOldLabel(sn, ast.NoPosition)
-                val permExp = ast.DebugLabelledOld(ast.CurrentPerm(ast.FieldAccess(chunk.singletonRcvrExp.head.head, field)())(), debugLabel)()
+                val permExp = ast.DebugLabelledOld(ast.CurrentPerm(ast.FieldAccess(chunk.singletonRcvrExp.get, field)())(), debugLabel)()
                 sf = sf.copy(oldHeaps = sf.oldHeaps + (debugHeapName -> sf.h))
                 val exp = ast.PermLeCmp(permExp, ast.FullPerm()())()
                 Some(DebugExp.createInstance(exp, exp))
               } else { None }
-              v.decider.assume(PermAtMost(PermLookup(field.name, pmDef.pm, rcvr.head), FullPerm), debugExp)
+              v.decider.assume(PermAtMost(PermLookup(field.name, pmDef.pm, rcvr), FullPerm), debugExp)
             })
           }
         }

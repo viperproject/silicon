@@ -87,7 +87,7 @@ case class ProofObligation(s: State,
         s"acc(${instantiated.toString}, ${Simplifier.simplify(mwc.permExp.get, true)})"
       case qfc: QuantifiedFieldChunk =>
         if (qfc.singletonRcvrExp.isDefined) {
-          val receiver = Simplifier.simplify(qfc.singletonRcvrExp.head.head, true)
+          val receiver = Simplifier.simplify(qfc.singletonRcvrExp.head, true)
           val perm = Simplifier.simplify(qfc.permExp.get.replace(qfc.quantifiedVarExps.get.head.localVar, receiver), true)
           s"acc(${receiver}.${qfc.id}, ${perm})"
         } else {
