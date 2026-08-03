@@ -46,7 +46,12 @@ class QuantifiedPropertyInterpreter extends PropertyInterpreter {
 
   override protected def buildValueAccess(chunkPlaceholder: ChunkPlaceholder, info: Info) = {
     argsUsed = true
-    (info.chunk.valueAt(info.args), Option.when(withExp)(???)) //  ast.FuncApp(s"valueAt", info.argsExp)(ast.NoPosition, ast.NoInfo, ast.InternalType, ast.NoTrafos))
+    // There is no Viper expression for the value a snapshot map holds at some arguments, so we show it as a call to
+    // a pseudo-function. It is only ever printed, never typechecked or translated back.
+    val valueExp = Option.when(withExp)(
+      ast.FuncApp(s"valueAt[${info.chunk.id}]", info.argsExp.getOrElse(Seq.empty))(
+        ast.NoPosition, ast.NoInfo, ast.InternalType, ast.NoTrafos))
+    (info.chunk.valueAt(info.args), valueExp)
   }
 
   override protected def extractArguments(chunkPlaceholder: ChunkPlaceholder,

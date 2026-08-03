@@ -347,8 +347,14 @@ class DefaultMainVerifier(config: Config,
       // Rather than blocking on user input here, we publish a debug session that the CLI (see
       // `SiliconRunnerInstance.runMain`) or ViperServer can pick up and drive.
       closeDebugSession()
-      _debugSession = Some(new SiliconDebugSession(verificationResults, FrontendStateCache.resolver,
-        FrontendStateCache.pprogram, FrontendStateCache.translator, this, config))
+      // The cache is only populated by SilFrontend; a frontend that builds the program programmatically leaves it
+      // null (or, worse, at the state of some unrelated program it parsed earlier), so guard every field.
+      val hasFrontendState =
+        FrontendStateCache.resolver != null && FrontendStateCache.pprogram != null && FrontendStateCache.translator != null
+      _debugSession = Some(new SiliconDebugSession(verificationResults,
+        Option.when(hasFrontendState)(FrontendStateCache.resolver),
+        Option.when(hasFrontendState)(FrontendStateCache.pprogram),
+        Option.when(hasFrontendState)(FrontendStateCache.translator), this, config))
     }
 
     verificationResults

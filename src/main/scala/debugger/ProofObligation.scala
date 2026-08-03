@@ -33,8 +33,9 @@ case class ProofObligation(s: State,
                            timeout: Option[Int],
                            printConfig: DebugExpPrintConfiguration,
                            originalErrorReason: ErrorReason,
-                           resolver: DebugResolver,
-                           translator: DebugTranslator
+                           /** Absent unless the program was parsed from Viper source; see [[SiliconDebugSession]]. */
+                           resolver: Option[DebugResolver],
+                           translator: Option[DebugTranslator]
                           ){
 
   def removeAssumptions(ids: Seq[Int]): ProofObligation = {

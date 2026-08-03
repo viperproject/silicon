@@ -26,8 +26,9 @@ object permissionSupporter extends SymbolicExecutionRules {
         v.decider.assert(perms.IsNonNegative(tPerm)) {
           case true => Q(s, v)
           case false =>
-            val assertExp = ePermNew.map(ep => perms.IsNonNegative(ep)(ep.pos, ep.info, ep.errT))
-            createFailure(pve dueTo NegativePermission(ePerm), v, s, perms.IsNonNegative(tPerm), assertExp)
+            val assertExp = Option.when(withExp)(perms.IsNonNegative(ePerm)(ePerm.pos, ePerm.info, ePerm.errT))
+            val assertExpNew = ePermNew.map(ep => perms.IsNonNegative(ep)(ep.pos, ep.info, ep.errT))
+            createFailure(pve dueTo NegativePermission(ePerm), v, s, perms.IsNonNegative(tPerm), assertExp, assertExpNew)
         }
     }
   }

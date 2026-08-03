@@ -45,6 +45,22 @@ trait SymbolicExecutionRules {
     createFailure(ve, v, s, failedAssert, Option.when(withExp)(DebugExp.createInstance(failedAssertExp, failedAssertExp)), false)
   }
 
+  /**
+    * Records the proof goal in both of its forms, the way [[viper.silicon.decider.Decider.assume]] records an
+    * assumption: `failedAssertExp` as it is written in the program, and `failedAssertExpNew` with the values of
+    * the state substituted in.
+    *
+    * Callers that have both should use this. Passing the evaluated form alone loses the connection to what the
+    * program says -- the two are not interchangeable, since only the original still matches the node the
+    * frontend built, and a frontend can therefore no longer tell which of its own expressions failed.
+    */
+  protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssert: Term,
+                              failedAssertExp: Option[ast.Exp], failedAssertExpNew: Option[ast.Exp]): Failure = {
+    createFailure(ve, v, s, failedAssert,
+      Option.when(withExp)(DebugExp.createInstance(failedAssertExp.orElse(failedAssertExpNew),
+        failedAssertExpNew.orElse(failedAssertExp))), false)
+  }
+
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssert: Term, generateNewModel: Boolean, failedAssertExp: Option[ast.Exp]): Failure = {
     createFailure(ve, v, s, failedAssert, Option.when(withExp)(DebugExp.createInstance(failedAssertExp, failedAssertExp)), generateNewModel)
   }

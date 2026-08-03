@@ -19,7 +19,7 @@ import viper.silver.ast
 import viper.silver.ast.{NoPosition, SourcePNodeInfo}
 import viper.silver.parser._
 import viper.silver.reporter.NoopReporter
-import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 import viper.silver.verifier.errors.ContractNotWellformed
 
 import java.nio.file.Paths
@@ -38,9 +38,9 @@ import scala.collection.mutable
   * serialize all calls.
   */
 class SiliconDebugSession(verificationResults: List[VerificationResult],
-                          resolver: Resolver,
-                          pprogram: PProgram,
-                          translator: Translator,
+                          resolver: Option[Resolver],
+                          pprogram: Option[PProgram],
+                          translator: Option[Translator],
                           mainVerifier: MainVerifier,
                           val config: Config) {
 
@@ -69,13 +69,39 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
       memberName(f), debuggable = debugContextOf(f).isDefined)
   }
 
+  /**
+    * The reason of each failure, in the same order as [[failures]].
+    *
+    * [[DebugFailureInfo]] renders positions and messages as strings, which is all a serialized protocol can carry.
+    * A frontend running in the same JVM instead needs the Viper nodes themselves, because only those still carry
+    * what it attached to them while translating its own source language.
+    */
+  def failureReasons: Seq[ErrorReason] = allFailures.map(_.message.reason)
+
   def hasDebuggableFailure: Boolean = allFailures.exists(f => debugContextOf(f).isDefined)
 
   def currentFailureIndex: Option[Int] = currentIndex
 
   def currentObligation: Option[ObligationModel] = obl.map(buildModel)
 
+  /**
+    * The obligation itself, rather than the string-only model of it.
+    *
+    * [[ObligationModel]] is deliberately free of Viper and Silicon types so that it can be serialized; a frontend
+    * that runs in the same JVM (Nagini, for instance) instead needs the actual [[ast.Exp]] nodes, because only
+    * those still carry the information it attached to them while translating its own source language.
+    */
+  def currentProofObligation: Option[ProofObligation] = obl
+
   def isClosed: Boolean = closed
+
+  /**
+    * Whether expressions can be entered as Viper source text. This requires the parser, resolver and translator of
+    * the frontend that produced the program, which only exists if the program was parsed from Viper source. A
+    * frontend that builds the [[viper.silver.ast.Program]] programmatically has none and must translate the user's
+    * input itself, using [[addAssumptionExp]] and [[assertExp]].
+    */
+  def acceptsTextualExpressions: Boolean = resolver.isDefined && pprogram.isDefined && translator.isDefined
 
   private var currentIndex: Option[Int] = None
 
@@ -115,7 +141,7 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
           val newObl = ProofObligation(ctx.state.get, ctx.verifier.get, ctx.proverDecls, ctx.preambleAssumptions,
             ctx.branchConditions, ctx.branchConditionExps, ctx.assumptions, ctx.failedAssertion,
             ctx.failedAssertionExp, None, new DebugExpPrintConfiguration, currResult.message.reason,
-            new DebugResolver(this.pprogram, this.resolver.names), new DebugTranslator(this.pprogram, translator.getMembers()))
+            newDebugResolver(), newDebugTranslator())
           currentIndex = Some(idx)
           // The verification already computed a counterexample for this failure; show it right away.
           counterexample = ctx.counterExample.map(CounterexampleModelBuilder.build(_))
@@ -173,7 +199,43 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     * the expression must be provable from the current assumptions, otherwise it is not added.
     */
   def addAssumption(text: String, free: Boolean): DebugCommandResult = withObligation { (o, msgs) =>
-    val assumptionE = translateStringToExp(text, o)
+    addAssumption(translateStringToExp(text, o), free, o, msgs)
+  }
+
+  /**
+    * Like [[addAssumption]], but for an expression that has already been translated to Viper.
+    *
+    * A frontend whose programs are not parsed from Viper source has no parser state the debugger could use, so it
+    * cannot let the user type Viper text; instead it translates the user's input in its own source language itself
+    * and passes the result here.
+    */
+  def addAssumptionExp(e: ast.Exp, free: Boolean): DebugCommandResult = withObligation { (o, msgs) =>
+    addAssumption(e, free, o, msgs)
+  }
+
+  /**
+    * Evaluates the given expression in the current state and asks the prover whether it holds, without adding it
+    * to the assumptions. Unlike [[addAssumptionExp]] with `free = false`, the obligation is left unchanged even if
+    * the expression is proved.
+    *
+    * Note that evaluating an expression may still assume its well-definedness conditions (that a receiver is
+    * non-null, say); use [[reset]] to get rid of those.
+    */
+  def assertExp(e: ast.Exp): DebugCommandResult = withObligation { (o, msgs) =>
+    evalExp(e, o, o.v, msgs) match {
+      case Some((_, resT, _, resV, _)) =>
+        val proved = resV.decider.prover.assert(resT, o.timeout)
+        msgs += DebugMessage.info(
+          if (proved) "PASS: The expression holds in this state.\n"
+          else "FAIL: The expression could not be proved in this state.\n")
+        result(msgs).copy(proved = Some(proved))
+      case None =>
+        result(msgs, ok = false)
+    }
+  }
+
+  private def addAssumption(assumptionE: ast.Exp, free: Boolean, o: ProofObligation,
+                            msgs: mutable.ListBuffer[DebugMessage]): DebugCommandResult = {
     evalAssumption(assumptionE, o, free, o.v, msgs) match {
       case Some((resS, resT, resE, evalAssumptions)) =>
         val allAssumptions = o.assumptionsExp ++ evalAssumptions + DebugExp.createInstance(assumptionE, resE).withTerm(resT)
@@ -295,8 +357,17 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     currentWorker = None
   }
 
+  private def newDebugResolver(): Option[DebugResolver] =
+    for (r <- resolver; pp <- pprogram) yield new DebugResolver(pp, r.names)
+
+  private def newDebugTranslator(): Option[DebugTranslator] =
+    for (t <- translator; pp <- pprogram) yield new DebugTranslator(pp, t.getMembers())
+
   private def initTypechecker(obl: ProofObligation, failedAssertion: Option[ast.Exp],
                               msgs: mutable.ListBuffer[DebugMessage]): Unit = {
+    // Without a resolver there is nothing to typecheck against; the user cannot enter expressions as text in that
+    // case anyway (see `acceptsTextualExpressions`), so this is not worth a warning.
+    val resolver = obl.resolver.getOrElse(return)
     var failedPExp: Option[PNode] =
       failedAssertion.flatMap(_.info.getUniqueInfo[SourcePNodeInfo] match {
         case Some(info) => Some(info.sourcePNode)
@@ -306,12 +377,12 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
       failedPExp = failedPExp.get.getParent
     }
     if (failedPExp.isDefined) {
-      obl.resolver.typechecker.curMember = failedPExp.get.asInstanceOf[PScope]
+      resolver.typechecker.curMember = failedPExp.get.asInstanceOf[PScope]
     } else {
       msgs += DebugMessage.warning("Could not determine the scope for typechecking.")
     }
 
-    obl.resolver.typechecker.debugVariableTypes =
+    resolver.typechecker.debugVariableTypes =
       obl.v.decider.debugVariableTypes map { case (str, pType) => (simplifyVariableName(str), pType) }
   }
 
@@ -339,6 +410,13 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
 
   /** Parses, typechecks and translates an expression entered by the user. */
   private def translateStringToExp(str: String, obl: ProofObligation): ast.Exp = {
+    val resolver = obl.resolver.getOrElse(throw new RuntimeException(
+      "This program was not parsed from Viper source, so expressions cannot be entered as Viper text. " +
+        "The frontend has to translate the expression itself and use addAssumptionExp/assertExp."))
+    val translator = obl.translator.getOrElse(throw new RuntimeException(
+      "This program was not parsed from Viper source, so expressions cannot be entered as Viper text. " +
+        "The frontend has to translate the expression itself and use addAssumptionExp/assertExp."))
+
     def parseToPExp(): PExp = {
       try {
         debugParser._line_offset = Seq(0, str.length + 1).toArray
@@ -352,22 +430,22 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
 
     def typecheckPExp(pexp: PExp): Unit = {
       try {
-        obl.resolver.typechecker.names.check(pexp, None, obl.resolver.typechecker.curMember)
-        obl.resolver.typechecker.check(pexp, PPrimitiv(PReserved(PKw.Bool)((NoPosition, NoPosition)))())
+        resolver.typechecker.names.check(pexp, None, resolver.typechecker.curMember)
+        resolver.typechecker.check(pexp, PPrimitiv(PReserved(PKw.Bool)((NoPosition, NoPosition)))())
       } catch {
         case e: Throwable => throw new RuntimeException(s"Error while typechecking $str: ${e.getMessage}", e)
       }
-      if (obl.resolver.messages.nonEmpty) {
-        val msg = obl.resolver.messages.mkString("\n\t")
-        obl.resolver.names.messages = Seq()
-        obl.resolver.typechecker.messages = Seq()
+      if (resolver.messages.nonEmpty) {
+        val msg = resolver.messages.mkString("\n\t")
+        resolver.names.messages = Seq()
+        resolver.typechecker.messages = Seq()
         throw new RuntimeException(s"Error while typechecking:\n\t $msg")
       }
     }
 
     def translatePExp(pexp: PExp): ast.Exp = {
       try {
-        obl.translator.exp(pexp)
+        translator.exp(pexp)
       } catch {
         case e: Throwable => throw new RuntimeException(s"Error while translating $str: ${e.getMessage}", e)
       }
@@ -378,8 +456,12 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     translatePExp(pexp)
   }
 
-  private def evalAssumption(e: ast.Exp, obl: ProofObligation, isFree: Boolean, v: Verifier,
-                             msgs: mutable.ListBuffer[DebugMessage]): Option[(State, Term, ast.Exp, InsertionOrderedSet[DebugExp])] = {
+  /**
+    * Symbolically evaluates the given expression in the state of the obligation, and returns the resulting state,
+    * term and expression together with the assumptions the evaluation itself produced.
+    */
+  private def evalExp(e: ast.Exp, obl: ProofObligation, v: Verifier, msgs: mutable.ListBuffer[DebugMessage])
+                     : Option[(State, Term, ast.Exp, Verifier, InsertionOrderedSet[DebugExp])] = {
     var resT: Term = null
     var resS: State = null
     var resE: ast.Exp = null
@@ -398,18 +480,25 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
 
     verificationResult match {
       case Success() =>
-        val proved = isFree || resV.decider.prover.assert(resT, None)
-        if (proved) {
-          msgs += DebugMessage.info("Assumption was added successfully!")
-          resV.asInstanceOf[WorkerVerifier].decider.debuggerAssume(Seq(resT), null)
-          Some((resS, resT, resE, evalPcs.assumptionExps))
-        } else {
-          msgs += DebugMessage.error("Fail! Could not prove assumption. Skipping")
-          None
-        }
+        Some((resS, resT, resE, resV, evalPcs.assumptionExps))
       case _ =>
         msgs += DebugMessage.error("Error while evaluating expression: " + verificationResult.toString)
         None
+    }
+  }
+
+  private def evalAssumption(e: ast.Exp, obl: ProofObligation, isFree: Boolean, v: Verifier,
+                             msgs: mutable.ListBuffer[DebugMessage]): Option[(State, Term, ast.Exp, InsertionOrderedSet[DebugExp])] = {
+    evalExp(e, obl, v, msgs) flatMap { case (resS, resT, resE, resV, evalAssumptions) =>
+      val proved = isFree || resV.decider.prover.assert(resT, None)
+      if (proved) {
+        msgs += DebugMessage.info("Assumption was added successfully!")
+        resV.asInstanceOf[WorkerVerifier].decider.debuggerAssume(Seq(resT), null)
+        Some((resS, resT, resE, evalAssumptions))
+      } else {
+        msgs += DebugMessage.error("Fail! Could not prove assumption. Skipping")
+        None
+      }
     }
   }
 }
