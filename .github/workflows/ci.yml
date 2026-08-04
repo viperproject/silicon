@@ -11,6 +11,11 @@ on: [push, pull_request, workflow_dispatch]
 env:
   RELEASE_DIR: tmp_release
 
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
 jobs:
   test-and-assemble:
     runs-on: ubuntu-latest
@@ -76,6 +81,26 @@ jobs:
             buildinfo.log
           retention-days: 14
           if-no-files-found: error
+
+      - name: Upload test reports
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: test reports
+          path: |
+            target/test-reports/*.xml
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Test Report
+        uses: phoenix-actions/test-reporting@v15
+        if: ${{ !cancelled() }}
+        with:
+          name: "Silicon Test Report"
+          path: "target/test-reports/*.xml"
+          reporter: java-junit
+          list-suites: failed
+          list-tests: failed
 
   release-snapshot:
     needs: test-and-assemble
