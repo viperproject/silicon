@@ -28,7 +28,7 @@ trait ProverLike {
   def emit(contents: Iterable[String]): Unit = { contents foreach emit }
   def emitSettings(contents: Iterable[String]): Unit
   def assumeAxioms(terms: InsertionOrderedSet[Term], description: String): Unit = {
-    if (debugMode)
+    if (debugMode || Verifier.config.smtStateOnError())
       preambleAssumptions :+= new DebugAxiom(description, terms)
     terms foreach assume
   }

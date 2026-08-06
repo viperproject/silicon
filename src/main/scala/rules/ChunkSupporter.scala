@@ -187,7 +187,7 @@ object chunkSupporter extends ChunkSupportRules {
             assumeProperties(newChunk, newHeap)
           }
           val remainingExp = permsExp.map(pe => ast.PermSub(pe, toTakeExp.get)(pe.pos, pe.info, pe.errT))
-          (ConsumptionResult(PermMinus(perms, toTake), remainingExp, Seq(), v, 0), s, newHeap, takenChunk)
+          (ConsumptionResult(PermMinus(perms, toTake), remainingExp, Seq(), v, Verifier.config.checkTimeout()), s, newHeap, takenChunk)
         } else {
           if (v.decider.check(ch.perm !== NoPerm, Verifier.config.checkTimeout())) {
             val constraintExp = permsExp.map(pe => ast.PermLtCmp(pe, ch.permExp.get)(pe.pos, pe.info, pe.errT))

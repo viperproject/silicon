@@ -199,7 +199,7 @@ abstract class ProverStdIO(uniqueId: String,
   }
 
   def emit(content: String): Unit = {
-    if (debugMode) {
+    if (debugMode || Verifier.config.smtStateOnError()) {
       allEmits :+= content
     }
     writeLine(content)

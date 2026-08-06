@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
-import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
+import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconSmtStateContext, SiliconVariableCounterexample}
 import viper.silicon.state.State
 import viper.silicon.state.terms.{False, Term}
 import viper.silicon.verifier.Verifier
@@ -104,9 +104,18 @@ trait SymbolicExecutionRules {
 
     if (Verifier.config.enableDebugging()){
       val assumptions = v.decider.pcs.assumptionExps
-      res.failureContexts = Seq(SiliconDebuggingFailureContext(v.decider.pcs.branchConditions, v.decider.pcs.branchConditionExps.map(bce => bce._1 -> bce._2.get),
+      val debugCtx = SiliconDebuggingFailureContext(v.decider.pcs.branchConditions, v.decider.pcs.branchConditionExps.map(bce => bce._1 -> bce._2.get),
         counterexample, reasonUnknown, Some(s), Some(v), v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions,
-        v.decider.macroDecls, v.decider.functionDecls, assumptions, failedAssert, failedAssertExp.get))
+        v.decider.macroDecls, v.decider.functionDecls, assumptions, failedAssert, failedAssertExp.get)
+      res.failureContexts = Seq(debugCtx)
+    } else if (Verifier.config.smtStateOnError()) {
+      val stateCtx = SiliconSmtStateContext(v.decider.pcs.branchConditions,
+        counterexample, reasonUnknown, Some(s), v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions,
+        v.decider.macroDecls, v.decider.functionDecls, v.decider.pcs.assumptions, failedAssert)
+      res.failureContexts = Seq(stateCtx)
+      /* Skip speculative attempts (retryLevel > 0) and expected errors*/
+      if (s.retryLevel == 0 && !ve.isExpected)
+        viper.silicon.reporting.SmtStateDumper.dump(res, stateCtx)
     } else {
       res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown))
     }

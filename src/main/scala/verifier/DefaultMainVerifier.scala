@@ -132,6 +132,11 @@ class DefaultMainVerifier(config: Config,
       _verificationPoolManager.pooledVerifiers.assume(term)
     }
 
+    override def assumeAxioms(terms: InsertionOrderedSet[Term], description: String): Unit = {
+      decider.prover.assumeAxioms(terms, description)
+      _verificationPoolManager.pooledVerifiers.assumeAxioms(terms, description)
+    }
+
     def declare(decl: Decl): Unit = {
       decider.prover.declare(decl)
       _verificationPoolManager.pooledVerifiers.declare(decl)

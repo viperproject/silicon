@@ -152,6 +152,21 @@ case class SiliconDebuggingFailureContext(branchConditions: Seq[Term],
   override lazy val toString: String = ""
 }
 
+// Term-level symbolic state attached to failures under --smtStateOnError.
+case class SiliconSmtStateContext(branchConditions: Seq[Term],
+                                  counterExample: Option[Counterexample],
+                                  reasonUnknown: Option[String],
+                                  state: Option[State],
+                                  proverEmits: Seq[String],
+                                  preambleAssumptions: Seq[DebugAxiom],
+                                  macroDecls: Vector[MacroDecl],
+                                  functionDecls: Set[FunctionDecl],
+                                  assumptions: InsertionOrderedSet[Term],
+                                  failedAssertion: Term) extends FailureContext {
+
+  override lazy val toString: String = ""
+}
+
 trait SiliconCounterexample extends Counterexample {
   val internalStore: Store
   lazy val store: Map[String, (Term, Option[ast.Exp])] = internalStore.values.map{case (k, v) => k.name -> v}

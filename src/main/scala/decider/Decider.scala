@@ -372,7 +372,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
               (Q: Boolean => VerificationResult)
               : VerificationResult = {
 
-      val success = deciderAssert(t, timeout)
+      // Callers statically typed to the Decider trait get its default
+      // (timeout = None), not this method's, so we reapply here as a workaround
+      val effectiveTimeout = timeout.orElse(Verifier.config.assertTimeout.toOption)
+
+      val success = deciderAssert(t, effectiveTimeout)
 
       // If the SMT query was not successful, store it (possibly "overwriting"
       // any previously saved query), otherwise discard any query we had saved

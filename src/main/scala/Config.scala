@@ -698,6 +698,21 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val smtStateOnError: ScallopOption[Boolean] = opt[Boolean]("smtStateOnError",
+    descr = ("Record prover interactions and attach the term-level symbolic state "
+            + "(assumptions, heap, prover session) to each verification failure. "
+            + "Cheap: no debug-mode expression tracking."),
+    default = Some(false),
+    noshort = true
+  )
+
+  val smtStateDir: ScallopOption[String] = opt[String]("smtStateDir",
+    descr = ("Directory into which per-failure SMT state bundles are written "
+            + "under --smtStateOnError (default: current directory)."),
+    default = Some("."),
+    noshort = true
+  )
+
   /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(prover) {
