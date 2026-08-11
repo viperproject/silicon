@@ -150,7 +150,7 @@ object brancher extends BranchingRules {
           }
           elseBranchVerifier = v0.uniqueId
 
-          executionFlowController.locally(s, v0)((s1, v1) => {
+          executionFlowController.locally(s, v0, description = Some("else-branch verification"))((s1, v1) => {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
             v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew))
 
@@ -200,7 +200,7 @@ object brancher extends BranchingRules {
     val res = {
       val thenRes = if (executeThenBranch) {
           v.symbExLog.markReachable(uidBranchPoint)
-          executionFlowController.locally(s, v)((s1, v1) => {
+          executionFlowController.locally(s, v, description = Some("then-branch verification"))((s1, v1) => {
             v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
             v1.decider.setCurrentBranchCondition(condition, conditionExp)
 

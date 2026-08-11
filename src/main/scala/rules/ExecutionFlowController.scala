@@ -15,12 +15,12 @@ import viper.silicon.supporters.AnnotationSupporter
 import viper.silicon.verifier.Verifier
 
 trait ExecutionFlowRules extends SymbolicExecutionRules {
-  def locallyWithResult[R](s: State, v: Verifier)
+  def locallyWithResult[R](s: State, v: Verifier, description: Option[String] = None)
                           (block: (State, Verifier, R => VerificationResult) => VerificationResult)
                           (Q: R => VerificationResult)
                           : VerificationResult
 
-  def locally(s: State, v: Verifier)
+  def locally(s: State, v: Verifier, description: Option[String] = None)
              (block: (State, Verifier) => VerificationResult)
              : VerificationResult
 
@@ -50,14 +50,15 @@ trait ExecutionFlowRules extends SymbolicExecutionRules {
 }
 
 object executionFlowController extends ExecutionFlowRules {
-  def locallyWithResult[R](s: State, v: Verifier)
+  def locallyWithResult[R](s: State, v: Verifier, description: Option[String] = None)
                           (block: (State, Verifier, R => VerificationResult) => VerificationResult)
                           (Q: R => VerificationResult)
                           : VerificationResult = {
 
     var optBlockData: Option[R] = None
 
-    v.decider.pushScope()
+    val member = s.currentMember.map(_.name)
+    v.decider.pushScope(member = member, description = description)
 
     val blockResult: VerificationResult =
       block(s, v, blockData => {
@@ -69,7 +70,7 @@ object executionFlowController extends ExecutionFlowRules {
 
         Success()})
 
-    v.decider.popScope()
+    v.decider.popScope(member = member, description = description)
 
     blockResult match {
       case _: FatalResult =>
@@ -93,11 +94,11 @@ object executionFlowController extends ExecutionFlowRules {
     }
   }
 
-  def locally(s: State, v: Verifier)
+  def locally(s: State, v: Verifier, description: Option[String] = None)
              (block: (State, Verifier) => VerificationResult)
              : VerificationResult =
 
-    locallyWithResult[VerificationResult](s, v)((s1, v1, QL) => QL(block(s1, v1)))(Predef.identity)
+    locallyWithResult[VerificationResult](s, v, description)((s1, v1, QL) => QL(block(s1, v1)))(Predef.identity)
 
 
   private def tryOrFailWithResult[R](s: State, v: Verifier)

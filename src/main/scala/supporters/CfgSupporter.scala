@@ -54,7 +54,7 @@ trait DefaultCfgVerificationUnitProvider extends VerifierComponent { v: Verifier
       }
 
       val result = {
-        executionFlowController.locally(s, v)((s3, v3) =>  {
+        executionFlowController.locally(s, v, description = Some("CFG execution"))((s3, v3) =>  {
           exec(s3, cfg, v3)((_, _) =>
             Success())}) }
 
