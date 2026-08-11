@@ -22,7 +22,7 @@ import viper.silicon.state.terms.predef.`?s`
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Decider
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
-import viper.silicon.supporters.{AnnotationSupporter, BenchmarkMetrics, MemberKind, PredicateData}
+import viper.silicon.supporters.{AnnotationSupporter, PredicateData}
 import viper.silicon.utils.ast.{BigAnd, simplifyVariableName}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.{freshSnap, toSf}
@@ -275,8 +275,6 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 Some(DebugExp.createInstance(e, eNew))
               } else { None }
               decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp)
-              // FunctionVerificationMetrics.incPath(function.name)
-              BenchmarkMetrics.incPaths(function.name)
               consumes(s2, posts, false, postconditionViolated, v)((s3, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}

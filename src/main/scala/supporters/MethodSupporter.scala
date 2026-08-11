@@ -94,11 +94,9 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     Success()})})
             && {
                executionFlowController.locally(s2a, v2, description = Some("method: body execution and postcondition check"))((s3, v3) =>  {
-                  exec(s3, body, v3)((s4, v4) => {
-                    BenchmarkMetrics.incPaths(method.name)
+                  exec(s3, body, v3)((s4, v4) =>
                     consumes(s4, posts, false, postViolated, v4)((_, _, _) =>
-                      Success())
-                  })}) }  )})})
+                      Success()))}) }  )})})
 
       v.decider.resetProverOptions()
 
