@@ -238,6 +238,12 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
       /* Write proof-query CSV if requested */
       config.recordProofQueries.toOption.foreach { path =>
         val header = "kind,member,file,line,column,category,durationMs,succeeded,description"
+        /* File names, member names and descriptions are not guaranteed to be comma-free. */
+        def escape(field: Any): String = {
+          val s = field.toString
+          if (s.exists(c => c == ',' || c == '"' || c == '\n')) "\"" + s.replace("\"", "\"\"") + "\""
+          else s
+        }
         val rows = ProofQueryCollector.records.map { r =>
           val (file, line, col) = r.pos match {
             case sp: viper.silver.ast.AbstractSourcePosition =>
@@ -246,7 +252,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
           }
           Seq(r.kind, r.member.getOrElse("?"), file, line, col,
               r.category, "%.3f".format(r.durationMs), r.succeeded,
-              r.description.getOrElse("")).mkString(",")
+              r.description.getOrElse("")).map(escape).mkString(",")
         }
         java.nio.file.Files.write(
           java.nio.file.Paths.get(path),
