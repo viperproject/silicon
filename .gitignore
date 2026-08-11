@@ -3,6 +3,7 @@
 common/target
 project/project
 project/target
+project/metals.sbt
 target
 .settings/
 .cache

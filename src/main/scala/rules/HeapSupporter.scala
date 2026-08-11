@@ -11,7 +11,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.decider.ProofQueryKind
-import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
+import viper.silicon.interfaces.state.{Chunk, ChunkIdentifer, NonQuantifiedChunk}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.havocSupporter.{HavocHelperData, HavocOneData, HavocallData}
 import viper.silicon.rules.quantifiedChunkSupporter.freshSnapshotMap
@@ -67,6 +67,18 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                               tArgs: Seq[Term],
                               eArgs: Option[Seq[ast.Exp]],
                               v: Verifier): State
+
+  /** Creates the chunk for a (quantified or non-quantified) magic wand with the given snapshot,
+    * returning the chunk plus any ground definitions that should be conserved separately. */
+  def createWandChunk(s: State,
+                      wand: ast.MagicWand,
+                      tArgs: Seq[Term],
+                      eArgs: Option[Seq[ast.Exp]],
+                      snapshot: MagicWandSnapshot,
+                      v: Verifier): (Chunk, Seq[Term], Option[Seq[DebugExp]])
+
+  /** Triggers the wand resource if the produced chunk is a quantified one; a no-op otherwise. */
+  def triggerWandIfNeeded(s: State, wand: ast.MagicWand, chWand: Chunk, v: Verifier): State
 
   def consumeSingle(s: State,
                     h: Heap,
@@ -447,6 +459,37 @@ class DefaultHeapSupportRules extends HeapSupportRules {
     }
   }
 
+  def createWandChunk(s: State,
+                      wand: ast.MagicWand,
+                      tArgs: Seq[Term],
+                      eArgs: Option[Seq[ast.Exp]],
+                      snapshot: MagicWandSnapshot,
+                      v: Verifier): (Chunk, Seq[Term], Option[Seq[DebugExp]]) = {
+    if (s.isQuantifiedResource(wand)) {
+      val formalVars = s.getFormalArgVars(wand, v)
+      val formalVarExps = Option.when(withExp)(s.getFormalArgDecls(wand))
+      // The singleton snapshot map maps the wand's arguments to its magic wand snap function.
+      val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, wand, tArgs, snapshot.mwsf, v)
+      v.decider.prover.comment("Definitional axioms for singleton-SM's value")
+      val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
+      v.decider.assumeDefinition(smValueDef, debugExp)
+      val chunk = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, tArgs,
+        eArgs, FullPerm, Option.when(withExp)(ast.FullPerm()()), sm, s.program)
+      (chunk, Seq(smValueDef), Option.when(withExp)(Seq(debugExp.get)))
+    } else {
+      val chunk = MagicWandChunk(MagicWandIdentifier(wand, s.program), s.g.values, tArgs, eArgs, snapshot, FullPerm,
+        Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)))
+      (chunk, Seq.empty[Term], Option.when(withExp)(Seq.empty[DebugExp]))
+    }
+  }
+
+  def triggerWandIfNeeded(s: State, wand: ast.MagicWand, chWand: Chunk, v: Verifier): State =
+    chWand match {
+      case ch: QuantifiedMagicWandChunk =>
+        triggerResourceIfNeeded(s, wand, ch.singletonArgs.get, ch.singletonArgExps, v)
+      case _ => s
+    }
+
   def produceSingle(s: State,
                     resource: ast.Resource,
                     tArgs: Seq[Term],
@@ -554,7 +597,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       case p: ast.Predicate =>
         sf(sorts.PredicateSnapFunction(s.predicateSnapMap(p.name), p.name), v)
       case _: ast.MagicWand =>
-        sf(sorts.PredicateSnapFunction(sorts.Snap, qid), v)
+        sf(sorts.PredicateSnapFunction(sorts.MagicWandSnapFunction, qid), v)
     }
 
     quantifiedChunkSupporter.produce(

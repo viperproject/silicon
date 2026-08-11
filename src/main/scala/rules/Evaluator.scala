@@ -576,6 +576,13 @@ object evaluator extends EvaluationRules {
 //          bookkeeper.functionApplications += 1
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
           val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s1, fapp.pos)
+
+          val funcAppNew = eArgsNew.map(args => ast.FuncApp(funcName, args)(fapp.pos, fapp.info, fapp.typ, fapp.errT))
+          val joinExp = Option.when(withExp)({
+            if (s1.isEvalInOld || func.pres.forall(_.isPure)) funcAppNew.get
+            else ast.DebugLabelledOld(funcAppNew.get, debugLabel)(fapp.pos, fapp.info, fapp.errT)
+          })
+
           val s1a = if (Verifier.config.enableDebugging()) s1.copy(oldHeaps = s1.oldHeaps + (debugHeapName -> s1.h)) else s1
           /* TODO: Does it matter that the above filterNot does not filter out quantified
            *       variables that are not "raw" function arguments, but instead are used
@@ -672,7 +679,6 @@ object evaluator extends EvaluationRules {
                                smDomainNeeded = s2.smDomainNeeded,
                                moreJoins = s2.moreJoins,
                                assertReadAccessOnly = s2.assertReadAccessOnly)
-              val funcAppNew = eArgsNew.map(args => ast.FuncApp(funcName, args)(fapp.pos, fapp.info, fapp.typ, fapp.errT))
               val funcAppNewOld = Option.when(withExp)({
                 if (s5.isEvalInOld || pres.forall(_.isPure)) funcAppNew.get
                 else ast.DebugLabelledOld(funcAppNew.get, debugLabel)(fapp.pos, fapp.info, fapp.errT)
@@ -681,10 +687,11 @@ object evaluator extends EvaluationRules {
             /* TODO: The join-function is heap-independent, and it is not obvious how a
              *       joined snapshot could be defined and represented
              */
-            })(join(func.typ, s"joined_${func.name}", joinFunctionArgs, Option.when(withExp)(eArgs), v1))((s6, r, v4)
-              => Q(s6, r._1, r._2, v4))})
+            })(join(func.typ, s"joined_${func.name}", joinFunctionArgs, joinExp, v1))((s6, r, v4)
+              => Q(s6, r._1, r._2, v4))
+        })
 
-      case ast.Unfolding(
+      case uf@ast.Unfolding(
               acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm),
               eIn) =>
 
@@ -692,14 +699,24 @@ object evaluator extends EvaluationRules {
         if (s.cycles(predicate) < Verifier.config.recursivePredicateUnfoldings()) {
           v.decider.startDebugSubExp()
           evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
-            eval(s1, ePerm.getOrElse(ast.FullPerm()()), pve, v1)((s2, tPerm, ePermNew, v2) =>
-              v2.decider.assert(IsPositive(tPerm), // TODO: Replace with permissionSupporter.assertNotNegative
+            eval(s1, ePerm.getOrElse(ast.FullPerm()()), pve, v1)((s2, tPerm, ePermNew, v2) => {
+              val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s2, uf.pos)
+
+              val unfoldingNew = eArgsNew.map(args => uf.copy(acc = acc.copy(loc = pa.copy(args = args)(pa.pos, pa.info, pa.errT),
+                permExp = Some(ePermNew.get))(acc.pos, acc.info, acc.errT))(uf.pos, uf.info, uf.errT))
+              val joinExp = Option.when(withExp)({
+                if (s1.isEvalInOld) unfoldingNew.get
+                else ast.DebugLabelledOld(unfoldingNew.get, debugLabel)(uf.pos, uf.info, uf.errT)
+              })
+              val s2a = if (Verifier.config.enableDebugging()) s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> s2.h)) else s2
+              // TODO: Replace with permissionSupporter.assertNotNegative
+              v2.decider.assert(IsPositive(tPerm),
                                 kind = ProofQueryKind.Heap,
                                 pos = ePerm.map(_.pos).getOrElse(ast.NoPosition),
                                 member = s2.currentMember.map(_.name),
                                 description = Some("perm expression: non-negative")) {
                 case true =>
-                  joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s2, v2)((s3, v3, QB) => {
+                  joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s2a, v2)((s3, v3, QB) => {
                     val s4 = s3.incCycleCounter(predicate)
                                .copy(recordVisited = true)
                       /* [2014-12-10 Malte] The commented code should replace the code following
@@ -760,26 +777,32 @@ object evaluator extends EvaluationRules {
                           eval(s10, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))})
                       }
                     })
-                  })(join(eIn.typ, "joined_unfolding", s2.relevantQuantifiedVariables.map(_._1),
-                    Option.when(withExp)(s2.relevantQuantifiedVariables.map(_._2.get)), v2))((s12, r12, v7)
+                  })(join(eIn.typ, "joined_unfolding", s2a.relevantQuantifiedVariables.map(_._1),
+                    joinExp, v2))((s12, r12, v7)
                     => {
                     v7.decider.finishDebugSubExp(s"unfolded(${predicate.name})")
                     Q(s12, r12._1, r12._2, v7)})
                 case false =>
                   v2.decider.finishDebugSubExp(s"unfolded(${predicate.name})")
-                  createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))}))
+                  createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2a, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))}}))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables.map(_._1))
           val newFuncRec = s.functionRecorder.recordFreshSnapshot(unknownValue.applicable.asInstanceOf[Function])
           Q(s.copy(functionRecorder = newFuncRec), unknownValue, Option.when(withExp)(ast.LocalVarWithVersion("unknownValue", eIn.typ)(eIn.pos, eIn.info, eIn.errT)), v)
         }
 
-      case ast.Applying(wand, eIn) =>
-        joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s, v)((s1, v1, QB) =>
+      case apl@ast.Applying(wand, eIn) =>
+        val (debugHeapName, debugLabel) = v.getDebugOldLabel(s, apl.pos)
+        val joinExp = Option.when(withExp)({
+          if (s.isEvalInOld) apl
+          else ast.DebugLabelledOld(apl, debugLabel)(apl.pos, apl.info, apl.errT)
+        })
+        val sa = if (Verifier.config.enableDebugging()) s.copy(oldHeaps = s.oldHeaps + (debugHeapName -> s.h)) else s
+        joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](sa, v)((s1, v1, QB) =>
           magicWandSupporter.applyWand(s1, wand, pve, v1)((s2, v2) => {
             eval(s2, eIn, pve, v2)((s3, t, eInNew, v3) => QB(s3, (t, eInNew), v3))
         }))(join(eIn.typ, "joined_applying", s.relevantQuantifiedVariables.map(_._1),
-          Option.when(withExp)(s.relevantQuantifiedVariables.map(_._2.get)), v))((s4, r4, v4)
+          joinExp, v))((s4, r4, v4)
           => Q(s4, r4._1, r4._2, v4))
 
       case ast.Asserting(eAss, eIn) =>
@@ -800,47 +823,13 @@ object evaluator extends EvaluationRules {
           if (s1.triggerExp) {
             Q(s1, SeqAt(t0, t1), eNew, v1)
           } else {
-            v1.decider.assert(AtLeast(t1, IntLiteral(0)),
-                              kind = ProofQueryKind.FunctionalCorrectness, pos = e1.pos,
-                              member = s1.currentMember.map(_.name),
-                              description = Some("sequence index non-negative")) {
-              case true =>
-                v1.decider.assert(Less(t1, SeqLength(t0)),
-                                  kind = ProofQueryKind.FunctionalCorrectness, pos = e1.pos,
-                                  member = s1.currentMember.map(_.name),
-                                  description = Some("sequence index < length")) {
-                  case true =>
-                    Q(s1, SeqAt(t0, t1), eNew, v1)
-                  case false =>
-                    val assertExp2 = Option.when(withExp)(ast.LtCmp(e1, ast.SeqLength(e0)())(e1.pos, e1.info, e1.errT))
-                    val failure = createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, Less(t1, SeqLength(t0)), assertExp2)
-                    if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
-                      val assertExp2 = Option.when(withExp)(ast.LeCmp(e1, ast.SeqLength(e0)())())
-                      val assertExp2New = esNew.map(es => ast.LeCmp(es(1), ast.SeqLength(es.head)())())
-                      v1.decider.assume(Less(t1, SeqLength(t0)), assertExp2, assertExp2New)
-                      failure combine Q(s1, SeqAt(t0, t1), eNew, v1)
-                    } else failure}
-              case false =>
-                val assertExp1 = Option.when(withExp)(ast.GeCmp(e1, ast.IntLit(0)())(e1.pos, e1.info, e1.errT))
-                val assertExp1New = Option.when(withExp)(ast.GeCmp(esNew.get(1), ast.IntLit(0)())(e1.pos, e1.info, e1.errT))
-                val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1, AtLeast(t1, IntLiteral(0)), assertExp1New)
-                if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
-                  v1.decider.assume(AtLeast(t1, IntLiteral(0)), assertExp1, assertExp1New)
-                  val assertExp2 = Option.when(withExp)(ast.LtCmp(e1, ast.SeqLength(e0)())(e1.pos, e1.info, e1.errT))
-                  val assertExp2New = Option.when(withExp)(ast.LtCmp(esNew.get(1), ast.SeqLength(esNew.get(0))())(e1.pos, e1.info, e1.errT))
-                  v1.decider.assert(Less(t1, SeqLength(t0)),
-                                    kind = ProofQueryKind.FunctionalCorrectness, pos = e1.pos,
-                                    member = s1.currentMember.map(_.name),
-                                    description = Some("sequence index < length (retry)")) {
-                    case true =>
-                      failure1 combine Q(s1, SeqAt(t0, t1), eNew, v1)
-                    case false =>
-                      val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, Less(t1, SeqLength(t0)), assertExp2New)
-                      if (v1.reportFurtherErrors()) {
-                        v1.decider.assume(Less(t1, SeqLength(t0)), assertExp2, assertExp2New)
-                        failure2 combine Q(s1, SeqAt(t0, t1), eNew, v1)
-                      } else failure2}
-                } else failure1}}})
+            assertSeqIndexBounds(t1, t0, e1, e0, esNew, pve, s1, v1) match {
+              case Success() => Q(s1, SeqAt(t0, t1), eNew, v1)
+              case failure: VerificationResult if s1.retryLevel == 0 && v1.reportFurtherErrors() =>
+                failure combine Q(s1, SeqAt(t0, t1), eNew, v1)
+              case failure: VerificationResult => failure
+            }
+          }})
 
       case ast.SeqAppend(e0, e1) => evalBinOp(s, e0, e1, SeqAppend, pve, v)((s1, t, e0New, e1New, v1) =>
         Q(s1, t, e0New.map(e0p => ast.SeqAppend(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
@@ -860,47 +849,13 @@ object evaluator extends EvaluationRules {
           if (s1.triggerExp) {
             Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
           } else {
-            val assertExp = Option.when(withExp)(ast.GeCmp(e1, ast.IntLit(0)())(e1.pos, e1.info, e1.errT))
-            val assertExpNew = Option.when(withExp)(ast.GeCmp(esNew.get(1), ast.IntLit(0)())(e1.pos, e1.info, e1.errT))
-            v1.decider.assert(AtLeast(t1, IntLiteral(0)),
-                              kind = ProofQueryKind.FunctionalCorrectness, pos = e1.pos,
-                              member = s1.currentMember.map(_.name),
-                              description = Some("sequence update index non-negative")) {
-              case true =>
-                val assertExp2New = Option.when(withExp)(ast.LtCmp(esNew.get(1), ast.SeqLength(esNew.get(0))())(e1.pos, e1.info, e1.errT))
-                v1.decider.assert(Less(t1, SeqLength(t0)),
-                                  kind = ProofQueryKind.FunctionalCorrectness, pos = e1.pos,
-                                  member = s1.currentMember.map(_.name),
-                                  description = Some("sequence update index < length")) {
-                  case true =>
-                    Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
-                  case false =>
-                    val failure = createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, Less(t1, SeqLength(t0)), assertExp2New)
-                    if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
-                      val assertExp3 = Option.when(withExp)(ast.LeCmp(e1, ast.SeqLength(e0)())())
-                      val assertExp3New = Option.when(withExp)(ast.LeCmp(esNew.get(1), ast.SeqLength(esNew.get(0))())())
-                      v1.decider.assume(Less(t1, SeqLength(t0)), assertExp3, assertExp3New)
-                      failure combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)}
-                    else failure}
-              case false =>
-                val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1, AtLeast(t1, IntLiteral(0)), assertExpNew)
-                if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
-                  v1.decider.assume(AtLeast(t1, IntLiteral(0)), assertExp, assertExpNew)
-                  val assertExp2 = Option.when(withExp)(ast.LtCmp(e1, ast.SeqLength(e0)())(e1.pos, e1.info, e1.errT))
-                  val assertExp2New = Option.when(withExp)(ast.LtCmp(esNew.get(1), ast.SeqLength(esNew.get(0))())(e1.pos, e1.info, e1.errT))
-                  v1.decider.assert(Less(t1, SeqLength(t0)),
-                                    kind = ProofQueryKind.FunctionalCorrectness, pos = e1.pos,
-                                    member = s1.currentMember.map(_.name),
-                                    description = Some("sequence update index < length (retry)")) {
-                    case true =>
-                      failure1 combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
-                    case false =>
-                      val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, Less(t1, SeqLength(t0)), assertExp2New)
-                      if (v1.reportFurtherErrors()) {
-                        v1.decider.assume(Less(t1, SeqLength(t0)), assertExp2, assertExp2New)
-                        failure2 combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
-                      } else failure2}
-            } else failure1}}})
+            assertSeqIndexBounds(t1, t0, e1, e0, esNew, pve, s1, v1) match {
+              case Success() => Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
+              case failure: VerificationResult if s1.retryLevel == 0 && v1.reportFurtherErrors() =>
+                failure combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
+              case failure: VerificationResult => failure
+            }
+          }})
 
       case seq@ast.ExplicitSeq(es) =>
         evals2(s, es, Nil, _ => pve, v)((s1, tEs, esNew, v1) => {
@@ -1057,6 +1012,46 @@ object evaluator extends EvaluationRules {
     resultTerm
   }
 
+
+  private def assertSeqIndexBounds(tIndex: Term, tSeq: Term, eIndex: ast.Exp, eSeq: ast.Exp, expNew: Option[Seq[ast.Exp]], pve: PartialVerificationError, s: State, v: Verifier): VerificationResult = {
+
+    def assertLtSeqLength(): VerificationResult = {
+      val indexInBoundsTerm = Less(tIndex, SeqLength(tSeq))
+      val indexInBoundsExp = Option.when(withExp)(ast.LtCmp(eIndex, ast.SeqLength(eSeq)())(eIndex.pos, eIndex.info, eIndex.errT))
+      val indexInBoundsExpNew = Option.when(withExp)(ast.LtCmp(expNew.get(1), ast.SeqLength(expNew.get(0))())(eIndex.pos, eIndex.info, eIndex.errT))
+      v.decider.assert(indexInBoundsTerm,
+                       kind = ProofQueryKind.FunctionalCorrectness,
+                       pos = eIndex.pos,
+                       member = s.currentMember.map(_.name),
+                       description = Some("sequence index < length")) {
+        case true => Success()
+        case false =>
+          if (s.retryLevel == 0 && v.reportFurtherErrors()) v.decider.assume(indexInBoundsTerm, indexInBoundsExp, indexInBoundsExpNew)
+          createFailure(pve dueTo SeqIndexExceedsLength(eSeq, eIndex), v, s, indexInBoundsTerm, indexInBoundsExpNew)
+      }
+    }
+
+    val indexGeZeroTerm = AtLeast(tIndex, IntLiteral(0))
+    val indexGeZeroExp = Option.when(withExp)(ast.GeCmp(eIndex, ast.IntLit(0)())(eIndex.pos, eIndex.info, eIndex.errT))
+    val indexGeZeroExpNew = Option.when(withExp)(ast.GeCmp(expNew.get(1), ast.IntLit(0)())(eIndex.pos, eIndex.info, eIndex.errT))
+    val failureIdxNeg = createFailure(pve dueTo SeqIndexNegative(eSeq, eIndex), v, s, indexGeZeroTerm, indexGeZeroExpNew)
+    v.decider.assert(indexGeZeroTerm,
+                     kind = ProofQueryKind.FunctionalCorrectness,
+                     pos = eIndex.pos,
+                     member = s.currentMember.map(_.name),
+                     description = Some("sequence index non-negative")) {
+      case true => assertLtSeqLength()
+      case false if s.retryLevel == 0 && v.reportFurtherErrors() =>
+        v.decider.assume(indexGeZeroTerm, indexGeZeroExp, indexGeZeroExpNew)
+        assertLtSeqLength() match {
+          case Success() => failureIdxNeg
+          case failureIdxGeLen: VerificationResult =>
+            failureIdxNeg combine failureIdxGeLen
+        }
+      case false => failureIdxNeg
+    }
+  }
+
   def evalQuantified(s: State,
                      quant: Quantifier,
                      vars: Seq[ast.LocalVarDecl],
@@ -1119,11 +1114,10 @@ object evaluator extends EvaluationRules {
       })
     }){
       case (s2, ts1, es1New1, Some((ts2, es2New1, tTriggers, (tAuxGlobal, tAux), eAuxExps, additionalPossibleTriggers))) =>
-        val s3 = s.copy(possibleTriggers = s.possibleTriggers ++ additionalPossibleTriggers)
-                .preserveAfterLocalEvaluation(s2)
+        val s3 = s.preserveAfterLocalEvaluation(s2).copy(possibleTriggers = s.possibleTriggers ++ additionalPossibleTriggers)
         Q(s3, tVars, Option.when(withExp)(varPairs map (e => ast.LocalVarDecl(e._2.get.name, e._2.get.typ)(e._2.get.pos, e._2.get.info, e._2.get.errT))), ts1, es1New1, Some((ts2, es2New1, tTriggers, (tAuxGlobal, tAux), Option.when(withExp)((eAuxExps.get._1, eAuxExps.get._2)))), v)
       case (s2, ts1, es1New1, None) =>
-        val s3 = s.preserveAfterLocalEvaluation(s2)
+        val s3 = s.preserveAfterLocalEvaluation(s2).copy(possibleTriggers = s.possibleTriggers)
         Q(s3, tVars, Option.when(withExp)(varPairs map (e => ast.LocalVarDecl(e._2.get.name, e._2.get.typ)(e._2.get.pos, e._2.get.info, e._2.get.errT))), ts1, es1New1, None, v)
     }
   }
@@ -1163,17 +1157,15 @@ object evaluator extends EvaluationRules {
                             : VerificationResult = {
 
     val h = s.oldHeaps(label)
-    val s1 = s.copy(h = h, partiallyConsumedHeap = None, isEvalInOld = true)
+    val s1 = s.copy(h = h, partiallyConsumedHeap = None, isEvalInOld = true, possibleTriggers = Map.empty)
     val s2 = v.stateConsolidator(s1).consolidateOptionally(s1, v)
-    val possibleTriggersBefore: Map[ast.Exp, Term] = if (s.recordPossibleTriggers) s.possibleTriggers else Map.empty
 
     eval(s2, e, pve, v)((s3, t, eNew, v1) => {
       val newPossibleTriggers = if (s.recordPossibleTriggers) {
         // For all new possible trigger expressions e and translated term t,
         // make sure we remember t as the term for old[label](e) instead.
         // If e is not heap-dependent, we also remember t as the term for e.
-        val addedOrChangedPairs = s3.possibleTriggers.filter(t =>
-          !possibleTriggersBefore.contains(t._1) || possibleTriggersBefore(t._1) != t._2)
+        val newTriggers = s3.possibleTriggers
 
         def wrapInOld(e: ast.Exp) = {
           if (label == Verifier.PRE_STATE_LABEL) {
@@ -1183,8 +1175,8 @@ object evaluator extends EvaluationRules {
           }
         }
 
-        val oldPairs = addedOrChangedPairs.map(t => wrapInOld(t._1) -> t._2) ++
-          addedOrChangedPairs.filter(t => !t._1.isHeapDependent(s.program))
+        val oldPairs = newTriggers.map(t => wrapInOld(t._1) -> t._2) ++
+          newTriggers.filter(t => !t._1.isHeapDependent(s.program))
         s.possibleTriggers ++ oldPairs
       } else {
         s.possibleTriggers
@@ -1347,8 +1339,10 @@ object evaluator extends EvaluationRules {
     var optRemainingTriggerTerms: Option[Seq[Term]] = None
     // Setting a mark pushes a scope that needs to be popped again later, see below.
     val preMark = v.decider.setPathConditionMark()
+    val numberOfErrorsBefore = v.errorsReportedSoFar.get()
     var pcDelta = InsertionOrderedSet.empty[Term]
     var pcDeltaExp = InsertionOrderedSet.empty[DebugExp]
+    var functionRecorder = s.functionRecorder
 
     /* TODO: Evaluate as many remaining expressions as possible, i.e. don't
      *       stop if evaluating one fails
@@ -1383,10 +1377,11 @@ object evaluator extends EvaluationRules {
      */
 
     val r =
-      evals(s.copy(triggerExp = true), remainingTriggerExpressions, _ => pve, v)((_, remainingTriggerTerms, _, v1) => {
+      evals(s.copy(triggerExp = true), remainingTriggerExpressions, _ => pve, v)((s1, remainingTriggerTerms, _, v1) => {
         optRemainingTriggerTerms = Some(remainingTriggerTerms)
         pcDelta = v1.decider.pcs.after(preMark).assumptions //decider.π -- πPre
         pcDeltaExp = v1.decider.pcs.after(preMark).assumptionExps
+        functionRecorder = s1.functionRecorder
         Success()})
 
     // Remove all assumptions resulting from evaluating the trigger.
@@ -1395,11 +1390,14 @@ object evaluator extends EvaluationRules {
     // (since the preMark layer has no branch conditions), and we can assume them only conditionally.
     // See issue #688 for an example of what happens otherwise.
     v.decider.pcs.popUntilMark(preMark)
+    // Reset the number of reported errors; any errors that occurred while evaluating triggers should not count.
+    // See issue #992 for an example of what happens otherwise.
+    v.errorsReportedSoFar.set(numberOfErrorsBefore)
 
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
         v.decider.assume(pcDelta, Option.when(withExp)(DebugExp.createInstance("pcDeltaExp", children = pcDeltaExp)), enforceAssumption = false)
-        Q(s, cachedTriggerTerms ++ remainingTriggerTerms, v)
+        Q(s.copy(functionRecorder = functionRecorder), cachedTriggerTerms ++ remainingTriggerTerms, v)
       case _ =>
         for (e <- remainingTriggerExpressions)
           v.reporter.report(WarningsDuringVerification(Seq(
@@ -1411,7 +1409,7 @@ object evaluator extends EvaluationRules {
   private def join(joinType: ast.Type,
                    joinFunctionName: String,
                    joinFunctionArgs: Seq[Term],
-                   joinFunctionArgsExp: Option[Seq[ast.Exp]],
+                   joinedExp: Option[ast.Exp],
                    v: Verifier)
                   (entries: Seq[JoinDataEntry[(Term, Option[ast.Exp])]])
                   : (State, (Term, Option[ast.Exp])) = {
@@ -1429,12 +1427,11 @@ object evaluator extends EvaluationRules {
         val quantifiedVarsSorts = joinFunctionArgs.map(_.sort)
         val joinSymbol = v.decider.fresh(joinFunctionName, quantifiedVarsSorts, joinSort)
         val joinTerm = App(joinSymbol, joinFunctionArgs)
-        val joinExp = joinFunctionArgsExp.map(jfa => ast.FuncApp(joinFunctionName, jfa)(ast.NoPosition, ast.NoInfo, joinType, ast.NoTrafos))
 
         val joinDefEqs: Seq[(Term, Option[ast.Exp], Option[ast.Exp])] = entries map (entry =>
           (Implies(And(entry.pathConditions.branchConditions), BuiltinEquals(joinTerm, entry.data._1)),
-          Option.when(withExp)(ast.Implies(BigAnd(entry.pathConditions.branchConditionExps.map(bc => bc._1)), ast.EqCmp(joinExp.get, entry.data._2.get)())()),
-          Option.when(withExp)(ast.Implies(BigAnd(entry.pathConditions.branchConditionExps.map(bc => bc._2.get)), ast.EqCmp(joinExp.get, entry.data._2.get)())())))
+          Option.when(withExp)(ast.Implies(BigAnd(entry.pathConditions.branchConditionExps.map(bc => bc._1)), ast.EqCmp(joinedExp.get, entry.data._2.get)())()),
+          Option.when(withExp)(ast.Implies(BigAnd(entry.pathConditions.branchConditionExps.map(bc => bc._2.get)), ast.EqCmp(joinedExp.get, entry.data._2.get)())())))
 
 
         var sJoined = entries.tail.foldLeft(entries.head.s)((sAcc, entry) => sAcc.merge(entry.s))
@@ -1442,7 +1439,7 @@ object evaluator extends EvaluationRules {
 
         joinDefEqs foreach { case (t, exp, expNew) => v.decider.assume(t, exp, expNew)}
 
-        (sJoined, (joinTerm, joinExp))
+        (sJoined, (joinTerm, joinedExp))
     }
   }
 
