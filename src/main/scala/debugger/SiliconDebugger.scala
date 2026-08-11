@@ -20,6 +20,7 @@ import viper.silver.verifier.errors.ContractNotWellformed
 import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 
 import java.nio.file.Paths
+import scala.annotation.unused
 import scala.collection.mutable
 import scala.io.StdIn.readLine
 
@@ -171,8 +172,8 @@ case class ProofObligation(s: State,
 }
 
 class SiliconDebugger(verificationResults: List[VerificationResult],
-                      identifierFactory: IdentifierFactory,
-                      reporter: Reporter,
+                      @unused identifierFactory: IdentifierFactory,
+                      @unused reporter: Reporter,
                       resolver: Resolver,
                       pprogram: PProgram,
                       translator: Translator,
@@ -419,6 +420,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     }
   }
 
+  @unused
   private def chooseAssertion(obl: ProofObligation): ProofObligation = {
     println(s"Enter the assertion or s(skip) to assert the previous assertion again:")
     val userInput = readLine()
@@ -575,6 +577,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     //obl.printConfig.addHierarchyLevelForId(readLine())
   }
 
+  @unused
   private def printSingleAssumption(obl: ProofObligation): Unit={
     println(s"Enter the id of the assumption that should be printed:")
     val userInput = readLine()

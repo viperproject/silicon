@@ -330,6 +330,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   }
 
   @inline
+  @unused
   private final def partition(h: Heap): (Seq[NonQuantifiedChunk], Seq[Chunk]) = {
     var nonQuantifiedChunks = Seq[NonQuantifiedChunk]()
     var otherChunks = Seq[Chunk]()

@@ -210,10 +210,17 @@ class TermToZ3APIConverter
     val cached = termCache.get(term)
     if (cached.isDefined)
       return cached.get
-    val res = term match {
+    /* Terms are matched via their (flyweight) extractors, which prevents the compiler from
+     * checking this match for exhaustiveness.
+     */
+    val res = (term: @unchecked) match {
       case l: Literal => {
         l match {
-          case IntLiteral(n) => {
+          /* Matching on the type (instead of using IntLiteral's extractor) allows the compiler to
+           * verify that this match is exhaustive.
+           */
+          case intLiteral: IntLiteral => {
+            val n = intLiteral.n
             if (n >= 0)
               ctx.mkInt(n.toString())
             else

@@ -6,7 +6,6 @@
 
 package viper.silicon.rules
 
-import viper.silver.ast
 import viper.silicon.Config.ExhaleMode
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.CommentRecord

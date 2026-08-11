@@ -737,7 +737,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   validateOpt(numberOfParallelVerifiers) {
     case Some(n) if n <= 0 => Left(s"Number of parallel verifiers must be positive, but $n was provided")
-    case _ => Right()
+    case _ => Right(())
   }
 
   validateFileOpt(logConfig)

@@ -414,7 +414,7 @@ object State {
           ssCache2, `assertReadAccessOnly1`,
           `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, smDomainNeeded2,
           `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
-          moreCompleteExhale2, `moreJoins`) =>
+          _, `moreJoins`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
@@ -435,7 +435,7 @@ object State {
                 // If store entry is only on one branch, we can safely discard it.
                 None
               })
-              ((v1, cond1, v2, cond2) => {
+              ((v1, cond1, v2, _) => {
                 if (v1._1 == v2._1) {
                   // Trivial: Both entries are the same.
                   Some(v1)

@@ -99,7 +99,10 @@ package object utils {
     disjointnessAssumptions.result()
   }
 
-  def subterms(t: Term): Seq[Term] = t match {
+  /* Most terms are matched via their (flyweight) extractors, which prevents the compiler from
+   * seeing that the match covers all cases it is expected to cover.
+   */
+  def subterms(t: Term): Seq[Term] = (t: @unchecked) match {
     case _: Symbol | _: Literal | _: MagicWandChunkTerm => Nil
     case op: BinaryOp[Term@unchecked] => List(op.p0, op.p1)
     case op: UnaryOp[Term@unchecked] => List(op.p)
@@ -147,7 +150,7 @@ package object utils {
 
     def goTriggers(trigger: Trigger) = Trigger(trigger.p map go)
 
-    def recurse(term: Term): Term = term match {
+    def recurse(term: Term): Term = (term: @unchecked) match {
       case _: Var | _: Function | _: Literal | _: MagicWandChunkTerm | _: Distinct | _: AppHint => term
 
       case Quantification(quantifier, variables, body, triggers, name, isGlobal, weight) =>
