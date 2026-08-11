@@ -6,12 +6,18 @@
 
 package viper.silicon.common.collections.mutable
 
+import scala.annotation.nowarn
 import scala.collection.mutable
 
 /** Copy of scala.collection.mutable.MultiMap where all internally used
     * sets and maps have been replaced by those that guarantee a deterministic
     * traversal order.
     */
+/* Inheriting from LinkedHashMap is deprecated since Scala 2.13.11 because LinkedHashMap is
+ * scheduled to become final. Reimplementing MMultiMap on top of composition would change its
+ * (public) type, hence the deprecation is suppressed until the trait is reworked or removed.
+ */
+@nowarn("cat=deprecation")
 trait MMultiMap[A, B] extends mutable.LinkedHashMap[A, mutable.LinkedHashSet[B]] {
   def addBinding(key: A, value: B): this.type = {
     get(key) match {

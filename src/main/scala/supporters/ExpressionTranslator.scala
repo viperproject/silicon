@@ -51,7 +51,7 @@ trait ExpressionTranslator {
     def actualTranslateAnySetBinExp(exp: ast.AnySetBinExp,
                               setTerm: (Term, Term) => Term,
                               multisetTerm: (Term, Term) => Term,
-                              anysetTypedExp: ast.Exp = exp): Term =
+                              anysetTypedExp: ast.Exp): Term =
 
       anysetTypedExp.typ match {
         case _: ast.SetType => setTerm(f(exp.left), f(exp.right))
@@ -110,7 +110,7 @@ trait ExpressionTranslator {
               ai.values("weight") match {
                 case Seq(w) if w.toIntOption.exists(w => w >= 0) =>
                   Some(w.toInt)
-                case s =>
+                case _ =>
                   // TODO: We would like to emit a warning here, but don't have a reporter available.
                   None
               }
@@ -269,6 +269,9 @@ trait ExpressionTranslator {
              | _: ast.ForPerm
              | _: ast.MagicWand
              | _: ast.ExtensionExp
+             | _: ast.Asserting
+             | _: ast.DebugLabelledOld
+             | _: ast.DebugPermMin
              =>
 
         sys.error(s"Found unexpected expression $exp (${exp.getClass.getName}})")

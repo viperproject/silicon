@@ -13,6 +13,8 @@ import viper.silicon.state.terms.{Sort, SortDecl, sorts}
 import viper.silver.ast
 import viper.silver.ast.Program
 
+import scala.annotation.unused
+
 /**
  * Add function declarations when the proof makes use of MagicWandSnapFunctions (MWSF).
  * Those are used to preserve values across multiple applications of a magic wand, e.g. by using an applying expression.
@@ -62,6 +64,7 @@ class MagicWandSnapFunctionsContributor(preambleReader: PreambleReader[String, S
   override def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = {}
 
   /** Helper function to transform the lines returned by the `PreambleReader`. */
+  @unused
   private def extractPreambleLines(lines: Iterable[String]*): Iterable[String] =
     lines.flatten
 

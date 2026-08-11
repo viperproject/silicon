@@ -30,6 +30,7 @@ import viper.silver.reporter.InternalWarningMessage
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 
+import scala.annotation.unused
 import scala.collection.immutable.ArraySeq
 import scala.reflect.ClassTag
 
@@ -1481,7 +1482,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
   }
 
-  def assertReadPermission(s: State,
+  def assertReadPermission(@unused s: State,
                            candidates: Seq[QuantifiedBasicChunk],
                            codomainQVars: Seq[Var],
                            condition: Term,
@@ -1952,7 +1953,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       qvars.zip(inverseFunctions).to(Map),
       qvars.zip(imageFunctions).filter(_._2 != null).to(Map)
     )
-    (res, imagesOfCodomains)
+    (res, ArraySeq.unsafeWrapArray(imagesOfCodomains))
   }
 
   def hintBasedChunkOrderHeuristic(hints: Seq[Term])

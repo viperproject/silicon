@@ -179,6 +179,7 @@ case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Mode
     }.map {
       case (k, (i: IntLiteral, _)) => k.name -> ConstantEntry(i.toString)
       case (k, (b: BooleanLiteral, _)) => k.name -> ConstantEntry(b.toString)
+      case other => sys.error(s"Unexpected store entry $other, which the preceding filter should have removed")
     }
 
     Model(variableValues ++ constantValues)

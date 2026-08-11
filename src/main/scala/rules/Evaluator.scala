@@ -566,6 +566,7 @@ object evaluator extends EvaluationRules {
             } else {
               createFailure(pve.dueTo(InternalReason(sourceQuant, "Quantifier evaluation failed.")), v1, s1, "quantifier could be evaluated")
             }
+          case other => sys.error(s"Unexpected result $other when evaluating quantifier $sourceQuant")
         }
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
@@ -822,7 +823,8 @@ object evaluator extends EvaluationRules {
                 failure combine Q(s1, SeqAt(t0, t1), eNew, v1)
               case failure: VerificationResult => failure
             }
-          }})
+          }
+        case other => sys.error(s"Unexpected result $other when evaluating the subexpressions of $e")})
 
       case ast.SeqAppend(e0, e1) => evalBinOp(s, e0, e1, SeqAppend, pve, v)((s1, t, e0New, e1New, v1) =>
         Q(s1, t, e0New.map(e0p => ast.SeqAppend(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
@@ -848,7 +850,8 @@ object evaluator extends EvaluationRules {
                 failure combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
               case failure: VerificationResult => failure
             }
-          }})
+          }
+        case other => sys.error(s"Unexpected result $other when evaluating the subexpressions of $e")})
 
       case seq@ast.ExplicitSeq(es) =>
         evals2(s, es, Nil, _ => pve, v)((s1, tEs, esNew, v1) => {
@@ -970,17 +973,20 @@ object evaluator extends EvaluationRules {
                   failure1
                 }
             }
+          case other => sys.error(s"Unexpected result $other when evaluating the subexpressions of $e")
         })
 
       case ast.MapUpdate(base, key, value) =>
         evals2(s, Seq(base, key, value), Nil, _ => pve, v)({
           case (s1, Seq(baseT, keyT, valueT), esNew, v1)
             => Q(s1, MapUpdate(baseT, keyT, valueT), esNew.map(es => ast.MapUpdate(es(0), es(1), es(2))(e.pos, e.info, e.errT)), v1)
+          case other => sys.error(s"Unexpected result $other when evaluating the subexpressions of $e")
         })
 
       case ast.MapContains(key, base) =>
         evals2(s, Seq(key, base), Nil, _ => pve, v)({
           case (s1, Seq(keyT, baseT), esNew, v1) => Q(s1, SetIn(keyT, MapDomain(baseT)), esNew.map(es => ast.MapContains(es(0), es(1))(e.pos, e.info, e.errT)), v1)
+          case other => sys.error(s"Unexpected result $other when evaluating the subexpressions of $e")
         })
 
       /* Unexpected nodes */

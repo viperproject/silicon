@@ -19,6 +19,7 @@ import viper.silver.ast
 import viper.silver.parser.PUnknown
 import viper.silver.verifier.VerificationError
 
+import scala.annotation.unused
 import scala.reflect.ClassTag
 
 trait ChunkSupportRules extends SymbolicExecutionRules {
@@ -244,7 +245,7 @@ object chunkSupporter extends ChunkSupportRules {
                            h: Heap,
                            resource: ast.Resource,
                            args: Seq[Term],
-                           argsExp: Option[Seq[ast.Exp]],
+                           @unused argsExp: Option[Seq[ast.Exp]],
                            ve: VerificationError,
                            v: Verifier)
                           (Q: (State, Term, Verifier) => VerificationResult)

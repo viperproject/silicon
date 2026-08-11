@@ -24,6 +24,7 @@ import viper.silver.parser.{PKw, PPrimitiv, PReserved, PType}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
 import viper.silver.verifier.{DependencyNotFoundError, Model}
 
+import scala.annotation.unused
 import scala.collection.immutable.HashSet
 import scala.reflect.{ClassTag, classTag}
 import scala.collection.mutable
@@ -331,7 +332,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms))
     }
 
-    def debuggerAssume(terms: Iterable[Term], de: DebugExp) = {
+    def debuggerAssume(terms: Iterable[Term], @unused de: DebugExp) = {
       terms.foreach(t => {
         if (!_debuggerAssumedTerms.contains(t)) {
           _debuggerAssumedTerms += t

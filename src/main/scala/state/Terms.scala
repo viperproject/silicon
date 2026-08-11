@@ -507,7 +507,7 @@ trait ConditionalFlyweight[T, V] { self: AnyRef =>
       (
         this.eq(other.asInstanceOf[AnyRef])
           || (other match {
-          case se: ConditionalFlyweight[T, V] if this.getClass.eq(se.getClass) =>
+          case se: ConditionalFlyweight[T@unchecked, V@unchecked] if this.getClass.eq(se.getClass) =>
             equalityDefiningMembers == se.equalityDefiningMembers
           case _ => false
         }))

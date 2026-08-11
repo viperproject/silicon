@@ -96,7 +96,7 @@ object AnnotationSupporter {
           }
           Some(mode)
         } catch {
-          case _ =>
+          case _: Throwable =>
             reporter report AnnotationWarning(s"Member ${member.name} has invalid ${stateConsolidationModeAnnotation} annotation value. Annotation will be ignored.")
             None
         }
