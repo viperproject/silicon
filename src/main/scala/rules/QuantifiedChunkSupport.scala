@@ -1953,7 +1953,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       qvars.zip(inverseFunctions).to(Map),
       qvars.zip(imageFunctions).filter(_._2 != null).to(Map)
     )
-    (res, ArraySeq.unsafeWrapArray(imagesOfCodomains))
+    (res, imagesOfCodomains.toIndexedSeq)
   }
 
   def hintBasedChunkOrderHeuristic(hints: Seq[Term])
