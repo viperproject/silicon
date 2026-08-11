@@ -25,7 +25,7 @@ object permissionSupporter extends SymbolicExecutionRules {
         Q(s, v)
       case _ =>
         v.decider.assert(perms.IsNonNegative(tPerm),
-                         kind = ProofQueryKind.Consistency,
+                         kind = ProofQueryKind.Heap,
                          pos = ePerm.pos,
                          member = s.currentMember.map(_.name),
                          description = Some("permission amount is non-negative")) {
@@ -46,7 +46,7 @@ object permissionSupporter extends SymbolicExecutionRules {
         Q(s, v)
       case _ =>
         v.decider.assert(perms.IsPositive(tPerm),
-                         kind = ProofQueryKind.Consistency,
+                         kind = ProofQueryKind.Heap,
                          pos = ePerm.pos,
                          member = s.currentMember.map(_.name),
                          description = Some("permission amount is positive")) {

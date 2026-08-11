@@ -122,9 +122,13 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
                                     otherwise: PropertyExpression[K],
                                     info: Info): (Term, Option[ast.Exp]) = {
     val conditionTerm = buildPathCondition(condition, info)._1
-    if (verifier.decider.check(conditionTerm, Verifier.config.checkTimeout(),
-                               kind = ProofQueryKind.Heap, member = member,
-                               description = Some("chunk property condition"))) {
+    /* The query is not a proof obligation: it decides which of the two branches of a conditional
+     * sub-property (e.g. the permission upper bound of `permUpperBoundDiseq`) has to be built. */
+    if (verifier.decider.check(conditionTerm,
+                               Verifier.config.checkTimeout(),
+                               kind = ProofQueryKind.Heap,
+                               member = member,
+                               description = Some("chunk property: select branch of conditional sub-property"))) {
       buildPathCondition(thenDo, info)
     } else {
       buildPathCondition(otherwise, info)

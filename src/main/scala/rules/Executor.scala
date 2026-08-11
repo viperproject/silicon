@@ -20,7 +20,6 @@ import viper.silver.verifier.reasons._
 import viper.silver.{ast, cfg}
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
-import viper.silicon.interfaces.decider.ProofQueryKind
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -477,7 +476,9 @@ object executor extends ExecutionRules {
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
         executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
-          if (v1.decider.checkSmoke(true, pos = assert.pos, member = s1.currentMember.map(_.name),
+          if (v1.decider.checkSmoke(true,
+                                    pos = assert.pos,
+                                    member = s1.currentMember.map(_.name),
                                     description = Some("smoke check: assert statement")))
             QS(s1.copy(h = s.h), v1)
           else

@@ -61,7 +61,8 @@ object brancher extends BranchingRules {
     /* True if the then-branch is to be explored */
     val executeThenBranch = (
          skipPathFeasibilityCheck
-      || !v.decider.check(negatedCondition, Verifier.config.checkTimeout(),
+      || !v.decider.check(negatedCondition,
+                          Verifier.config.checkTimeout(),
                           kind = ProofQueryKind.PathInfeasibility,
                           pos = conditionExp._1.pos,
                           member = s.currentMember.map(_.name),
@@ -71,7 +72,8 @@ object brancher extends BranchingRules {
     val executeElseBranch = (
          !executeThenBranch /* Assumes that ast least one branch is feasible */
       || skipPathFeasibilityCheck
-      || !v.decider.check(condition, Verifier.config.checkTimeout(),
+      || !v.decider.check(condition,
+                          Verifier.config.checkTimeout(),
                           kind = ProofQueryKind.PathInfeasibility,
                           pos = conditionExp._1.pos,
                           member = s.currentMember.map(_.name),

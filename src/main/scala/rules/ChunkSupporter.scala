@@ -134,7 +134,8 @@ object chunkSupporter extends ChunkSupportRules {
             case (Complete(), s2, h2, optCh2) =>
               val snap = optCh2 match {
                 case Some(ch) if returnSnap =>
-                  if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout(),
+                  if (v1.decider.check(IsPositive(perms),
+                                       Verifier.config.checkTimeout(),
                                        kind = ProofQueryKind.Heap,
                                        member = s1.currentMember.map(_.name),
                                        description = Some("consumed positive permission"))) {
@@ -145,7 +146,8 @@ object chunkSupporter extends ChunkSupportRules {
                 case _ => None
               }
               QS(s2.copy(h = s.h), h2, snap, v1)
-            case _ if v1.decider.checkSmoke(true, member = s1.currentMember.map(_.name),
+            case _ if v1.decider.checkSmoke(true,
+                                            member = s1.currentMember.map(_.name),
                                             description = Some("smoke check after consume")) =>
               Success() // TODO: Mark branch as dead?
             case _ =>
@@ -177,8 +179,10 @@ object chunkSupporter extends ChunkSupportRules {
     findChunk[NonQuantifiedChunk](h.values, id, args, v, member = s.currentMember.map(_.name)) match {
       case Some(ch) =>
         if (s.assertReadAccessOnly) {
-          if (v.decider.check(Implies(IsPositive(perms), IsPositive(ch.perm)), Verifier.config.assertTimeout.getOrElse(0),
-                              kind = ProofQueryKind.Heap, member = s.currentMember.map(_.name),
+          if (v.decider.check(Implies(IsPositive(perms), IsPositive(ch.perm)),
+                              Verifier.config.assertTimeout.getOrElse(0),
+                              kind = ProofQueryKind.Heap,
+                              member = s.currentMember.map(_.name),
                               description = Some("read-only: chunk has positive perm"))) {
             (Complete(), s, h, Some(ch))
           } else {
@@ -191,8 +195,10 @@ object chunkSupporter extends ChunkSupportRules {
           val newChunk = ch.withPerm(PermMinus(ch.perm, toTake), newPermExp)
           val takenChunk = Some(ch.withPerm(toTake, toTakeExp))
           var newHeap = h - ch
-          if (!v.decider.check(newChunk.perm === NoPerm, Verifier.config.checkTimeout(),
-                               kind = ProofQueryKind.Heap, member = s.currentMember.map(_.name),
+          if (!v.decider.check(newChunk.perm === NoPerm,
+                               Verifier.config.checkTimeout(),
+                               kind = ProofQueryKind.Heap,
+                               member = s.currentMember.map(_.name),
                                description = Some("chunk fully depleted"))) {
             newHeap = newHeap + newChunk
             assumeProperties(newChunk, newHeap)
@@ -200,8 +206,10 @@ object chunkSupporter extends ChunkSupportRules {
           val remainingExp = permsExp.map(pe => ast.PermSub(pe, toTakeExp.get)(pe.pos, pe.info, pe.errT))
           (ConsumptionResult(PermMinus(perms, toTake), remainingExp, Seq(), v, 0, s.currentMember.map(_.name)), s, newHeap, takenChunk)
         } else {
-          if (v.decider.check(ch.perm !== NoPerm, Verifier.config.checkTimeout(),
-                              kind = ProofQueryKind.Heap, member = s.currentMember.map(_.name),
+          if (v.decider.check(ch.perm !== NoPerm,
+                              Verifier.config.checkTimeout(),
+                              kind = ProofQueryKind.Heap,
+                              member = s.currentMember.map(_.name),
                               description = Some("chunk has some permission"))) {
             val constraintExp = permsExp.map(pe => ast.PermLtCmp(pe, ch.permExp.get)(pe.pos, pe.info, pe.errT))
             v.decider.assume(PermLess(perms, ch.perm), Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)))
@@ -216,8 +224,10 @@ object chunkSupporter extends ChunkSupportRules {
           }
         }
       case None =>
-        if (consumeExact && s.retrying && v.decider.check(perms === NoPerm, Verifier.config.checkTimeout(),
-                                                          kind = ProofQueryKind.Heap, member = s.currentMember.map(_.name),
+        if (consumeExact && s.retrying && v.decider.check(perms === NoPerm,
+                                                          Verifier.config.checkTimeout(),
+                                                          kind = ProofQueryKind.Heap,
+                                                          member = s.currentMember.map(_.name),
                                                           description = Some("retry: zero-permission consume"))) {
           (Complete(), s, h, None)
         } else {
@@ -266,14 +276,20 @@ object chunkSupporter extends ChunkSupportRules {
                           : VerificationResult = {
 
     val id = ChunkIdentifier(resource, s.program)
-    val findRes = findChunk[NonQuantifiedChunk](h.values, id, args, v, member = s.currentMember.map(_.name), pos = resource.pos)
+    val findRes = findChunk[NonQuantifiedChunk](h.values, id, args, v,
+                                                member = s.currentMember.map(_.name),
+                                                pos = resource.pos)
     findRes match {
-      case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.assertTimeout.getOrElse(0),
-                                       kind = ProofQueryKind.Heap, pos = resource.pos,
+      case Some(ch) if v.decider.check(IsPositive(ch.perm),
+                                       Verifier.config.assertTimeout.getOrElse(0),
+                                       kind = ProofQueryKind.Heap,
+                                       pos = resource.pos,
                                        member = s.currentMember.map(_.name),
                                        description = Some("lookup: chunk has permission")) =>
         Q(s, ch.snap, v)
-      case _ if v.decider.checkSmoke(true, pos = resource.pos, member = s.currentMember.map(_.name),
+      case _ if v.decider.checkSmoke(true,
+                                     pos = resource.pos,
+                                     member = s.currentMember.map(_.name),
                                      description = Some("smoke check at lookup")) =>
         if (s.isInPackage) {
           val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
@@ -337,8 +353,11 @@ object chunkSupporter extends ChunkSupportRules {
                                                             pos: ast.Position = ast.NoPosition) = {
     chunks find (ch =>
       args.size == ch.args.size &&
-      v.decider.check(And(ch.args zip args map (x => x._1 === x._2)), Verifier.config.checkTimeout(),
-                      kind = ProofQueryKind.Heap, member = member, pos = pos,
+      v.decider.check(And(ch.args zip args map (x => x._1 === x._2)),
+                      Verifier.config.checkTimeout(),
+                      kind = ProofQueryKind.Heap,
+                      member = member,
+                      pos = pos,
                       description = Some("chunk alias via prover")))
   }
 }

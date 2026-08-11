@@ -50,10 +50,14 @@ trait Decider {
   def pushScope(member: Option[String] = None, description: Option[String] = None): Unit
   def popScope(member: Option[String] = None, description: Option[String] = None): Unit
 
+  /** Checks whether the current path conditions are already contradictory. Most such checks serve
+    * to detect infeasible paths, hence the default category; call sites that use a smoke check for
+    * a different purpose should override `kind` accordingly. */
   def checkSmoke(isAssert: Boolean = false,
                  pos: ast.Position = ast.NoPosition,
                  member: Option[String] = None,
-                 description: Option[String] = None): Boolean
+                 description: Option[String] = None,
+                 kind: ProofQueryKind = ProofQueryKind.PathInfeasibility): Boolean
 
   def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp])): Unit
   def setPathConditionMark(): Mark
@@ -400,7 +404,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def checkSmoke(isAssert: Boolean = false,
                    pos: ast.Position = ast.NoPosition,
                    member: Option[String] = None,
-                   description: Option[String] = None): Boolean = {
+                   description: Option[String] = None,
+                   kind: ProofQueryKind = ProofQueryKind.PathInfeasibility): Boolean = {
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
       val t0  = System.nanoTime()
       val res = prover.check(timeout) == Unsat
@@ -410,7 +415,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
           kind        = QueryKind.Check,
           member      = member,
           pos         = pos,
-          category    = ProofQueryKind.PathInfeasibility,
+          category    = kind,
           durationMs  = dur,
           succeeded   = res,
           description = description))

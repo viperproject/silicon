@@ -197,8 +197,11 @@ object magicWandSupporter extends SymbolicExecutionRules {
              * from heap, i.e. that tEq does not result in already having the required permissions before
              * consuming from heap.
              */
+            /* The check does not look for an infeasible path here: it establishes that permissions
+             * were actually taken from the heap, which is a heap proof obligation. */
             if (v.decider.checkSmoke(member = sOut.currentMember.map(_.name),
-                                     description = Some("smoke check: magic wand"))) {
+                                     description = Some("magic wand: permissions taken from heap"),
+                                     kind = ProofQueryKind.Heap)) {
               (Complete(), sOut, h +: hps, cch +: cchs)
             } else {
               (success, sOut, h +: hps, cch +: cchs)

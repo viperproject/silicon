@@ -10,31 +10,24 @@ package viper.silicon.interfaces.decider
 sealed trait ProofQueryKind
 
 object ProofQueryKind {
-  /** (a) Consistency checks: non-negative/positive permission assertions, injectivity checks
-   *  in quantified permissions, and similar well-formedness obligations. */
+  /** (a) Consistency checks: injectivity of quantified-permission receivers and similar
+   *  well-formedness obligations. */
   case object Consistency extends ProofQueryKind
 
-  /** (b) Heap proof obligations: chunk-existence checks, permission-amount checks during
-   *  consume/produce operations, and related heap-access correctness queries. */
+  /** (b) Heap proof obligations: chunk-existence checks, permission-amount checks (including
+   *  non-negativity and positivity of permission expressions) during consume/produce
+   *  operations, and related heap-access correctness queries. */
   case object Heap extends ProofQueryKind
 
   /** (c) Functional-correctness queries: pre/postcondition checks, assert-statement assertions,
    *  array-index bounds, divisor non-zero, and similar user-visible proof obligations. */
   case object FunctionalCorrectness extends ProofQueryKind
 
-  /** (d) Axiomatisation queries: consistency of function, domain, or predicate axioms
-   *  (rare – axioms are mostly assumed, not asserted). */
-  case object Axiomatization extends ProofQueryKind
-
-  /** (e) Path-infeasibility checks: smoke checks and branch-feasibility tests that determine
+  /** (d) Path-infeasibility checks: smoke checks and branch-feasibility tests that determine
    *  whether the current execution path is reachable at all. */
   case object PathInfeasibility extends ProofQueryKind
 
-  /** (f) Unknown: used when the purpose of the query does not clearly fall into any of the
-   *  above categories, or has not yet been classified. */
-  case object Unknown extends ProofQueryKind
-
-  /** (g) Scope-management operations: push and pop of the prover assertion stack
+  /** (e) Scope-management operations: push and pop of the prover assertion stack
    *  used to bound the scope of branch assumptions, contract checks, etc. */
   case object ScopeManagement extends ProofQueryKind
 }
