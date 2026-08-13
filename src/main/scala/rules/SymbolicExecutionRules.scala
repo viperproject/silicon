@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
-import viper.silicon.reporting.SiliconResolvedCounterexample
+import viper.silicon.reporting.{SiliconRawCounterexample, SiliconResolvedCounterexample}
 import viper.silicon.state.State
 import viper.silicon.state.terms.{False, Term}
 import viper.silicon.verifier.Verifier
@@ -83,7 +83,7 @@ trait SymbolicExecutionRules {
             SiliconVariableCounterexample(s.g, nativeModel)
           case MappedModel =>
             SiliconMappedCounterexample(s.g, s.h.values, s.oldHeaps, nativeModel, s.program)
-          case RawModel => SiliconResolvedCounterexample(nativeModel, s.g, s.h.values, s.oldHeaps, s.program).rawCE
+          case RawModel => SiliconRawCounterexample(nativeModel, s.g, s.h.values, s.oldHeaps, s.program)
           case ResolvedModel => SiliconResolvedCounterexample(nativeModel, s.g, s.h.values, s.oldHeaps, s.program)
         }
         val finalCE = ceTrafo match {

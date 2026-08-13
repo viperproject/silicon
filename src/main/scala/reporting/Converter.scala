@@ -263,7 +263,8 @@ object Converter {
       case Unit              => UnprocessedModelEntry(ConstantEntry(snapUnitId))
       case IntLiteral(x)     => LitIntEntry(x)
       case t: BooleanLiteral => LitBoolEntry(t.value)
-      case Null              => VarEntry(model.entries(nullRefId).toString, sorts.Ref)
+      // With a partial model (model.partial), the null entry may be absent; fall back to the id.
+      case Null              => VarEntry(model.entries.get(nullRefId).map(_.toString).getOrElse(nullRefId), sorts.Ref)
       case v: Var if env.contains(v) => env(v)
       case Var(_, sort, _) =>
         val key: String = term.toString

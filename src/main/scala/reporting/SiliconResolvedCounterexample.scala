@@ -49,10 +49,10 @@ case class SiliconResolvedCounterexample(model: Model,
   override def toString: String = {
     var finalString = "      Resolved Counterexample: \n"
     finalString += "   Store: \n"
-    if (!ceStore.storeEntries.isEmpty)
+    if (ceStore.storeEntries.nonEmpty)
       finalString += ceStore.storeEntries.map(x => x.toString).mkString("", "\n", "\n")
-    if (!ceHeaps.filter(y => !y._2.heapEntries.isEmpty).isEmpty)
-      finalString += ceHeaps.filter(y => !y._2.heapEntries.isEmpty).map(x => "   " + x._1 + " Heap: \n" + x._2.toString).mkString("")
+    if (ceHeaps.exists(y => y._2.heapEntries.nonEmpty))
+      finalString += ceHeaps.filter(y => y._2.heapEntries.nonEmpty).map(x => "   " + x._1 + " Heap: \n" + x._2.toString).mkString("")
     if (domainsAndFunctions.nonEmpty) {
       finalString += "   Domains: \n"
       finalString += domainsAndFunctions.map(x => x.toString).mkString("", "\n", "\n")
@@ -88,23 +88,23 @@ case class SiliconRawCounterexample(model: Model,
   override def toString: String = {
     var finalString = "      Raw Counterexample: \n"
     finalString ++= "   Local Information:\n"
-    if (!basicVariables.isEmpty)
+    if (basicVariables.nonEmpty)
       finalString += basicVariables.map(x => x.toString).mkString("", "\n", "\n")
-    if (!allCollections.isEmpty)
+    if (allCollections.nonEmpty)
       finalString += allCollections.map(x => x.toString).mkString("", "\n", "\n")
-    if (!allRawHeaps.filter(y => !y._2.rawHeapEntries.isEmpty).isEmpty)
-      finalString += allRawHeaps.filter(y => !y._2.rawHeapEntries.isEmpty).map(x => "   " + x._1 + " Heap: \n" + x._2.toString).mkString("", "\n", "\n")
-    if (!domainEntries.isEmpty || !nonDomainFunctions.isEmpty)
+    if (allRawHeaps.exists(y => y._2.rawHeapEntries.nonEmpty))
+      finalString += allRawHeaps.filter(y => y._2.rawHeapEntries.nonEmpty).map(x => "   " + x._1 + " Heap: \n" + x._2.toString).mkString("", "\n", "\n")
+    if (domainEntries.nonEmpty || nonDomainFunctions.nonEmpty)
       finalString ++= "   Domains:\n"
-    if (!domainEntries.isEmpty)
+    if (domainEntries.nonEmpty)
       finalString += domainEntries.map(x => x.toString).mkString("", "\n", "\n")
-    if (!nonDomainFunctions.isEmpty)
+    if (nonDomainFunctions.nonEmpty)
       finalString += nonDomainFunctions.map(x => x.toString).mkString("", "\n", "\n")
     finalString
   }
 
   override def withStore(s: Store): SiliconCounterexample = {
-    SiliconResolvedCounterexample(model, s, heap, oldHeaps, program).rawCE
+    SiliconRawCounterexample(model, s, heap, oldHeaps, program)
   }
 }
 
@@ -157,6 +157,9 @@ object SiliconRawCounterexample {
   def detSequences(model: Model): Seq[CECollection] = {
     var res = Map[String, Seq[String]]()
     var tempMap = Map[(String, Seq[String]), String]()
+    // Phase 1: seed `res` with the directly-known sequences (empty, singletons, ranges, and the
+    // skeleton of length-known sequences) and collect the compositional operations (append/take/
+    // drop/index) into `tempMap` for phase 2.
     for ((opName, opValues) <- model.entries) {
       if (opName == "Seq_length") {
         if (opValues.isInstanceOf[MapEntry]) {
@@ -170,23 +173,13 @@ object SiliconRawCounterexample {
             res += (v.toString -> Seq())
           }
         }
-      } else if (opName != "Seq_singleton" && opName != "Seq_range" && opName.startsWith("Seq_")) {
-        if (opValues.isInstanceOf[MapEntry]) {
-          for ((k, v) <- opValues.asInstanceOf[MapEntry].options) {
-            tempMap += ((opName, k.map(x => x.toString)) -> v.toString)
-          }
-        }
-      }
-    }
-    for ((opName, opValues) <- model.entries) {
-      if (opName == "Seq_singleton") {
+      } else if (opName == "Seq_singleton") {
         if (opValues.isInstanceOf[MapEntry]) {
           for ((k, v) <- opValues.asInstanceOf[MapEntry].options) {
             res += (v.toString -> Seq(k(0).toString))
           }
         }
-      }
-      if (opName == "Seq_range") {
+      } else if (opName == "Seq_range") {
         if (opValues.isInstanceOf[MapEntry]) {
           for ((k, v) <- opValues.asInstanceOf[MapEntry].options) {
             if (k(0).isInstanceOf[ConstantEntry] && k(1).isInstanceOf[ConstantEntry]) {
@@ -194,8 +187,16 @@ object SiliconRawCounterexample {
             }
           }
         }
+      } else if (opName.startsWith("Seq_")) {
+        if (opValues.isInstanceOf[MapEntry]) {
+          for ((k, v) <- opValues.asInstanceOf[MapEntry].options) {
+            tempMap += ((opName, k.map(x => x.toString)) -> v.toString)
+          }
+        }
       }
     }
+    // Phase 2: apply the compositional operations until a fixpoint (an operation can only be applied
+    // once its operand sequences are known).
     var found = true
     while (found) {
       found = false
@@ -253,6 +254,7 @@ object SiliconRawCounterexample {
         }
       }
     }
+    // Phase 3: turn each reconstructed collection into a CECollection AST value.
     var ans = Seq[CECollection]()
     res.foreach {
       case (n, s) =>
@@ -359,6 +361,7 @@ object SiliconRawCounterexample {
         }
       }
     }
+    // Phase 3: turn each reconstructed collection into a CECollection AST value.
     var ans = Seq[CECollection]()
     res.foreach {
       case (n, s) =>
@@ -468,6 +471,7 @@ object SiliconRawCounterexample {
         }
       }
     }
+    // Phase 3: turn each reconstructed collection into a CECollection AST value.
     var ans = Seq[CECollection]()
     res.foreach {
       case (n, s) =>
@@ -1064,19 +1068,6 @@ object SiliconResolvedCounterexample {
       }
     }
     namesTranslation
-  }
-
-  def replace(expression: Exp, repl: scala.collection.immutable.Map[Exp, Exp]): Exp = {
-    repl.get(expression) match {
-      case Some(replacement) => replacement
-      case None =>
-        if (expression.subExps.isEmpty) {
-          expression
-        } else {
-          expression
-          //expression.subExps.map(x => replace(x, repl))
-        }
-    }
   }
 
   /**
