@@ -155,11 +155,19 @@ object SiliconRawCounterexample {
     * in the "resolved" CE as only sequences that are used in the method containing the verification error will be mentioned there.
     */
   def detSequences(model: Model): Seq[CECollection] = {
+    val (seed, ops) = seedSequences(model)
+    val res = applySequenceOperations(seed, ops)
+    res.map { case (id, elements) => sequenceToCollection(id, elements) }.toSeq
+  }
+
+  /**
+    * Phase 1: seed `res` with the directly-known sequences (empty, singletons, ranges, and the
+    * skeleton of length-known sequences) and collect the compositional operations (append/take/
+    * drop/index/update) into the returned operation map for [[applySequenceOperations]].
+    */
+  private def seedSequences(model: Model): (Map[String, Seq[String]], Map[(String, Seq[String]), String]) = {
     var res = Map[String, Seq[String]]()
     var tempMap = Map[(String, Seq[String]), String]()
-    // Phase 1: seed `res` with the directly-known sequences (empty, singletons, ranges, and the
-    // skeleton of length-known sequences) and collect the compositional operations (append/take/
-    // drop/index) into `tempMap` for phase 2.
     for ((opName, opValues) <- model.entries) {
       if (opName == "Seq_length") {
         if (opValues.isInstanceOf[MapEntry]) {
@@ -195,8 +203,16 @@ object SiliconRawCounterexample {
         }
       }
     }
-    // Phase 2: apply the compositional operations until a fixpoint (an operation can only be applied
-    // once its operand sequences are known).
+    (res, tempMap)
+  }
+
+  /**
+    * Phase 2: apply the compositional sequence operations until a fixpoint (an operation can only be
+    * applied once its operand sequences are known).
+    */
+  private def applySequenceOperations(seed: Map[String, Seq[String]], seedOps: Map[(String, Seq[String]), String]): Map[String, Seq[String]] = {
+    var res = seed
+    var tempMap = seedOps
     var found = true
     while (found) {
       found = false
@@ -254,16 +270,15 @@ object SiliconRawCounterexample {
         }
       }
     }
-    // Phase 3: turn each reconstructed collection into a CECollection AST value.
-    var ans = Seq[CECollection]()
-    res.foreach {
-      case (n, s) =>
-        val elemTyp: Option[Type] = detASTTypeFromString(n.replaceAll(".*?<(.*)>.*", "$1"))
-        val elems = s.map(e => CounterexampleValue.literal(e, elemTyp))
-        val value = if (elems.isEmpty) ast.EmptySeq(elemTyp.getOrElse(ast.InternalType))() else ast.ExplicitSeq(elems)()
-        ans +:= CECollection(n, value)
-    }
-    ans
+    res
+  }
+
+  /** Phase 3: turn a reconstructed sequence into its CECollection AST value. */
+  private def sequenceToCollection(id: String, elements: Seq[String]): CECollection = {
+    val elemTyp: Option[Type] = detASTTypeFromString(id.replaceAll(".*?<(.*)>.*", "$1"))
+    val elems = elements.map(e => CounterexampleValue.literal(e, elemTyp))
+    val value = if (elems.isEmpty) ast.EmptySeq(elemTyp.getOrElse(ast.InternalType))() else ast.ExplicitSeq(elems)()
+    CECollection(id, value)
   }
 
   /**
@@ -272,6 +287,13 @@ object SiliconRawCounterexample {
     * in the "resolved" CE as only sets that are used in the method containing the verification error will be mentioned there.
     */
   def detSets(model: Model): Seq[CECollection] = {
+    val seed = seedSets(model)
+    val res = applySetOperations(model, seed)
+    res.map { case (id, elements) => setToCollection(id, elements) }.toSeq
+  }
+
+  /** Phase 1: seed `res` with the directly-known sets (empty sets, singletons, and cardinality-zero sets). */
+  private def seedSets(model: Model): Map[String, Set[String]] = {
     var res = Map[String, Set[String]]()
     for ((opName, opValues) <- model.entries) {
       if (opName == "Set_empty") {
@@ -300,6 +322,15 @@ object SiliconRawCounterexample {
         }
       }
     }
+    res
+  }
+
+  /**
+    * Phase 2: extend `seed` by applying, to a fixpoint, first the element operations (unionone and
+    * membership `in`), then the binary operations (union/intersection/difference).
+    */
+  private def applySetOperations(model: Model, seed: Map[String, Set[String]]): Map[String, Set[String]] = {
+    var res = seed
     var tempMap = Map[(String, Seq[String]), String]()
     for ((opName, opValues) <- model.entries) {
       if (opName == "Set_unionone" || opName == "Set_in") {
@@ -361,16 +392,15 @@ object SiliconRawCounterexample {
         }
       }
     }
-    // Phase 3: turn each reconstructed collection into a CECollection AST value.
-    var ans = Seq[CECollection]()
-    res.foreach {
-      case (n, s) =>
-        val elemTyp: Option[Type] = detASTTypeFromString(n.replaceAll(".*?<(.*)>.*", "$1"))
-        val elems = s.filter(_ != "#undefined").toSeq.map(e => CounterexampleValue.literal(e, elemTyp))
-        val value = if (elems.isEmpty) ast.EmptySet(elemTyp.getOrElse(ast.InternalType))() else ast.ExplicitSet(elems)()
-        ans +:= CECollection(n, value)
-    }
-    ans
+    res
+  }
+
+  /** Phase 3: turn a reconstructed set into its CECollection AST value. */
+  private def setToCollection(id: String, elements: Set[String]): CECollection = {
+    val elemTyp: Option[Type] = detASTTypeFromString(id.replaceAll(".*?<(.*)>.*", "$1"))
+    val elems = elements.filter(_ != "#undefined").toSeq.map(e => CounterexampleValue.literal(e, elemTyp))
+    val value = if (elems.isEmpty) ast.EmptySet(elemTyp.getOrElse(ast.InternalType))() else ast.ExplicitSet(elems)()
+    CECollection(id, value)
   }
 
   /**
@@ -379,6 +409,14 @@ object SiliconRawCounterexample {
     * in the "resolved" CE as only multisets that are used in the method containing the verification error will be mentioned there.
     */
   def detMultisets(model: Model): Seq[CECollection] = {
+    val seed = seedMultisets(model)
+    val res = applyMultisetOperations(model, seed)
+    res.map { case (id, counts) => multisetToCollection(id, counts) }.toSeq
+  }
+
+  /** Phase 1: seed `res` (element -> count maps) with the directly-known multisets (empty ones,
+    * singletons, per-element counts, and cardinality-zero multisets). */
+  private def seedMultisets(model: Model): Map[String, scala.collection.immutable.Map[String, Int]] = {
     var res = Map[String, scala.collection.immutable.Map[String, Int]]()
     for ((opName, opValues) <- model.entries) {
       if (opName == "Multiset_empty") {
@@ -416,6 +454,15 @@ object SiliconRawCounterexample {
         }
       }
     }
+    res
+  }
+
+  /**
+    * Phase 2: extend `seed` by applying, to a fixpoint, first the element operation (unionone), then
+    * the binary operations (union/intersection/difference).
+    */
+  private def applyMultisetOperations(model: Model, seed: Map[String, scala.collection.immutable.Map[String, Int]]): Map[String, scala.collection.immutable.Map[String, Int]] = {
+    var res = seed
     var tempMap = Map[(String, Seq[String]), String]()
     for ((opName, opValues) <- model.entries) {
       if (opName == "Multiset_unionone") {
@@ -471,16 +518,15 @@ object SiliconRawCounterexample {
         }
       }
     }
-    // Phase 3: turn each reconstructed collection into a CECollection AST value.
-    var ans = Seq[CECollection]()
-    res.foreach {
-      case (n, s) =>
-        val elemTyp: Option[Type] = detASTTypeFromString(n.replaceAll(".*?<(.*)>.*", "$1"))
-        val elems = s.toSeq.flatMap { case (e, count) => Seq.fill(count)(CounterexampleValue.literal(e, elemTyp)) }
-        val value = if (elems.isEmpty) ast.EmptyMultiset(elemTyp.getOrElse(ast.InternalType))() else ast.ExplicitMultiset(elems)()
-        ans +:= CECollection(n, value)
-    }
-    ans
+    res
+  }
+
+  /** Phase 3: turn a reconstructed multiset (element -> count) into its CECollection AST value. */
+  private def multisetToCollection(id: String, counts: scala.collection.immutable.Map[String, Int]): CECollection = {
+    val elemTyp: Option[Type] = detASTTypeFromString(id.replaceAll(".*?<(.*)>.*", "$1"))
+    val elems = counts.toSeq.flatMap { case (e, count) => Seq.fill(count)(CounterexampleValue.literal(e, elemTyp)) }
+    val value = if (elems.isEmpty) ast.EmptyMultiset(elemTyp.getOrElse(ast.InternalType))() else ast.ExplicitMultiset(elems)()
+    CECollection(id, value)
   }
 
   /**
@@ -490,9 +536,15 @@ object SiliconRawCounterexample {
     * available (e.g. `Map<Int~_Int>`), otherwise the key/value literals are inferred.
     */
   def detMaps(model: Model): Seq[CECollection] = {
+    val seed = seedMaps(model)
+    val res = applyMapOperations(model, seed)
+    res.map { case (id, entries) => mapToCollection(id, entries) }.toSeq
+  }
+
+  /** Phase 1: seed empty maps — `Map_empty` is the empty map for some key/value sort, and any map
+    * whose cardinality is zero is empty as well. */
+  private def seedMaps(model: Model): Map[String, scala.collection.immutable.Map[String, String]] = {
     var res = Map[String, scala.collection.immutable.Map[String, String]]()
-    // Seed empty maps: Map_empty is the empty map for some key/value sort, and any map whose
-    // cardinality is zero is empty as well.
     for ((opName, opValues) <- model.entries) {
       if (opName == "Map_empty") {
         opValues match {
@@ -508,7 +560,19 @@ object SiliconRawCounterexample {
         }
       }
     }
-    // Collect the update facts Map_update(base, key, value) = result.
+    res
+  }
+
+  /**
+    * Phase 2: build up the maps. First apply the update chain `Map_update(base, key, value)` to a
+    * fixpoint (a result map becomes known as soon as its base map is), then reconstruct any maps that
+    * are not built from an update chain (e.g. a bare parameter constrained only via `m[k] == v` /
+    * `k in domain(m)`), analogously to partial sets: the domain `Map_domain(m)` is a set whose members
+    * come from `Set_in` facts, and for each such key `Map_apply(m, k)` gives the value; only keys that
+    * are both in the domain and have a known value are shown.
+    */
+  private def applyMapOperations(model: Model, seed: Map[String, scala.collection.immutable.Map[String, String]]): Map[String, scala.collection.immutable.Map[String, String]] = {
+    var res = seed
     var tempMap = Map[Seq[String], String]()
     for ((opName, opValues) <- model.entries) {
       if (opName == "Map_update") {
@@ -518,7 +582,6 @@ object SiliconRawCounterexample {
         }
       }
     }
-    // Apply updates to a fixpoint: a result map becomes known as soon as its base map is known.
     var progress = true
     while (tempMap.nonEmpty && progress) {
       progress = false
@@ -532,11 +595,6 @@ object SiliconRawCounterexample {
         }
       }
     }
-    // Maps that are not built from an update chain (e.g. a bare parameter constrained only via
-    // `m[k] == v` / `k in domain(m)`) have no entry above. Reconstruct them the way partial sets are
-    // recovered from membership: the domain `Map_domain(m)` is a set whose members come from `Set_in`
-    // facts, and for each such key `Map_apply(m, k)` gives the value. Only keys that are both in the
-    // domain and have a known value are shown (analogous to a set only listing its known members).
     val mapDomain = model.entries.get("Map_domain") match {
       case Some(me: MapEntry) => me.options.collect { case (k, v) if k.nonEmpty => (k(0).toString, v.toString) }
       case _ => Map.empty[String, String]
@@ -558,18 +616,18 @@ object SiliconRawCounterexample {
         res += (mapId -> entries)
       }
     }
-    var ans = Seq[CECollection]()
-    res.foreach {
-      case (n, m) =>
-        val (keyTyp, valueTyp) = detMapTypesFromString(n.replaceAll(".*?<(.*)>.*", "$1"))
-        val maplets: Seq[ast.Exp] = m.toSeq.map { case (k, v) =>
-          ast.Maplet(CounterexampleValue.literal(k, keyTyp), CounterexampleValue.literal(v, valueTyp))()
-        }
-        val value = if (maplets.isEmpty) ast.EmptyMap(keyTyp.getOrElse(ast.InternalType), valueTyp.getOrElse(ast.InternalType))()
-                    else ast.ExplicitMap(maplets)()
-        ans +:= CECollection(n, value)
+    res
+  }
+
+  /** Phase 3: turn a reconstructed map (key -> value) into its CECollection AST value. */
+  private def mapToCollection(id: String, entries: scala.collection.immutable.Map[String, String]): CECollection = {
+    val (keyTyp, valueTyp) = detMapTypesFromString(id.replaceAll(".*?<(.*)>.*", "$1"))
+    val maplets: Seq[ast.Exp] = entries.toSeq.map { case (k, v) =>
+      ast.Maplet(CounterexampleValue.literal(k, keyTyp), CounterexampleValue.literal(v, valueTyp))()
     }
-    ans
+    val value = if (maplets.isEmpty) ast.EmptyMap(keyTyp.getOrElse(ast.InternalType), valueTyp.getOrElse(ast.InternalType))()
+                else ast.ExplicitMap(maplets)()
+    CECollection(id, value)
   }
 
   /**
