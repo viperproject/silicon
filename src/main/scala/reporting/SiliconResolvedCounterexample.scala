@@ -807,104 +807,72 @@ object SiliconRawCounterexample {
   def detPredicate(model: Model, chunk: BasicChunk, predByName: scala.collection.immutable.Map[String, Predicate]): RawHeapEntry = {
     val predName = chunk.id.name
     val references = chunk.args.map(x => evaluateTerm(x, model))
-    var snap: Seq[ModelEntry] = Seq()
-    if (chunk.snap.isInstanceOf[First] || chunk.snap.isInstanceOf[Second] || chunk.snap.isInstanceOf[Var] || chunk.snap.isInstanceOf[Combine]) {
-      snap = evalSnap(chunk.snap, model: Model)
-    }
     val astPred = predByName.get(predName)
-    val insidePredicateMap = evalInsidePredicate(snap, astPred)
+    val insidePredicateMap = evalInsidePredicate(chunk.snap, astPred, model)
     val perm = evalPerm(chunk.perm, model)
     RawHeapEntry(Seq(predName), references.map(x => x.toString), chunk.snap.toString, perm, PredicateType, Some(insidePredicateMap))
   }
 
   /**
-    * Evaluate the snapshot of a predicate.
+    * Recovers the values of the fields held *inside* a (non-abstract) predicate from its snapshot.
+    *
+    * Silicon builds a predicate's snapshot from the body's top-level conjuncts, folded right-
+    * associatively into a tree of [[Combine]]s (see `Consumer.consumeTlcs`): conjunct `i` of `n`
+    * sits at `First(Second^i(snap))`, or at `Second^(n-1)(snap)` for the last one. A field access
+    * `e.field` contributes its value wrapped into the snapshot sort, so the value is recovered by
+    * evaluating `SortWrapper(subSnapshot, sortOf(field))`. A `$Snap.unit` leaf does not mean the
+    * value is missing: `$SnapToT($Snap.unit)` still denotes the field's value.
     */
-  def evalInsidePredicate(snap: Seq[ModelEntry], astPred: Option[Predicate]): scala.collection.immutable.Map[Exp, ModelEntry] = {
-    var ans = scala.collection.immutable.Map[Exp, ModelEntry]()
-    if (astPred.isDefined && !astPred.get.isAbstract) {
-      val predBody = astPred.get.body.get
-      val insPred = snapToBody(predBody, snap)
-      if (snap.length == 0 || (snap.length == 1 && (snap(0).toString.startsWith("$Snap") || snap(0).toString.startsWith("($Snap")))) {
-        ans = scala.collection.immutable.Map[Exp, ModelEntry]()
-      } else {
-        var assignedPredBody = scala.collection.immutable.Map[Exp, ModelEntry]()
-        for ((exp, value) <- insPred) {
-          if (value.toString.startsWith("$Snap") || value.toString.startsWith("($Snap")) {
-            assignedPredBody += resolveBodyEntry(exp, UnspecifiedEntry, assignedPredBody)
-          } else {
-            assignedPredBody += resolveBodyEntry(exp, value, assignedPredBody)
-          }
-        }
-        ans = assignedPredBody
-      }
+  def evalInsidePredicate(snap: Term, astPred: Option[Predicate], model: Model): scala.collection.immutable.Map[Exp, ModelEntry] = {
+    astPred.filterNot(_.isAbstract).flatMap(_.body) match {
+      case Some(body) => collectInsideValues(body, snap, model, scala.collection.immutable.Map.empty)
+      case None => scala.collection.immutable.Map.empty
     }
-    ans
   }
 
   /**
-    * Walks a predicate's body AST (not SMT terms — unlike [[Converter.evaluateTerm]] above) and pairs
-    * the body location reached with the snapshot `value` that belongs to it, following conditionals
-    * and implications by checking their guards against the already-resolved body entries in `lookup`.
+    * Walks a predicate body (or a sub-assertion of it) alongside the snapshot term that represents
+    * it, collecting the value of every accessible field. Conjunctions descend into the [[Combine]]
+    * tree; conditionals and implications follow the branch selected by the values gathered so far.
     */
-  def resolveBodyEntry(exp: Exp, value: ModelEntry, lookup: scala.collection.immutable.Map[Exp, ModelEntry]): (Exp, ModelEntry) = {
-    exp match {
-      case FieldAccessPredicate(predAcc, _) => (predAcc, value)
+  def collectInsideValues(assertion: Exp, snap: Term, model: Model, acc: scala.collection.immutable.Map[Exp, ModelEntry]): scala.collection.immutable.Map[Exp, ModelEntry] = {
+    val conjuncts = assertion.topLevelConjuncts
+    if (conjuncts.length > 1) {
+      conjuncts.zipWithIndex.foldLeft(acc) { case (lookup, (conjunct, idx)) =>
+        collectInsideValues(conjunct, snapshotAt(snap, idx, conjuncts.length), model, lookup)
+      }
+    } else assertion match {
+      case FieldAccessPredicate(fa: ast.FieldAccess, _) =>
+        // The field's value is the snapshot at this point read back at the field's sort. If the
+        // snapshot collapsed to an atomic value the surrounding tree cannot be navigated (there is
+        // no model function for $Snap.first/second), so the value is genuinely not recoverable.
+        val value = evaluateTerm(SortWrapper(snap, symbolConverter.toSort(fa.field.typ)), model) match {
+          case _: OtherEntry => ConstantEntry("#undefined")
+          case entry => entry.asValueEntry
+        }
+        acc + (fa -> value)
+      case ast.Implies(guard, body) =>
+        if (bodyConditionHolds(guard, acc)) collectInsideValues(body, snap, model, acc) else acc
       case CondExp(cond, thn, els) =>
-        if (bodyConditionHolds(cond, lookup)) {
-          resolveBodyEntry(thn, value, lookup)
-        } else {
-          resolveBodyEntry(els, value, lookup)
-        }
-      case ast.Implies(left, right) =>
-        if (bodyConditionHolds(left, lookup)) {
-          resolveBodyEntry(right, value, lookup)
-        } else {
-          (left, ConstantEntry("False"))
-        }
-      case _ => (exp, value)
+        if (bodyConditionHolds(cond, acc)) collectInsideValues(thn, snap, model, acc)
+        else collectInsideValues(els, snap, model, acc)
+      case _ => acc // a pure conjunct contributes $Snap.unit and no field value
     }
+  }
+
+  /**
+    * The snapshot subterm for conjunct `idx` of `total`, given the snapshot `snap` of the whole
+    * (right-associatively combined) conjunction. See [[evalInsidePredicate]].
+    */
+  def snapshotAt(snap: Term, idx: Int, total: Int): Term = {
+    val tail = (0 until idx).foldLeft(snap)((t, _) => Second(t))
+    if (idx == total - 1) tail else First(tail)
   }
 
   def bodyConditionHolds(exp: Exp, lookup: scala.collection.immutable.Map[Exp, ModelEntry]): Boolean = exp match {
     case NeCmp(left, right) => !(lookup.getOrElse(left, ConstantEntry(left.toString)).toString.equalsIgnoreCase(lookup.getOrElse(right, ConstantEntry(right.toString)).toString))
     case ast.EqCmp(left, right) => (lookup.getOrElse(left, ConstantEntry(left.toString)).toString.equalsIgnoreCase(lookup.getOrElse(right, ConstantEntry(right.toString)).toString))
     case _ => false
-  }
-
-  def snapToBody(body: Exp, snap: Seq[ModelEntry]): Seq[(Exp, ModelEntry)] = {
-    if (snap.length == 0) {
-      Seq()
-    } else if (snap.length == 1) {
-      Seq((body, snap(0)))
-    } else {
-      if (body.subExps.length == 2) {
-        Seq((body.subExps(0), snap(0))) ++ snapToBody(body.subExps(1), snap.tail)
-      } else {
-        Seq()
-      }
-    }
-  }
-
-  def evalSnap(term: Term, model: Model): Seq[ModelEntry] = term match {
-    case First(t) =>
-      val subSnap = evalSnap(t, model)
-      if (subSnap(0).isInstanceOf[ApplicationEntry]) {
-        Seq(subSnap(0).asInstanceOf[ApplicationEntry].arguments(0))
-      } else {
-        Seq(UnspecifiedEntry)
-      }
-    case Second(t) =>
-      val subSnap = evalSnap(t, model)
-      if (subSnap(0).isInstanceOf[ApplicationEntry]) {
-        Seq(subSnap(0).asInstanceOf[ApplicationEntry].arguments(1))
-      } else {
-        Seq(UnspecifiedEntry)
-      }
-    case Combine(t1, t2) => evalSnap(t1, model) ++ evalSnap(t2, model)
-    case Var(id, _, _) => Seq(model.entries.getOrElse(id.name, UnspecifiedEntry))
-    case SortWrapper(t, s) => Seq(ConstantEntry(t.toString))
-    case _ => Seq(UnspecifiedEntry)
   }
 
   def detMagicWand(model: Model, chunk: MagicWandChunk): RawHeapEntry = {
