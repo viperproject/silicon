@@ -1,0 +1,78 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Summing over several arrays whose permissions are specified via quantified permissions.
+// With the standard QP algorithm, the exhales of the loop invariant and postcondition are
+// highly sensitive to chunk order; the greedy algorithm handles them uniformly.
+
+domain IArray {
+  function loc(a: IArray, i: Int): Ref
+  function len(a: IArray): Int
+  function first(r: Ref): IArray
+  function second(r: Ref): Int
+
+  axiom all_diff {
+    forall a: IArray, i: Int :: { loc(a, i) }
+      first(loc(a, i)) == a && second(loc(a, i)) == i
+  }
+
+  axiom length_nonneg {
+    forall a: IArray :: len(a) >= 0
+  }
+}
+
+field val: Int
+
+method arraySum(a0: IArray, a1: IArray, a2: IArray, a3: IArray, a4: IArray, a5: IArray, n: Int) returns (res: Int)
+    requires forall j: Int :: 0 <= j && j < n ==> acc(loc(a0, j).val, 2/3)
+    requires len(a0) == n
+    requires forall j: Int :: 0 <= j && j < n ==> acc(loc(a1, j).val, 2/3)
+    requires len(a1) == n
+    requires forall j: Int :: 0 <= j && j < n ==> acc(loc(a2, j).val, 2/3)
+    requires len(a2) == n
+    requires forall j: Int :: 0 <= j && j < n ==> acc(loc(a3, j).val, 2/3)
+    requires len(a3) == n
+    requires forall j: Int :: 0 <= j && j < n ==> acc(loc(a4, j).val, 2/3)
+    requires len(a4) == n
+    requires forall j: Int :: 0 <= j && j < n ==> acc(loc(a5, j).val, 2/3)
+    requires len(a5) == n
+    ensures forall j: Int :: 0 <= j && j < n ==> acc(loc(a0, j).val, 2/3)
+    ensures len(a0) == n
+    ensures forall j: Int :: 0 <= j && j < n ==> acc(loc(a1, j).val, 2/3)
+    ensures len(a1) == n
+    ensures forall j: Int :: 0 <= j && j < n ==> acc(loc(a2, j).val, 2/3)
+    ensures len(a2) == n
+    ensures forall j: Int :: 0 <= j && j < n ==> acc(loc(a3, j).val, 2/3)
+    ensures len(a3) == n
+    ensures forall j: Int :: 0 <= j && j < n ==> acc(loc(a4, j).val, 2/3)
+    ensures len(a4) == n
+    ensures forall j: Int :: 0 <= j && j < n ==> acc(loc(a5, j).val, 2/3)
+    ensures len(a5) == n
+{
+    var i: Int
+    i := 0
+    res := 0
+    while (i < n)
+        invariant forall j: Int :: 0 <= j && j < n ==> acc(loc(a0, j).val, 2/3)
+        invariant len(a0) == n
+        invariant forall j: Int :: 0 <= j && j < n ==> acc(loc(a1, j).val, 2/3)
+        invariant len(a1) == n
+        invariant forall j: Int :: 0 <= j && j < n ==> acc(loc(a2, j).val, 2/3)
+        invariant len(a2) == n
+        invariant forall j: Int :: 0 <= j && j < n ==> acc(loc(a3, j).val, 2/3)
+        invariant len(a3) == n
+        invariant forall j: Int :: 0 <= j && j < n ==> acc(loc(a4, j).val, 2/3)
+        invariant len(a4) == n
+        invariant forall j: Int :: 0 <= j && j < n ==> acc(loc(a5, j).val, 2/3)
+        invariant len(a5) == n
+        invariant 0 <= i && i <= n
+    {
+        res := res + loc(a0, i).val
+        res := res + loc(a1, i).val
+        res := res + loc(a2, i).val
+        res := res + loc(a3, i).val
+        res := res + loc(a4, i).val
+        res := res + loc(a5, i).val
+        i := i + 1
+    }
+}

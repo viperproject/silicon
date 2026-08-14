@@ -45,7 +45,7 @@ trait NonQuantifiedChunk extends GeneralChunk {
 trait QuantifiedChunk extends GeneralChunk {
   val quantifiedVars: Seq[Var]
   val quantifiedVarExps: Option[Seq[ast.LocalVarDecl]]
-  val invs: Option[InverseFunctions]
+  val invs: Seq[InverseFunctions]
   val orgCondition: Term
 
   def snapshotMap: Term

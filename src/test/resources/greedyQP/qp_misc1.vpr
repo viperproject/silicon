@@ -1,0 +1,60 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field val : Int
+
+domain parallelHeaps {
+  function up(x: Ref) : Ref
+  function down(x: Ref) : Ref
+  function up_inv(x: Ref) : Ref
+  function down_inv(x: Ref) : Ref
+
+  function temp(x: Ref) : Ref
+  function temp_inv(x: Ref) : Ref
+
+  function heap(x: Ref) : Int
+  function is_ghost(x:Ref) : Bool
+
+  axiom inv_temp { forall r:Ref :: {temp(r)} temp_inv(temp(r)) == r  && (is_ghost(r) ? temp(r) == r : heap(temp(r)) == -3) }
+}
+
+domain reads {
+  function rd() : Perm
+
+  function rds(i: Int) : Perm
+
+  axiom some { forall i : Int :: {rds(i)} rds(0) == none && rds(i) == rd() * i && (i >= 0 ==> rds(i) < write) }
+  axiom rdPositive { rd() > none }
+}
+
+
+
+
+method clone(data: Ref, count: Ref, ghost: Ref)
+  requires    heap(data) == 0
+           && heap(count) == 0
+           && heap(ghost) == 0
+           && is_ghost(ghost)
+           && acc(data.val, rd())
+           && acc(ghost.val, rd())
+{
+  var t: Int
+
+  inhale forall d: Ref :: false ==> acc(d.val, none)
+
+  inhale acc(temp(ghost).val, write - rds(t))
+  assume t < 1
+
+  if (t >= 0) {
+    /* Known incompleteness of the greedy QP algorithm: the permission expression below refers
+     * to the current permission amount (via perm(...)), which the greedy chunk selection cannot
+     * relate to a single chunk. The standard algorithm verifies this exhale. */
+    //:: ExpectedOutput(exhale.failed:insufficient.permission)
+    exhale acc(up(data).val,
+                 write
+               - rds(t + 1)
+               - ((write - rds(t + 1)) < perm(temp(data).val)
+                      ? (write - rds(t + 1))
+                      : perm(temp(data).val)))
+  }
+}

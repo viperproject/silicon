@@ -194,7 +194,9 @@ class DefaultHeapSupportRules extends HeapSupportRules {
     val field = ass.lhs.field
     val ve = pve dueTo InsufficientPermission(ass.lhs)
     if (s.qpFields.contains(field)) {
-      val exhaleFieldPerm = (s1: State, v1: Verifier, QS: (State, Verifier) => VerificationResult) => {
+      def exhaleFieldPerm(s1: State, v1: Verifier)
+                         (QS: (State, Verifier) => VerificationResult)
+                         : VerificationResult = {
         val (relevantChunks, otherChunks) =
           quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s1.h, BasicChunkIdentifier(field.name))
         val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
@@ -239,12 +241,16 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             createFailure(ve, v1, s3, "sufficient permission")
         }
       }
-      /* See QuantifiedChunkSupport.consume: the extra retry level only serves the greedy
-       * QP modes. */
+      /* See the corresponding comment in QuantifiedChunkSupport.consume: in the greedy QP modes,
+       * the exhale is wrapped in a retry point so that failures lead to chunks being merged
+       * during the state consolidation before retrying (and, for ExhaleMode.MoreCompleteOnDemand,
+       * to falling back to the complete algorithm). Unlike consumes, field assignments have no
+       * enclosing retry point, so without this wrapper the greedy modes would report spurious
+       * failures here. In the standard mode, the wrapper is skipped. */
       if (Verifier.config.exhaleModeQP == ExhaleMode.MoreComplete)
-        exhaleFieldPerm(s, v, Q)
+        exhaleFieldPerm(s, v)(Q)
       else
-        executionFlowController.tryOrFail0(s, v)(exhaleFieldPerm)(Q)
+        executionFlowController.tryOrFail0(s, v)((s1, v1, QS) => exhaleFieldPerm(s1, v1)(QS))(Q)
     } else {
       val description = s"consume ${ass.pos}: $ass"
       chunkSupporter.consume(s, s.h, field, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v, description)((s3, h3, _, v3) => {
@@ -842,7 +848,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
         val eqs = And(chunkArgs.zip(args).map { case (t1, t2) => t1 === t2 })
         And(lhs, eqs)
       case HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain) =>
-        val replaceMap = inverseFunctions.qvarsToInversesOf(chunkArgs).head
+        val replaceMap = inverseFunctions.qvarsToInversesOf(chunkArgs)
         And(lhs.replace(replaceMap), And(imagesOfCodomain.map(_.replace(codomainQVars, chunkArgs))))
     }
   }

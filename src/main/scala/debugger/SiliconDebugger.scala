@@ -101,8 +101,8 @@ case class ProofObligation(s: State,
           s"acc(${receiver}.${qfc.id}, ${perm})"
         } else {
           val varsString = qfc.quantifiedVarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val qvarsString = "forall " + qfc.invs.get.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val varsEqualString = qfc.quantifiedVarExps.get.zip(qfc.invs.get.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
+          val qvarsString = "forall " + qfc.invs.head.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
+          val varsEqualString = qfc.quantifiedVarExps.get.zip(qfc.invs.head.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
           s"forall ${varsString} :: ${qvarsString} :: ${varsEqualString} ==> acc(${qfc.quantifiedVarExps.get.head.name}.${qfc.id}, ${Simplifier.simplify(qfc.permExp.get, true)})"
         }
       case qpc: QuantifiedPredicateChunk =>
@@ -110,8 +110,8 @@ case class ProofObligation(s: State,
           s"acc(${qpc.id}(${qpc.singletonArgExps.head.map(e => Simplifier.simplify(e, true)).mkString(", ")}), ${Simplifier.simplify(qpc.permExp.get, true)})"
         } else {
           val varsString = qpc.quantifiedVarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val qvarsString = "forall " + qpc.invs.get.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val varsEqualString = qpc.quantifiedVarExps.get.zip(qpc.invs.get.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
+          val qvarsString = "forall " + qpc.invs.head.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
+          val varsEqualString = qpc.quantifiedVarExps.get.zip(qpc.invs.head.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
           s"forall ${varsString} :: ${qvarsString} :: ${varsEqualString} ==> acc(${qpc.id}(${qpc.quantifiedVarExps.get.map(_.name).mkString(", ")}), ${Simplifier.simplify(qpc.permExp.get, true)})"
         }
       case qwc: QuantifiedMagicWandChunk =>
@@ -123,9 +123,9 @@ case class ProofObligation(s: State,
           s"acc(${instantiated.toString}, ${permReplaced})"
         } else{
           val varsString = qwc.quantifiedVarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val qvarsString = "forall " + qwc.invs.get.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val varsEqualString = qwc.quantifiedVarExps.get.zip(qwc.invs.get.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
-          val instantiated = shape.replace(shape.subexpressionsToEvaluate(s.program).zip(qwc.invs.get.invertibleExps.get).map(e => e._1 -> Simplifier.simplify(e._2, true)).toMap)
+          val qvarsString = "forall " + qwc.invs.head.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
+          val varsEqualString = qwc.quantifiedVarExps.get.zip(qwc.invs.head.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
+          val instantiated = shape.replace(shape.subexpressionsToEvaluate(s.program).zip(qwc.invs.head.invertibleExps.get).map(e => e._1 -> Simplifier.simplify(e._2, true)).toMap)
           s"forall ${varsString} :: ${qvarsString} :: ${varsEqualString} ==> acc(${instantiated}, ${Simplifier.simplify(qwc.permExp.get, true)})"
         }
     }

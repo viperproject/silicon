@@ -209,7 +209,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     /* In the standard QP mode, quantified chunks are only matched by findChunkWithProvenAliases,
      * i.e. they provably denote the same location(s) and have equal conditions. They can therefore
      * be merged cheaply by summing their permissions and combining their snapshot maps, without
-     * emitting new summarisation axioms (mirrors Silicon master). */
+     * emitting new summarisation axioms. */
     case (l@QuantifiedFieldChunk(id1, fvf1, orgCondition1, condition1, condition1Exp, perm1, perm1Exp, invs1, singletonRcvr1, singletonRcvr1Exp, tag1, hints1),
           r@QuantifiedFieldChunk(_, fvf2, _, _, _, _, _, _, _, _, _, hints2))
         if Verifier.config.exhaleModeQP == ExhaleMode.MoreComplete =>
@@ -240,12 +240,9 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
       val permSumExp = l.permExp.map(p1 => ast.PermAdd(p1, replacedPermExp.get)())
       val combinedHints = l.hints ++ r.hints
       val condExp = l.permExp.map(_ => ast.TrueLit()())
-      val combinedInvs = (l.invs, r.invs) match{
-        case (Some(lInv), Some(rInv)) => Some(lInv.mergeInvFunctions(rInv))
-        case (Some(lInv), None) => Some(lInv)
-        case (None, Some(rInv)) => Some(rInv)
-        case (None, None) => None
-      }
+      /* The merged chunk retains the inverse functions of both origin chunks; see the
+       * documentation of InverseFunctions. */
+      val combinedInvs = l.invs ++ r.invs
       /* The merged chunk may only be considered a singleton chunk if both parts syntactically
        * denote the same single location. In all other cases (e.g. a singleton merged into a
        * genuinely quantified chunk via a tag or original-condition match, which does not guarantee
@@ -368,8 +365,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
              * chunks instead get the pointwise bound below; chunks with neither inverse functions
              * nor a singleton receiver (which can result from merging chunks in the greedy QP
              * modes) get no bound assumption. */
-            if (chunk.invs.isDefined) {
-              val chunkReceivers = chunk.invs.get.qvarsToInversesOf(chunk.quantifiedVars).flatMap(_.values)
+            if (chunk.invs.nonEmpty) {
+              val chunkReceivers = chunk.invs.flatMap(_.qvarsToInversesOf(chunk.quantifiedVars).values)
               val triggers = chunkReceivers.map(r => Trigger(r))
               val currentPermAmount = PermLookup(field.name, pmDef.pm, chunk.quantifiedVars.head)
               v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")

@@ -23,11 +23,15 @@ import viper.silver.ast.AbstractLocalVar
 /** Wrapper for the SymbExLogReport conversion to JSON. */
 object SymbExLogReportWriter {
 
-  private def inverseFunctionsToJSON(invs: InverseFunctions): JsValue = {
-    JsArray(
-      (invs.axiomInversesOfInvertibles.map(a => TermWriter.toJSON(a)) ++
-      invs.axiomInvertiblesOfInverses.map(a => TermWriter.toJSON(a))).toVector
-    )
+  private def inverseFunctionsToJSON(invs: Seq[InverseFunctions]): JsValue = {
+    if (invs.isEmpty)
+      JsNull
+    else
+      JsArray(
+        invs.flatMap(inv =>
+          inv.definitionalAxioms.map(a => TermWriter.toJSON(a))
+        ).toVector
+      )
   }
 
   private def heapChunkToJSON(chunk: Chunk) = chunk match {
@@ -68,7 +72,7 @@ object SymbExLogReportWriter {
         "field_value_function" -> TermWriter.toJSON(fvf),
         "condition" -> TermWriter.toJSON(condition),
         "perm" -> TermWriter.toJSON(perm),
-        "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
+        "invs" -> inverseFunctionsToJSON(invs),
         "receiver" -> receiver.map(TermWriter.toJSON).getOrElse(JsNull),
         "tag" -> JsString(tag.toString),
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
@@ -82,7 +86,7 @@ object SymbExLogReportWriter {
         "predicate_snap_function" -> TermWriter.toJSON(psf),
         "condition" -> TermWriter.toJSON(condition),
         "perm" -> TermWriter.toJSON(perm),
-        "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
+        "invs" -> inverseFunctionsToJSON(invs),
         "singleton_args" -> JsArray(singletonArgs.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).toVector),
         "tag" -> JsString(tag.toString),
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
@@ -95,7 +99,7 @@ object SymbExLogReportWriter {
         "predicate" -> JsString(id.toString),
         "wand_snap_function" -> TermWriter.toJSON(wsf),
         "perm" -> TermWriter.toJSON(perm),
-        "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
+        "invs" -> inverseFunctionsToJSON(invs),
         "singleton_args" -> JsArray(singletonArgs.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).toVector),
         "tag" -> JsString(tag.toString),
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
