@@ -15,6 +15,7 @@ import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, Precond
 import viper.silver.verifier.reasons._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
+import viper.silicon.interfaces.decider.ProofQueryKind
 import viper.silicon.interfaces.state.ChunkIdentifer
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
 import viper.silicon.state._
@@ -561,7 +562,10 @@ object evaluator extends EvaluationRules {
             Q(s2, tQuant, eQuantNew, v1)
           case (s1, _, _, _, _, None, v1) =>
             // This should not happen unless the current path is dead.
-            if (v1.decider.checkSmoke(true)) {
+            if (v1.decider.checkSmoke(true,
+                                      pos = sourceQuant.pos,
+                                      member = s1.currentMember.map(_.name),
+                                      description = Some("smoke check: quantifier body"))) {
               Unreachable()
             } else {
               createFailure(pve.dueTo(InternalReason(sourceQuant, "Quantifier evaluation failed.")), v1, s1, "quantifier could be evaluated")
@@ -707,7 +711,12 @@ object evaluator extends EvaluationRules {
                 else ast.DebugLabelledOld(unfoldingNew.get, debugLabel)(uf.pos, uf.info, uf.errT)
               })
               val s2a = if (Verifier.config.enableDebugging()) s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> s2.h)) else s2
-              v2.decider.assert(IsPositive(tPerm)) { // TODO: Replace with permissionSupporter.assertNotNegative
+              // TODO: Replace with permissionSupporter.assertNotNegative
+              v2.decider.assert(IsPositive(tPerm),
+                                kind = ProofQueryKind.Heap,
+                                pos = ePerm.map(_.pos).getOrElse(ast.NoPosition),
+                                member = s2.currentMember.map(_.name),
+                                description = Some("perm expression: non-negative")) {
                 case true =>
                   joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s2a, v2)((s3, v3, QB) => {
                     val s4 = s3.incCycleCounter(predicate)
@@ -957,7 +966,11 @@ object evaluator extends EvaluationRules {
             Q(s1, MapLookup(baseT, keyT), esNew.map(es => ast.MapLookup(es(0), es(1))(e.pos, e.info, e.errT)), v1)
           case (s1, Seq(baseT, keyT), esNew, v1) =>
             val eNew = esNew.map(es => ast.MapLookup(es(0), es(1))(e.pos, e.info, e.errT))
-            v1.decider.assert(SetIn(keyT, MapDomain(baseT))) {
+            v1.decider.assert(SetIn(keyT, MapDomain(baseT)),
+                              kind = ProofQueryKind.FunctionalCorrectness,
+                              pos = ml.pos,
+                              member = s1.currentMember.map(_.name),
+                              description = Some("map key in domain")) {
               case true => Q(s1, MapLookup(baseT, keyT), eNew, v1)
               case false =>
                 val assertExp = Option.when(withExp)(ast.MapContains(key, base)(ml.pos, ml.info, ml.errT))
@@ -1008,7 +1021,11 @@ object evaluator extends EvaluationRules {
       val indexInBoundsTerm = Less(tIndex, SeqLength(tSeq))
       val indexInBoundsExp = Option.when(withExp)(ast.LtCmp(eIndex, ast.SeqLength(eSeq)())(eIndex.pos, eIndex.info, eIndex.errT))
       val indexInBoundsExpNew = Option.when(withExp)(ast.LtCmp(expNew.get(1), ast.SeqLength(expNew.get(0))())(eIndex.pos, eIndex.info, eIndex.errT))
-      v.decider.assert(indexInBoundsTerm) {
+      v.decider.assert(indexInBoundsTerm,
+                       kind = ProofQueryKind.FunctionalCorrectness,
+                       pos = eIndex.pos,
+                       member = s.currentMember.map(_.name),
+                       description = Some("sequence index < length")) {
         case true => Success()
         case false =>
           if (s.retryLevel == 0 && v.reportFurtherErrors()) v.decider.assume(indexInBoundsTerm, indexInBoundsExp, indexInBoundsExpNew)
@@ -1020,7 +1037,11 @@ object evaluator extends EvaluationRules {
     val indexGeZeroExp = Option.when(withExp)(ast.GeCmp(eIndex, ast.IntLit(0)())(eIndex.pos, eIndex.info, eIndex.errT))
     val indexGeZeroExpNew = Option.when(withExp)(ast.GeCmp(expNew.get(1), ast.IntLit(0)())(eIndex.pos, eIndex.info, eIndex.errT))
     val failureIdxNeg = createFailure(pve dueTo SeqIndexNegative(eSeq, eIndex), v, s, indexGeZeroTerm, indexGeZeroExpNew)
-    v.decider.assert(indexGeZeroTerm) {
+    v.decider.assert(indexGeZeroTerm,
+                     kind = ProofQueryKind.FunctionalCorrectness,
+                     pos = eIndex.pos,
+                     member = s.currentMember.map(_.name),
+                     description = Some("sequence index non-negative")) {
       case true => assertLtSeqLength()
       case false if s.retryLevel == 0 && v.reportFurtherErrors() =>
         v.decider.assume(indexGeZeroTerm, indexGeZeroExp, indexGeZeroExpNew)
@@ -1067,7 +1088,7 @@ object evaluator extends EvaluationRules {
                     recordPossibleTriggers = true,
                     possibleTriggers = Map.empty) // TODO: Why reset possibleTriggers if they are merged with s.possibleTriggers later anyway?
     type R = (State, Seq[Term], Option[Seq[ast.Exp]], Option[(Seq[Term], Option[Seq[ast.Exp]], Seq[Trigger], (Seq[Term], Seq[Quantification]), Option[(InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp])], Map[ast.Exp, Term])])
-    executionFlowController.locallyWithResult[R](s1, v)((s2, v1, QB) => {
+    executionFlowController.locallyWithResult[R](s1, v, description = Some("quantified expression evaluation"))((s2, v1, QB) => {
        val preMark = v1.decider.setPathConditionMark()
       evals(s2, es1, _ => pve, v1)((s3, ts1, es1New, v2) => {
         val bc = And(ts1)
@@ -1215,7 +1236,11 @@ object evaluator extends EvaluationRules {
                              (Q: (State, Term, Verifier) => VerificationResult)
                              : VerificationResult = {
 
-    v.decider.assert(tDivisor !== tZero){
+    v.decider.assert(tDivisor !== tZero,
+                     kind = ProofQueryKind.FunctionalCorrectness,
+                     pos = eDivisor.pos,
+                     member = s.currentMember.map(_.name),
+                     description = Some("non-zero divisor")) {
       case true => Q(s, t, v)
       case false =>
         val (notZeroExp, notZeroExpNew) = if (withExp) {

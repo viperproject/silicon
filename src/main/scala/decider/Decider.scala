@@ -13,6 +13,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider._
 import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
+import viper.silicon.reporting.{ProofQueryCollector, ProofQueryRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Term, _}
 import viper.silicon.utils.ast.{extractPTypeFromExp, simplifyVariableName}
@@ -46,10 +47,17 @@ trait Decider {
 
   def debugVariableTypes: Map[String, PType]
 
-  def pushScope(): Unit
-  def popScope(): Unit
+  def pushScope(member: Option[String] = None, description: Option[String] = None): Unit
+  def popScope(member: Option[String] = None, description: Option[String] = None): Unit
 
-  def checkSmoke(isAssert: Boolean = false): Boolean
+  /** Checks whether the current path conditions are already contradictory. Most such checks serve
+    * to detect infeasible paths, hence the default category; call sites that use a smoke check for
+    * a different purpose should override `kind` accordingly. */
+  def checkSmoke(isAssert: Boolean = false,
+                 pos: ast.Position = ast.NoPosition,
+                 member: Option[String] = None,
+                 description: Option[String] = None,
+                 kind: ProofQueryKind = ProofQueryKind.PathInfeasibility): Boolean
 
   def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp])): Unit
   def setPathConditionMark(): Mark
@@ -67,13 +75,23 @@ trait Decider {
   def assume(assumptions: InsertionOrderedSet[(Term, Option[DebugExp])], enforceAssumption: Boolean = false, isDefinition: Boolean = false): Unit
   def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean): Unit
 
-  def check(t: Term, timeout: Int): Boolean
+  def check(t: Term, timeout: Int,
+            kind: ProofQueryKind,
+            pos: ast.Position = ast.NoPosition,
+            member: Option[String] = None,
+            description: Option[String] = None): Boolean
 
   /* TODO: Consider changing assert such that
    *         1. It passes State and Operations to the continuation
    *         2. The implementation reacts to a failing assertion by e.g. a state consolidation
    */
-  def assert(t: Term, timeout: Option[Int] = None)(Q:  Boolean => VerificationResult): VerificationResult
+  def assert(t: Term,
+             kind: ProofQueryKind,
+             timeout: Option[Int] = None,
+             pos: ast.Position = ast.NoPosition,
+             member: Option[String] = None,
+             description: Option[String] = None
+            )(Q: Boolean => VerificationResult): VerificationResult
 
   def fresh(id: String, sort: Sort, ptype: Option[PType]): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
@@ -233,19 +251,41 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     /* Assumption scope handling */
 
-    def pushScope(): Unit = {
+    def pushScope(member: Option[String] = None, description: Option[String] = None): Unit = {
       //val commentRecord = new CommentRecord("push", null, null)
       //val sepIdentifier = symbExLog.openScope(commentRecord)
       pathConditions.pushScope()
+      val t0 = System.nanoTime()
       _prover.push(timeout = Verifier.config.pushTimeout.toOption)
+      val durMs = (System.nanoTime() - t0) / 1e6
+      if (Verifier.config.recordProofQueries.isDefined)
+        ProofQueryCollector.record(ProofQueryRecord(
+          kind        = QueryKind.Push,
+          member      = member,
+          pos         = ast.NoPosition,
+          category    = ProofQueryKind.ScopeManagement,
+          durationMs  = durMs,
+          succeeded   = true,
+          description = description))
       //symbExLog.closeScope(sepIdentifier)
     }
 
-    def popScope(): Unit = {
+    def popScope(member: Option[String] = None, description: Option[String] = None): Unit = {
       //val commentRecord = new CommentRecord("pop", null, null)
       //val sepIdentifier = symbExLog.openScope(commentRecord)
+      val t0 = System.nanoTime()
       _prover.pop()
+      val durMs = (System.nanoTime() - t0) / 1e6
       pathConditions.popScope()
+      if (Verifier.config.recordProofQueries.isDefined)
+        ProofQueryCollector.record(ProofQueryRecord(
+          kind        = QueryKind.Pop,
+          member      = member,
+          pos         = ast.NoPosition,
+          category    = ProofQueryKind.ScopeManagement,
+          durationMs  = durMs,
+          succeeded   = true,
+          description = description))
       //symbExLog.closeScope(sepIdentifier)
     }
 
@@ -361,18 +401,43 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     /* Asserting facts */
 
-    def checkSmoke(isAssert: Boolean = false): Boolean = {
+    def checkSmoke(isAssert: Boolean = false,
+                   pos: ast.Position = ast.NoPosition,
+                   member: Option[String] = None,
+                   description: Option[String] = None,
+                   kind: ProofQueryKind = ProofQueryKind.PathInfeasibility): Boolean = {
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
-      prover.check(timeout) == Unsat
+      val t0  = System.nanoTime()
+      val res = prover.check(timeout) == Unsat
+      val dur = (System.nanoTime() - t0) / 1e6
+      if (Verifier.config.recordProofQueries.isDefined)
+        ProofQueryCollector.record(ProofQueryRecord(
+          kind        = QueryKind.Check,
+          member      = member,
+          pos         = pos,
+          category    = kind,
+          durationMs  = dur,
+          succeeded   = res,
+          description = description))
+      res
     }
 
-    def check(t: Term, timeout: Int): Boolean = deciderAssert(t, Some(timeout))
+    def check(t: Term, timeout: Int,
+              kind: ProofQueryKind,
+              pos: ast.Position = ast.NoPosition,
+              member: Option[String] = None,
+              description: Option[String] = None): Boolean =
+      deciderAssert(t, Some(timeout), kind, pos, member, description, queryKind = QueryKind.Check)
 
-    def assert(t: Term, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
-              (Q: Boolean => VerificationResult)
-              : VerificationResult = {
+    def assert(t: Term,
+               kind: ProofQueryKind,
+               timeout: Option[Int] = Verifier.config.assertTimeout.toOption,
+               pos: ast.Position = ast.NoPosition,
+               member: Option[String] = None,
+               description: Option[String] = None
+              )(Q: Boolean => VerificationResult): VerificationResult = {
 
-      val success = deciderAssert(t, timeout)
+      val success = deciderAssert(t, timeout, kind, pos, member, description, queryKind = QueryKind.Assert)
 
       // If the SMT query was not successful, store it (possibly "overwriting"
       // any previously saved query), otherwise discard any query we had saved
@@ -386,12 +451,29 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       Q(success)
     }
 
-    private def deciderAssert(t: Term, timeout: Option[Int]) = {
+    private def deciderAssert(t: Term, timeout: Option[Int],
+                               kind: ProofQueryKind,
+                               pos: ast.Position = ast.NoPosition,
+                               member: Option[String] = None,
+                               description: Option[String] = None,
+                               queryKind: QueryKind = QueryKind.Assert) = {
       val assertRecord = new DeciderAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
-      val asserted = isKnownToBeTrue(t)
-      val result = asserted || proverAssert(t, timeout)
+      val alreadyKnown = isKnownToBeTrue(t)
+      val t0     = System.nanoTime()
+      val result = alreadyKnown || proverAssert(t, timeout)
+      val durMs  = (System.nanoTime() - t0) / 1e6
+
+      if (Verifier.config.recordProofQueries.isDefined && !alreadyKnown)
+        ProofQueryCollector.record(ProofQueryRecord(
+          kind        = queryKind,
+          member      = member,
+          pos         = pos,
+          category    = kind,
+          durationMs  = durMs,
+          succeeded   = result,
+          description = description))
 
       symbExLog.closeScope(sepIdentifier)
       result

@@ -286,7 +286,7 @@ object executor extends ExecutionRules {
             type PhaseData = (State, RecordedPathConditions, Set[FunctionDecl], Seq[MacroDecl])
             var phase1data: Vector[PhaseData] = Vector.empty
 
-            (executionFlowController.locally(sBody, v)((s0, v0) => {
+            (executionFlowController.locally(sBody, v, description = Some("loop head: invariant well-definedness check"))((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Check well-definedness of invariant")
                 val mark = v0.decider.setPathConditionMark()
                 produces(s0, freshSnap, invs, ContractNotWellformed, v0)((s1, v1) => {
@@ -296,7 +296,7 @@ object executor extends ExecutionRules {
                                               v1.decider.freshMacros    /* [BRANCH-PARALLELISATION] */)
                   Success()
                 })})
-            combine executionFlowController.locally(sLocal, v)((s0, v0) => {
+            combine executionFlowController.locally(sLocal, v, description = Some("loop head: establish invariant"))((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
                 consumes(s0, invs, false, LoopInvariantNotEstablished, v0)((sLeftover, _, v1) => {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
@@ -304,12 +304,13 @@ object executor extends ExecutionRules {
                     case (result, _) if !result.continueVerification => result
                     case (intermediateResult, (s1, pcs, ff1, fm1)) => /* [BRANCH-PARALLELISATION] ff1, m1 */
                       val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
-                      intermediateResult combine executionFlowController.locally(s2, v1)((s3, v2) => {
+                      intermediateResult combine executionFlowController.locally(s2, v1, description = Some("loop head: execute statements in invariant state"))((s3, v2) => {
                         v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
                         v2.decider.declareAndRecordAsFreshMacros(fm1.filter(!v2.decider.freshMacros.contains(_)))  /* [BRANCH-PARALLELISATION] */
                         v2.decider.assume(pcs.assumptions, Option.when(withExp)(DebugExp.createInstance("Loop invariant", pcs.assumptionExps)), false)
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-                        if (v2.decider.checkSmoke())
+                        if (v2.decider.checkSmoke(member = s3.currentMember.map(_.name),
+                                                  description = Some("smoke check: post-statement")))
                           Success()
                         else {
                           execs(s3, stmts, v2)((s4, v3) => {
@@ -318,7 +319,7 @@ object executor extends ExecutionRules {
                               edgeConditions.foldLeft(Success(): VerificationResult) {
                                 case (result, _) if !result.continueVerification => result
                                 case (intermediateResult, eCond) =>
-                                  intermediateResult combine executionFlowController.locally(s4, v3)((s5, v4) => {
+                                  intermediateResult combine executionFlowController.locally(s4, v3, description = Some("loop head: edge-condition well-definedness"))((s5, v4) => {
                                     eval(s5, eCond, WhileFailed(eCond), v4)((_, _, _, _) =>
                                       Success())
                                   })
@@ -475,7 +476,10 @@ object executor extends ExecutionRules {
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
         executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
-          if (v1.decider.checkSmoke(true))
+          if (v1.decider.checkSmoke(true,
+                                    pos = assert.pos,
+                                    member = s1.currentMember.map(_.name),
+                                    description = Some("smoke check: assert statement")))
             QS(s1.copy(h = s.h), v1)
           else
             createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(withExp)(a))

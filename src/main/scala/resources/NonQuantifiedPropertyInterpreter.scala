@@ -8,13 +8,15 @@ package viper.silicon.resources
 
 import viper.silicon.Map
 import viper.silicon.interfaces.state._
+import viper.silicon.interfaces.decider.ProofQueryKind
 import viper.silicon.state.terms.Term
 import viper.silicon.state.{QuantifiedBasicChunk, terms}
 import viper.silicon.utils.ast.{BigAnd, replaceVarsInExp}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 
-class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) extends PropertyInterpreter {
+class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier,
+                                        member: Option[String] = None) extends PropertyInterpreter {
 
   protected case class Info(pm: Map[ChunkPlaceholder, GeneralChunk], resourceID: ResourceID) {
     def addMapping(cp: ChunkPlaceholder, ch: GeneralChunk) = Info(pm + (cp -> ch), resourceID)
@@ -120,7 +122,13 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
                                     otherwise: PropertyExpression[K],
                                     info: Info): (Term, Option[ast.Exp]) = {
     val conditionTerm = buildPathCondition(condition, info)._1
-    if (verifier.decider.check(conditionTerm, Verifier.config.checkTimeout())) {
+    /* The query is not a proof obligation: it decides which of the two branches of a conditional
+     * sub-property (e.g. the permission upper bound of `permUpperBoundDiseq`) has to be built. */
+    if (verifier.decider.check(conditionTerm,
+                               Verifier.config.checkTimeout(),
+                               kind = ProofQueryKind.Heap,
+                               member = member,
+                               description = Some("chunk property: select branch of conditional sub-property"))) {
       buildPathCondition(thenDo, info)
     } else {
       buildPathCondition(otherwise, info)
