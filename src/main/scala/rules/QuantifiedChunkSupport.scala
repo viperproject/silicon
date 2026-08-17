@@ -1726,11 +1726,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
      * the assertion to check is recorded by tookEnoughCheck.
      */
 
-    val tookEnoughCheck = if (false && untouchedChunks.size == relevantChunks.size) {
-      permsNeeded === NoPerm
-    } else {
+    val tookEnoughCheck =
       Forall(codomainQVars, Implies(condition, permsNeeded === NoPerm), Nil)
-    }
     v.decider.prover.comment("Final check if taken enough permissions")
     success =
       if (success.isComplete || v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0)) /* This check is a must-check, i.e. an assert */)
