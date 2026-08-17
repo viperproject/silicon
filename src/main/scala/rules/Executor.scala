@@ -602,7 +602,7 @@ object executor extends ExecutionRules {
               }
               s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> oldHeap)
             } else {
-              s3.oldHeaps
+              s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1))
             }
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = newOldHeaps)
             produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2)((s5, v3) => {
