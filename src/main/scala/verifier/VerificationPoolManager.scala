@@ -71,15 +71,38 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
   }
 
   private def teardownWorkerPool(): Unit = {
-    if (workerVerifiers != null) {
-      workerVerifiers foreach (_.stop())
+    // attempt every teardown step even if an earlier one fails: aborting the teardown half-way
+    // would leak the prover processes of the workers that have not been stopped yet. This matters
+    // in particular for cancelled verifications, where the teardown runs on an interrupted thread
+    // and a blocking step (e.g. waiting for a destroyed prover process) may throw
+    // InterruptedException. The first failure is rethrown after all steps have been attempted.
+    var firstFailure: Option[Throwable] = None
+    def attempt(step: => Unit): Unit = {
+      try {
+        step
+      } catch {
+        case e: Exception => if (firstFailure.isEmpty) firstFailure = Some(e)
+      }
+    }
 
-      threadPool.shutdown()
-      threadPool.awaitTermination(10, TimeUnit.SECONDS)
+    if (workerVerifiers != null) {
+      workerVerifiers foreach (worker => attempt(worker.stop()))
+
+      attempt(threadPool.shutdown())
+      attempt(threadPool.awaitTermination(10, TimeUnit.SECONDS))
     }
 
     if (workerVerifierPool != null) {
-      workerVerifierPool.close()
+      attempt(workerVerifierPool.close())
+    }
+
+    firstFailure foreach {
+      case e: InterruptedException =>
+        // the flag was cleared when `e` was thrown; restore it instead of rethrowing so that the
+        // remaining teardown of the enclosing verifier is not aborted by this expected exception:
+        Thread.currentThread().interrupt()
+        mainVerifier.logger.warn("interrupted while tearing down the verifier pool", e)
+      case e => throw e
     }
   }
 
