@@ -1,0 +1,123 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+//:: IgnoreFile(/carbon/issue/91/)
+
+field f: Int
+
+method bfind_orig(S: Seq[Ref], x: Int, p: Perm) returns (index: Int)
+  requires p > none && p < write
+  requires forall i: Int, j: Int :: i in [0..|S|) && j in [0..|S|) && i != j ==> S[i] != S[j]
+  requires forall i: Int :: {S[i].f} i in [0..|S|)  ==> acc(S[i].f, p)
+  requires forall i: Int :: {S[i].f} i in [0..|S|-1)  ==> S[i].f < S[i + 1].f
+  ensures forall i: Int :: {S[i].f} i in [0..|S|) ==> acc(S[i].f, p)
+  ensures index in [-1..|S|)
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  //:: MissingOutput(postcondition.violated:assertion.false, /silicon/issue/34/)
+  ensures index in [0..|S|) ==> S[index].f == x
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures index == -1 ==> (forall i: Int :: {S[i].f} i in [0..|S|) ==> S[i].f != x)
+{
+  if(|S| == 0) {
+    index := -1
+  } elseif (|S|==1) {
+    index := x == S[0].f ? 0 : -1
+  } else {
+    var k:Int
+    inhale 0<k && k<|S|-1
+
+    if (S[k].f < x) {
+      index := bfind_orig(S[0..k], x, p)
+    } else {
+      index := bfind_orig(S[k..|S|], x, p)
+    }
+  }
+}
+
+method bfind_fixed_ineq(S: Seq[Ref], x: Int, p: Perm) returns (index: Int)
+  requires p > none && p < write
+  requires forall i: Int, j: Int :: i in [0..|S|) && j in [0..|S|) && i != j ==> S[i] != S[j]
+  requires forall i: Int :: {S[i]} 0 <= i && i < |S| ==> acc(S[i].f, p)
+  requires forall i: Int, j: Int :: {S[i], S[j]}
+              0 <= i && i < j && j < |S| ==> S[i].f < S[j].f // [FIXED] Global inequalities
+  ensures forall i: Int :: {S[i]} 0 <= i && i < |S| ==> acc(S[i].f, p)
+  ensures -1 <= index && index < |S|
+  ensures 0 <= index && index < |S| ==> S[index].f == x
+  ensures index == -1 ==> (forall i: Int :: {S[i]} 0 <= i && i < |S| ==> S[i].f != x)
+{
+  if (|S| == 0) {
+    index := -1
+  } elseif (|S|==1) {
+    index := x == S[0].f ? 0 : -1
+  } else {
+    var k:Int
+    inhale 0<k && k<|S|-1
+
+    if (x < S[k].f) { // [FIXED] Inequality
+      index := bfind_fixed_ineq(S[0..k], x, p/2) // [FIXED] framing (p/2)
+    } else {
+      index := bfind_fixed_ineq(S[k..|S|], x, p/2) // [FIXED] framing
+      index := index + (index == -1 ? 0 : k) // [FIXED] Index shift
+    }
+  }
+}
+
+/* Copy of bfind_fixed_ineq, but uses range expressions `i in [a..b)`
+ * instead of inequalities `a <= i && i < b`.
+ */
+method bfind_fixed_seqin(S: Seq[Ref], x: Int, p: Perm) returns (index: Int)
+  requires p > none && p < write
+  requires forall i: Int, j: Int :: i in [0..|S|) && j in [0..|S|) && i != j ==> S[i] != S[j]
+  requires forall i: Int :: {S[i]} i in [0..|S|) ==> acc(S[i].f, p)
+  requires forall i: Int, j: Int :: {S[i], S[j]} i in [0..j) && j in [i..|S|) ==> S[i].f < S[j].f
+  ensures forall i: Int :: {S[i]} i in [0..|S|) ==> acc(S[i].f, p)
+  ensures index in [-1..|S|)
+  ensures index in [0..|S|) ==> S[index].f == x
+  ensures index == -1 ==> (forall i: Int :: {S[i]} i in [0..|S|) ==> S[i].f != x)
+{
+  if (|S| == 0) {
+    index := -1
+  } elseif (|S|==1) {
+    index := x == S[0].f ? 0 : -1
+  } else {
+    var k:Int
+    inhale 0<k && k<|S|-1
+
+    if (x < S[k].f) {
+      index := bfind_fixed_ineq(S[0..k], x, p/2)
+    } else {
+      index := bfind_fixed_ineq(S[k..|S|], x, p/2)
+      index := index + (index == -1 ? 0 : k)
+    }
+  }
+}
+
+/* Copy of bfind_fixed_seqin, but uses heap-dependent triggers `S[i].f`
+ * instead of heap-independent triggers `S[i]`.
+ */
+method bfind_fixed_seqin_heap_dep_triggers(S: Seq[Ref], x: Int, p: Perm) returns (index: Int)
+  requires p > none && p < write
+  requires forall i: Int, j: Int :: i in [0..|S|) && j in [0..|S|) && i != j ==> S[i] != S[j]
+  requires forall i: Int :: {S[i].f} i in [0..|S|) ==> acc(S[i].f, p)
+  requires forall i: Int, j: Int :: {S[i].f, S[j].f} i in [0..j) && j in [i..|S|) ==> S[i].f < S[j].f
+  ensures forall i: Int :: {S[i].f} i in [0..|S|) ==> acc(S[i].f, p)
+  ensures index in [-1..|S|)
+  ensures index in [0..|S|) ==> S[index].f == x
+  ensures index == -1 ==> (forall i: Int :: {S[i].f} i in [0..|S|) ==> S[i].f != x)
+{
+  if (|S| == 0) {
+    index := -1
+  } elseif (|S|==1) {
+    index := x == S[0].f ? 0 : -1
+  } else {
+    var k:Int
+    inhale 0<k && k<|S|-1
+
+    if (x < S[k].f) {
+      index := bfind_fixed_ineq(S[0..k], x, p/2)
+    } else {
+      index := bfind_fixed_ineq(S[k..|S|], x, p/2)
+      index := index + (index == -1 ? 0 : k)
+    }
+  }
+}

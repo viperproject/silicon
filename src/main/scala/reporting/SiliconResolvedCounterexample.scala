@@ -679,11 +679,11 @@ object SiliconRawCounterexample {
     // Quantified magic wand instances, summed per (wand id, arguments) like quantified predicates.
     val qpWands = scala.collection.mutable.LinkedHashMap[(String, Seq[String]), Rational]()
     h foreach {
-      case c@BasicChunk(FieldID, _, _, _, _, _, _, _) =>
+      case c@BasicChunk(FieldID, _, _, _, _, _, _, _, _) =>
         heap += detField(model, c)
-      case c@BasicChunk(PredicateID, _, _, _, _, _, _, _) =>
+      case c@BasicChunk(PredicateID, _, _, _, _, _, _, _, _) =>
         heap += detPredicate(model, c, predByName)
-      case c@BasicChunk(id, _, _, _, _, _, _, _) =>
+      case c@BasicChunk(id, _, _, _, _, _, _, _, _) =>
         println("This Basic Chunk couldn't be matched as a CE heap entry!")
       case c: st.QuantifiedFieldChunk =>
         for ((recv, value, perm) <- detQPFieldEntries(c, model)) {
@@ -698,7 +698,7 @@ object SiliconRawCounterexample {
           val key = (c.id.name, args)
           qpPreds(key) = qpPreds.get(key).getOrElse(Rational.zero) + perm
         }
-      case c@MagicWandChunk(_, _, _, _, _, _, _) =>
+      case c@MagicWandChunk(_, _, _, _, _, _, _, _) =>
         heap += detMagicWand(model, c)
       case c: st.QuantifiedMagicWandChunk =>
         for ((args, perm) <- detQPArgEntries(c.quantifiedVars, c.invs, c.singletonArguments, c.perm, model)) {
@@ -764,9 +764,9 @@ object SiliconRawCounterexample {
     * this logic because both are identified by an argument tuple (unlike fields, which also carry a
     * value — see [[detQPFieldEntries]]).
     */
-  def detQPArgEntries(quantifiedVars: Seq[Var], invs: Option[viper.silicon.rules.InverseFunctions],
+  def detQPArgEntries(quantifiedVars: Seq[Var], invs: Seq[viper.silicon.rules.InverseFunctions],
                       singletonArguments: Option[Seq[Term]], perm: Term, model: Model): Seq[(Seq[String], Rational)] = {
-    val invImgNames = invs.toSeq.flatMap(i => (i.inverses ++ i.images).map(_.id.toString))
+    val invImgNames = invs.flatMap(i => (i.inverses ++ i.images).map(_.id.toString))
     var argTuples: Set[Seq[String]] = invImgNames.flatMap { fn =>
       model.entries.get(fn) match {
         case Some(MapEntry(m, _)) => m.keys.map(_.map(_.toString))

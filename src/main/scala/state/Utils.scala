@@ -84,9 +84,7 @@ package object utils {
       case bc: BasicChunk =>
         bc.argsExp.get foreach collect
       case qch: QuantifiedFieldChunk =>
-        qch.singletonRcvrExp.foreach(rcvr => {
-          collect(rcvr)
-        })
+        qch.singletonRcvrExp.foreach(collect)
       case _ =>
     }
 

@@ -548,6 +548,15 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )(exhaleModeConverter)
 
+  val exhaleModeOptionQP: ScallopOption[ExhaleMode] = opt[ExhaleMode]("exhaleModeQP",
+    descr = "Exhale mode for quantified permissions. Options are 0 (greedy), "
+          + "1 (standard complete exhale, default), 2 (greedy, retrying with the complete exhale on failure). "
+          + "The greedy modes also enable tag- and original-condition-based merging of quantified chunks "
+          + "during state consolidation.",
+    default = None,
+    noshort = true
+  )(exhaleModeConverter)
+
   lazy val exhaleMode: ExhaleMode = {
     if (exhaleModeOption.isDefined)
       exhaleModeOption()
@@ -555,6 +564,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       ExhaleMode.MoreComplete
     else
       ExhaleMode.Greedy
+  }
+
+  lazy val exhaleModeQP: ExhaleMode = {
+    if (exhaleModeOptionQP.isDefined)
+      exhaleModeOptionQP()
+    else
+      ExhaleMode.MoreComplete
   }
 
   val unsafeWildcardOptimization: ScallopOption[Boolean] = opt[Boolean]("unsafeWildcardOptimization",

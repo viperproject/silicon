@@ -7,6 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon
+import viper.silicon.Config.ExhaleMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.VerificationResult
@@ -193,51 +194,68 @@ class DefaultHeapSupportRules extends HeapSupportRules {
     val field = ass.lhs.field
     val ve = pve dueTo InsufficientPermission(ass.lhs)
     if (s.qpFields.contains(field)) {
-      val (relevantChunks, otherChunks) =
-        quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s.h, BasicChunkIdentifier(field.name))
-      val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
-      val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v)
-      val s2 = triggerResourceIfNeeded(s, ass.lhs, Seq(tRcvr), eRcvrNew.map(Seq(_)), v)
-      v.decider.clearModel()
-      val result = quantifiedChunkSupporter.removePermissions(
-        s2,
-        relevantChunks,
-        Seq(`?r`),
-        Option.when(withExp)(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())),
-        `?r` === tRcvr,
-        eRcvrNew.map(r => ast.EqCmp(ast.LocalVar(`?r`.id.name, ast.Ref)(), r)()),
-        Some(Seq(tRcvr)),
-        field,
-        FullPerm,
-        Option.when(withExp)(ast.FullPerm()()),
-        chunkOrderHeuristics,
-        v
-      )
-      result match {
-        case (Complete(), s3, remainingChunks) =>
-          val h3 = Heap(remainingChunks ++ otherChunks)
-          val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v)
-          v.decider.prover.comment("Definitional axioms for singleton-FVF's value")
-          val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
-          v.decider.assumeDefinition(smValueDef, debugExp)
-          val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
-            field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, s.program)
-          if (s3.heapDependentTriggers.contains(field)) {
-            val debugExp2 = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString()}.${field.name})"))
-            v.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2)
-          }
-          val s4 = s3.copy(h = h3 + ch)
-          val (debugHeapName, _) = v.getDebugOldLabel(s4, ass.lhs.pos, Some(magicWandSupporter.getEvalHeap(s4)))
-          val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s4
-          Q(s5, v)
-        case (Incomplete(_, _), s3, _) =>
-          createFailure(ve, v, s3, "sufficient permission")
+      def exhaleFieldPerm(s1: State, v1: Verifier)
+                         (QS: (State, Verifier) => VerificationResult)
+                         : VerificationResult = {
+        val (relevantChunks, otherChunks) =
+          quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s1.h, BasicChunkIdentifier(field.name))
+        val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
+        val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v1)
+        val s2 = triggerResourceIfNeeded(s1, ass.lhs, Seq(tRcvr), eRcvrNew.map(Seq(_)), v1)
+        v1.decider.clearModel()
+        val result = quantifiedChunkSupporter.removePermissions(
+          s2,
+          relevantChunks,
+          Seq(`?r`),
+          Option.when(withExp)(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())),
+          `?r` === tRcvr,
+          eRcvrNew.map(r => ast.EqCmp(ast.LocalVar(`?r`.id.name, ast.Ref)(), r)()),
+          Some(Seq(tRcvr)),
+          field,
+          FullPerm,
+          Option.when(withExp)(ast.FullPerm()()),
+          chunkOrderHeuristics,
+          v1
+        )
+        result match {
+          case (Complete(), s3, remainingChunks, untouchedChunks) =>
+            val newTag = Some(quantifiedChunkSupporter.mostCommonTag(relevantChunks.diff(untouchedChunks)).getOrElse(v1.counter(this).next()))  // extract tags from all involved chunks and pick majority
+            val h3 = Heap(remainingChunks ++ untouchedChunks ++ otherChunks)
+            val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v1)
+            v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
+            val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
+            v1.decider.assumeDefinition(smValueDef, debugExp)
+            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
+              field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, newTag, s1.program)
+            if (s3.heapDependentTriggers.contains(field)) {
+              val debugExp2 = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString()}.${field.name})"))
+              v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2)
+            }
+            val s4 = s3.copy(h = h3 + ch)
+            val (debugHeapName, _) = v1.getDebugOldLabel(s4, ass.lhs.pos, Some(magicWandSupporter.getEvalHeap(s4)))
+            val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s4
+            /* The action's continuation must be QS, not Q: otherwise the remainder of the
+             * method runs inside the retryable action, and any later failure re-runs it. */
+            QS(s5, v1)
+          case (Incomplete(_, _), s3, _, _) =>
+            createFailure(ve, v1, s3, "sufficient permission")
+        }
       }
+      /* See the corresponding comment in QuantifiedChunkSupport.consume: in the greedy QP modes,
+       * the exhale is wrapped in a retry point so that failures lead to chunks being merged
+       * during the state consolidation before retrying (and, for ExhaleMode.MoreCompleteOnDemand,
+       * to falling back to the complete algorithm). Unlike consumes, field assignments have no
+       * enclosing retry point, so without this wrapper the greedy modes would report spurious
+       * failures here. In the standard mode, the wrapper is skipped. */
+      if (Verifier.config.exhaleModeQP == ExhaleMode.MoreComplete)
+        exhaleFieldPerm(s, v)(Q)
+      else
+        executionFlowController.tryOrFail0(s, v)((s1, v1, QS) => exhaleFieldPerm(s1, v1)(QS))(Q)
     } else {
       val description = s"consume ${ass.pos}: $ass"
       chunkSupporter.consume(s, s.h, field, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v, description)((s3, h3, _, v3) => {
         val id = BasicChunkIdentifier(field.name)
-        val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tRhs, eRhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)))
+        val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tRhs, eRhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), s3.qpTag)
         chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
           val s5 = s4.copy(h = h4)
           val (debugHeapName, _) = v4.getDebugOldLabel(s5, ass.lhs.pos, Some(magicWandSupporter.getEvalHeap(s5)))
@@ -465,11 +483,11 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
       v.decider.assumeDefinition(smValueDef, debugExp)
       val chunk = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, tArgs,
-        eArgs, FullPerm, Option.when(withExp)(ast.FullPerm()()), sm, s.program)
+        eArgs, FullPerm, Option.when(withExp)(ast.FullPerm()()), sm, None, s.program)
       (chunk, Seq(smValueDef), Option.when(withExp)(Seq(debugExp.get)))
     } else {
       val chunk = MagicWandChunk(MagicWandIdentifier(wand, s.program), s.g.values, tArgs, eArgs, snapshot, FullPerm,
-        Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)))
+        Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), None)
       (chunk, Seq.empty[Term], Option.when(withExp)(Seq.empty[DebugExp]))
     }
   }
@@ -509,7 +527,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
         case _ =>
           val chunkId = ChunkIdentifier(resource, s.program)
           val (resId, snap1) = if (resource.isInstanceOf[ast.Field]) (FieldID, tSnap) else (PredicateID, tSnap.convert(sorts.Snap))
-          val ch = BasicChunk(resId, chunkId.asInstanceOf[BasicChunkIdentifier], tArgs, eArgs, snap1, eSnap, tPerm, ePerm)
+          val ch = BasicChunk(resId, chunkId.asInstanceOf[BasicChunkIdentifier], tArgs, eArgs, snap1, eSnap, tPerm, ePerm, s.qpTag)
           if (mergeAndTrigger) {
             chunkSupporter.produce(s, s.h, ch, v)((s2, h2, v2) => {
               if (resource.isInstanceOf[ast.Predicate] && Verifier.config.enablePredicateTriggersOnInhale() && s2.functionRecorder == NoopFunctionRecorder
