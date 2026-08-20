@@ -1273,7 +1273,7 @@ object evaluator extends EvaluationRules {
     else {
       if (eTriggerSets.head.collect{case fa: ast.FieldAccess => fa; case pa: ast.PredicateAccess => pa; case wand: ast.MagicWand => wand }.nonEmpty ) {
         evalHeapTrigger(s, eTriggerSets.head, pve, v)((s1, ts, v1) =>
-          evalTriggers(s1, eTriggerSets.tail, tTriggersSets :+ ts, pve, v1)(Q))
+          evalTriggers(s1, eTriggerSets.tail, tTriggersSets ++ ts, pve, v1)(Q))
       } else {
         evalTrigger(s, eTriggerSets.head, pve, v)((s1, ts, v1) =>
           evalTriggers(s1, eTriggerSets.tail, tTriggersSets :+ ts, pve, v1)(Q))
@@ -1374,12 +1374,12 @@ object evaluator extends EvaluationRules {
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
         v.decider.assume(pcDelta, Option.when(withExp)(DebugExp.createInstance("pcDeltaExp", children = pcDeltaExp)), enforceAssumption = false)
-        Q(s.copy(functionRecorder = functionRecorder), cachedTriggerTerms ++ remainingTriggerTerms, v)
+        Q(s.copy(functionRecorder = functionRecorder), v.heapSupporter.adaptTriggerTerms(cachedTriggerTerms ++ remainingTriggerTerms, s), v)
       case _ =>
         for (e <- remainingTriggerExpressions)
           v.reporter.report(WarningsDuringVerification(Seq(
             VerifierWarning(s"Might not be able to use trigger $e, since it is not evaluated while evaluating the body of the quantifier", e.pos))))
-        Q(s, cachedTriggerTerms, v)
+        Q(s, v.heapSupporter.adaptTriggerTerms(cachedTriggerTerms, s), v)
     }
   }
 
@@ -1421,65 +1421,36 @@ object evaluator extends EvaluationRules {
   }
 
   def evalHeapTrigger(s: State, exps: Seq[ast.Exp], pve: PartialVerificationError, v: Verifier)
-                     (Q: (State, Seq[Term], Verifier) => VerificationResult) : VerificationResult = {
-    var triggers: Seq[Term] = Seq()
+                     (Q: (State, Seq[Seq[Term]], Verifier) => VerificationResult) : VerificationResult = {
+    /* Each element of `triggers` is one alternative trigger set; heap encodings may
+     * contribute multiple alternative terms per resource access, multiplying the sets. */
+    var triggers: Seq[Seq[Term]] = Seq(Seq())
     var triggerAxioms: Seq[Term] = Seq()
     var smDefs: Seq[SnapshotMapDefinition] = Seq()
+    var sCur = s
 
     exps foreach {
-      case ra: ast.ResourceAccess if s.isUsedAsTrigger(ra.res(s.program)) =>
-        val (axioms, trigs, _, smDef) = generateResourceTrigger(ra, s, pve, v)
-        triggers = triggers ++ trigs
+      case ra: ast.ResourceAccess if v.heapSupporter.handlesResourceTrigger(ra, s) =>
+        val (axioms, trigVariants, smDef, s1) = v.heapSupporter.resourceTriggerVariants(ra, sCur, pve, v)
+        triggers = for (ts <- triggers; variant <- trigVariants) yield ts ++ variant
         triggerAxioms = triggerAxioms ++ axioms
         smDefs = smDefs ++ smDef
+        sCur = s1
       case e => evalTrigger(s.copy(triggerExp = true), Seq(e), pve, v)((_, t, _) => {
-        triggers = triggers ++ t
+        triggers = triggers.map(ts => ts ++ t)
         Success()
       })
     }
 
     val triggerString = exps.mkString(", ")
     v.decider.assume(triggerAxioms, Option.when(withExp)(DebugExp.createInstance(s"Heap Triggers ($triggerString)")), enforceAssumption = false)
-    var fr = s.functionRecorder
+    var fr = sCur.functionRecorder
     for (smDef <- smDefs){
       fr = fr.recordFvfAndDomain(smDef)
     }
-    Q(s.copy(functionRecorder = fr), triggers, v)
+    Q(sCur.copy(functionRecorder = fr), triggers, v)
   }
 
-  private def generateResourceTrigger(ra: ast.ResourceAccess,
-                                      s: State,
-                                      pve: PartialVerificationError,
-                                      v: Verifier)
-  : (Seq[Term], Seq[Term], Term, Seq[SnapshotMapDefinition]) = {
-    var axioms = Seq.empty[Term]
-    var triggers = Seq.empty[Term]
-    var mostRecentTrig: Term = null
-    val resource = ra.res(s.program)
-    val codomainQVars = s.getFormalArgVars(resource, v)
-    val eArgs = ra.args(s.program)
-    val chunkId = ChunkIdentifier(resource, s.program)
-    val (relevantChunks, _) =
-      quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](s.h, chunkId)
-    val optSmDomainDefinitionCondition =
-      if (s.smDomainNeeded) {
-        v.logger.debug("Axiomatisation of an SM domain missing!"); None
-      }
-      else None
-    val (smDef1, smCache1) =
-      quantifiedChunkSupporter.summarisingSnapshotMap(
-        s, resource, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition)
-    val s1 = s.copy(smCache = smCache1)
-
-    evals(s1.copy(triggerExp = true), eArgs, _ => pve, v)((_, tArgs, _, _) => {
-      axioms = axioms ++ smDef1.valueDefinitions
-      mostRecentTrig = ResourceTriggerFunction(resource, smDef1.sm, tArgs, s.program)
-      triggers = triggers :+ mostRecentTrig
-      Success()
-    })
-
-    (axioms, triggers, mostRecentTrig, Seq(smDef1))
-  }
 
   /* Evaluate a sequence of expressions in Order
    * The constructor determines when the evaluation stops
