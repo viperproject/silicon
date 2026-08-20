@@ -17,7 +17,7 @@ trait SymbolConverter {
   def toFunction(function: ast.DomainFunc, prog: ast.Program): terms.Applicable
   def toFunction(function: ast.DomainFunc, sorts: Seq[Sort], prog: ast.Program): terms.DomainFun
 
-  def toFunction(function: ast.Function): terms.HeapDepFun
+  def toFunction(function: ast.Function, program: ast.Program): terms.HeapDepFun
 }
 
 class DefaultSymbolConverter extends SymbolConverter {
@@ -71,7 +71,7 @@ class DefaultSymbolConverter extends SymbolConverter {
     terms.DomainFun(id, inSorts, outSort)
   }
 
-  def toFunction(function: ast.Function): terms.HeapDepFun = {
+  def toFunction(function: ast.Function, program: ast.Program): terms.HeapDepFun = {
     val inSorts = terms.sorts.Snap +: (function.formalArgs map (_.typ) map toSort)
     val outSort = toSort(function.typ)
 

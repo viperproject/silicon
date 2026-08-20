@@ -652,7 +652,7 @@ object evaluator extends EvaluationRules {
                                s2.assertReadAccessOnly /* should currently always be false */ else true)
             consumes(s3, pres, true, _ => pvePre, v2)((s4, snap, v3) => {
               val (stateArgs, snapToRecord) = v3.heapSupporter.functionAppSnapArgs(s3, func, tArgs, snap.get, v3)
-              val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), stateArgs ++ tArgs)
+              val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func, s.program)), stateArgs ++ tArgs)
               val preExp = Option.when(withExp)({
                 DebugExp.createInstance(Some(s"precondition of ${func.name}(${eArgsNew.get.mkString(", ")}) holds"), None, None, InsertionOrderedSet.empty)
               })
@@ -662,10 +662,10 @@ object evaluator extends EvaluationRules {
                 case Some(a) if a.values.contains("opaque") =>
                   val funcAppAnn = fapp.info.getUniqueInfo[AnnotationInfo]
                   funcAppAnn match {
-                    case Some(a) if a.values.contains("reveal") => App(v3.symbolConverter.toFunction(func), stateArgs ++ tArgs)
-                    case _ => App(functionSupporter.limitedVersion(v3.symbolConverter.toFunction(func)), stateArgs ++ tArgs)
+                    case Some(a) if a.values.contains("reveal") => App(v3.symbolConverter.toFunction(func, s.program), stateArgs ++ tArgs)
+                    case _ => App(functionSupporter.limitedVersion(v3.symbolConverter.toFunction(func, s.program)), stateArgs ++ tArgs)
                   }
-                case _ => App(v3.symbolConverter.toFunction(func), stateArgs ++ tArgs)
+                case _ => App(v3.symbolConverter.toFunction(func, s.program), stateArgs ++ tArgs)
               }
               val fr5 =
                 s4.functionRecorder.changeDepthBy(-1)

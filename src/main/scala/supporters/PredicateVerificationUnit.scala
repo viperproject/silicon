@@ -107,7 +107,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
       }
 
       val s = sInit.copy(g = Store(argVars),
-                         h = v.heapSupporter.getEmptyHeap(sInit.program, v),
+                         h = v.heapSupporter.getEmptyHeap(sInit.program, v, mayDefineNewVars = false),
                          oldHeaps = OldHeaps(),
                          functionRecorder = funcRecorder)
 
@@ -141,7 +141,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
 
       this.predicateData(predicate.name).predContents = overallResult
       this.predicateData(predicate.name).params = Some(Seq(snap) ++ argVars.map(_._2._1))
-      this.predicateData(predicate.name).addRecorders(Seq(funcRecorder))
+      this.predicateData(predicate.name).addRecorders(Seq(funcRecorder), Seq())
 
       symbExLog.closeMemberScope()
       Seq(result)
