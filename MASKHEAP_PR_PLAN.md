@@ -68,13 +68,15 @@ the branch must build against master's silver commit. Any silver-side changes th
 depends on need their own silver PR first (check: none known, but verify).
 
 Exit criteria for Phase 1 (status 2026-08-20, merge commit 15844ced):
-- [PENDING] standard `SiliconTests` green on Marco's machine (local 16-file leak set + spot
-  checks all match annotations, incl. new #985 test cases);
+- [DONE] standard `SiliconTests` green (confirmed by Marco, 2026-08-20);
 - [DROPPED] byte-identity reference set (wiped by tmp cleanup; superseded by SiliconTests run);
 - [DONE] maskHeap incompleteness scan: 0/137 — IMPROVED over pre-merge (list_insert.vpr's
   pre-existing timeout dissolved with the merge, now 6s);
 - [DONE] linked-list-qp-append.vpr standard mode: fixed by master (#982), 8s (was >300s).
-Known-issues register is now EMPTY on the maskHeap side.
+Known-issues register is now EMPTY on the maskHeap side. PHASE 1 COMPLETE.
+
+Done since: Config now rejects --counterexample together with --maskHeapMode (scope
+simplification #1).
 
 ## Phase 2 — Kill the mode branches (the bulk; ~1–2 weeks incremental)
 

@@ -769,6 +769,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case _ => Right()
   }
 
+  validateOpt(counterexample, maskHeapMode) {
+    case (Some(_), Some(true)) =>
+      Left(s"Option ${counterexample.name} is not supported in combination with ${maskHeapMode.name}")
+    case _ => Right(())
+  }
+
   validateOpt(numberOfParallelVerifiers) {
     case Some(n) if n <= 0 => Left(s"Number of parallel verifiers must be positive, but $n was provided")
     case _ => Right()
