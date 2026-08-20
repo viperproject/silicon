@@ -1,0 +1,123 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+function foo(xs: Set[Ref], i: Int): Bool
+  requires forall x: Ref :: x in xs ==> acc(x.f)
+
+method test(xs: Set[Ref]) {
+  inhale forall x: Ref :: x in xs ==> acc(x.f)
+  assume forall i: Int :: foo(xs, i)
+  assert forall i: Int :: foo(xs, i)
+}
+
+
+
+define P(xs) forall x: Ref :: x in xs ==> acc(x.f)
+
+function fun01(xs: Set[Ref], i: Int): Bool
+  requires P(xs)
+
+function fun02(xs: Set[Ref], i: Int): Bool
+  requires P(xs)
+
+method test10(xs: Set[Ref], ys: Set[Ref]) {
+  inhale P(xs)
+  inhale P(ys)
+
+  inhale forall j: Int :: fun01(xs, j) == fun02(ys, j)
+  exhale forall j: Int :: fun01(xs, j) == fun02(ys, j)
+}
+
+
+
+
+function bar01(xs: Set[Ref], i: Int): Bool
+  requires P(xs)
+
+function bar02(xs: Set[Ref], i: Int): Int
+  requires P(xs)
+
+method test20(xs: Set[Ref], ys: Set[Ref]) {
+  inhale P(xs)
+  inhale P(ys)
+
+  inhale
+    forall j: Int :: {bar01(xs, bar02(ys, j))}
+                     {foo(xs, j)}
+      bar01(xs, bar02(ys, j)) == foo(xs, j)
+
+  exhale
+    forall j: Int ::
+      bar01(xs, bar02(ys, j)) == foo(xs, j)
+}
+
+
+
+
+domain Matrix {
+  function get(M: Matrix, x: Int, y: Int): Int
+}
+
+field cell_value: Int
+
+domain HeapMatrix {
+  function loc(hm: HeapMatrix, i: Int, j: Int): Ref
+  function height(hm: HeapMatrix): Int
+  function width(hm: HeapMatrix): Int
+  function hm_in_range(hm: HeapMatrix, i: Int, j: Int): Bool
+
+  function rev_loc_hm(cell: Ref): HeapMatrix
+  function rev_loc_i(cell: Ref): Int
+  function rev_loc_j(cell: Ref): Int
+
+  function hm2set(hm: HeapMatrix): Set[Ref]
+
+  axiom heapmat_height {
+    forall hm: HeapMatrix :: { height(hm) } height(hm) >= 0
+  }
+
+  axiom heapmat_width {
+    forall hm: HeapMatrix :: { width(hm) } width(hm) >= 0
+  }
+
+  axiom heapmat_injectivity {
+    forall hm: HeapMatrix, i: Int, j: Int ::
+        { loc(hm, i, j) }
+              rev_loc_hm(loc(hm, i, j)) == hm
+            && rev_loc_i(loc(hm, i, j)) == i
+            && rev_loc_j(loc(hm, i, j)) == j
+  }
+
+  axiom heapmat_in_range {
+      forall hm: HeapMatrix, i: Int, j: Int ::
+        { hm_in_range(hm, i, j) }
+              hm_in_range(hm, i, j) <==>
+                   0 <= i && i < height(hm)
+                && 0 <= j && j < width(hm)
+  }
+
+  axiom heapmat_to_set {
+    forall hm: HeapMatrix, i: Int, j: Int ::
+        { loc(hm, i, j) }
+            hm_in_range(hm, i, j) <==>
+                loc(hm, i, j) in hm2set(hm)
+  }
+}
+
+
+function hm2m(hm: HeapMatrix): Matrix
+    requires forall cell: Ref :: cell in hm2set(hm) ==> acc(cell.cell_value, 1/2)
+    ensures forall i: Int, j: Int ::
+        { loc(hm, i, j).cell_value }
+        { get(result, i, j) }
+            hm_in_range(hm, i, j) ==> get(result, i, j) == loc(hm, i, j).cell_value
+
+
+method MatrixMul(C: HeapMatrix)
+    requires forall cell: Ref :: cell in hm2set(C) ==> acc(cell.cell_value, 1/2)
+{
+    assume forall z: Int :: get(hm2m(C), z, z) == 0
+    assert forall z: Int :: get(hm2m(C), z, z) == 0
+}

@@ -7,6 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
+import viper.silicon.debugger.DebugExp
 
 import scala.collection.{immutable, mutable}
 import viper.silver.ast
@@ -332,7 +333,7 @@ object consumer extends ConsumptionRules {
               })
             })))
 
-      case QuantifiedPermissionAssertion(forall, cond, accPred) =>
+      case qpa@QuantifiedPermissionAssertion(forall, cond, accPred) =>
         val resAcc = accPred.loc
         val eArgs = resAcc.args(s.program)
         val ePerm = accPred.perm
@@ -354,7 +355,8 @@ object consumer extends ConsumptionRules {
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
-        evalQuantified(s, Forall, forall.variables, Seq(cond), ePerm +: eArgs, optTrigger, qid, pve, v) {
+        val s0 = s.copy(functionRecorder = s.functionRecorder.enterQuantifiedExp(qpa))
+        evalQuantified(s0, Forall, forall.variables, Seq(cond), ePerm +: eArgs, optTrigger, qid, pve, v) {
           case (s1, qvars, qvarExps, Seq(tCond), condNew, Some((Seq(tPerm, tArgs@_*), permArgsNew, tTriggers, (auxGlobals, auxNonGlobals), auxExps)), v1) =>
             v1.heapSupporter.consumeQuantified(
               s = s1,
@@ -382,7 +384,10 @@ object consumer extends ConsumptionRules {
               negativePermissionReason = NegativePermission(ePerm),
               notInjectiveReason = QPAssertionNotInjective(resAcc),
               insufficientPermissionReason = insuffReason,
-              v1)((s2, h2, snap, v2) => Q(s2.copy(constrainableARPs = s.constrainableARPs), h2, snap, v2))
+              v1)((s2, h2, snap, v2) => {
+              val s3 = s2.copy(constrainableARPs = s.constrainableARPs, functionRecorder = s2.functionRecorder.leaveQuantifiedExp(qpa))
+              Q(s3, h2, snap, v2)
+            })
           case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(unitTerm()) else None, v1)
         }
 
@@ -478,7 +483,8 @@ object consumer extends ConsumptionRules {
         val termToAssert = t match {
           case Quantification(q, vars, body, trgs, name, isGlob, weight) =>
             val transformed = FunctionPreconditionTransformer.transform(body, s3.program)
-            v2.decider.assume(Quantification(q, vars, transformed, trgs, name+"_precondition", isGlob, weight), Option.when(withExp)(e), eNew)
+            v2.decider.assume(Quantification(q, vars, transformed, trgs, name+"_precondition", isGlob, weight),
+              Option.when(withExp)(DebugExp.createInstance("Function preconditions hold in quantifier " + eNew.toString, true)))
             Quantification(q, vars, Implies(transformed, body), trgs, name, isGlob, weight)
           case _ => t
         }

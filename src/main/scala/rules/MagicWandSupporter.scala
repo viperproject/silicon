@@ -96,7 +96,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                  : VerificationResult = {
     evaluateWandArguments(s, wand, pve, v)((s1, ts, esNew, v1) =>
       Q(s1, MagicWandChunk(MagicWandIdentifier(wand, s.program), s1.g.values, ts, esNew, snap, FullPerm,
-        Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT))), v1)
+        Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), None), v1)
     )
   }
 
@@ -178,7 +178,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                * and thus be unsound. Since fractional wands do not exist it is not necessary to equate their
                * snapshots. Also have a look at the comments in the packageWand and applyWand methods.
                */
-              case (Some(_: MagicWandChunk), Some(_: MagicWandChunk)) => True
+              case (Some(_: MagicWandChunk | _: QuantifiedMagicWandChunk), Some(_: MagicWandChunk | _: QuantifiedMagicWandChunk)) => True
               case (Some(ch1: NonQuantifiedChunk), Some(ch2: NonQuantifiedChunk)) => ch1.snap === ch2.snap
               case (Some(ch1: QuantifiedBasicChunk), Some(ch2: QuantifiedBasicChunk)) => ch1.snapshotMap === ch2.snapshotMap
               case _ => True
@@ -324,64 +324,48 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val bodyVars = wand.subexpressionsToEvaluate(s.program)
 
       evals(s, bodyVars, _ => pve, v)((s2, tArgs, eArgsNew, v2) => {
-        // Currently, the snapshot of a wand differs depending on whether it is a quantified magic wand or not.
-        // Therefore, we have to keep the case distinction here and cannot leave everything but the chunk creation
-        // to the HeapSupporter.
-        val (s3, ch, tPcs, ePcs, v3 ) = if (s2.qpMagicWands.contains(MagicWandIdentifier(wand, s2.program))) {
-          val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
-          val formalVarExps = Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
+        if (Verifier.config.maskHeapMode()) {
+          // maskHeapMode wand encoding: store Combine(freshSnapRoot, snapRhs) in a pred-heap
+          // chunk. At apply time, the lookup's First component is pinned to the apply-time LHS
+          // snapshot. Conserved pcs are kept unpartitioned, since this encoding creates no
+          // MWSFLookup trigger terms that could unlock a quantified pcs bundle.
+          // TODO (wand unification cleanup): adopt the MWSF-based encoding here as well and
+          // route chunk creation through heapSupporter.createWandChunk.
+          val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark).definitionsOnly
+          val argTerm = toSnapTree(tArgs)
+          val newMask = MaskAdd(PredZeroMask, argTerm, FullPerm)
           val snapshotTerm = Combine(freshSnapRoot, snapRhs)
-          val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s2, wand, tArgs, snapshotTerm, v2)
-          v2.decider.prover.comment("Definitional axioms for singleton-SM's value")
-          val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
-          v2.decider.assumeDefinition(smValueDef, debugExp)
-          val ch = if (Verifier.config.maskHeapMode()) {
-            val argTerm = toSnapTree(tArgs)
-            val newMask = MaskAdd(PredZeroMask, argTerm, FullPerm)
-            val newHeap = HeapSingleton(argTerm, snapshotTerm, PredHeapSort)
-            val newChunk = BasicMaskHeapChunk(MagicWandID, MagicWandIdentifier(wand, s.program), newMask, newHeap)
-            newChunk
-          } else {
-            quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, tArgs,
-              eArgsNew, FullPerm, Option.when(withExp)(ast.FullPerm()()), sm, s.program)
-          }
-          val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark).definitionsOnly
-          (s2, ch, conservedPcs.flatMap(_.conditionalized), Option.when(withExp)(conservedPcs.flatMap(_.conditionalizedExp)), v2)
+          val newHeap = HeapSingleton(argTerm, snapshotTerm, PredHeapSort)
+          val newChunk = BasicMaskHeapChunk(MagicWandID, MagicWandIdentifier(wand, s.program), newMask, newHeap)
+          val s3 = s2.copy(packagingWandSnapshots = s2.packagingWandSnapshots.filterNot(_._1 == freshSnapRoot))
+          appendToResults(s3, newChunk, v2.decider.pcs.after(preMark),
+            (conservedPcs.flatMap(_.conditionalized), Option.when(withExp)(conservedPcs.flatMap(_.conditionalizedExp))), v2)
         } else {
-          val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark).definitionsOnly
-          if (Verifier.config.maskHeapMode()) {
-            // In maskHeapMode, store Combine(freshSnapRoot, snapRhs) in PredHeapSort, mirroring the old jar's
-            // approach. At apply time the sorts.Snap branch asserts snapLhs === First(lookup), pinning the
-            // package-time symbolic LHS to the actual apply-time value. This avoids the SMT define-fun
-            // scoping bug where the MWSF forall body would capture the outer constant instead of using its
-            // bound variable.
-            val argTerm = toSnapTree(tArgs)
-            val newMask = MaskAdd(PredZeroMask, argTerm, FullPerm)
-            val snapshotTerm = Combine(freshSnapRoot, snapRhs)
-            val newHeap = HeapSingleton(argTerm, snapshotTerm, PredHeapSort)
-            val newChunk = BasicMaskHeapChunk(MagicWandID, MagicWandIdentifier(wand, s.program), newMask, newHeap)
-            (s2, newChunk, conservedPcs.flatMap(_.conditionalized), Option.when(withExp)(conservedPcs.flatMap(_.conditionalizedExp)), v2)
-          } else {
-            val wandSnapshot = wandSnapshotOpt.get
-            val wandChunk = MagicWandChunk(MagicWandIdentifier(wand, s.program), s2.g.values, tArgs, eArgsNew, wandSnapshot, FullPerm,
-              Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)))
-            // Partition path conditions into a set which include the freshSnapRoot and those which do not
-            val (pcsWithFreshSnapRoot, pcsWithoutFreshSnapRoot) = conservedPcs.flatMap(pcs => pcs.conditionalized).partition(_.contains(freshSnapRoot))
-            val pcsWithoutExp = Option.when(withExp)(filterDebugExpsWithoutSnapshot(conservedPcs.flatMap(pcs => pcs.conditionalizedExp), freshSnapRoot))
-            // For all path conditions which include the freshSnapRoot, add those as part of the definition of the MWSF in the same forall quantifier
-            val pcsQuantified = Forall(
-              freshSnapRoot,
-              And(pcsWithFreshSnapRoot.map {
-                // Remove forall quantifiers with the same quantified variable
-                case Quantification(Forall, v :: Nil, body: Term, _, _, _, _) if v == freshSnapRoot => body
-                case p => p
-              }),
-              Trigger(MWSFLookup(wandSnapshot.mwsf, freshSnapRoot)),
-            )
-            (s2, wandChunk, pcsQuantified +: pcsWithoutFreshSnapRoot, Option.when(withExp)(DebugExp.createInstance("MWSF definition path conditions", pcsQuantified, true) +: pcsWithoutExp.get), v2)
-          }
+        // Partition the conserved PCs here, before any definitions about the new wand chunks are assumed below, so that
+        // the ground value def is not bundled into (and trapped inside) the freshSnapRoot quantifier.
+        val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark).definitionsOnly
+
+        val (pcsWithFreshSnapRoot, pcsWithoutFreshSnapRoot) = conservedPcs.flatMap(pcs => pcs.conditionalized).partition(_.contains(freshSnapRoot))
+        val pcsWithoutExp = Option.when(withExp)(filterDebugExpsWithoutSnapshot(conservedPcs.flatMap(pcs => pcs.conditionalizedExp), freshSnapRoot))
+        // For all path conditions which include the freshSnapRoot, add those as part of the definition of the MWSF in the same forall quantifier
+        val pcsQuantified = Forall(
+          freshSnapRoot,
+          And(pcsWithFreshSnapRoot.map {
+            // Remove forall quantifiers with the same quantified variable
+            case Quantification(Forall, v :: Nil, body: Term, _, _, _, _) if v == freshSnapRoot => body
+            case p => p
+          }),
+          Trigger(MWSFLookup(wandSnapshotOpt.get.mwsf, freshSnapRoot)),
+        )
+
+        val (ch, groundPcs, groundPcsExp) = v2.heapSupporter.createWandChunk(s2, wand, tArgs, eArgsNew, wandSnapshotOpt.get, v2)
+
+        val tPcs = (pcsQuantified +: pcsWithoutFreshSnapRoot) ++ groundPcs
+        val ePcs = Option.when(withExp)(DebugExp.createInstance("MWSF definition path conditions", pcsQuantified, true) +: (pcsWithoutExp.get ++ groundPcsExp.get))
+
+        val s3 = s2.copy(packagingWandSnapshots = s2.packagingWandSnapshots.filterNot(_._1 == freshSnapRoot))
+        appendToResults(s3, ch, v2.decider.pcs.after(preMark), (tPcs, ePcs), v2)
         }
-        appendToResults(s3, ch, v3.decider.pcs.after(preMark), (tPcs, ePcs), v3)
         Success()
       })
     }
@@ -395,8 +379,13 @@ object magicWandSupporter extends SymbolicExecutionRules {
        */
       val freshSnapRoot = freshSnap(sorts.Snap, v1)
 
+      // Record the abstract LHS snapshot so that new declarations created while packaging are parameterized by it
+      // (see State.packagingWandSnapshots); each apply of the resulting wand then gets its own LHS snapshot.
+      val freshSnapshotRootVar = Option.when(withExp)(ast.LocalVar("LHS", ast.InternalType)())
+      val s1WithSnapRoot = s1.copy(packagingWandSnapshots = (freshSnapRoot, freshSnapshotRootVar) +: s1.packagingWandSnapshots)
+
       // Produce the wand's LHS.
-      produce(s1.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1)((sLhs, v2) => {
+      produce(s1WithSnapRoot.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1)((sLhs, v2) => {
         val proofScriptCfg = proofScript.toCfg()
         val emptyHeap = v2.heapSupporter.getEmptyHeap(sLhs.program, v2)
 
@@ -451,7 +440,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
     }
 
     recordedBranches.foldLeft(tempResult)((prevRes, recordedState) => {
-      prevRes && {
+      prevRes combine {
         val (state, branchConditions, branchConditionsExp, conservedPcs, magicWandChunk) = recordedState
         val s1 = state.copy(
           reserveHeaps = state.reserveHeaps.drop(3),
@@ -505,7 +494,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
         // Create copy of the state with a new labelled heap (i.e. `oldHeaps`) called "lhs".
         val s3 = s2.copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> this.getEvalHeap(s1, v2)))
 
-        // If the snapWand is a (wrapped) MagicWandSnapshot then lookup the snapshot of the right-hand side by applying snapLhs.
+        // Look up the RHS snapshot by applying snapLhs to the wand's MWSF (a (wrapped)
+        // MagicWandSnapshot for an individual wand, or an MWSF-sorted lookup for a quantified one).
         val magicWandSnapshotLookup = snapWand.get match {
           case HeapToSnap(hp, MaskAdd(_, args, _), _) if Verifier.config.maskHeapMode() =>
             val lookup = HeapLookup(hp, args)
@@ -519,10 +509,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
             }
           case snapshot: MagicWandSnapshot => snapshot.applyToMWSF(snapLhs.get)
           case SortWrapper(snapshot: MagicWandSnapshot, _) => snapshot.applyToMWSF(snapLhs.get)
-          // Fallback solution for quantified magic wands
-          case predicateLookup: PredicateLookup =>
-            v2.decider.assume(snapLhs.get === First(snapWand.get), Option.when(withExp)(DebugExp.createInstance("Magic wand snapshot", true)))
-            Second(predicateLookup)
+          case t if t.sort == sorts.MagicWandSnapFunction => MWSFLookup(t, snapLhs.get)
           case _ => snapWand.get
         }
 

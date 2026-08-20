@@ -1,0 +1,74 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field val: Int
+
+domain IArray {
+  function loc(a: IArray, i: Int): Ref
+  function loc_limited(a: IArray, i: Int): Ref
+  function len(a: IArray): Int
+  function first(r: Ref): IArray
+  function second(r: Ref): Int
+
+  axiom limited {
+    forall a: IArray, i: Int :: {loc(a, i)}
+      loc(a,i) == loc_limited(a,i)
+  } 
+  
+  axiom all_diff {
+    forall a: IArray, i: Int :: {loc(a, i)}
+      first(loc(a, i)) == a && second(loc(a, i)) == i
+  }
+
+  axiom length_nonneg {
+    forall a: IArray :: len(a) >= 0
+  }
+
+  axiom loc_inject {
+    forall a: IArray, i: Int, j: Int :: { loc(a, i), loc(a, j) }
+      i >= 0 && j >= 0 && i < len(a) && j < len(a) && i != j ==> loc(a, i) != loc(a, j)
+  }
+
+  axiom loc_limited_inject {
+    forall a: IArray, i: Int, j: Int :: { loc_limited(a, i), loc_limited(a, j) }
+      i >= 0 && j >= 0 && i < len(a) && j < len(a) && i != j ==> loc_limited(a, i) != loc_limited(a, j)
+  }
+}
+
+method test01(a: IArray, n: Int)
+  requires n > 5
+  requires forall i: Int :: i in [0..n) ==> acc(loc(a, i).val)
+  ensures  forall i: Int :: i in [0..n) ==> acc(loc(a, i).val)
+  ensures  loc(a, 1).val == loc(a, 0).val + old(loc(a, 1).val)
+{
+  loc(a, 1).val := loc(a, 0).val + loc(a, 1).val
+}
+
+method test02(a1: IArray, a2: IArray, n: Int)
+  requires a1 != a2
+  requires forall i: Int :: i in [0..n) ==> acc(loc(a1, i).val, 1/3)
+  requires forall i: Int :: i in [0..n) ==> acc(loc(a2, i).val, 1/3)
+{
+  assert forall i: Int :: i in [0..n) ==> loc(a1, i) != loc(a2, i)
+}
+
+method test03(a: IArray, left: Int, right: Int, pw1: Seq[Int], pw2: Seq[Int]) {
+  inhale left == 0
+  inhale right <= len(a)
+
+  inhale 0 <= left && left < right && right < len(a)
+
+  inhale forall i: Int :: i in [left..right+1) ==> acc(loc_limited(a, i).val)
+
+  inhale |pw1| == |pw2| && |pw2| == right + 1 - left
+  inhale forall i: Int :: 0 <= i && i < |pw1| ==> left <= pw1[i] && pw1[i] <= right
+  inhale forall i: Int :: 0 <= i && i < |pw2| ==> left <= pw2[i] && pw2[i] <= right
+
+  // ad hoc triggering to avoid matching loops - this should be revisited (or perhaps dropped from the example)
+  inhale forall j: Int :: {loc(a,j).val} 0 <= j - left && j - left < |pw1| ==> loc(a, j).val == loc_limited(a, pw1[j - left]).val
+  inhale forall j: Int :: {loc(a, pw2[j])} 0 <= j && j < |pw2| ==> loc_limited(a, j + left).val == loc(a, pw2[j]).val
+
+  assert forall j: Int :: {loc(a, pw1[j])} 0 <= j && j < |pw1| ==> loc(a, j + left).val == loc(a, pw1[j]).val
+  // ! Note that even the current trigger has a matching loop (which seems difficult to avoid) ! This works essentially only if this is the last line of the test file...
+  assert forall k: Int :: {loc(a,k)} 0 <= k - left && k - left < |pw2| ==> loc_limited(a, k).val == loc(a, pw2[k - left]).val
+}

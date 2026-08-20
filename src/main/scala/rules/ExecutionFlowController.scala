@@ -139,10 +139,18 @@ object executionFlowController extends ExecutionFlowRules {
           case _ =>
             Verifier.config.exhaleMode != ExhaleMode.Greedy
         }
+        val temporaryMCEQP = s0.currentMember.flatMap(AnnotationSupporter.getExhaleModeQP(_, v.reporter)) match {
+          case Some(ExhaleMode.Greedy) =>
+            false
+          case Some(ExhaleMode.MoreComplete) | Some(ExhaleMode.MoreCompleteOnDemand) =>
+            true
+          case _ =>
+            Verifier.config.exhaleModeQP != ExhaleMode.Greedy
+        }
 
-        action(s0.copy(retrying = true, retryLevel = s.retryLevel, moreCompleteExhale = temporaryMCE), v, (s1, r, v1) => {
+        action(s0.copy(retrying = true, retryLevel = s.retryLevel, moreCompleteExhale = temporaryMCE, moreCompleteExhaleQP = temporaryMCEQP), v, (s1, r, v1) => {
           v1.symbExLog.closeScope(sepIdentifier)
-          Q(s1.copy(retrying = false, moreCompleteExhale = s0.moreCompleteExhale), r, v1)
+          Q(s1.copy(retrying = false, moreCompleteExhale = s0.moreCompleteExhale, moreCompleteExhaleQP = s0.moreCompleteExhaleQP), r, v1)
         })
       }
 

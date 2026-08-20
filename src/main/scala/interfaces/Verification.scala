@@ -6,7 +6,7 @@
 
 package viper.silicon.interfaces
 
-import viper.silicon.debugger.{DebugAxiom, DebugExp, DebugExpPrintConfiguration}
+import viper.silicon.debugger.{DebugAxiom, DebugExp}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.reporting._

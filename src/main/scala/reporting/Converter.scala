@@ -251,12 +251,21 @@ object Converter {
     }
   }
 
-  def evaluateTerm(term: Term, model: Model): ExtractedModelEntry = {
+  /**
+    * Evaluates a Silicon term against the given SMT model. `env` binds (quantified) variables to
+    * already-evaluated values, which is used e.g. to evaluate a quantified chunk's permission and
+    * value terms for a concrete receiver. This is the single term-evaluation facility used by the
+    * counterexample machinery; it handles snapshots, function applications, boolean connectives,
+    * comparisons, collection membership, and permission arithmetic.
+    */
+  def evaluateTerm(term: Term, model: Model, env: Map[Var, ExtractedModelEntry] = Map.empty): ExtractedModelEntry = {
     term match {
       case Unit              => UnprocessedModelEntry(ConstantEntry(snapUnitId))
       case IntLiteral(x)     => LitIntEntry(x)
       case t: BooleanLiteral => LitBoolEntry(t.value)
-      case Null              => VarEntry(model.entries(nullRefId).toString, sorts.Ref)
+      // With a partial model (model.partial), the null entry may be absent; fall back to the id.
+      case Null              => VarEntry(model.entries.get(nullRefId).map(_.toString).getOrElse(nullRefId), sorts.Ref)
+      case v: Var if env.contains(v) => env(v)
       case Var(_, sort, _) =>
         val key: String = term.toString
         val entry: Option[ModelEntry] = model.entries.get(key)
@@ -277,7 +286,7 @@ object Converter {
         }
         val toSort = app.resultSort
         val argEntries: Seq[ExtractedModelEntry] = args
-          .map(t => evaluateTerm(t, model))
+          .map(t => evaluateTerm(t, model, env))
 
         val argsFinal = argEntries.map {
           case UnprocessedModelEntry(entry) => entry
@@ -286,13 +295,13 @@ object Converter {
         getFunctionValue(model, fname, argsFinal, toSort)
 
       case Combine(p0, p1) =>
-        val p0Eval = evaluateTerm(p0, model).asValueEntry
-        val p1Eval = evaluateTerm(p1, model).asValueEntry
+        val p0Eval = evaluateTerm(p0, model, env).asValueEntry
+        val p1Eval = evaluateTerm(p1, model, env).asValueEntry
         val entry = ApplicationEntry("$Snap.combine", Seq(p0Eval, p1Eval))
         UnprocessedModelEntry(entry)
 
       case First(p) =>
-        val sub = evaluateTerm(p, model)
+        val sub = evaluateTerm(p, model, env)
         sub match {
           case UnprocessedModelEntry(ApplicationEntry(name, args)) =>
             if (name == "$Snap.combine") {
@@ -305,7 +314,7 @@ object Converter {
         }
 
       case Second(p) =>
-        val sub = evaluateTerm(p, model)
+        val sub = evaluateTerm(p, model, env)
         sub match {
           case UnprocessedModelEntry(ApplicationEntry(name, args)) =>
             if (name == "$Snap.combine") {
@@ -318,7 +327,7 @@ object Converter {
         }
 
       case SortWrapper(t, to) =>
-        val sub = evaluateTerm(t, model)
+        val sub = evaluateTerm(t, model, env)
         val fromSortName: String = termconverter.convert(t.sort)
         val toSortName: String = termconverter.convert(to)
         val fname = s"$$SortWrappers.${fromSortName}To$toSortName"
@@ -334,21 +343,140 @@ object Converter {
       case PredicateLookup(predname, psf, args) =>
         val lookupFuncName: String = s"$$PSF.lookup_$predname"
         val snap = toSnapTree.apply(args)
-        val snapVal = evaluateTerm(snap, model).asValueEntry
-        val psfVal = evaluateTerm(psf, model).asValueEntry
+        val snapVal = evaluateTerm(snap, model, env).asValueEntry
+        val psfVal = evaluateTerm(psf, model, env).asValueEntry
         val arg = Seq(psfVal, snapVal)
         getFunctionValue(model, lookupFuncName, arg, sorts.Snap)
+
+      case l: Lookup =>
+        val toSort = l.fvf.sort match {
+          case fvfSort: sorts.FieldValueFunction => fvfSort.codomainSort
+          case _ => sorts.Snap
+        }
+        val fvfVal = evaluateTerm(l.fvf, model, env).asValueEntry
+        val atVal = evaluateTerm(l.at, model, env).asValueEntry
+        getFunctionValue(model, s"$$FVF.lookup_${l.field}", Seq(fvfVal, atVal), toSort)
+
+      case SeqLength(s) =>
+        getFunctionValue(model, "Seq_length", Seq(evaluateTerm(s, model, env).asValueEntry), sorts.Int)
+
+      case SetIn(e, s) =>
+        getFunctionValue(model, "Set_in", Seq(evaluateTerm(e, model, env).asValueEntry, evaluateTerm(s, model, env).asValueEntry), sorts.Bool)
+
+      case Ite(cond, thn, els) =>
+        evaluateTerm(cond, model, env) match {
+          case LitBoolEntry(true)  => evaluateTerm(thn, model, env)
+          case LitBoolEntry(false) => evaluateTerm(els, model, env)
+          case _                   => OtherEntry(term.toString, "condition not evaluable")
+        }
+
+      case Not(t0) =>
+        evaluateTerm(t0, model, env) match {
+          case LitBoolEntry(b) => LitBoolEntry(!b)
+          case _               => OtherEntry(term.toString, "not evaluable")
+        }
+      case And(ts) =>
+        val rs = ts.map(t0 => evaluateTerm(t0, model, env))
+        if (rs.exists { case LitBoolEntry(false) => true; case _ => false }) LitBoolEntry(false)
+        else if (rs.forall { case LitBoolEntry(true) => true; case _ => false }) LitBoolEntry(true)
+        else OtherEntry(term.toString, "not evaluable")
+      case Or(ts) =>
+        val rs = ts.map(t0 => evaluateTerm(t0, model, env))
+        if (rs.exists { case LitBoolEntry(true) => true; case _ => false }) LitBoolEntry(true)
+        else if (rs.forall { case LitBoolEntry(false) => true; case _ => false }) LitBoolEntry(false)
+        else OtherEntry(term.toString, "not evaluable")
+
+      case AtMost(t0, t1)  => intComparison(t0, t1, model, env)(_ <= _)
+      case AtLeast(t0, t1) => intComparison(t0, t1, model, env)(_ >= _)
+      case Less(t0, t1)    => intComparison(t0, t1, model, env)(_ < _)
+      case Greater(t0, t1) => intComparison(t0, t1, model, env)(_ > _)
+      case BuiltinEquals(t0, t1) =>
+        val e0 = evaluateTerm(t0, model, env)
+        val e1 = evaluateTerm(t1, model, env)
+        (e0, e1) match {
+          case (_: OtherEntry, _) | (_, _: OtherEntry) => OtherEntry(term.toString, "not evaluable")
+          case _                                       => LitBoolEntry(e0.toString == e1.toString)
+        }
+
+      case NoPerm                 => LitPermEntry(Rational.zero)
+      case FullPerm               => LitPermEntry(Rational.one)
+      case FractionPermLiteral(r) => LitPermEntry(Rational(r.numerator, r.denominator))
+      case FractionPerm(t0, t1) =>
+        (evaluateTerm(t0, model, env), evaluateTerm(t1, model, env)) match {
+          case (LitIntEntry(n), LitIntEntry(d)) if d != 0 => LitPermEntry(Rational(n, d))
+          case _                                          => OtherEntry(term.toString, "not evaluable")
+        }
+      case PermPlus(t0, t1)  => permArithmetic(t0, t1, model, env)(_ + _)
+      case PermMinus(t0, t1) => permArithmetic(t0, t1, model, env)(_ - _)
+      case PermTimes(t0, t1) => permArithmetic(t0, t1, model, env)(_ * _)
+      case PermMin(t0, t1)   => permArithmetic(t0, t1, model, env)((a, b) => if (a < b) a else b)
+
+      // Integer arithmetic. Div/Mod follow the SMT-LIB `div`/`mod` (Euclidean) semantics that
+      // Silicon translates them to, so the results agree with the solver's model.
+      case Plus(t0, t1)  => intArithmetic(t0, t1, model, env)(_ + _)
+      case Minus(t0, t1) => intArithmetic(t0, t1, model, env)(_ - _)
+      case Times(t0, t1) => intArithmetic(t0, t1, model, env)(_ * _)
+      case Div(t0, t1)   => intDivMod(t0, t1, model, env)(euclideanDiv)
+      case Mod(t0, t1)   => intDivMod(t0, t1, model, env)(euclideanMod)
+
+      // Multiset containment: `e in ms` is the count of `e` in `ms`.
+      case MultisetCount(ms, e) =>
+        getFunctionValue(model, "Multiset_count",
+          Seq(evaluateTerm(ms, model, env).asValueEntry, evaluateTerm(e, model, env).asValueEntry), sorts.Int)
+
+      // Map operations. `r in domain(m)` desugars to SetIn(r, MapDomain(m)), so evaluating the
+      // domain to its set value lets the existing SetIn case take over.
+      case md: MapDomain =>
+        getFunctionValue(model, "Map_domain", Seq(evaluateTerm(md.p, model, env).asValueEntry), md.sort)
+      case MapLookup(base, key) =>
+        getFunctionValue(model, "Map_apply",
+          Seq(evaluateTerm(base, model, env).asValueEntry, evaluateTerm(key, model, env).asValueEntry), term.sort)
+      case mc: MapCardinality =>
+        getFunctionValue(model, "Map_card", Seq(evaluateTerm(mc.p, model, env).asValueEntry), sorts.Int)
+
       case _ => OtherEntry(term.toString, "unhandled")
     }
   }
 
+  private def euclideanMod(a: BigInt, b: BigInt): BigInt = { val r = a % b; if (r < 0) r + b.abs else r }
+  private def euclideanDiv(a: BigInt, b: BigInt): BigInt = (a - euclideanMod(a, b)) / b
+
+  private def intArithmetic(t0: Term, t1: Term, model: Model, env: Map[Var, ExtractedModelEntry])
+                           (op: (BigInt, BigInt) => BigInt): ExtractedModelEntry =
+    (evaluateTerm(t0, model, env), evaluateTerm(t1, model, env)) match {
+      case (LitIntEntry(a), LitIntEntry(b)) => LitIntEntry(op(a, b))
+      case _                                => OtherEntry(s"integer arithmetic on $t0 and $t1", "not evaluable")
+    }
+
+  private def intDivMod(t0: Term, t1: Term, model: Model, env: Map[Var, ExtractedModelEntry])
+                       (op: (BigInt, BigInt) => BigInt): ExtractedModelEntry =
+    (evaluateTerm(t0, model, env), evaluateTerm(t1, model, env)) match {
+      case (LitIntEntry(_), LitIntEntry(b)) if b == 0 => OtherEntry(s"division of $t0 by zero", "not evaluable")
+      case (LitIntEntry(a), LitIntEntry(b))           => LitIntEntry(op(a, b))
+      case _                                          => OtherEntry(s"division of $t0 by $t1", "not evaluable")
+    }
+
+  private def intComparison(t0: Term, t1: Term, model: Model, env: Map[Var, ExtractedModelEntry])
+                           (op: (BigInt, BigInt) => Boolean): ExtractedModelEntry =
+    (evaluateTerm(t0, model, env), evaluateTerm(t1, model, env)) match {
+      case (LitIntEntry(a), LitIntEntry(b)) => LitBoolEntry(op(a, b))
+      case _                                => OtherEntry(s"comparison of $t0 and $t1", "not evaluable")
+    }
+
+  private def permArithmetic(t0: Term, t1: Term, model: Model, env: Map[Var, ExtractedModelEntry])
+                            (op: (Rational, Rational) => Rational): ExtractedModelEntry =
+    (evaluateTerm(t0, model, env), evaluateTerm(t1, model, env)) match {
+      case (LitPermEntry(a), LitPermEntry(b)) => LitPermEntry(op(a, b))
+      case _                                  => OtherEntry(s"permission arithmetic on $t0 and $t1", "not evaluable")
+    }
+
   def extractHeap(h: Iterable[Chunk], model: Model): ExtractedHeap = {
     var entries: Vector[HeapEntry] = Vector()
     h foreach {
-      case c @ BasicChunk(FieldID, _, _, _, _, _, _, _) =>
+      case c @ BasicChunk(FieldID, _, _, _, _, _, _, _, _) =>
         val entry = extractField(c, model)
         entries = entries :+ entry
-      case c @ BasicChunk(PredicateID, _, _, _, _, _, _, _) =>
+      case c @ BasicChunk(PredicateID, _, _, _, _, _, _, _, _) =>
         val entry = extractPredicate(c, model)
         entries = entries :+ entry
       case c: BasicChunk =>
@@ -359,7 +487,7 @@ object Converter {
         val fieldname = c.id.name 
        
         try { // many things can go wrong but if they do, we cannot infer anything anyways
-          val recvsort = c.singletonRcvr.get.sort
+          val recvsort = c.singletonRcvr.head.sort
           val receivers = (0 to 10).map(x => VarEntry(s"$$Ref!val!$x", recvsort))
           val recv = VarEntry("$Ref!val!0", sorts.Ref)
           val fieldsort = c.fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort

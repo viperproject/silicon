@@ -1,0 +1,90 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+field g: Int
+
+predicate p1(a:Ref) {
+	acc(a.g)
+}
+
+predicate p2(a:Ref, b:Int) {
+	acc(a.g)
+}
+
+//independent field
+method m1(r:Ref, xs: Seq[Ref], i:Int)
+{
+	var c:Int := 2
+	inhale forall x:Ref :: x in xs ==> acc(p2(x, i)) && (i > 0 ==> (acc(x.f) && x.f > 0))
+	assert(c == 2)
+	exhale forall x:Ref :: x in xs ==> acc(p2(x, i)) && (i > 0 ==> (acc(x.f) && x.f > 0))
+	assert (c == 2)
+}
+
+
+//independent predicates
+//same predicate, different fix parameter
+method m2(r:Ref, xs:Seq[Ref], i:Int)
+requires !(r in xs)
+requires acc(p2(r, i))
+ensures acc(p2(r, i))
+{
+	inhale forall x:Ref :: x in xs ==> acc(p2(x, i)) && (i > 0 ==> (acc(x.f) && x.f > 0))
+	unfold p2(r, i)
+	fold p2(r, i)
+	exhale forall x:Ref :: x in xs ==> acc(p2(x, i)) && (i > 0 ==> (acc(x.f) && x.f > 0))
+	unfold p2(r, i)
+	fold p2(r, i)
+}
+
+
+//same predicate, same fix parameter, not in condition
+method m3(r:Ref, xs:Seq[Ref], i:Int)
+requires !(r in xs)
+requires acc(p2(r, -1))
+ensures acc(p2(r, -1))
+{
+	inhale forall x:Ref :: x in xs ==> acc(p2(x, i)) && (i > 0 ==> (acc(x.f) && x.f > 0))
+	unfold p2(r, -1)
+	fold p2(r, -1)
+	exhale forall x:Ref :: x in xs ==> acc(p2(x, i)) && (i > 0 ==> (acc(x.f) && x.f > 0))
+	unfold p2(r, -1)
+	fold p2(r, -1)
+}
+
+
+//different predicate
+method m4(r:Ref, xs:Seq[Ref], i:Int)
+ requires acc(p1(r))
+ requires r in xs
+ requires i > 0
+ ensures acc(p1(r))
+ {
+ 	inhale forall x:Ref :: x in xs ==> acc(p2(x, i)) && (i > 0 ==> (acc(x.f) && x.f > 0))
+ 	unfold p1(r)
+ 	fold p1(r)
+ 	assert(r.f > 0)
+ 	exhale forall x:Ref :: x in xs ==> acc(p2(x, i)) && (i > 0 ==> (acc(x.f) && x.f > 0))
+ 	unfold p1(r)
+ 	fold p1(r)
+ 	//:: ExpectedOutput(assert.failed:insufficient.permission)
+    assert(r.f > 0)
+ }
+
+method m5(r:Ref, r2:Ref, xs:Seq[Ref], i:Int)
+ requires acc(r.f)
+ requires acc(r2.f)
+ requires acc(r2.f) --* r2 != null && acc(r2.g) && r2.g == i
+ requires acc(r.f) --* r != null && acc(r.g) && r.g == i
+ {
+
+    inhale forall x:Ref :: x in xs ==> acc(p2(x, i)) && (i > 0 ==> acc(x.f) && x.f > 0)
+    apply acc(r.f) --* r != null && acc(r.g) && r.g == i
+    assert(r.g == i)
+    package acc(r.f) --* r != null && acc(r.g) && r.g == i
+    exhale forall x:Ref :: x in xs ==> acc(p2(x, i)) && (i > 0 ==> acc(x.f) && x.f > 0)
+    apply  acc(r2.f) --* r2 != null && acc(r2.g) && r2.g == i
+    assert (r2.g == i)
+    package  acc(r2.f) --* r2 != null && acc(r2.g) && r2.g == i
+ }

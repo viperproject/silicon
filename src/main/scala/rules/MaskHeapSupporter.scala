@@ -10,7 +10,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.Decider
 import viper.silicon.interfaces.VerificationResult
-import viper.silicon.interfaces.state.{ChunkIdentifer, MaskHeapChunk}
+import viper.silicon.interfaces.state.{Chunk, ChunkIdentifer, MaskHeapChunk}
 import viper.silicon.resources.{FieldID, MagicWandID, PredicateID}
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.sorts.{HeapSort, MaskSort, PredHeapSort, PredMaskSort, WandHeapSort}
@@ -1229,6 +1229,25 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                                        tArgs: Seq[Term],
                                        eArgs: Option[Seq[ast.Exp]],
                                        v: Verifier): State = {
+    s
+  }
+
+  override def createWandChunk(s: State,
+                               wand: ast.MagicWand,
+                               tArgs: Seq[Term],
+                               eArgs: Option[Seq[ast.Exp]],
+                               snapshot: terms.MagicWandSnapshot,
+                               v: Verifier): (Chunk, Seq[Term], Option[Seq[DebugExp]]) = {
+    /* In maskHeapMode, wand chunks are created directly in packageWand (they store the
+     * packaged snapshot pair rather than an MWSF), so this hook is never invoked.
+     * TODO (wand unification cleanup): adopt the MWSF-based encoding and move the maskHeap
+     * chunk creation here. */
+    sys.error("createWandChunk is not used in maskHeapMode")
+  }
+
+  override def triggerWandIfNeeded(s: State, wand: ast.MagicWand, chWand: Chunk, v: Verifier): State = {
+    /* Wand chunks are BasicMaskHeapChunks in maskHeapMode; there is no quantified wand
+     * chunk variant that would require triggering. */
     s
   }
 

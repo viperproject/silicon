@@ -30,8 +30,9 @@ final case class State(g: Store = Store(),
                        h: Heap = Heap(),
                        program: ast.Program,
                        currentMember: Option[ast.Member],
-                       predicateData: Map[ast.Predicate, PredicateData],
-                       functionData: Map[ast.Function, FunctionData],
+                       currentBlock: Option[(String, Integer)], // (block label, path id)
+                       predicateData: Map[String, PredicateData],
+                       functionData: Map[String, FunctionData],
                        oldHeaps: OldHeaps = Map.empty,
 
                        parallelizeBranches: Boolean = false,
@@ -44,6 +45,7 @@ final case class State(g: Store = Store(),
 
                        constrainableARPs: InsertionOrderedSet[Var] = InsertionOrderedSet.empty,
                        quantifiedVariables: Stack[(Var, Option[ast.AbstractLocalVar])] = Nil,
+                       packagingWandSnapshots: Stack[(Var, Option[ast.AbstractLocalVar])] = Nil,
                        retrying: Boolean = false,
                        underJoin: Boolean = false,
                        functionRecorder: FunctionRecorder = NoopFunctionRecorder,
@@ -75,13 +77,15 @@ final case class State(g: Store = Store(),
                        smCache: SnapshotMapCache = SnapshotMapCache.empty,
                        pmCache: PmCache = Map.empty,
                        smDomainNeeded: Boolean = false,
+                       qpTag: Option[Int] = None,
                        /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
-                       predicateSnapMap: Map[ast.Predicate, terms.Sort] = Map.empty,
-                       predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]] = Map.empty,
+                       predicateSnapMap: Map[String, terms.Sort] = Map.empty,
+                       predicateFormalVarMap: Map[String, Seq[terms.Var]] = Map.empty,
                        retryLevel: Int = 0,
                        /* ast.Field, ast.Predicate, or MagicWandIdentifier */
                        heapDependentTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet.empty,
                        moreCompleteExhale: Boolean = false,
+                       moreCompleteExhaleQP: Boolean = false,
                        moreJoins: JoinMode = JoinMode.Off)
     extends Mergeable[State] {
 
@@ -109,7 +113,7 @@ final case class State(g: Store = Store(),
   def getFormalArgVars(res: ast.Resource, v: Verifier): Seq[Var] = {
     res match {
       case _: ast.Field => Seq(`?r`)
-      case p: ast.Predicate => predicateFormalVarMap(p)
+      case p: ast.Predicate => predicateFormalVarMap(p.name)
       case w: ast.MagicWand =>
         val bodyVars = w.subexpressionsToEvaluate(program)
         bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
@@ -129,6 +133,8 @@ final case class State(g: Store = Store(),
   val mayAssumeUpperBounds: Boolean = {
     currentMember.isEmpty || !currentMember.get.isInstanceOf[ast.Function] || Verifier.config.respectFunctionPrePermAmounts()
   }
+
+  def setCurrentBlock(b: (String, Integer)) = copy(currentBlock = Some(b))
 
   val isLastRetry: Boolean = retryLevel == 0
 
@@ -170,7 +176,7 @@ final case class State(g: Store = Store(),
     functionRecorder.arguments.fold(Seq.empty[(Var, Option[ast.AbstractLocalVar])])(d => d)
 
   def relevantQuantifiedVariables(filterPredicate: Var => Boolean): Seq[(Var, Option[ast.AbstractLocalVar])] = (
-       functionRecorderQuantifiedVariables()
+       functionRecorderQuantifiedVariables() ++ packagingWandSnapshots.filter(x => filterPredicate(x._1))
     ++ quantifiedVariables.filter(x => filterPredicate(x._1))
   )
 
@@ -183,8 +189,9 @@ final case class State(g: Store = Store(),
     Sanitizer.replaceFreeVariablesInExpression(e, varMapping.map(vm => vm._1 -> vm._2.get), Set())
   }
 
+  // Unlike the filtered overload (used for inverse functions), this also includes packagingWandSnapshots.
   lazy val relevantQuantifiedVariables: Seq[(Var, Option[ast.AbstractLocalVar])] =
-    relevantQuantifiedVariables(_ => true)
+    functionRecorderQuantifiedVariables() ++ packagingWandSnapshots ++ quantifiedVariables
 
   override val toString = s"${this.getClass.getSimpleName}(...)"
 }
@@ -197,6 +204,7 @@ object State {
     s1 match {
       /* Decompose state s1 */
       case State(g1, h1, program, member,
+                 block,
                  predicateData,
                  functionData,
                  oldHeaps1,
@@ -205,6 +213,7 @@ object State {
                  methodCfg1, invariantContexts1,
                  constrainableARPs1,
                  quantifiedVariables1,
+                 packagingWandSnapshots1,
                  retrying1,
                  underJoin1,
                  functionRecorder1,
@@ -215,21 +224,23 @@ object State {
                  permissionScalingFactor1, permissionScalingFactorExp1, isEvalInOld,
                  reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1, isInPackage1,
                  ssCache1, assertReadAccessOnly1,
-                 qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
+                 qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1, qpTag1,
                  predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
-                 moreCompleteExhale, moreJoins) =>
+                 moreCompleteExhale, moreCompleteExhaleQP, moreJoins) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
           case State(`g1`, `h1`,
                      `program`, `member`,
+                     `block`,
                      `predicateData`, `functionData`,
-                     `oldHeaps1`,
+                     oldHeaps2,
                      `parallelizeBranches1`,
                      `recordVisited1`, `visited1`,
                      `methodCfg1`, `invariantContexts1`,
                      constrainableARPs2,
                      quantifiedVariables2,
+                     packagingWandSnapshots2,
                      `retrying1`,
                      `underJoin1`,
                      functionRecorder2,
@@ -238,38 +249,44 @@ object State {
                      triggerExp2,
                      `partiallyConsumedHeap1`,
                      `permissionScalingFactor1`, `permissionScalingFactorExp1`, `isEvalInOld`,
-                     `reserveHeaps1`, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`, `isInPackage1`,
+                     `reserveHeaps1`, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`,`isInPackage1`,
                      ssCache2, `assertReadAccessOnly1`,
-                     `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, `smDomainNeeded1`,
+                     `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, `smDomainNeeded1`, qpTag1,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
-                     moreCompleteExhale2, `moreJoins`) =>
+                     moreCompleteExhale2, moreCompleteExhaleQP2, `moreJoins`) =>
 
+            val oldHeaps3 = oldHeaps1 ++ oldHeaps2
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
             val constrainableARPs3 = constrainableARPs1 ++ constrainableARPs2
             val quantifiedVariables3 = (quantifiedVariables1 ++ quantifiedVariables2).distinct
+            val packagingWandSnapshots3 = (packagingWandSnapshots1 ++ packagingWandSnapshots2).distinct
 
             val smCache3 = smCache1.union(smCache2)
             val pmCache3 = pmCache1 ++ pmCache2
 
             val ssCache3 = ssCache1 ++ ssCache2
             val moreCompleteExhale3 = moreCompleteExhale || moreCompleteExhale2
+            val moreCompleteExhaleQP3 = moreCompleteExhaleQP || moreCompleteExhaleQP2
 
             assert(conservedPcs1.length == conservedPcs2.length)
             val conservedPcs3 = conservedPcs1
               .zip(conservedPcs1)
               .map({ case (pcs1, pcs2) => (pcs1 ++ pcs2).distinct })
 
-            s1.copy(functionRecorder = functionRecorder3,
+            s1.copy(oldHeaps = oldHeaps3,
+                    functionRecorder = functionRecorder3,
                     possibleTriggers = possibleTriggers3,
                     triggerExp = triggerExp3,
                     constrainableARPs = constrainableARPs3,
                     quantifiedVariables = quantifiedVariables3,
+                    packagingWandSnapshots = packagingWandSnapshots3,
                     ssCache = ssCache3,
                     smCache = smCache3,
                     pmCache = pmCache3,
                     moreCompleteExhale = moreCompleteExhale3,
+                    moreCompleteExhaleQP = moreCompleteExhaleQP3,
                     conservedPcs = conservedPcs3)
 
           case _ =>
@@ -371,6 +388,7 @@ object State {
     s1 match {
       /* Decompose state s1 */
       case State(g1, h1, program, member,
+      block,
       predicateData, functionData,
       oldHeaps1,
       parallelizeBranches1,
@@ -378,6 +396,7 @@ object State {
       methodCfg1, invariantContexts1,
       constrainableARPs1,
       quantifiedVariables1,
+      packagingWandSnapshots1,
       retrying1,
       underJoin1,
       functionRecorder1,
@@ -388,13 +407,14 @@ object State {
       permissionScalingFactor1, permissionScalingFactorExp1, isEvalInOld,
       reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1, isInPackage1,
       ssCache1, assertReadAccessOnly1,
-      qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
+      qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1, qpTag1,
       predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
-      moreCompleteExhale, moreJoins) =>
+      moreCompleteExhale, moreCompleteExhaleQP, moreJoins) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
           case State(g2, h2, `program`, `member`,
+          `block`,
           `predicateData`, `functionData`,
           oldHeaps2,
           `parallelizeBranches1`,
@@ -402,6 +422,7 @@ object State {
           `methodCfg1`, invariantContexts2,
           constrainableARPs2,
           `quantifiedVariables1`,
+          `packagingWandSnapshots1`,
           `retrying1`,
           `underJoin1`,
           functionRecorder2,
@@ -410,11 +431,11 @@ object State {
           triggerExp2,
           partiallyConsumedHeap2,
           `permissionScalingFactor1`, `permissionScalingFactorExp1`, `isEvalInOld`,
-          reserveHeaps2, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`, `isInPackage1`,
+          reserveHeaps2, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`,`isInPackage1`,
           ssCache2, `assertReadAccessOnly1`,
-          `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, smDomainNeeded2,
+          `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, smDomainNeeded2, qpTag1,
           `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
-          moreCompleteExhale2, `moreJoins`) =>
+          moreCompleteExhale2, moreCompleteExhaleQP2, `moreJoins`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2

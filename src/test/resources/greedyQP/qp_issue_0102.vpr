@@ -1,0 +1,86 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+method test1(xs: Seq[Ref], n: Int, b: Bool)
+  requires |xs| == n
+  requires n > 2
+{
+  inhale forall i1: Int, i2: Int :: i1 in [0..n) && i2 in [0..n) && i1 != i2 ==> xs[i1] != xs[i2]
+  inhale forall i: Int :: i in [0..n) ==> acc(xs[i].f, write)
+  exhale forall i: Int :: i in [0..n) ==> acc(xs[i].f, write)
+}
+
+method test2(xs: Seq[Ref], n: Int, b: Bool)
+  requires |xs| == n
+  requires n > 2
+{
+  inhale forall i1: Int, i2: Int :: i1 in [0..n) && i2 in [0..n) && i1 != i2 ==> xs[i1] != xs[i2]
+  inhale forall i: Int :: i in [0..n) ==> acc(xs[i].f, write)
+  exhale forall i: Int :: i in [0..n) ==> acc(xs[i].f, 1/2)
+  exhale forall i: Int :: i in [0..n) ==> acc(xs[i].f, 1/2)
+}
+
+method test3(xs: Seq[Ref], n: Int)
+  requires |xs| == n
+  requires n > 2
+{
+  inhale forall i1: Int, i2: Int :: i1 in [0..n) && i2 in [0..n) && i1 != i2 ==> xs[i1] != xs[i2]
+  inhale forall i: Int :: i in [0..n) ==> acc(xs[i].f, i < 2 ? write : 1/10)
+  exhale forall i: Int :: i in [0..n) ==> acc(xs[i].f, i < 2 ? write : 1/10)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test5(xs: Seq[Ref], n: Int, x: Ref, y: Ref)
+  requires |xs| == n && n > 2
+  requires xs[0] == x && xs[1] == y
+  requires acc(x.f, 9/10) && acc(y.f, 9/10)
+  requires forall i1: Int, i2: Int :: i1 in [0..n) && i2 in [0..n) && i1 != i2 ==> xs[i1] != xs[i2]
+  requires forall i: Int :: i in [0..n) ==> acc(xs[i].f, 1/10)
+
+  ensures  forall i: Int :: i in [0..n) ==> acc(xs[i].f, i < 2 ? write : 1/10)
+  ensures  forall i: Int :: i in [2..n) ==> xs[i].f == old(xs[i].f)
+  ensures  xs[0].f == old(xs[1].f) + 1
+  ensures  xs[1].f == old(xs[1].f) + 2
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures false
+{
+  xs[0].f := y.f + 1
+  xs[1].f := x.f + 1
+}
+
+field value: Int
+field array: Seq[Ref]
+
+method test4(this: Ref, n: Int)
+  requires acc(this.array)
+  requires n > 2
+  requires |this.array| == n
+  ensures acc(this.array, wildcard)
+  ensures |this.array| == n
+  ensures forall i1: Int, i2: Int :: i1 in [0..n) && i2 in [0..n) && i1 != i2 ==> this.array[i1] != this.array[i2]
+  ensures forall i:Int :: i in [0..n) ==> acc(this.array[i].value, 1/2)
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures false
+{
+  var x: Int
+
+  inhale forall i1: Int, i2: Int :: i1 in [0..n) && i2 in [0..n) && i1 != i2 ==> this.array[i1] != this.array[i2]
+  inhale forall i:Int :: i in [0..n) ==> acc(this.array[i].value, write)
+
+  x := this.array[0].value
+
+  this.array[0].value := 1
+
+  var r: Ref
+  inhale r == this.array[1]
+  r.value := 2
+
+  this.array[0].value := -1
+  this.array[1].value := -2
+
+  this.array[2].value := 3
+}

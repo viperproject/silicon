@@ -6,6 +6,7 @@ import viper.silicon.interfaces.state.Chunk
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, Success, VerificationResult}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.evaluator
+import viper.silicon.state.Heap
 import viper.silicon.state.terms.{Term, True}
 import viper.silicon.state.{BasicChunk, IdentifierFactory, MagicWandChunk, QuantifiedFieldChunk, QuantifiedMagicWandChunk, QuantifiedPredicateChunk, State}
 import viper.silicon.utils.ast.simplifyVariableName
@@ -46,21 +47,29 @@ case class ProofObligation(s: State,
   private lazy val originalErrorInfo: String =
     s"Original Error: " +
       s"\n\t\t${originalErrorReason.pos}" +
-        (if (s.currentMember.isDefined){
-         s" (inside ${s.currentMember.get.name})"
-        } else {
-          ""
-        }) +
+      (if (s.currentMember.isDefined){
+        s" (inside ${s.currentMember.get.name})"
+      } else {
+        ""
+      }) +
       s"\n\t\t${originalErrorReason.readableMessage}\n\n"
 
-  private lazy val stateString: String = {
-    if (printConfig.printInternalTermRepresentation)
-      s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._1}").mkString("\n\t\t")}\n\nHeap:\n\t\t${s.h.values.map(chunkString).mkString("\n\t\t")}\n\n"
+  private def stateString: String = {
+    val storeString = if (printConfig.printInternalTermRepresentation)
+      s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._1}").mkString("\n\t\t")}\n\n"
     else
-      s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._2.get}").mkString("\n\t\t")}\n\nHeap:\n\t\t${s.h.values.map(chunkString).mkString("\n\t\t")}\n\n"
+      s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._2.get}").mkString("\n\t\t")}\n\n"
+
+    def heapToString(h: Heap): String = h.values.map(chunkString).mkString("\n\t\t")
+    val heapString = if (printConfig.printOldHeaps)
+      s"Current Heap:\n\t\t${heapToString(s.h)}\n\n" + s.oldHeaps.map {case (k, v) => s"Heap $k:\n\t\t${heapToString(v)}\n\n"}.mkString("")
+    else
+      s"Heap:\n\t\t${s.h.values.map(chunkString).mkString("\n\t\t")}\n\n"
+
+    storeString + heapString
   }
 
-  private lazy val branchConditionString: String = {
+  private def branchConditionString: String = {
     if (printConfig.printInternalTermRepresentation)
       s"Branch Conditions:\n\t\t${branchConditions.filter(bc => bc != True).mkString("\n\t\t")}\n\n"
     else
@@ -87,36 +96,36 @@ case class ProofObligation(s: State,
         s"acc(${instantiated.toString}, ${Simplifier.simplify(mwc.permExp.get, true)})"
       case qfc: QuantifiedFieldChunk =>
         if (qfc.singletonRcvrExp.isDefined) {
-          val receiver = Simplifier.simplify(qfc.singletonRcvrExp.get, true)
+          val receiver = Simplifier.simplify(qfc.singletonRcvrExp.head, true)
           val perm = Simplifier.simplify(qfc.permExp.get.replace(qfc.quantifiedVarExps.get.head.localVar, receiver), true)
           s"acc(${receiver}.${qfc.id}, ${perm})"
         } else {
           val varsString = qfc.quantifiedVarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val qvarsString = "forall " + qfc.invs.get.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val varsEqualString = qfc.quantifiedVarExps.get.zip(qfc.invs.get.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
+          val qvarsString = "forall " + qfc.invs.head.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
+          val varsEqualString = qfc.quantifiedVarExps.get.zip(qfc.invs.head.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
           s"forall ${varsString} :: ${qvarsString} :: ${varsEqualString} ==> acc(${qfc.quantifiedVarExps.get.head.name}.${qfc.id}, ${Simplifier.simplify(qfc.permExp.get, true)})"
         }
       case qpc: QuantifiedPredicateChunk =>
         if (qpc.singletonArgExps.isDefined) {
-          s"acc(${qpc.id}(${qpc.singletonArgExps.get.map(e => Simplifier.simplify(e, true)).mkString(", ")}), ${Simplifier.simplify(qpc.permExp.get, true)})"
+          s"acc(${qpc.id}(${qpc.singletonArgExps.head.map(e => Simplifier.simplify(e, true)).mkString(", ")}), ${Simplifier.simplify(qpc.permExp.get, true)})"
         } else {
           val varsString = qpc.quantifiedVarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val qvarsString = "forall " + qpc.invs.get.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val varsEqualString = qpc.quantifiedVarExps.get.zip(qpc.invs.get.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
+          val qvarsString = "forall " + qpc.invs.head.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
+          val varsEqualString = qpc.quantifiedVarExps.get.zip(qpc.invs.head.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
           s"forall ${varsString} :: ${qvarsString} :: ${varsEqualString} ==> acc(${qpc.id}(${qpc.quantifiedVarExps.get.map(_.name).mkString(", ")}), ${Simplifier.simplify(qpc.permExp.get, true)})"
         }
       case qwc: QuantifiedMagicWandChunk =>
         val shape = qwc.id.ghostFreeWand
         if (qwc.singletonArgExps.isDefined) {
-          val instantiated = shape.replace(shape.subexpressionsToEvaluate(s.program).zip(qwc.singletonArgExps.get).map(e => e._1 -> Simplifier.simplify(e._2, true)).toMap)
-          val permReplaced = Simplifier.simplify(qwc.permExp.get.replace(qwc.quantifiedVarExps.get.zip(qwc.singletonArgExps.get).map(e => e._1.localVar -> e._2).toMap), true)
+          val instantiated = shape.replace(shape.subexpressionsToEvaluate(s.program).zip(qwc.singletonArgExps.head).map(e => e._1 -> Simplifier.simplify(e._2, true)).toMap)
+          val permReplaced = Simplifier.simplify(qwc.permExp.get.replace(qwc.quantifiedVarExps.get.zip(qwc.singletonArgExps.head).map(e => e._1.localVar -> e._2).toMap), true)
 
           s"acc(${instantiated.toString}, ${permReplaced})"
         } else{
           val varsString = qwc.quantifiedVarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val qvarsString = "forall " + qwc.invs.get.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val varsEqualString = qwc.quantifiedVarExps.get.zip(qwc.invs.get.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
-          val instantiated = shape.replace(shape.subexpressionsToEvaluate(s.program).zip(qwc.invs.get.invertibleExps.get).map(e => e._1 -> Simplifier.simplify(e._2, true)).toMap)
+          val qvarsString = "forall " + qwc.invs.head.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
+          val varsEqualString = qwc.quantifiedVarExps.get.zip(qwc.invs.head.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
+          val instantiated = shape.replace(shape.subexpressionsToEvaluate(s.program).zip(qwc.invs.head.invertibleExps.get).map(e => e._1 -> Simplifier.simplify(e._2, true)).toMap)
           s"forall ${varsString} :: ${qvarsString} :: ${varsEqualString} ==> acc(${instantiated}, ${Simplifier.simplify(qwc.permExp.get, true)})"
         }
     }
@@ -524,7 +533,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
   }
 
   private def changePrintConfiguration(obl: ProofObligation): Unit = {
-    println(s"Current configuration: ${obl.printConfig}")
+    println(s"Current configuration:\n${obl.printConfig}")
     println(s"Enter the new value for isPrintInternalEnabled:")
     readLine().toLowerCase match {
       case "true" | "1" | "t" => obl.printConfig.isPrintInternalEnabled = true
@@ -552,6 +561,13 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     readLine().toLowerCase match {
       case "true" | "1" | "t" => obl.printConfig.printInternalTermRepresentation = true
       case "false" | "0" | "f" => obl.printConfig.printInternalTermRepresentation = false
+      case _ =>
+    }
+
+    println(s"Enter the new value for printOldHeaps:")
+    readLine().toLowerCase match {
+      case "true" | "1" | "t" => obl.printConfig.printOldHeaps = true
+      case "false" | "0" | "f" => obl.printConfig.printOldHeaps = false
       case _ =>
     }
 

@@ -295,7 +295,7 @@ class FunctionData(val programFunction: ast.Function,
    * Properties resulting from phase 2 (verification)
    */
 
-  lazy val predicateTriggers: Map[ast.Predicate, App] = {
+  lazy val predicateTriggers: Map[String, App] = {
     val recursiveCallsAndUnfoldings: Seq[(ast.FuncApp, Seq[ast.Unfolding])] =
       Functions.recursiveCallsAndSurroundingUnfoldings(programFunction)
 
@@ -338,7 +338,7 @@ class FunctionData(val programFunction: ast.Function,
 
       val fapp = App(triggerFunction, args)
 
-      predicate -> fapp
+      predicate.name -> fapp
     }))
   }
 

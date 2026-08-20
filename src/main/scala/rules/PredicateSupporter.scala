@@ -12,6 +12,7 @@ import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.{ChunkIdentifer, GeneralChunk, MaskHeapChunk, NonQuantifiedChunk}
+import viper.silicon.resources.FieldID
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.sorts.PredHeapSort
@@ -79,6 +80,12 @@ object predicateSupporter extends PredicateSupportRules {
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm, ePerm)
     consume(s1, body, true, pve, v)((s1a, snap, v1) => {
+      if (!Verifier.config.disableFunctionUnfoldTrigger() && !Verifier.config.maskHeapMode()) {
+        val predTrigger = App(s1a.predicateData(predicate.name).triggerFunction,
+          snap.get.convert(terms.sorts.Snap) +: tArgs)
+        val eArgsString = eArgs.mkString(", ")
+        v1.decider.assume(predTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
+      }
       val s2 = s1a.copy(g = s.g,
                         smDomainNeeded = s.smDomainNeeded,
                         permissionScalingFactor = s.permissionScalingFactor,
@@ -92,18 +99,15 @@ object predicateSupporter extends PredicateSupportRules {
         HeapMapTerm(immutable.ListMap(predicate -> SnapToHeap(HeapToSnap(HeapSingleton(toSnapTree(tArgs), snap.get, PredHeapSort),
           HeapUpdate(PredZeroMask, toSnapTree(tArgs), FullPerm), predicate), predicate, PredHeapSort)))
       } else {
-        snap.get.convert(s2.predicateSnapMap(predicate))
+        snap.get.convert(s2.predicateSnapMap(predicate.name))
       }
       v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snapToProduce, None, tPerm, ePerm, pve, true, v1)((s3, v3) => {
-        if (!Verifier.config.disableFunctionUnfoldTrigger()) {
-          val snapArg = if (Verifier.config.maskHeapMode()) {
-            val chunk = s3.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk]
-            chunk.heap
-          } else {
-            snap.get.convert(sorts.Snap)
-          }
-          val predTrigger = App(s3.predicateData(predicate).triggerFunction,
-            snapArg +: tArgs)
+        if (Verifier.config.maskHeapMode() && !Verifier.config.disableFunctionUnfoldTrigger()) {
+          // The trigger heap must be the post-fold chunk heap: only there does the lookup at
+          // the instance's key yield the newly stored snapshot.
+          val chunk = s3.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk]
+          val predTrigger = App(s3.predicateData(predicate.name).triggerFunction,
+            chunk.heap +: tArgs)
           val eArgsString = eArgs.mkString(", ")
           v3.decider.assume(predTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
         }
@@ -137,10 +141,10 @@ object predicateSupporter extends PredicateSupportRules {
                 v.decider.assumeDefinition(smValueDef, None)
                 val codQvars = bc.resourceID match {
                   case FieldID => Seq(`?r`)
-                  case _ => s.predicateFormalVarMap(resource.asInstanceOf[ast.Predicate])
+                  case _ => s.predicateFormalVarMap(resource.asInstanceOf[ast.Predicate].name)
                 }
                 newFr = newFr.recordFvfAndDomain(SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq()))
-                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, resource, bc.args, None, bc.perm, None, sm, s.program)
+                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, resource, bc.args, None, bc.perm, None, sm, bc.tag, s.program)
               case mwc: MagicWandChunk =>
                 val wand = mwc.id.ghostFreeWand
                 val bodyVars = wand.subexpressionsToEvaluate(s.program)
@@ -148,7 +152,7 @@ object predicateSupporter extends PredicateSupportRules {
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, wand, mwc.args, mwc.snap, v)
                 v.decider.assumeDefinition(smValueDef, None)
                 newFr = newFr.recordFvfAndDomain(SnapshotMapDefinition(wand, sm, Seq(smValueDef), Seq()))
-                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, wand, mwc.args, None, mwc.perm, None, sm, s.program)
+                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, wand, mwc.args, None, mwc.perm, None, sm, mwc.tag, s.program)
             }
           } else {
             c
@@ -229,10 +233,9 @@ object predicateSupporter extends PredicateSupportRules {
     v.heapSupporter.consumeSingle(s1, s1.h, pa, tArgs, eArgs, tPerm, ePerm, true, pve, v)((s2, h2, snap, v1) => {
       val s3 = s2.copy(g = gIns, h = h2)
         .setConstrainable(constrainableWildcards, false)
-
-      if (s3.predicateData(predicate).predContents.isDefined) {
-        val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s3.predicateData(predicate).params.get.zip(Seq(snap.get) ++ tArgs))
-        producePredicateContents(s3, s3.predicateData(predicate).predContents.get, toReplace, v1, false)((s4, v4) => {
+      if (s3.predicateData(predicate.name).predContents.isDefined) {
+        val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s3.predicateData(predicate.name).params.get.zip(Seq(snap.get) ++ tArgs))
+        producePredicateContents(s3, s3.predicateData(predicate.name).predContents.get, toReplace, v1, false)((s4, v4) => {
           v4.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val snapArg = if (Verifier.config.maskHeapMode()) {
@@ -241,7 +244,7 @@ object predicateSupporter extends PredicateSupportRules {
               snap.get.convert(sorts.Snap)
             }
             val predicateTrigger =
-              App(s4.predicateData(predicate).triggerFunction,
+              App(s4.predicateData(predicate.name).triggerFunction,
                 snapArg +: tArgs)
             val eargs = eArgs.mkString(", ")
             v4.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
@@ -273,7 +276,7 @@ object predicateSupporter extends PredicateSupportRules {
               snap.get.convert(sorts.Snap)
             }
             val predicateTrigger =
-              App(s4.predicateData(predicate).triggerFunction,
+              App(s4.predicateData(predicate.name).triggerFunction,
                 snapArg +: tArgs)
             val eargs = eArgs.mkString(", ")
             v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
