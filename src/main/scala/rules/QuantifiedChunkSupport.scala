@@ -1761,10 +1761,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val (quantifiedPermissionConstraint, quantifiedPermissionConstraintExp) =
       if (!constrainPermissions) {
-        v.decider.prover.comment("not constrained")
         (None, None)
       } else {
-        v.decider.prover.comment("constrained")
         // TODO: Reconsider choice of triggers (use e.g. r.f, once possible)
         val forall =
           Forall(
