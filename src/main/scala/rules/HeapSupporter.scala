@@ -117,6 +117,15 @@ trait HeapSupportRules extends SymbolicExecutionRules {
   /** The sort of the first argument of predicates' function-unfold trigger functions. */
   def predicateTriggerSort: Sort
 
+  /** The state-dependent arguments of a heap-dependent function application (prepended to
+    * the value arguments, also used for the f%precondition application), and the snapshot
+    * recorded for the application during function verification. `snap` is the snapshot
+    * obtained from consuming the function's precondition. */
+  def functionAppSnapArgs(s: State, func: ast.Function, tArgs: Seq[Term], snap: Term, v: Verifier): (Seq[Term], Term)
+
+  /** Consistency checks on the state at the beginning of an assert in package context. */
+  def checkEmptyExhaleExtState(s: State): Unit
+
   /** Triggers the wand resource if the produced chunk is a quantified one; a no-op otherwise. */
   def triggerWandIfNeeded(s: State, wand: ast.MagicWand, chWand: Chunk, v: Verifier): State
 
@@ -982,6 +991,16 @@ class DefaultHeapSupportRules extends HeapSupportRules {
   def adaptTriggerTerms(terms: Seq[Term], s: State): Seq[Term] = terms
 
   def predicateTriggerSort: Sort = sorts.Snap
+
+  def functionAppSnapArgs(s: State, func: ast.Function, tArgs: Seq[Term], snap: Term, v: Verifier): (Seq[Term], Term) = {
+    val snap1 = snap.convert(sorts.Snap)
+    (Seq(snap1), snap1)
+  }
+
+  def checkEmptyExhaleExtState(s: State): Unit = {
+    Predef.assert(s.h.values.isEmpty)
+    Predef.assert(s.reserveHeaps.head.values.isEmpty)
+  }
 
   private def generateResourceTrigger(ra: ast.ResourceAccess,
                                       s: State,

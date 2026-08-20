@@ -651,8 +651,8 @@ object evaluator extends EvaluationRules {
                              assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts())
                                s2.assertReadAccessOnly /* should currently always be false */ else true)
             consumes(s3, pres, true, _ => pvePre, v2)((s4, snap, v3) => {
-              val snap1 = snap.get.convert(sorts.Snap)
-              val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
+              val (stateArgs, snapToRecord) = v3.heapSupporter.functionAppSnapArgs(s3, func, tArgs, snap.get, v3)
+              val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), stateArgs ++ tArgs)
               val preExp = Option.when(withExp)({
                 DebugExp.createInstance(Some(s"precondition of ${func.name}(${eArgsNew.get.mkString(", ")}) holds"), None, None, InsertionOrderedSet.empty)
               })
@@ -662,14 +662,14 @@ object evaluator extends EvaluationRules {
                 case Some(a) if a.values.contains("opaque") =>
                   val funcAppAnn = fapp.info.getUniqueInfo[AnnotationInfo]
                   funcAppAnn match {
-                    case Some(a) if a.values.contains("reveal") => App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
-                    case _ => App(functionSupporter.limitedVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
+                    case Some(a) if a.values.contains("reveal") => App(v3.symbolConverter.toFunction(func), stateArgs ++ tArgs)
+                    case _ => App(functionSupporter.limitedVersion(v3.symbolConverter.toFunction(func)), stateArgs ++ tArgs)
                   }
-                case _ => App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
+                case _ => App(v3.symbolConverter.toFunction(func), stateArgs ++ tArgs)
               }
               val fr5 =
                 s4.functionRecorder.changeDepthBy(-1)
-                                   .recordSnapshot(fapp, v3.decider.pcs.branchConditions, snap1)
+                                   .recordSnapshot(fapp, v3.decider.pcs.branchConditions, snapToRecord)
               val s5 = s4.copy(g = s2.g,
                                h = s2.h,
                                recordVisited = s2.recordVisited,

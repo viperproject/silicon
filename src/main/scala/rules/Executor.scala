@@ -491,8 +491,7 @@ object executor extends ExecutionRules {
         val pve = AssertFailed(assert)
 
         if (s.exhaleExt) {
-          Predef.assert(s.h.values.isEmpty)
-          Predef.assert(s.reserveHeaps.head.values.isEmpty)
+          v.heapSupporter.checkEmptyExhaleExtState(s)
 
           /* When exhaleExt is set magicWandSupporter.transfer is used to transfer permissions to
            * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
