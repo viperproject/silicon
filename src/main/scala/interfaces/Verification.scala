@@ -106,7 +106,8 @@ case class Failure/*[ST <: Store[ST],
 
 case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
                                  counterExample: Option[Counterexample],
-                                 reasonUnknown: Option[String]) extends FailureContext {
+                                 reasonUnknown: Option[String],
+                                 rlimitDelta: Option[Long] = None) extends FailureContext {
   lazy val branchConditionString: String = {
     if (branchConditions.nonEmpty) {
       val branchConditionsString =
@@ -156,6 +157,7 @@ case class SiliconDebuggingFailureContext(branchConditions: Seq[Term],
 case class SiliconSmtStateContext(branchConditions: Seq[Term],
                                   counterExample: Option[Counterexample],
                                   reasonUnknown: Option[String],
+                                  rlimitDelta: Option[Long],
                                   state: Option[State],
                                   proverEmits: Seq[String],
                                   preambleAssumptions: Seq[DebugAxiom],

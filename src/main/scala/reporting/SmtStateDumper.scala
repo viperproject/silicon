@@ -37,6 +37,7 @@ object SmtStateDumper {
       sb.append(error.readableMessage(false, true)).append('\n')
       section("failed assertion (term)") { sb.append(ctx.failedAssertion).append('\n') }
       ctx.reasonUnknown.foreach(r => section("reason unknown") { sb.append(r).append('\n') })
+      ctx.rlimitDelta.foreach(d => section("rlimit spent on failing check") { sb.append(d).append('\n') })
       section("branch conditions (terms)") {
         ctx.branchConditions.foreach(bc => sb.append(bc).append('\n'))
       }

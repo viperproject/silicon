@@ -50,6 +50,9 @@ trait Prover extends ProverLike with StatefulComponent {
   def isModelValid(): Boolean
   def getModel(): Model
   def getReasonUnknown(): String
+  /* Prover resources consumed by the most recent failing assert's check-sat
+   * (Z3 rlimit units); None when unsupported or not tracked. */
+  def getLastRlimitDelta(): Option[Long] = None
   def clearLastAssert(): Unit
   def name: String
   def minVersion: Version

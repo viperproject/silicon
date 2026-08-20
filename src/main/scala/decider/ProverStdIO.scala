@@ -43,6 +43,7 @@ abstract class ProverStdIO(uniqueId: String,
   var proverPath: Path = _
   var lastReasonUnknown : String = _
   var lastModel : String = _
+  var lastRlimitDelta : Option[Long] = None
 
   def exeEnvironmentalVariable: String
   def dependencies: Seq[SilDefaultDependency]
@@ -261,6 +262,21 @@ abstract class ProverStdIO(uniqueId: String,
     result
   }
 
+  /* Whether to bracket each check-sat with (get-info :rlimit) so failures can
+   * report the resources the failing check actually consumed. assertTimeout is
+   * enforced as an rlimit budget, so cap tuning needs deltas in rlimit counts,
+   * not wall time (QP-heavy queries burn 5x slower than the ms->rlimit
+   * calibration assumes). Two one-line round trips per check; only enabled
+   * alongside the flags that consume the result. */
+  protected def trackRlimit: Boolean =
+    Verifier.config.smtStateOnError() || Verifier.config.reportReasonUnknown()
+
+  protected def readRlimitCount(): Option[Long] = {
+    writeLine("(get-info :rlimit)")
+    val answer = readLine() // Z3: (:rlimit 12345); other provers: unsupported
+    "\\d+".r.findFirstIn(answer).map(_.toLong)
+  }
+
   protected def assertUsingPushPop(goal: String, timeout: Option[Int]): (Boolean, Long) = {
     push()
     setTimeout(timeout)
@@ -268,10 +284,14 @@ abstract class ProverStdIO(uniqueId: String,
     writeLine("(assert (not " + goal + "))")
     readSuccess()
 
+    val rlimitBefore = if (trackRlimit) readRlimitCount() else None
+
     val startTime = System.currentTimeMillis()
     writeLine("(check-sat)")
     val result = readUnsat()
     val endTime = System.currentTimeMillis()
+
+    lastRlimitDelta = rlimitBefore.flatMap(before => readRlimitCount().map(_ - before))
 
     if (!result) {
       retrieveAndSaveModel()
@@ -336,10 +356,14 @@ abstract class ProverStdIO(uniqueId: String,
     writeLine(s"(assert (=> $guardApp (not $goal)))")
     readSuccess()
 
+    val rlimitBefore = if (trackRlimit) readRlimitCount() else None
+
     val startTime = System.currentTimeMillis()
     writeLine(s"(check-sat $guardApp)")
     val result = readUnsat()
     val endTime = System.currentTimeMillis()
+
+    lastRlimitDelta = rlimitBefore.flatMap(before => readRlimitCount().map(_ - before))
 
     if (!result) {
       retrieveAndSaveModel()
@@ -512,9 +536,12 @@ abstract class ProverStdIO(uniqueId: String,
 
   override def getReasonUnknown(): String = lastReasonUnknown
 
+  override def getLastRlimitDelta(): Option[Long] = lastRlimitDelta
+
   override def clearLastAssert(): Unit = {
     lastReasonUnknown = null
     lastModel = null
+    lastRlimitDelta = None
   }
 
   def getAllDecls(): Seq[Decl] = allDecls

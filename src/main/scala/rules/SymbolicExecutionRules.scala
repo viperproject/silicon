@@ -97,6 +97,10 @@ trait SymbolicExecutionRules {
       None
     }
 
+    /* Rlimit spent on the failing check itself; same last-assert adjacency
+     * assumption as reasonUnknown above. */
+    val rlimitDelta = if (v != null) v.decider.prover.getLastRlimitDelta() else None
+
     val branchconditions = if (Verifier.config.enableBranchconditionReporting()) {
       v.decider.pcs.branchConditionExps.map(_._1)
         .filterNot(e => e.isInstanceOf[viper.silver.ast.TrueLit]) /* remove "true" bcs introduced by viper.silicon.utils.ast.BigAnd */
@@ -110,14 +114,14 @@ trait SymbolicExecutionRules {
       res.failureContexts = Seq(debugCtx)
     } else if (Verifier.config.smtStateOnError()) {
       val stateCtx = SiliconSmtStateContext(v.decider.pcs.branchConditions,
-        counterexample, reasonUnknown, Some(s), v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions,
+        counterexample, reasonUnknown, rlimitDelta, Some(s), v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions,
         v.decider.macroDecls, v.decider.functionDecls, v.decider.pcs.assumptions, failedAssert)
       res.failureContexts = Seq(stateCtx)
       /* Skip speculative attempts (retryLevel > 0) and expected errors*/
       if (s.retryLevel == 0 && !ve.isExpected)
         viper.silicon.reporting.SmtStateDumper.dump(res, stateCtx)
     } else {
-      res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown))
+      res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown, rlimitDelta))
     }
 
     Failure(res, v.reportFurtherErrors())
