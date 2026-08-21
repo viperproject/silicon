@@ -190,6 +190,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (result1, phase1data) =>
           emitAndRecordFunctionAxioms(data.limitedAxiom)
           emitAndRecordFunctionAxioms(data.triggerAxiom)
+          functionEncoding.declsAfterWellDefinedness(data) map decider.prover.declare
           emitAndRecordFunctionAxioms(functionEncoding.auxiliaryAxioms(data): _*)
           emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
           emitAndRecordFunctionAxioms(data.postPreconditionPropagationAxiom: _*)

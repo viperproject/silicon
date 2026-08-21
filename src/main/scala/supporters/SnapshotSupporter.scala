@@ -32,8 +32,9 @@ trait SnapshotSupporter {
   /** The snapshot of an empty sequence of consumed conjuncts. */
   def unitSnapshot: Term
 
-  /** Combines the snapshots of two consumed conjunct sequences into one. */
-  def combineSnapshots(snap1: Term, snap2: Term, v: Verifier): Term
+  /** Combines the snapshots of two consumed conjunct sequences into one; `a1` is the
+    * conjunct that produced `snap1`, `a2` the remaining conjuncts that produced `snap2`. */
+  def combineSnapshots(s: State, snap1: Term, snap2: Term, a1: ast.Exp, a2: Seq[ast.Exp], v: Verifier): Term
 
   /** Converts the accumulated snapshot of a completed (top-level) consume into the
     * snapshot representation handed to clients of consume/consumes. `h` is the heap
@@ -59,7 +60,7 @@ trait SnapshotSupporter {
 class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends SnapshotSupporter {
   def unitSnapshot: Term = Unit
 
-  def combineSnapshots(snap1: Term, snap2: Term, v: Verifier): Term = Combine(snap1, snap2)
+  def combineSnapshots(s: State, snap1: Term, snap2: Term, a1: ast.Exp, a2: Seq[ast.Exp], v: Verifier): Term = Combine(snap1, snap2)
 
   def finalizeConsumedSnapshot(s: State, h: Heap, snap: Term, as: Seq[ast.Exp], v: Verifier): Term = snap
 

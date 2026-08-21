@@ -138,7 +138,7 @@ object consumer extends ConsumptionRules {
           consumeTlcs(s1, h1, tlcs.tail, returnSnap, pves.tail, v1)((s2, h2, snap2, v2) =>
 
             (snap1, snap2) match {
-              case (Some(sn1), Some(sn2)) if returnSnap => Q(s2, h2, Some(v2.snapshotSupporter.combineSnapshots(sn1, sn2, v2)), v2)
+              case (Some(sn1), Some(sn2)) if returnSnap => Q(s2, h2, Some(v2.snapshotSupporter.combineSnapshots(s2, sn1, sn2, a, tlcs.tail, v2)), v2)
               case (None, None) if !returnSnap => Q(s2, h2, None, v2)
               case (_, _) =>  sys.error(s"Consume returned unexpected snapshot: ${(returnSnap, (snap1, snap2))}")
             })

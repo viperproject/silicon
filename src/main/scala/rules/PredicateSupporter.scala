@@ -222,7 +222,7 @@ object predicateSupporter extends PredicateSupportRules {
             v4)
         })
       } else {
-        produce(s3, v1.heapSupporter.unfoldedBodySnapshotFunction(s3, predicate, tArgs, snap.get, v1), body, pve, v1)((s4, v2) => {
+        produce(s3, v1.heapSupporter.unfoldedBodySnapshotFunction(s3, predicate, tArgs, snap.get, hPreUnfold, v1), body, pve, v1)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =

@@ -758,7 +758,7 @@ object evaluator extends EvaluationRules {
                           eval(s10, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))
                         })
                       } else {
-                        produce(s7a, v4.heapSupporter.unfoldedBodySnapshotFunction(s7a, predicate, tArgs, snap.get, v4), body, pve, v4)((s8, v5) => {
+                        produce(s7a, v4.heapSupporter.unfoldedBodySnapshotFunction(s7a, predicate, tArgs, snap.get, s7a.h, v4), body, pve, v4)((s8, v5) => {
                           val s9 = s8.copy(g = s7.g,
                                            functionRecorder = s8.functionRecorder.changeDepthBy(-1),
                                            recordVisited = s3.recordVisited,

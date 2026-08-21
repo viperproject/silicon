@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) 2011-2019 ETH Zurich.
+// Copyright (c) 2011-2025 ETH Zurich.
 
 package viper.silicon.rules
 
@@ -87,8 +87,9 @@ trait HeapSupportRules extends SymbolicExecutionRules {
   def foldedPredicateSnapshot(s: State, predicate: ast.Predicate, tArgs: Seq[Term], snap: Term): Term
 
   /** The snapshot function with which the body of an unfolded predicate instance is
-    * produced, given the snapshot `snap` obtained from consuming the instance. */
-  def unfoldedBodySnapshotFunction(s: State, predicate: ast.Predicate, tArgs: Seq[Term], snap: Term, v: Verifier): (Sort, Verifier) => Term
+    * produced, given the snapshot `snap` obtained from consuming the instance and a heap
+    * `hLookup` from before the consume. */
+  def unfoldedBodySnapshotFunction(s: State, predicate: ast.Predicate, tArgs: Seq[Term], snap: Term, hLookup: Heap, v: Verifier): (Sort, Verifier) => Term
 
   /** Applies a wand's snapshot `snapWand` to the left-hand side snapshot `snapLhs`
     * at apply time, yielding the snapshot of the wand's right-hand side. */
@@ -962,7 +963,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
   def foldedPredicateSnapshot(s: State, predicate: ast.Predicate, tArgs: Seq[Term], snap: Term): Term =
     snap.convert(s.predicateSnapMap(predicate.name))
 
-  def unfoldedBodySnapshotFunction(s: State, predicate: ast.Predicate, tArgs: Seq[Term], snap: Term, v: Verifier): (Sort, Verifier) => Term =
+  def unfoldedBodySnapshotFunction(s: State, predicate: ast.Predicate, tArgs: Seq[Term], snap: Term, hLookup: Heap, v: Verifier): (Sort, Verifier) => Term =
     viper.silicon.utils.toSf(snap)
 
   def appliedWandSnapshot(snapWand: Term, snapLhs: Term, s: State, v: Verifier): Term =
@@ -1036,5 +1037,4 @@ class DefaultHeapSupportRules extends HeapSupportRules {
     (axioms, triggers, mostRecentTrig, Seq(smDef1))
   }
 }
-
 object defaultHeapSupporter extends DefaultHeapSupportRules
