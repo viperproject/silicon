@@ -11,20 +11,16 @@ import viper.silicon.Config.JoinMode
 import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
-import viper.silicon.interfaces.state.{ChunkIdentifer, GeneralChunk, MaskHeapChunk, NonQuantifiedChunk}
+import viper.silicon.interfaces.state.{ChunkIdentifer, GeneralChunk, NonQuantifiedChunk}
 import viper.silicon.resources.FieldID
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.sorts.PredHeapSort
-import viper.silicon.resources.FieldID
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.{PredicateBranchNode, PredicateLeafNode, PredicateContentsTree}
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
-
-import scala.collection.immutable
 
 trait PredicateSupportRules extends SymbolicExecutionRules {
   def fold(s: State,
@@ -80,34 +76,18 @@ object predicateSupporter extends PredicateSupportRules {
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm, ePerm)
     consume(s1, body, true, pve, v)((s1a, snap, v1) => {
-      if (!Verifier.config.disableFunctionUnfoldTrigger() && !Verifier.config.maskHeapMode()) {
-        val predTrigger = App(s1a.predicateData(predicate.name).triggerFunction,
-          snap.get.convert(terms.sorts.Snap) +: tArgs)
-        val eArgsString = eArgs.mkString(", ")
-        v1.decider.assume(predTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
-      }
       val s2 = s1a.copy(g = s.g,
                         smDomainNeeded = s.smDomainNeeded,
                         permissionScalingFactor = s.permissionScalingFactor,
                         permissionScalingFactorExp = s.permissionScalingFactorExp).setConstrainable(constrainableWildcards, false)
 
-      val snapToProduce = if (Verifier.config.maskHeapMode()) {
-        // SnapToHeap(HeapToSnap(hp, _, r), r, _) simplifies at the Scala level to hp,
-        // so this becomes HeapMapTerm({predicate -> HeapSingleton(tArgs, snap, PredHeapSort)}).
-        // HeapLookup(HeapSingleton(r, v, _), r) then simplifies to snap (the body consume snap),
-        // allowing Scala-level simplification chains to connect fold and unfold snapshots.
-        HeapMapTerm(immutable.ListMap(predicate -> SnapToHeap(HeapToSnap(HeapSingleton(toSnapTree(tArgs), snap.get, PredHeapSort),
-          HeapUpdate(PredZeroMask, toSnapTree(tArgs), FullPerm), predicate), predicate, PredHeapSort)))
-      } else {
-        snap.get.convert(s2.predicateSnapMap(predicate.name))
-      }
-      v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snapToProduce, None, tPerm, ePerm, pve, true, v1)((s3, v3) => {
-        if (Verifier.config.maskHeapMode() && !Verifier.config.disableFunctionUnfoldTrigger()) {
-          // The trigger heap must be the post-fold chunk heap: only there does the lookup at
-          // the instance's key yield the newly stored snapshot.
-          val chunk = s3.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk]
+      val foldedSnap = v1.heapSupporter.foldedPredicateSnapshot(s2, predicate, tArgs, snap.get)
+      v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, foldedSnap, None, tPerm, ePerm, pve, true, v1)((s3, v3) => {
+        /* The trigger is assumed once the predicate chunk exists, so that heap encodings
+         * whose triggers refer to the chunk's heap can look it up in s3.h. */
+        if (!Verifier.config.disableFunctionUnfoldTrigger()) {
           val predTrigger = App(s3.predicateData(predicate.name).triggerFunction,
-            chunk.heap +: tArgs)
+            v3.heapSupporter.predicateTriggerSnapArg(s3, predicate, snap.get, s3.h) +: tArgs)
           val eArgsString = eArgs.mkString(", ")
           v3.decider.assume(predTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
         }
@@ -221,15 +201,7 @@ object predicateSupporter extends PredicateSupportRules {
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
     val s1 = s.scalePermissionFactor(tPerm, ePerm)
 
-    // The predicate trigger must be assumed with the heap as it is *before* the unfold:
-    // only there does the lookup at the instance's key yield the snapshot being unfolded
-    // (after the consume, the entry is havoc'd). This mirrors Carbon, which assumes
-    // pred#trigger(Heap, ...) before removing the permission.
-    val preUnfoldHeap = if (Verifier.config.maskHeapMode())
-      Some(s1.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk].heap)
-    else
-      None
-
+    val hPreUnfold = s1.h
     v.heapSupporter.consumeSingle(s1, s1.h, pa, tArgs, eArgs, tPerm, ePerm, true, pve, v)((s2, h2, snap, v1) => {
       val s3 = s2.copy(g = gIns, h = h2)
         .setConstrainable(constrainableWildcards, false)
@@ -238,14 +210,9 @@ object predicateSupporter extends PredicateSupportRules {
         producePredicateContents(s3, s3.predicateData(predicate.name).predContents.get, toReplace, v1, false)((s4, v4) => {
           v4.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
-            val snapArg = if (Verifier.config.maskHeapMode()) {
-              preUnfoldHeap.get
-            } else {
-              snap.get.convert(sorts.Snap)
-            }
             val predicateTrigger =
               App(s4.predicateData(predicate.name).triggerFunction,
-                snapArg +: tArgs)
+                v4.heapSupporter.predicateTriggerSnapArg(s4, predicate, snap.get, hPreUnfold) +: tArgs)
             val eargs = eArgs.mkString(", ")
             v4.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
           }
@@ -255,29 +222,12 @@ object predicateSupporter extends PredicateSupportRules {
             v4)
         })
       } else {
-        val newSf = if (Verifier.config.maskHeapMode()) {
-          val packedSnap = maskHeapSupporter.convertToSnapshot(snap.get.asInstanceOf[MaskMapTerm].masks, Seq(predicate), magicWandSupporter.getEvalHeap(s, v1), s2, v1.decider)
-
-          val predSnap = packedSnap match {
-            case hmt: HeapMapTerm => HeapLookup(hmt.heaps(predicate), toSnapTree(tArgs))
-            case h2s: HeapToSnap => HeapLookup(h2s.heap, toSnapTree(tArgs))
-            case _ => HeapLookup(v1.decider.createAlias(SnapToHeap(snap.get, predicate, PredHeapSort), s3), toSnapTree(tArgs))
-          }
-          (_: Sort, _: Verifier) => predSnap
-        } else {
-          toSf(snap.get)
-        }
-        produce(s3, newSf, body, pve, v1)((s4, v2) => {
+        produce(s3, v1.heapSupporter.unfoldedBodySnapshotFunction(s3, predicate, tArgs, snap.get, hPreUnfold, v1), body, pve, v1)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
-            val snapArg = if (Verifier.config.maskHeapMode()) {
-              preUnfoldHeap.get
-            } else {
-              snap.get.convert(sorts.Snap)
-            }
             val predicateTrigger =
               App(s4.predicateData(predicate.name).triggerFunction,
-                snapArg +: tArgs)
+                v2.heapSupporter.predicateTriggerSnapArg(s4, predicate, snap.get, hPreUnfold) +: tArgs)
             val eargs = eArgs.mkString(", ")
             v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
           }

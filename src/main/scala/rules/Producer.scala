@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.JoinMode
 
-import scala.collection.{immutable, mutable}
+import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
@@ -17,9 +17,7 @@ import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.logger.records.data.{CondExpRecord, ImpliesRecord, ProduceRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort}
 import viper.silicon.verifier.Verifier
-import viper.silver.ast.Field
 import viper.silver.verifier.reasons.{NegativePermission, QPAssertionNotInjective}
 
 trait ProductionRules extends SymbolicExecutionRules {
@@ -105,7 +103,10 @@ object producer extends ProductionRules {
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult =
 
-    produceR(s, sf, a.whenInhaling, pve, v)(Q)
+  {
+    val aWhenInhaling = a.whenInhaling
+    produceR(s, v.snapshotSupporter.adaptProduceSnapshotFunction(s, sf, aWhenInhaling.topLevelConjuncts, v), aWhenInhaling, pve, v)(Q)
+  }
 
   /** @inheritdoc */
   def produces(s: State,
@@ -127,37 +128,17 @@ object producer extends ProductionRules {
       allPves ++= pves
     })
 
-    produceTlcs(s, sf, allTlcs.result(), allPves.result(), v)(Q)
+    val tlcsResult = allTlcs.result()
+    produceTlcs(s, v.snapshotSupporter.adaptProduceSnapshotFunction(s, sf, tlcsResult, v), tlcsResult, allPves.result(), v)(Q)
   }
 
   private def produceTlcs(s: State,
                           sf: (Sort, Verifier) => Term,
                           as: Seq[ast.Exp],
                           pves: Seq[PartialVerificationError],
-                          v: Verifier,
-                          isRecursive: Boolean = false)
+                          v: Verifier)
                          (Q: (State, Verifier) => VerificationResult)
                          : VerificationResult = {
-
-    val newSf = if (Verifier.config.maskHeapMode() && !isRecursive) {
-      val givenSnap = sf(sorts.Snap, v)
-      val fakeTerm = if (!givenSnap.isInstanceOf[HeapMapTerm]) {
-        val resources = maskHeapSupporter.getResourceSeq(as, s.program)
-        val snapParts = fromSnapTree(givenSnap, resources.size)
-        val heapParts = snapParts.zip(resources).map(tpl => (tpl._2,
-          v.decider.createAlias(SnapToHeap(tpl._1, tpl._2, tpl._2 match {
-            case field: Field => HeapSort(v.symbolConverter.toSort(field.typ))
-            case _ => PredHeapSort
-          }), s)))
-        HeapMapTerm(immutable.ListMap.from(heapParts))
-      } else {
-        givenSnap
-      }
-
-      (_: Sort, _: Verifier) => fakeTerm
-    } else {
-      sf
-    }
 
     if (as.isEmpty)
       Q(s, v)
@@ -166,25 +147,19 @@ object producer extends ProductionRules {
       val pve = pves.head
 
       if (as.tail.isEmpty)
-        wrappedProduceTlc(s, newSf, a, pve, v)(Q)
+        wrappedProduceTlc(s, sf, a, pve, v)(Q)
       else {
         try {
-          if (Verifier.config.maskHeapMode()) {
-            wrappedProduceTlc(s, newSf, a, pve, v)((s1, v1) =>
-              produceTlcs(s1, newSf, as.tail, pves.tail, v1, true)(Q))
-          } else {
-            val (sf0, sf1) =
-              v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v)
-            /* TODO: Refactor createSnapshotPair s.t. it can be used with Seq[Exp],
-             *       then remove use of BigAnd; for one it is not efficient since
-             *       the tail of the (decreasing list parameter as) is BigAnd-ed
-             *       over and over again.
-             */
+          val (sf0, sf1) =
+            v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v)
+          /* TODO: Refactor createSnapshotPair s.t. it can be used with Seq[Exp],
+           *       then remove use of BigAnd; for one it is not efficient since
+           *       the tail of the (decreasing list parameter as) is BigAnd-ed
+           *       over and over again.
+           */
 
-            wrappedProduceTlc(s, sf0, a, pve, v)((s1, v1) =>
-              produceTlcs(s1, sf1, as.tail, pves.tail, v1, true)(Q))
-          }
-
+          wrappedProduceTlc(s, sf0, a, pve, v)((s1, v1) =>
+            produceTlcs(s1, sf1, as.tail, pves.tail, v1)(Q))
         } catch {
           // We will get an IllegalArgumentException from createSnapshotPair if sf(...) returns Unit.
           // This should never happen if we're in a reachable state, so here we check for that
@@ -256,14 +231,12 @@ object producer extends ProductionRules {
                 QB(s3, null, v3)
               }),
               (s2, v2) => {
-                if (!Verifier.config.maskHeapMode()) {
-                  v2.decider.assume(sf(sorts.Snap, v2) === Unit, Option.when(withExp)(DebugExp.createInstance("Empty snapshot", true)))
-                  /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
-                    * otherwise. In order words, only make this assumption if `sf` has
-                    * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
-                    */
-                }
-
+                v2.snapshotSupporter.emptySnapshotConstraint(sf(sorts.Snap, v2)).foreach(c =>
+                  v2.decider.assume(c, Option.when(withExp)(DebugExp.createInstance("Empty snapshot", true))))
+                /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
+                 * otherwise. In order words, only make this assumption if `sf` has
+                 * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
+                 */
                 v2.symbExLog.closeScope(uidImplies)
                 QB(s2.copy(parallelizeBranches = s1.parallelizeBranches), null, v2)
               })
@@ -290,15 +263,14 @@ object producer extends ProductionRules {
               Q(s3, v3)
             }),
             (s2, v2) => {
-              if (!Verifier.config.maskHeapMode()) {
-                v2.decider.assume(sf(sorts.Snap, v2) === Unit, Option.when(withExp)(DebugExp.createInstance("Empty snapshot", true)))
-                /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
-                 * otherwise. In order words, only make this assumption if `sf` has
-                 * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
-                 */
-              }
-              v2.symbExLog.closeScope(uidImplies)
-              Q(s2, v2)
+                v2.snapshotSupporter.emptySnapshotConstraint(sf(sorts.Snap, v2)).foreach(c =>
+                  v2.decider.assume(c, Option.when(withExp)(DebugExp.createInstance("Empty snapshot", true))))
+                  /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
+                   * otherwise. In order words, only make this assumption if `sf` has
+                   * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
+                   */
+                v2.symbExLog.closeScope(uidImplies)
+                Q(s2, v2)
             }))
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && s.moreJoins.id >= JoinMode.Impure.id =>
@@ -404,10 +376,8 @@ object producer extends ProductionRules {
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
-        if (!Verifier.config.maskHeapMode()) {
-          v.decider.assume(sf(sorts.Snap, v) === Unit,
-            Option.when(withExp)(DebugExp.createInstance("Empty snapshot", true))) /* TODO: See comment for case ast.Implies above */
-        }
+        v.snapshotSupporter.emptySnapshotConstraint(sf(sorts.Snap, v)).foreach(c =>
+          v.decider.assume(c, Option.when(withExp)(DebugExp.createInstance("Empty snapshot", true)))) /* TODO: See comment for case ast.Implies above */
         eval(s, a, pve, v)((s1, t, aNew, v1) => {
           v1.decider.assume(t, Option.when(withExp)(a), aNew)
           Q(s1, v1)})

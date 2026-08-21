@@ -57,7 +57,9 @@ abstract class BaseVerifier(val config: Config,
   val triggerGenerator = new TriggerGenerator()
   val axiomRewriter = new AxiomRewriter(new utils.Counter()/*, bookkeeper.logfiles(s"axiomRewriter")*/, triggerGenerator)
   val quantifierSupporter = new DefaultQuantifierSupporter(triggerGenerator)
-  val snapshotSupporter = new DefaultSnapshotSupporter(symbolConverter)
+  val snapshotSupporter: SnapshotSupporter =
+    if (config.maskHeapMode()) new MaskHeapSnapshotSupporter(symbolConverter)
+    else new DefaultSnapshotSupporter(symbolConverter)
 
   private lazy val defaultStateConsolidator: StateConsolidationRules = new DefaultStateConsolidator(config)
   private lazy val minimalStateConsolidator: StateConsolidationRules = new MinimalStateConsolidator

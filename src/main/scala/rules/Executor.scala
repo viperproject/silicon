@@ -491,10 +491,7 @@ object executor extends ExecutionRules {
         val pve = AssertFailed(assert)
 
         if (s.exhaleExt) {
-          if (!Verifier.config.maskHeapMode()) {
-            Predef.assert(s.h.values.isEmpty)
-            Predef.assert(s.reserveHeaps.head.values.isEmpty)
-          }
+          v.heapSupporter.checkEmptyExhaleExtState(s)
 
           /* When exhaleExt is set magicWandSupporter.transfer is used to transfer permissions to
            * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
@@ -655,20 +652,7 @@ object executor extends ExecutionRules {
         val pve = PackageFailed(pckg)
           magicWandSupporter.packageWand(s.copy(isInPackage = true), wand, proofScript, pve, v)((s1, chWand, v1) => {
 
-            val hOps = if (Verifier.config.maskHeapMode()) {
-              val mwi = MagicWandIdentifier(wand, s1.program)
-              maskHeapSupporter.findMaskHeapChunkOptionally(s1.reserveHeaps.head, mwi) match {
-                case None => s1.reserveHeaps.head + chWand
-                case Some(curChunk) =>
-                  val newChunk = chWand.asInstanceOf[BasicMaskHeapChunk]
-                  val mergedMask = MaskSum(curChunk.mask, newChunk.mask)
-                  val mergedHeap = MergeHeaps(curChunk.heap, curChunk.mask, newChunk.heap, newChunk.mask)
-                  val mergedChunk = curChunk.copy(newMask = mergedMask, newHeap = mergedHeap)
-                  s1.reserveHeaps.head - curChunk + mergedChunk
-              }
-            } else {
-              s1.reserveHeaps.head + chWand
-            }
+            val hOps = v1.heapSupporter.addWandChunk(s1.reserveHeaps.head, chWand, s1, v1)
             assert(s.exhaleExt || s1.reserveHeaps.length == 1)
             val s2 =
               if (s.exhaleExt) {

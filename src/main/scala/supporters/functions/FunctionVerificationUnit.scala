@@ -21,9 +21,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Decider
-import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
-import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort}
 import viper.silicon.supporters.{AnnotationSupporter, PredicateData}
 import viper.silicon.utils.ast.{BigAnd, simplifyVariableName}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
@@ -57,6 +55,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     private var freshVars: Vector[Var] = Vector.empty
     private var postConditionAxioms: Vector[Term] = Vector.empty
 
+    val functionEncoding: FunctionEncoding =
+      if (Verifier.config.maskHeapMode()) new MaskHeapFunctionEncoding(symbolConverter, identifierFactory)
+      else new DefaultFunctionEncoding
+
     private val expressionTranslator = {
       def resolutionFailureMessage(exp: ast.Positioned, data: FunctionData): String = (
           s"Could not resolve expression $exp (${exp.pos}) during the axiomatisation of "
@@ -65,7 +67,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         +  "a fresh symbol, i.e. an arbitrary value.")
 
       new HeapAccessReplacingExpressionTranslator(
-        symbolConverter, fresh, resolutionFailureMessage, (_, _) => false, reporter)
+        symbolConverter, fresh, resolutionFailureMessage, (_, _) => false, reporter, functionEncoding)
     }
 
     var predicateData: Map[String, PredicateData] = _
@@ -99,8 +101,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           val func = program.findFunction(funcName)
           val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(func, program))
           val data = new FunctionData(func, height, quantifiedFields, program)(symbolConverter, expressionTranslator,
-                                      identifierFactory, pred => predicateData(pred.name), Verifier.config,
-                                      reporter)
+                                      identifierFactory, pred => predicateData(pred.name), functionEncoding,
+                                      Verifier.config, reporter)
           funcName -> data})
 
       /* TODO: FunctionData and HeapAccessReplacingExpressionTranslator depend
@@ -119,13 +121,12 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     def declareSortsAfterAnalysis(sink: ProverLike): Unit = ()
 
     private def generateFunctionSymbolsAfterAnalysis: Iterable[Either[String, Decl]] = (
-      Seq(Left("Declaring symbols related to program functions (from program analysis)"))
-        ++ functionData.values.flatMap(data => {
-          val alwaysUsed = Seq(data.function, data.limitedFunction, data.statelessFunction, data.preconditionFunction)
-          val frameFunc = if (Verifier.config.maskHeapMode()) Seq(data.frameFunction, data.preconditionFrameFunction) else Seq()
-          (alwaysUsed ++ frameFunc).map(FunctionDecl)
-        }).map(Right(_))
-      )
+         Seq(Left("Declaring symbols related to program functions (from program analysis)"))
+      ++ functionData.values.flatMap(data =>
+            (Seq(data.function, data.limitedFunction, data.statelessFunction, data.preconditionFunction)
+              ++ functionEncoding.auxiliaryFunctions(data)).map(FunctionDecl)
+         ).map(Right(_))
+    )
 
     def symbolsAfterAnalysis: Iterable[Decl] =
       (generateFunctionSymbolsAfterAnalysis collect { case Right(decl) => decl }) ++ Seq(ConstDecl(`?s`))
@@ -168,15 +169,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       data.formalArgs.values foreach (v => decider.prover.declare(ConstDecl(v)))
       decider.prover.declare(ConstDecl(data.formalResult))
 
-      val heap = if (Verifier.config.maskHeapMode()) {
-        val fieldChunks = sInit.program.fields.map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, DummyHeap(HeapSort(symbolConverter.toSort(f.typ)))))
-        val predChunks = sInit.program.predicates.map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, DummyHeap(PredHeapSort)))
-        Heap(fieldChunks ++ predChunks)
-      } else {
-        sInit.h
-      }
-
-      val res = Seq(handleFunction(sInit.copy(h = heap), function))
+      val res = Seq(handleFunction(sInit, function))
 
       v.decider.resetProverOptions()
       symbExLog.closeMemberScope()
@@ -199,13 +192,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (result1, phase1data) =>
           emitAndRecordFunctionAxioms(data.limitedAxiom)
           emitAndRecordFunctionAxioms(data.triggerAxiom)
-          if (Verifier.config.maskHeapMode()) {
-            data.qpFrameFunctionDecls map decider.prover.declare
-            emitAndRecordFunctionAxioms(data.frameAxiom)
-            if (data.predicateTriggers.nonEmpty)
-              emitAndRecordFunctionAxioms(data.preconditionFrameAxiom)
-            emitAndRecordFunctionAxioms(data.qpFrameAxioms: _*)
-          }
+          functionEncoding.declsAfterWellDefinedness(data) map decider.prover.declare
+          emitAndRecordFunctionAxioms(functionEncoding.auxiliaryAxioms(data): _*)
           emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
           emitAndRecordFunctionAxioms(data.postPreconditionPropagationAxiom: _*)
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom.toSeq
@@ -243,7 +231,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (localVar, t) => (localVar, (t, Option.when(evaluator.withExp)(LocalVarWithVersion(simplifyVariableName(t.id.name), localVar.typ)(localVar.pos, localVar.info, localVar.errT))))
       }
       val g = Store(argsStore + (function.result -> (data.formalResult, data.valFormalResultExp)))
-      val s = sInit.copy(g = g, h = v.heapSupporter.getEmptyHeap(sInit.program, v, false), oldHeaps = OldHeaps())
+      val s = sInit.copy(g = g, h = v.heapSupporter.getEmptyHeap(sInit.program, v, mayDefineNewVars = false), oldHeaps = OldHeaps())
 
       var phase1Data: Seq[Phase1Data] = Vector.empty
       var recorders: Seq[FunctionRecorder] = Vector.empty

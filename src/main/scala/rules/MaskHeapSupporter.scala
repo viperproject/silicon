@@ -15,9 +15,9 @@ import viper.silicon.resources.{FieldID, MagicWandID, PredicateID}
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.sorts.{HeapSort, MaskSort, PredHeapSort, PredMaskSort, WandHeapSort}
 import viper.silicon.state.terms.utils.consumeExactRead
-import viper.silicon.state.terms.{And, AtLeast, AtMost, DummyHeap, HeapMapTerm, MaskMapTerm, Forall, FullPerm, GoodFieldMask, GoodMask, Greater, HeapLookup, HeapToSnap, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Not, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, Sort, Term, Trigger, True, Var, ZeroMask, fromSnapTree, perms, sorts, toSnapTree}
-import viper.silicon.state.{BasicMaskHeapChunk, FunctionPreconditionTransformer, Heap, Identifier, MagicWandIdentifier, State, Store, terms}
-import viper.silicon.supporters.functions.NoopFunctionRecorder
+import viper.silicon.state.terms.{And, App, AtLeast, AtMost, DummyHeap, First, HeapDepFun, HeapMapTerm, HeapSingleton, MagicWandSnapshot, MaskMapTerm, MWSFLookup, Forall, FullPerm, GoodFieldMask, GoodMask, Greater, HeapLookup, HeapToSnap, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Not, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, Second, SnapToHeap, Sort, SortWrapper, Term, Trigger, True, Var, ZeroMask, fromSnapTree, perms, sorts, toSnapTree}
+import viper.silicon.state.{BasicMaskHeapChunk, FunctionPreconditionTransformer, Heap, Identifier, MagicWandIdentifier, State, Store, SuffixedIdentifier, terms}
+import viper.silicon.supporters.functions.{MaskHeapFunctionEncoding, NoopFunctionRecorder}
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.{ErrorReason, PartialVerificationError, VerificationError}
 import viper.silver.ast
@@ -1250,5 +1250,119 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
      * chunk variant that would require triggering. */
     s
   }
+
+  override def predicateTriggerSort: Sort = PredHeapSort
+
+  override def predicateTriggerSnapArg(s: State, predicate: ast.Predicate, snap: Term, hLookup: Heap): Term =
+    findMaskHeapChunk(hLookup, predicate).heap
+
+  override def foldedPredicateSnapshot(s: State, predicate: ast.Predicate, tArgs: Seq[Term], snap: Term): Term = {
+    // SnapToHeap(HeapToSnap(hp, _, r), r, _) simplifies at the Scala level to hp,
+    // so this becomes HeapMapTerm({predicate -> HeapSingleton(tArgs, snap, PredHeapSort)}).
+    // HeapLookup(HeapSingleton(r, v, _), r) then simplifies to snap (the body consume snap),
+    // allowing Scala-level simplification chains to connect fold and unfold snapshots.
+    HeapMapTerm(immutable.ListMap(predicate -> SnapToHeap(HeapToSnap(HeapSingleton(toSnapTree(tArgs), snap, PredHeapSort),
+      HeapUpdate(PredZeroMask, toSnapTree(tArgs), FullPerm), predicate), predicate, PredHeapSort)))
+  }
+
+  override def unfoldedBodySnapshotFunction(s: State, predicate: ast.Predicate, tArgs: Seq[Term], snap: Term, hLookup: Heap, v: Verifier): (Sort, Verifier) => Term = {
+    val predSnap = snap match {
+      case mmt: MaskMapTerm =>
+        val packedSnap = convertToSnapshot(mmt.masks, Seq(predicate), magicWandSupporter.getEvalHeap(s.copy(h = hLookup), v), s, v.decider)
+        packedSnap match {
+          case hmt: HeapMapTerm => HeapLookup(hmt.heaps(predicate), toSnapTree(tArgs))
+          case h2s: HeapToSnap => HeapLookup(h2s.heap, toSnapTree(tArgs))
+          case _ => HeapLookup(v.decider.createAlias(SnapToHeap(snap, predicate, PredHeapSort), s), toSnapTree(tArgs))
+        }
+      case hmt: HeapMapTerm => HeapLookup(hmt.heaps(predicate), toSnapTree(tArgs))
+      case h2s: HeapToSnap => HeapLookup(h2s.heap, toSnapTree(tArgs))
+      case other => HeapLookup(v.decider.createAlias(SnapToHeap(other, predicate, PredHeapSort), s), toSnapTree(tArgs))
+    }
+    (_: Sort, _: Verifier) => predSnap
+  }
+
+  override def functionAppSnapArgs(s: State, func: ast.Function, tArgs: Seq[Term], snap: Term, v: Verifier): (Seq[Term], Term) = {
+    val resources = getResourceSeq(func.pres, s.program)
+    val args = resources.map(r => findMaskHeapChunk(s.h, r).heap)
+    (args, HeapMapTerm(immutable.ListMap(resources.zip(args): _*)))
+  }
+
+  override def handlesResourceTrigger(ra: ast.ResourceAccess, s: State): Boolean = true
+
+  override def resourceTriggerVariants(ra: ast.ResourceAccess, s: State, pve: PartialVerificationError, v: Verifier)
+                                      : (Seq[Term], Seq[Seq[Term]], Seq[SnapshotMapDefinition], State) = {
+    val resource = ra.res(s.program)
+    val chunk = resource match {
+      case mw: ast.MagicWand =>
+        findMaskHeapChunkOptionally(s.h, MagicWandIdentifier(mw, s.program))
+      case _ => Some(findMaskHeapChunk(s.h, resource))
+    }
+    var variants: Seq[Seq[Term]] = Seq(Seq())
+    if (chunk.isDefined) {
+      evaluator.evals(s.copy(triggerExp = true), ra.args(s.program), _ => pve, v)((_, tArgs, _, _) => {
+        val tRcv = if (resource.isInstanceOf[ast.Field]) tArgs.head else toSnapTree(tArgs)
+        val heapAccess = new HeapLookup(chunk.get.heap, tRcv)
+        val maskAccess = new HeapLookup(chunk.get.mask, tRcv)
+        variants = Seq(Seq(heapAccess), Seq(maskAccess))
+        viper.silicon.interfaces.Success()
+      })
+    }
+    (Seq(), variants, Seq(), s)
+  }
+
+  override def adaptTriggerTerms(terms: Seq[Term], s: State): Seq[Term] = {
+    terms.map(t => t.transform {
+      case App(hdf: HeapDepFun, args) =>
+        val (heapArgs, otherArgs) = args.partition(a => a.sort == PredHeapSort || a.sort.isInstanceOf[sorts.HeapSort])
+        if (heapArgs.isEmpty) App(hdf, args)
+        else {
+          val funcName = hdf.id match {
+            case SuffixedIdentifier(prefix, _, _) => prefix.name
+            case _ => hdf.id.name
+          }
+          s.program.findFunctionOptionally(funcName).flatMap(f => s.functionData.get(f.name)) match {
+            case Some(fd) =>
+              val frameFunc = functionSupporter.frameVersion(hdf, heapArgs.length)
+              val frame = fd.functionEncoding.asInstanceOf[MaskHeapFunctionEncoding].getFrameVersion(fd, otherArgs, heapArgs)
+              App(frameFunc, frame +: otherArgs)
+            case None => App(hdf, args)
+          }
+        }
+    }(_ => true))
+  }
+
+  override def mergeReserveHeaps(hUsed: Heap, hOps: Heap, hLhs: Heap, s: State, v: Verifier): Heap =
+    mergeWandHeaps(mergeWandHeaps(hUsed, hOps, v, Some(s)), hLhs, v, Some(s))
+
+  override def addWandChunk(h: Heap, chWand: Chunk, s: State, v: Verifier): Heap = {
+    val newChunk = chWand.asInstanceOf[BasicMaskHeapChunk]
+    findMaskHeapChunkOptionally(h, newChunk.resource) match {
+      case None => h + chWand
+      case Some(curChunk) =>
+        val mergedMask = MaskSum(curChunk.mask, newChunk.mask)
+        val mergedHeap = MergeHeaps(curChunk.heap, curChunk.mask, newChunk.heap, newChunk.mask)
+        val mergedChunk = curChunk.copy(newMask = mergedMask, newHeap = mergedHeap)
+        h - curChunk + mergedChunk
+    }
+  }
+
+  override def appliedWandSnapshot(snapWand: Term, snapLhs: Term, s: State, v: Verifier): Term =
+    snapWand match {
+      case HeapToSnap(hp, MaskAdd(_, args, _), _) =>
+        val lookup = HeapLookup(hp, args)
+        lookup.sort match {
+          case sorts.MagicWandSnapFunction =>
+            MagicWandSnapshot(lookup).applyToMWSF(snapLhs)
+          case sorts.Snap =>
+            v.decider.assume(snapLhs === First(lookup), Option.when(withExp)(viper.silicon.debugger.DebugExp.createInstance("Magic wand snapshot", true)))
+            Second(lookup)
+        }
+      case snapshot: MagicWandSnapshot => snapshot.applyToMWSF(snapLhs)
+      case SortWrapper(snapshot: MagicWandSnapshot, _) => snapshot.applyToMWSF(snapLhs)
+      case t if t.sort == sorts.MagicWandSnapFunction => MWSFLookup(t, snapLhs)
+      case _ => snapWand
+    }
+
+  override def checkEmptyExhaleExtState(s: State): Unit = ()
 
 }

@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.Config.JoinMode
 import viper.silicon.debugger.DebugExp
 
-import scala.collection.{immutable, mutable}
+import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
@@ -77,10 +77,13 @@ object consumer extends ConsumptionRules {
              (Q: (State, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
 
-    consumeR(s, s.h, a.whenExhaling, returnSnap, pve, v)((s1, h1, snap, v1) => {
+    val aWhenExhaling = a.whenExhaling
+    consumeR(s, s.h, aWhenExhaling, returnSnap, pve, v)((s1, h1, snap, v1) => {
       val s2 = s1.copy(h = h1,
                        partiallyConsumedHeap = s.partiallyConsumedHeap)
-      Q(s2, snap, v1)})
+      val finalSnap = snap.map(sn =>
+        v1.snapshotSupporter.finalizeConsumedSnapshot(s1, s.h, sn, aWhenExhaling.topLevelConjuncts, v1))
+      Q(s2, finalSnap, v1)})
   }
 
   /** @inheritdoc */
@@ -103,10 +106,13 @@ object consumer extends ConsumptionRules {
       allPves ++= pves
     })
 
-    consumeTlcs(s, s.h, allTlcs.result(), returnSnap, allPves.result(), v)((s1, h1, snap1, v1) => {
+    val tlcsResult = allTlcs.result()
+    consumeTlcs(s, s.h, tlcsResult, returnSnap, allPves.result(), v)((s1, h1, snap1, v1) => {
       val s2 = s1.copy(h = h1,
                        partiallyConsumedHeap = s.partiallyConsumedHeap)
-      Q(s2, snap1, v1)
+      val finalSnap = snap1.map(sn =>
+        v1.snapshotSupporter.finalizeConsumedSnapshot(s1, s.h, sn, tlcsResult, v1))
+      Q(s2, finalSnap, v1)
     })
   }
 
@@ -115,100 +121,27 @@ object consumer extends ConsumptionRules {
                           tlcs: Seq[ast.Exp],
                           returnSnap: Boolean,
                           pves: Seq[PartialVerificationError],
-                          v: Verifier,
-                          isRecursive: Boolean = false)
+                          v: Verifier)
                          (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                          : VerificationResult = {
 
-    val resMap = if (Verifier.config.maskHeapMode()) {
-      if (isRecursive) {
-        Some(Seq())
-      } else {
-        val resources = maskHeapSupporter.getResourceSeq(tlcs, s.program)
-        val resMap: Seq[(Any, Term)] = resources.map(r => (r, (if (r.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask)))
-        Some(resMap)
-      }
-    } else {
-      None
-    }
-
-    if (tlcs.isEmpty) {
-      val snap = Option.when(returnSnap)({
-        resMap match {
-          case Some(rm) =>
-            val newMap = immutable.ListMap.from(rm)
-            if (isRecursive)
-              MaskMapTerm(newMap)
-            else
-              maskHeapSupporter.convertToSnapshot(newMap, maskHeapSupporter.getResourceSeq(tlcs, s.program), magicWandSupporter.getEvalHeap(s.copy(h=h), v), s, v.decider)
-          case _ => Unit
-        }
-      })
-      Q(s, h, snap, v)
-    } else {
+    if (tlcs.isEmpty)
+      Q(s, h, if (returnSnap) Some(v.snapshotSupporter.unitSnapshot) else None, v)
+    else {
       val a = tlcs.head
       val pve = pves.head
 
       if (tlcs.tail.isEmpty)
-        wrappedConsumeTlc(s, h, a, returnSnap, pve, v)((s2, h2, snap2, v2) => {
-          if (!returnSnap) {
-            Q(s2, h2, None, v2)
-          } else {
-            if (Verifier.config.maskHeapMode()) {
-              val resources = maskHeapSupporter.getResourceSeq(tlcs, s.program)
-              val fst = immutable.ListMap.from(resMap.get)
-              val snd = snap2.get match {
-                case mht: MaskMapTerm => mht.masks
-                case hts: HeapToSnap => immutable.ListMap(hts.r -> hts.mask)
-                case snp =>
-                  maskHeapSupporter.convertFromSnapshot(snp, resources, s2, v2)
-              }
-              val newMap = maskHeapSupporter.mergePreservingFirstOrder(fst, snd)
-              val term = if (isRecursive) MaskMapTerm(newMap)
-              else
-                maskHeapSupporter.convertToSnapshot(newMap, resources, magicWandSupporter.getEvalHeap(if (s.exhaleExt) s2 else s.copy(h=h), v2), s2, v2.decider)
-              Q(s2, h2, Some(term), v2)
-            } else {
-              Q(s2, h2, snap2, v2)
-            }
-          }
-        })
+        wrappedConsumeTlc(s, h, a, returnSnap, pve, v)(Q)
       else
         wrappedConsumeTlc(s, h, a, returnSnap, pve, v)((s1, h1, snap1, v1) => {
-          consumeTlcs(s1, h1, tlcs.tail, returnSnap, pves.tail, v1, true)((s2, h2, snap2, v2) =>
-            if (Verifier.config.maskHeapMode()) {
-              if (returnSnap) {
-                val fst = immutable.ListMap.from(resMap.get)
-                val resources1 = maskHeapSupporter.getResourceSeq(Seq(tlcs.head), s.program)
-                val snd = snap1.get match {
-                  case mht: MaskMapTerm => mht.masks
-                  case hts: HeapToSnap => immutable.ListMap(hts.r -> hts.mask)
-                  case snp =>
-                    maskHeapSupporter.convertFromSnapshot(snp, resources1, s2, v2)
-                }
-                val resources2 = maskHeapSupporter.getResourceSeq(tlcs.tail, s.program)
-                val third = snap2.get match {
-                  case mht: MaskMapTerm => mht.masks
-                  case hts: HeapToSnap => immutable.ListMap(hts.r -> hts.mask)
-                  case snp =>
-                    maskHeapSupporter.convertFromSnapshot(snp, resources2, s2, v2)
-                }
-                val newMap = maskHeapSupporter.mergePreservingFirstOrder(maskHeapSupporter.mergePreservingFirstOrder(fst, snd), third)
-                val term = if (isRecursive) MaskMapTerm(newMap)
-                else
-                  maskHeapSupporter.convertToSnapshot(newMap, maskHeapSupporter.getResourceSeq(tlcs, s.program), magicWandSupporter.getEvalHeap(if (s.exhaleExt) s2 else s.copy(h=h), v2), s2, v2.decider)
-                Q(s2, h2, Some(term), v2)
-              } else {
-                Q(s2, h2, None, v2)
-              }
-            } else {
-              (snap1, snap2) match {
-                case (Some(sn1), Some(sn2)) if returnSnap => Q(s2, h2, Some(Combine(sn1, sn2)), v2)
-                case (None, None) if !returnSnap => Q(s2, h2, None, v2)
-                case (_, _) => sys.error(s"Consume returned unexpected snapshot: ${(returnSnap, (snap1, snap2))}")
-              }
-            }
-            )
+          consumeTlcs(s1, h1, tlcs.tail, returnSnap, pves.tail, v1)((s2, h2, snap2, v2) =>
+
+            (snap1, snap2) match {
+              case (Some(sn1), Some(sn2)) if returnSnap => Q(s2, h2, Some(v2.snapshotSupporter.combineSnapshots(s2, sn1, sn2, a, tlcs.tail, v2)), v2)
+              case (None, None) if !returnSnap => Q(s2, h2, None, v2)
+              case (_, _) =>  sys.error(s"Consume returned unexpected snapshot: ${(returnSnap, (snap1, snap2))}")
+            })
         })
     }
   }
@@ -288,7 +221,7 @@ object consumer extends ConsumptionRules {
             }),
             (s2, v2) => {
               v2.symbExLog.closeScope(uidImplies)
-              Q(s2, h, if (returnSnap) Some(unitTerm()) else None, v2)
+              Q(s2, h, if (returnSnap) Some(v2.snapshotSupporter.unitSnapshot) else None, v2)
             }))
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && s.moreJoins.id >= JoinMode.Impure.id =>
@@ -388,7 +321,7 @@ object consumer extends ConsumptionRules {
               val s3 = s2.copy(constrainableARPs = s.constrainableARPs, functionRecorder = s2.functionRecorder.leaveQuantifiedExp(qpa))
               Q(s3, h2, snap, v2)
             })
-          case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(unitTerm()) else None, v1)
+          case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(v1.snapshotSupporter.unitSnapshot) else None, v1)
         }
 
       case let: ast.Let if !let.isPure =>
@@ -429,7 +362,7 @@ object consumer extends ConsumptionRules {
               })
               case None =>
                 v2.symbExLog.closeScope(scopeUid)
-                QB(s2.copy(parallelizeBranches = s1.parallelizeBranches), (h, if (returnSnap) Some(unitTerm()) else None), v2)
+                QB(s2.copy(parallelizeBranches = s1.parallelizeBranches), (h, if (returnSnap) Some(v2.snapshotSupporter.unitSnapshot) else None), v2)
             })
       })(entries => {
         val s2 = entries match {
@@ -502,14 +435,7 @@ object consumer extends ConsumptionRules {
       val s5 = s4.copy(h = s.h,
                        reserveHeaps = s.reserveHeaps,
                        exhaleExt = s.exhaleExt)
-      Q(s5, if (returnSnap) Some(unitTerm()) else None, v4)
+      Q(s5, if (returnSnap) Some(v4.snapshotSupporter.unitSnapshot) else None, v4)
     })
-  }
-
-  private def unitTerm(): Term = {
-    if (Verifier.config.maskHeapMode())
-      MaskMapTerm(immutable.ListMap[Any, Term]())
-    else
-      Unit
   }
 }

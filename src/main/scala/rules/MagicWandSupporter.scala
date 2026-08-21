@@ -496,22 +496,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
         // Look up the RHS snapshot by applying snapLhs to the wand's MWSF (a (wrapped)
         // MagicWandSnapshot for an individual wand, or an MWSF-sorted lookup for a quantified one).
-        val magicWandSnapshotLookup = snapWand.get match {
-          case HeapToSnap(hp, MaskAdd(_, args, _), _) if Verifier.config.maskHeapMode() =>
-            val lookup = HeapLookup(hp, args)
-            lookup.sort match {
-              case sorts.MagicWandSnapFunction =>
-                val snapshot = MagicWandSnapshot(lookup)
-                snapshot.applyToMWSF(snapLhs.get)
-              case sorts.Snap =>
-                v2.decider.assume(snapLhs.get === First(lookup), Option.when(withExp)(DebugExp.createInstance("Magic wand snapshot", true)))
-                Second(lookup)
-            }
-          case snapshot: MagicWandSnapshot => snapshot.applyToMWSF(snapLhs.get)
-          case SortWrapper(snapshot: MagicWandSnapshot, _) => snapshot.applyToMWSF(snapLhs.get)
-          case t if t.sort == sorts.MagicWandSnapFunction => MWSFLookup(t, snapLhs.get)
-          case _ => snapWand.get
-        }
+        val magicWandSnapshotLookup =
+          v2.heapSupporter.appliedWandSnapshot(snapWand.get, snapLhs.get, s2, v2)
 
         // Produce the wand's RHS.
         produce(s3.copy(conservingSnapshotGeneration = true), toSf(magicWandSnapshotLookup), wand.right, pve, v2)((s4, v3) => {
@@ -587,11 +573,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
        * Since innermost assertions must be self-framing, combining hUsed, hOps and hLhs
        * is sound.
        */
-      if (Verifier.config.maskHeapMode()) {
-        maskHeapSupporter.mergeWandHeaps(maskHeapSupporter.mergeWandHeaps(s.reserveHeaps.head, s.reserveHeaps(1), v, Some(s)), s.reserveHeaps(2), v, Some(s))
-      } else {
-        s.reserveHeaps.head + s.reserveHeaps(1) + s.reserveHeaps(2)
-      }
+      v.heapSupporter.mergeReserveHeaps(s.reserveHeaps.head, s.reserveHeaps(1), s.reserveHeaps(2), s, v)
     } else
       s.h
   }

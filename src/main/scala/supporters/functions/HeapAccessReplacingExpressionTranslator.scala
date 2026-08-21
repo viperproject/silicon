@@ -11,7 +11,7 @@ import com.typesafe.scalalogging.LazyLogging
 import scala.annotation.unused
 import viper.silver.ast
 import viper.silicon.Map
-import viper.silicon.rules.{functionSupporter, maskHeapSupporter}
+import viper.silicon.rules.functionSupporter
 import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.supporters.ExpressionTranslator
@@ -25,7 +25,8 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
                                               fresh: (String, Sort, Option[PType]) => Var,
                                               resolutionFailureMessage: (ast.Positioned, FunctionData) => String,
                                               stopOnResolutionFailure: (ast.Positioned, FunctionData) => Boolean,
-                                              reporter: Reporter)
+                                              reporter: Reporter,
+                                              functionEncoding: FunctionEncoding)
     extends ExpressionTranslator
        with LazyLogging {
 
@@ -160,35 +161,13 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
             val funcAppAnn = eFApp.info.getUniqueInfo[AnnotationInfo]
             funcAppAnn match {
               case Some(a) if a.values.contains("reveal") => funDefault
-              case _ => functionSupporter.limitedVersion(symbolConverter.toFunction(silverFunc, program))
+              case _ => functionSupporter.limitedVersion(funDefined)
             }
           case _ => funDefault
         }
         val args = eFApp.args map (arg => translate(arg))
         val snap = getOrFail(data.fappToSnap, eFApp, context, sorts.Snap, Option.when(Verifier.config.enableDebugging())(PUnknown()))
-        val fapp = if (Verifier.config.maskHeapMode()) {
-          def createApp(trm: Term): Term = trm match {
-            case mt: HeapMapTerm => App(fun, mt.heaps.values.toSeq ++ args)
-            case Ite(cond, e1, e2) => Ite(cond, createApp(e1), createApp(e2))
-            case _ =>
-              val resources = maskHeapSupporter.getResourceSeq(silverFunc.pres, program)
-              val resHeaps = fromSnapTree(trm, resources.size).zip(resources).map {
-                case (HeapToSnap(heap, _, _), _) => heap
-                case (s, r) =>
-                  val srt = r match {
-                    case f: ast.Field => sorts.HeapSort(symbolConverter.toSort(f.typ))
-                    case _ => sorts.PredHeapSort
-                  }
-                  SnapToHeap(s, r, srt)
-              }
-              App(fun, resHeaps ++ args)
-          }
-
-          createApp(snap)
-        } else {
-          App(fun, snap +: args)
-        }
-        fapp
+        functionEncoding.translateFunctionApp(fun, snap, args, silverFunc, program)
 
       case _ => super.translate(symbolConverter.toSort)(e)
     }

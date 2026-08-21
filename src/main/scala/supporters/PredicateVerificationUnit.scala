@@ -29,19 +29,16 @@ class PredicateData(val predicate: ast.Predicate)
                     *       through a verifier) is only safe if the converter is effectively
                     *       independent of the verifiers.
                     */
-                   (private val symbolConvert: SymbolConverter) extends FunctionRecorderHandler {
+                   (private val symbolConvert: SymbolConverter, triggerSort: Sort = sorts.Snap) extends FunctionRecorderHandler {
 
   var predContents: Option[PredicateContentsTree] = None
   var params: Option[Seq[Var]] = None
 
   val argumentSorts = predicate.formalArgs map (fm => symbolConvert.toSort(fm.typ))
 
-  val triggerFunction = {
-    if (Verifier.config.maskHeapMode())
-      Fun(Identifier(s"${predicate.name}%trigger"), sorts.PredHeapSort +: argumentSorts, sorts.Bool)
-    else
-      Fun(Identifier(s"${predicate.name}%trigger"), sorts.Snap +: argumentSorts, sorts.Bool)
-  }
+  val triggerFunction =
+    Fun(Identifier(s"${predicate.name}%trigger"), triggerSort +: argumentSorts, sorts.Bool)
+
 }
 
 trait PredicateContentsTree
@@ -72,7 +69,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
 
     def analyze(program: Program): Unit = {
       this.predicateData = toMap(
-        program.predicates map (pred => pred.name -> new PredicateData(pred)(symbolConverter)))
+        program.predicates map (pred => pred.name -> new PredicateData(pred)(symbolConverter, v.heapSupporter.predicateTriggerSort)))
     }
 
     /* Predicate supporter generates no sorts */
