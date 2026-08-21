@@ -78,7 +78,21 @@ Known-issues register is now EMPTY on the maskHeap side. PHASE 1 COMPLETE.
 Done since: Config now rejects --counterexample together with --maskHeapMode (scope
 simplification #1).
 
-## Phase 2 — Kill the mode branches (the bulk; ~1–2 weeks incremental)
+## Phase 2 — Kill the mode branches — COMPLETE (2026-08-21)
+
+Executed via the prep branch `meilers_heap_supporter_api` (5 slices + signature-refinement
+commit, each verified with the canonicalized prover-log check `refcheck.sh` — note: strict
+byte-identity is unattainable, prover output is nondeterministic across runs; the canonical
+check strips comments, normalizes quant-u ids, sorts lines, and requires
+--numberOfParallelVerifiers 1) and an adoption merge on this branch (a6691afb) moving all
+maskHeap behavior into MaskHeapSnapshotSupporter, MaskHeapSupporter overrides, and
+MaskHeapFunctionEncoding. Result: 12 maskHeapMode() references remain in the whole codebase
+(supporter selection, packageWand wand-encoding split pending MWSF unification, Terms
+trigger filter, SymbolConverter sorts, preamble contributor guard); rules package is
+mode-free except the packageWand TODO. Verified: maskHeap scan 0/137, standard 16-file set
+matches annotations, maskHeap key files at pre-refactor timings.
+
+Original plan for reference:
 
 Current inventory: ~50 explicit `maskHeapMode()` sites + ~28 implicit ones (matches on
 `MaskMapTerm`/`HeapMapTerm`/`BasicMaskHeapChunk` outside MaskHeapSupporter). Ordered so each
