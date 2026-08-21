@@ -706,12 +706,36 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val smtStateSlowMs: ScallopOption[Int] = opt[Int]("smtStateSlowMs",
+    descr = ("Also write an SMT state bundle for every prover check (assert or "
+            + "may-check, any verdict) whose wall time reaches this many ms. "
+            + "0 disables (default)."),
+    default = Some(0),
+    noshort = true
+  )
+
   val smtStateDir: ScallopOption[String] = opt[String]("smtStateDir",
-    descr = ("Directory into which per-failure SMT state bundles are written "
-            + "under --smtStateOnError (default: current directory)."),
+    descr = ("Directory for SMT state bundles and the per-verifier prover "
+            + "session logs they are cut from (default: current directory). "
+            + "Session logs are left behind, so a killed or timed-out run "
+            + "still leaves each verifier's session up to its in-flight check."),
     default = Some("."),
     noshort = true
   )
+
+  def smtStateCapture: Boolean = smtStateOnError() || smtStateSlowMs() > 0
+
+  /* Replay-relevant settings, recorded at the top of every session log. */
+  def smtStateHeader: String = Seq(
+    s"assertTimeout=${assertTimeout.toOption.getOrElse(0)}",
+    s"checkTimeout=${checkTimeout()}",
+    s"proverTimeout=$proverTimeout",
+    s"proverEnableTimeBounds=${proverEnableTimeBounds()}",
+    s"z3ResourcesPerMillisecond=${z3ResourcesPerMillisecond()}",
+    s"numberOfParallelVerifiers=${numberOfParallelVerifiers()}",
+    s"parallelizeBranches=${parallelizeBranches()}",
+    s"smtStateSlowMs=${smtStateSlowMs()}"
+  ).mkString(" ")
 
   /* Option validation (trailing file argument is validated by parent class) */
 

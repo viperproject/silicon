@@ -8,6 +8,7 @@ package viper.silicon.interfaces
 
 import viper.silicon.debugger.{DebugAxiom, DebugExp}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.interfaces.decider.CheckInfo
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.reporting._
 import viper.silicon.state.terms.{BooleanLiteral, FunctionDecl, IntLiteral, MacroDecl, Term, Var}
@@ -106,8 +107,10 @@ case class Failure/*[ST <: Store[ST],
 
 case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
                                  counterExample: Option[Counterexample],
-                                 reasonUnknown: Option[String],
-                                 rlimitDelta: Option[Long] = None) extends FailureContext {
+                                 failingCheck: Option[CheckInfo]) extends FailureContext {
+  def reasonUnknown: Option[String] = failingCheck.flatMap(_.reason)
+  def rlimitDelta: Option[Long] = failingCheck.flatMap(_.rlimit)
+
   lazy val branchConditionString: String = {
     if (branchConditions.nonEmpty) {
       val branchConditionsString =
@@ -126,7 +129,7 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
   }
 
   lazy val reasonUnknownString: String = {
-    if (reasonUnknown.isDefined) {
+    if (reasonUnknown.isDefined && Verifier.config.reportReasonUnknown()) {
       s"\nPotential prover incompleteness: ${reasonUnknown.get}"
     } else {
       ""
@@ -153,11 +156,12 @@ case class SiliconDebuggingFailureContext(branchConditions: Seq[Term],
   override lazy val toString: String = ""
 }
 
-// Term-level symbolic state attached to failures under --smtStateOnError.
+/* Term-level symbolic state attached to failures under --smtStateOnError.
+ * failingCheck is the prover query that produced the failure; None when the
+ * error was raised without one (e.g. a missing permission). */
 case class SiliconSmtStateContext(branchConditions: Seq[Term],
                                   counterExample: Option[Counterexample],
-                                  reasonUnknown: Option[String],
-                                  rlimitDelta: Option[Long],
+                                  failingCheck: Option[CheckInfo],
                                   sessionLog: Option[String],
                                   state: Option[State],
                                   proverEmits: Seq[String],
@@ -166,6 +170,8 @@ case class SiliconSmtStateContext(branchConditions: Seq[Term],
                                   functionDecls: Set[FunctionDecl],
                                   assumptions: InsertionOrderedSet[Term],
                                   failedAssertion: Term) extends FailureContext {
+  def reasonUnknown: Option[String] = failingCheck.flatMap(_.reason)
+  def rlimitDelta: Option[Long] = failingCheck.flatMap(_.rlimit)
 
   override lazy val toString: String = ""
 }

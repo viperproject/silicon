@@ -294,7 +294,7 @@ class Z3ProverAPI(uniqueId: String,
     cleanTerm
   }
 
-  def assert(goal: Term, timeout: Option[Int]): Boolean = {
+  def assert(goal: Term, timeout: Option[Int], kind: String): Boolean = {
     endPreamblePhase()
 
     try {

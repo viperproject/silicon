@@ -20,6 +20,24 @@ object Sat extends Result
 object Unsat extends Result
 object Unknown extends Result
 
+/* One check-sat as seen by the prover: its ordinal in the session (counting
+ * every check-sat sent, incl. saturation), what issued it, the answer, the
+ * prover's reason when unknown, wall time, rlimit spent (Z3 only) and the
+ * budget in force as configured (ms; 0 = unlimited; enforced as rlimit
+ * unless proverEnableTimeBounds). */
+case class CheckInfo(ordinal: Int,
+                     kind: String,
+                     answer: String,
+                     reason: Option[String],
+                     ms: Long,
+                     rlimit: Option[Long],
+                     budgetMs: Int) {
+  def summary: String =
+    s"check #$ordinal kind=$kind answer=$answer" +
+      reason.fold("")(r => s" reason=$r") + s" ms=$ms" +
+      rlimit.fold("")(r => s" rlimit=$r") + s" budgetMs=$budgetMs"
+}
+
 /* TODO: Should be generic, not hardcoded to Strings */
 trait ProverLike {
   protected val debugMode = Verifier.config.enableDebugging()
@@ -42,7 +60,8 @@ trait ProverLike {
 
 trait Prover extends ProverLike with StatefulComponent {
   def start(userArgsString: Option[String]): Unit
-  def assert(goal: Term, timeout: Option[Int] = None): Boolean
+  /* kind labels the check-sat in the session log and CheckInfo. */
+  def assert(goal: Term, timeout: Option[Int] = None, kind: String = "assert"): Boolean
   def check(timeout: Option[Int] = None): Result
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
   def statistics(): Map[String, String]
@@ -50,9 +69,8 @@ trait Prover extends ProverLike with StatefulComponent {
   def isModelValid(): Boolean
   def getModel(): Model
   def getReasonUnknown(): String
-  /* Prover resources consumed by the most recent failing assert's check-sat
-   * (Z3 rlimit units); None when unsupported or not tracked. */
-  def getLastRlimitDelta(): Option[Long] = None
+  /* The most recent check-sat, None until the first one or after clearLastAssert. */
+  def lastCheck: Option[CheckInfo] = None
   /* Complete on-disk log of this prover session (every line sent), when
    * session logging is active; replayable on a bare prover. */
   def sessionLogPath: Option[java.nio.file.Path] = None

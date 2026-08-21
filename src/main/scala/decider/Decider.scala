@@ -13,6 +13,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider._
 import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
+import viper.silicon.reporting.SmtStateDumper
 import viper.silicon.state._
 import viper.silicon.state.terms.{Term, _}
 import viper.silicon.utils.ast.{extractPTypeFromExp, simplifyVariableName}
@@ -68,6 +69,10 @@ trait Decider {
   def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean): Unit
 
   def check(t: Term, timeout: Int): Boolean
+  /* The most recent prover query, if it returned false; None once a later
+   * query succeeds, so a failure raised without a query is not attributed to
+   * an unrelated earlier check. */
+  def lastFailedCheck: Option[CheckInfo]
 
   /* TODO: Consider changing assert such that
    *         1. It passes State and Operations to the continuation
@@ -129,6 +134,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private var _proverOptions: Map[String, String] = Map.empty
     private var _proverResetOptions: Map[String, String] = Map.empty
     private val _debuggerAssumedTerms: mutable.Set[Term] = mutable.Set.empty
+    private var _lastFailedCheck: Option[CheckInfo] = None
     
     def functionDecls: Set[FunctionDecl] = _declaredFreshFunctions
     def macroDecls: Vector[MacroDecl] = _declaredFreshMacros
@@ -366,7 +372,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       prover.check(timeout) == Unsat
     }
 
-    def check(t: Term, timeout: Int): Boolean = deciderAssert(t, Some(timeout))
+    def check(t: Term, timeout: Int): Boolean = deciderAssert(t, Some(timeout), "check")
+
+    def lastFailedCheck: Option[CheckInfo] = _lastFailedCheck
 
     def assert(t: Term, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
               (Q: Boolean => VerificationResult)
@@ -376,7 +384,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       // (timeout = None), not this method's, so we reapply here as a workaround
       val effectiveTimeout = timeout.orElse(Verifier.config.assertTimeout.toOption)
 
-      val success = deciderAssert(t, effectiveTimeout)
+      val success = deciderAssert(t, effectiveTimeout, "assert")
 
       // If the SMT query was not successful, store it (possibly "overwriting"
       // any previously saved query), otherwise discard any query we had saved
@@ -390,12 +398,20 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       Q(success)
     }
 
-    private def deciderAssert(t: Term, timeout: Option[Int]) = {
+    private def deciderAssert(t: Term, timeout: Option[Int], kind: String) = {
       val assertRecord = new DeciderAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
       val asserted = isKnownToBeTrue(t)
-      val result = asserted || proverAssert(t, timeout)
+      val result = asserted || proverAssert(t, timeout, kind)
+
+      if (!asserted) {
+        val check = prover.lastCheck
+        _lastFailedCheck = if (result) None else check
+        val slowMs = Verifier.config.smtStateSlowMs()
+        if (slowMs > 0 && check.exists(_.ms >= slowMs))
+          SmtStateDumper.dumpSlow(uniqueId, t, check.get, this)
+      }
 
       symbExLog.closeScope(sepIdentifier)
       result
@@ -409,11 +425,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       case _ => false
     }
 
-    private def proverAssert(t: Term, timeout: Option[Int]) = {
+    private def proverAssert(t: Term, timeout: Option[Int], kind: String = "assert") = {
       val assertRecord = new ProverAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
-      val result = prover.assert(t, timeout)
+      val result = prover.assert(t, timeout, kind)
 
       symbExLog.whenEnabled {
         assertRecord.statistics = Some(symbExLog.deltaStatistics(prover.statistics()))
@@ -531,7 +547,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def statistics(): Map[String, String] = prover.statistics()
 
-    override def generateModel(): Unit = proverAssert(False, Verifier.config.assertTimeout.toOption)
+    override def generateModel(): Unit = proverAssert(False, Verifier.config.assertTimeout.toOption, "model")
 
     override def getModel(): Model = prover.getModel()
 

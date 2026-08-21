@@ -11,7 +11,7 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
-import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
+import viper.silicon.interfaces.decider.{CheckInfo, Prover, Result, Sat, Unknown, Unsat}
 import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms._
@@ -44,7 +44,9 @@ abstract class ProverStdIO(uniqueId: String,
   var proverPath: Path = _
   var lastReasonUnknown : String = _
   var lastModel : String = _
-  var lastRlimitDelta : Option[Long] = None
+  protected var checkCounter = 0
+  protected var _lastCheck: Option[CheckInfo] = None
+  override def lastCheck: Option[CheckInfo] = _lastCheck
 
   def exeEnvironmentalVariable: String
   def dependencies: Seq[SilDefaultDependency]
@@ -90,14 +92,20 @@ abstract class ProverStdIO(uniqueId: String,
     }
     pushPopScopeDepth = 0
     lastTimeout = -1
-    /* smtStateOnError implies session logging: the per-failure .smt2 bundle is
-     * a copy of this file, so failures replay on a bare prover without Viper.
-     * The configured proverLogFile path repeats its uniqueId across verifier
-     * instances, so concurrent verifications need a fresh temp file each. */
+    /* SMT state capture implies session logging: failure/slow bundles are
+     * copies of this file, so they replay on a bare prover without Viper. The
+     * file lives in smtStateDir and is left behind (the caller owns that
+     * directory), so a run that is killed or times out still leaves every
+     * verifier's session up to the in-flight check. The configured
+     * proverLogFile path repeats its uniqueId across verifier instances, so
+     * concurrent verifications need a fresh file each. */
     sessionLogFile =
       if (Verifier.config.outputProverLog) Verifier.config.proverLogFile(uniqueId)
-      else if (Verifier.config.smtStateOnError())
-        java.nio.file.Files.createTempFile(s"prover-session-$uniqueId-", ".smt2")
+      else if (Verifier.config.smtStateCapture) {
+        val dir = java.nio.file.Paths.get(Verifier.config.smtStateDir())
+        java.nio.file.Files.createDirectories(dir)
+        java.nio.file.Files.createTempFile(dir, s"session-$uniqueId-", ".smt2")
+      }
       else null
     logfileWriter = if (sessionLogFile == null) null else viper.silver.utility.Common.PrintWriter(sessionLogFile.toFile)
     proverPath = getProverPath
@@ -105,6 +113,7 @@ abstract class ProverStdIO(uniqueId: String,
     if (logfileWriter != null) {
       val userArgs = userArgsString.map(_.split(' ').toSeq).getOrElse(Seq.empty)
       logToFile(s";; prover: $proverPath ${(startUpArgs ++ userArgs).mkString(" ")}")
+      logToFile(s";; config: ${Verifier.config.smtStateHeader}")
     }
     input = new BufferedReader(new InputStreamReader(prover.getInputStream))
     output = new PrintWriter(new BufferedWriter(new OutputStreamWriter(prover.getOutputStream)), true)
@@ -177,11 +186,6 @@ abstract class ProverStdIO(uniqueId: String,
 
       if (logfileWriter != null) {
         logfileWriter.close()
-        // Session logs opened only for smtStateOnError are temp files; their
-        // content was copied into failure bundles at dump time.
-        if (!Verifier.config.outputProverLog && sessionLogFile != null) {
-          java.nio.file.Files.deleteIfExists(sessionLogFile)
-        }
       }
       if (input != null) {
         input.close()
@@ -270,31 +274,22 @@ abstract class ProverStdIO(uniqueId: String,
     readSuccess()
   }
 
-  def assert(goal: Term, timeout: Option[Int] = None): Boolean =
-    assert(termConverter.convert(goal), timeout)
+  def assert(goal: Term, timeout: Option[Int] = None, kind: String = "assert"): Boolean =
+    assert(termConverter.convert(goal), timeout, kind)
 
-  def assert(goal: String, timeout: Option[Int]): Boolean = {
-//    bookkeeper.assertionCounter += 1
-
-    val (result, duration) = Verifier.config.assertionMode() match {
-      case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal, timeout)
-      case Config.AssertionMode.PushPop => assertUsingPushPop(goal, timeout)
+  def assert(goal: String, timeout: Option[Int], kind: String): Boolean = {
+    Verifier.config.assertionMode() match {
+      case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal, timeout, kind)
+      case Config.AssertionMode.PushPop => assertUsingPushPop(goal, timeout, kind)
     }
-
-    comment(s"${viper.silver.reporter.format.formatMillisReadably(duration)}")
-    comment("(get-info :all-statistics)")
-
-    result
   }
 
-  /* Whether to bracket each check-sat with (get-info :rlimit) so failures can
-   * report the resources the failing check actually consumed. assertTimeout is
-   * enforced as an rlimit budget, so cap tuning needs deltas in rlimit counts,
-   * not wall time (QP-heavy queries burn 5x slower than the ms->rlimit
-   * calibration assumes). Two one-line round trips per check; only enabled
-   * alongside the flags that consume the result. */
+  /* Whether to bracket each check-sat with (get-info :rlimit). assertTimeout
+   * is enforced as an rlimit budget, so cap tuning needs rlimit deltas, not
+   * wall time (the ms->rlimit calibration is off by 10-50x on some query
+   * classes). Two one-line round trips per check. */
   protected def trackRlimit: Boolean =
-    Verifier.config.smtStateOnError() || Verifier.config.reportReasonUnknown()
+    sessionLogFile != null || Verifier.config.reportReasonUnknown()
 
   protected def readRlimitCount(): Option[Long] = {
     writeLine("(get-info :rlimit)")
@@ -302,30 +297,37 @@ abstract class ProverStdIO(uniqueId: String,
     "\\d+".r.findFirstIn(answer).map(_.toLong)
   }
 
-  protected def assertUsingPushPop(goal: String, timeout: Option[Int]): (Boolean, Long) = {
+  /* Sends one check-sat command and records it as lastCheck. The session log
+   * gets a one-line summary after the answer and is flushed, so a killed run
+   * leaves a log that ends at its in-flight check. */
+  protected def runCheckSat(cmd: String, kind: String): String = {
+    val rlimitBefore = if (trackRlimit) readRlimitCount() else None
+    val startTime = System.currentTimeMillis()
+    writeLine(cmd)
+    val answer = readLine()
+    val ms = System.currentTimeMillis() - startTime
+    val rlimit = rlimitBefore.flatMap(before => readRlimitCount().map(_ - before))
+    val reason = if (answer == "unknown") Some(retrieveReasonUnknown()) else None
+    checkCounter += 1
+    _lastCheck = Some(CheckInfo(checkCounter, kind, answer, reason, ms, rlimit, math.max(lastTimeout, 0)))
+    comment(s"[${_lastCheck.get.summary}]")
+    flushSessionLog()
+    answer
+  }
+
+  protected def assertUsingPushPop(goal: String, timeout: Option[Int], kind: String): Boolean = {
     push()
     setTimeout(timeout)
 
     writeLine("(assert (not " + goal + "))")
     readSuccess()
 
-    val rlimitBefore = if (trackRlimit) readRlimitCount() else None
-
-    val startTime = System.currentTimeMillis()
-    writeLine("(check-sat)")
-    val result = readUnsat()
-    val endTime = System.currentTimeMillis()
-
-    lastRlimitDelta = rlimitBefore.flatMap(before => readRlimitCount().map(_ - before))
-
-    if (!result) {
-      retrieveAndSaveModel()
-      retrieveReasonUnknown()
-    }
+    val result = readUnsat(runCheckSat("(check-sat)", kind))
+    if (!result) retrieveAndSaveModel()
 
     pop()
 
-    (result, endTime - startTime)
+    result
   }
 
   def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {
@@ -338,8 +340,7 @@ abstract class ProverStdIO(uniqueId: String,
   def saturate(timeout: Int, comment: String): Unit = {
     this.comment(s"State saturation: $comment")
     setTimeout(Some(timeout))
-    writeLine("(check-sat)")
-    readLine()
+    runCheckSat("(check-sat)", "saturate")
   }
 
   protected def retrieveAndSaveModel(): Unit = {
@@ -354,14 +355,13 @@ abstract class ProverStdIO(uniqueId: String,
     }
   }
 
-  protected def retrieveReasonUnknown(): Unit = {
-    if (Verifier.config.reportReasonUnknown()) {
-      writeLine("(get-info :reason-unknown)")
-      var result = readLine()
-      if (result.startsWith("(:reason-unknown \""))
-        result = result.substring(18, result.length - 2)
-      lastReasonUnknown = result
-    }
+  protected def retrieveReasonUnknown(): String = {
+    writeLine("(get-info :reason-unknown)")
+    var result = readLine()
+    if (result.startsWith("(:reason-unknown \""))
+      result = result.substring(18, result.length - 2)
+    lastReasonUnknown = result
+    result
   }
 
   override def hasModel(): Boolean = {
@@ -372,7 +372,7 @@ abstract class ProverStdIO(uniqueId: String,
     lastModel != null && !lastModel.contains("model is not available")
   }
 
-  protected def assertUsingSoftConstraints(goal: String, timeout: Option[Int]): (Boolean, Long) = {
+  protected def assertUsingSoftConstraints(goal: String, timeout: Option[Int], kind: String): Boolean = {
     setTimeout(timeout)
 
     val guard = fresh("grd", Nil, sorts.Bool)
@@ -381,28 +381,16 @@ abstract class ProverStdIO(uniqueId: String,
     writeLine(s"(assert (=> $guardApp (not $goal)))")
     readSuccess()
 
-    val rlimitBefore = if (trackRlimit) readRlimitCount() else None
+    val result = readUnsat(runCheckSat(s"(check-sat $guardApp)", kind))
+    if (!result) retrieveAndSaveModel()
 
-    val startTime = System.currentTimeMillis()
-    writeLine(s"(check-sat $guardApp)")
-    val result = readUnsat()
-    val endTime = System.currentTimeMillis()
-
-    lastRlimitDelta = rlimitBefore.flatMap(before => readRlimitCount().map(_ - before))
-
-    if (!result) {
-      retrieveAndSaveModel()
-    }
-
-    (result, endTime - startTime)
+    result
   }
 
   def check(timeout: Option[Int] = None): Result = {
     setTimeout(timeout)
 
-    writeLine("(check-sat)")
-
-    readLine() match {
+    runCheckSat("(check-sat)", "smoke") match {
       case "sat" => Sat
       case "unsat" => Unsat
       case "unknown" => Unknown
@@ -479,7 +467,7 @@ abstract class ProverStdIO(uniqueId: String,
       throw ProverInteractionFailed(uniqueId, s"Unexpected output of prover. Expected 'success' but found: $answer")
   }
 
-  protected def readUnsat(): Boolean = readLine() match {
+  protected def readUnsat(answer: String): Boolean = answer match {
     case "unsat" => true
     case "sat" => false
     case "unknown" => false
@@ -561,12 +549,10 @@ abstract class ProverStdIO(uniqueId: String,
 
   override def getReasonUnknown(): String = lastReasonUnknown
 
-  override def getLastRlimitDelta(): Option[Long] = lastRlimitDelta
-
   override def clearLastAssert(): Unit = {
     lastReasonUnknown = null
     lastModel = null
-    lastRlimitDelta = None
+    _lastCheck = None
   }
 
   def getAllDecls(): Seq[Decl] = allDecls

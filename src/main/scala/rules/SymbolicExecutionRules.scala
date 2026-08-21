@@ -65,7 +65,9 @@ trait SymbolicExecutionRules {
         wrapped
       case _ => ve
     }
-    if (v != null && (Verifier.config.reportReasonUnknown() || Verifier.config.counterexample.toOption.isDefined)) {
+    /* The failing query is read before anything else queries the prover. */
+    val failingCheck = if (v != null) v.decider.lastFailedCheck else None
+    if (v != null && Verifier.config.counterexample.toOption.isDefined) {
       if (generateNewModel || !v.decider.hasModel()) {
         v.decider.generateModel()
       }
@@ -91,16 +93,6 @@ trait SymbolicExecutionRules {
       } else None
     } else None
 
-    val reasonUnknown = if (v != null && Verifier.config.reportReasonUnknown()) {
-      Some(v.decider.prover.getReasonUnknown())
-    } else {
-      None
-    }
-
-    /* Rlimit spent on the failing check itself; same last-assert adjacency
-     * assumption as reasonUnknown above. */
-    val rlimitDelta = if (v != null) v.decider.prover.getLastRlimitDelta() else None
-
     val sessionLog = if (v != null) {
       v.decider.prover.flushSessionLog()
       v.decider.prover.sessionLogPath.map(_.toString)
@@ -114,19 +106,19 @@ trait SymbolicExecutionRules {
     if (Verifier.config.enableDebugging()){
       val assumptions = v.decider.pcs.assumptionExps
       val debugCtx = SiliconDebuggingFailureContext(v.decider.pcs.branchConditions, v.decider.pcs.branchConditionExps.map(bce => bce._1 -> bce._2.get),
-        counterexample, reasonUnknown, Some(s), Some(v), v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions,
+        counterexample, failingCheck.flatMap(_.reason), Some(s), Some(v), v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions,
         v.decider.macroDecls, v.decider.functionDecls, assumptions, failedAssert, failedAssertExp.get)
       res.failureContexts = Seq(debugCtx)
     } else if (Verifier.config.smtStateOnError()) {
       val stateCtx = SiliconSmtStateContext(v.decider.pcs.branchConditions,
-        counterexample, reasonUnknown, rlimitDelta, sessionLog, Some(s), v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions,
+        counterexample, failingCheck, sessionLog, Some(s), v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions,
         v.decider.macroDecls, v.decider.functionDecls, v.decider.pcs.assumptions, failedAssert)
       res.failureContexts = Seq(stateCtx)
       /* Skip speculative attempts (retryLevel > 0) and expected errors*/
       if (s.retryLevel == 0 && !ve.isExpected)
         viper.silicon.reporting.SmtStateDumper.dump(res, stateCtx)
     } else {
-      res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown, rlimitDelta))
+      res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, failingCheck))
     }
 
     Failure(res, v.reportFurtherErrors())
