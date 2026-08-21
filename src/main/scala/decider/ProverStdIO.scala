@@ -33,6 +33,7 @@ abstract class ProverStdIO(uniqueId: String,
   /* protected */ var pushPopScopeDepth = 0
   protected var lastTimeout: Int = -1
   protected var logfileWriter: PrintWriter = _
+  protected var sessionLogFile: Path = _
   protected var prover: Process = _
   protected var proverShutdownHook: Thread = _
   protected var input: BufferedReader = _
@@ -89,9 +90,22 @@ abstract class ProverStdIO(uniqueId: String,
     }
     pushPopScopeDepth = 0
     lastTimeout = -1
-    logfileWriter = if (!Verifier.config.outputProverLog) null else viper.silver.utility.Common.PrintWriter(Verifier.config.proverLogFile(uniqueId).toFile)
+    /* smtStateOnError implies session logging: the per-failure .smt2 bundle is
+     * a copy of this file, so failures replay on a bare prover without Viper.
+     * The configured proverLogFile path repeats its uniqueId across verifier
+     * instances, so concurrent verifications need a fresh temp file each. */
+    sessionLogFile =
+      if (Verifier.config.outputProverLog) Verifier.config.proverLogFile(uniqueId)
+      else if (Verifier.config.smtStateOnError())
+        java.nio.file.Files.createTempFile(s"prover-session-$uniqueId-", ".smt2")
+      else null
+    logfileWriter = if (sessionLogFile == null) null else viper.silver.utility.Common.PrintWriter(sessionLogFile.toFile)
     proverPath = getProverPath
     prover = createProverInstance(userArgsString)
+    if (logfileWriter != null) {
+      val userArgs = userArgsString.map(_.split(' ').toSeq).getOrElse(Seq.empty)
+      logToFile(s";; prover: $proverPath ${(startUpArgs ++ userArgs).mkString(" ")}")
+    }
     input = new BufferedReader(new InputStreamReader(prover.getInputStream))
     output = new PrintWriter(new BufferedWriter(new OutputStreamWriter(prover.getOutputStream)), true)
     // Register a shutdown hook to stop prover when the JVM gracefully terminates.
@@ -163,6 +177,11 @@ abstract class ProverStdIO(uniqueId: String,
 
       if (logfileWriter != null) {
         logfileWriter.close()
+        // Session logs opened only for smtStateOnError are temp files; their
+        // content was copied into failure bundles at dump time.
+        if (!Verifier.config.outputProverLog && sessionLogFile != null) {
+          java.nio.file.Files.deleteIfExists(sessionLogFile)
+        }
       }
       if (input != null) {
         input.close()
@@ -208,6 +227,12 @@ abstract class ProverStdIO(uniqueId: String,
   }
 
   def getAllEmits() : Seq[String] = allEmits
+
+  override def sessionLogPath: Option[Path] = Option(sessionLogFile)
+
+  override def flushSessionLog(): Unit = {
+    if (logfileWriter != null) logfileWriter.flush()
+  }
 
   override def setOption(name: String, value: String): String = {
     writeLine(s"(get-option :${name})")

@@ -53,11 +53,26 @@ object SmtStateDumper {
       section("function decls") { ctx.functionDecls.foreach(f => sb.append(f).append('\n')) }
       section("preamble assumptions") { ctx.preambleAssumptions.foreach(a => sb.append(a).append('\n')) }
 
+      /* The .smt2 is a copy of the prover's session log (flushed just before
+       * the context was built): the full stream including push/pop and the
+       * failing (assert (not goal)) + (check-sat), which is the LAST check-sat
+       * in the copy. Fallback to the emit-level stream (not replayable) when
+       * no session log is available. */
+      val session = ctx.sessionLog
+        .map(p => new String(Files.readAllBytes(Paths.get(p)), "UTF-8"))
+      val smt2 = session.getOrElse(ctx.proverEmits.mkString("\n"))
+      session.foreach { s =>
+        val ordinal = "\\(check-sat".r.findAllIn(s).length
+        section("failing check ordinal (last check-sat in .smt2)") {
+          sb.append(ordinal).append('\n')
+        }
+      }
+
       Files.write(dir.resolve(s"$base.txt"),
         sb.toString.getBytes("UTF-8"),
         StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
       Files.write(dir.resolve(s"$base.smt2"),
-        ctx.proverEmits.mkString("\n").getBytes("UTF-8"),
+        smt2.getBytes("UTF-8"),
         StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
     } catch {
       case NonFatal(_) => /* never break verification over a dump */

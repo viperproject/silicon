@@ -53,6 +53,10 @@ trait Prover extends ProverLike with StatefulComponent {
   /* Prover resources consumed by the most recent failing assert's check-sat
    * (Z3 rlimit units); None when unsupported or not tracked. */
   def getLastRlimitDelta(): Option[Long] = None
+  /* Complete on-disk log of this prover session (every line sent), when
+   * session logging is active; replayable on a bare prover. */
+  def sessionLogPath: Option[java.nio.file.Path] = None
+  def flushSessionLog(): Unit = ()
   def clearLastAssert(): Unit
   def name: String
   def minVersion: Version
