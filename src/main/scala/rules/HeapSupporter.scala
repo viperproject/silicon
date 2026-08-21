@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) 2011-2019 ETH Zurich.
+// Copyright (c) 2011-2025 ETH Zurich.
 
 package viper.silicon.rules
 
@@ -76,6 +76,56 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                       eArgs: Option[Seq[ast.Exp]],
                       snapshot: MagicWandSnapshot,
                       v: Verifier): (Chunk, Seq[Term], Option[Seq[DebugExp]])
+
+  /** The argument with which a predicate's function-unfold trigger is applied for the
+    * instance with snapshot `snap`; `hLookup` is a heap in which the instance's chunk can
+    * be looked up (the post-fold heap at fold sites, the pre-unfold heap at unfold sites). */
+  def predicateTriggerSnapArg(s: State, predicate: ast.Predicate, snap: Term, hLookup: Heap): Term
+
+  /** The snapshot with which the chunk of a folded predicate instance is produced,
+    * given the snapshot `snap` obtained from consuming the predicate's body. */
+  def foldedPredicateSnapshot(s: State, predicate: ast.Predicate, tArgs: Seq[Term], snap: Term): Term
+
+  /** The snapshot function with which the body of an unfolded predicate instance is
+    * produced, given the snapshot `snap` obtained from consuming the instance and a heap
+    * `hLookup` from before the consume. */
+  def unfoldedBodySnapshotFunction(s: State, predicate: ast.Predicate, tArgs: Seq[Term], snap: Term, hLookup: Heap, v: Verifier): (Sort, Verifier) => Term
+
+  /** Applies a wand's snapshot `snapWand` to the left-hand side snapshot `snapLhs`
+    * at apply time, yielding the snapshot of the wand's right-hand side. */
+  def appliedWandSnapshot(snapWand: Term, snapLhs: Term, s: State, v: Verifier): Term
+
+  /** Combines the reserve heaps hUsed, hOps and hLhs into the heap used for evaluating
+    * expressions while packaging a wand. */
+  def mergeReserveHeaps(hUsed: Heap, hOps: Heap, hLhs: Heap, s: State, v: Verifier): Heap
+
+  /** Adds a freshly packaged wand chunk to the given heap. */
+  def addWandChunk(h: Heap, chWand: Chunk, s: State, v: Verifier): Heap
+
+  /** Whether this heap encoding contributes trigger terms for the given resource access
+    * occurring in a quantifier's trigger set. */
+  def handlesResourceTrigger(ra: ast.ResourceAccess, s: State): Boolean
+
+  /** The trigger-term alternatives contributed for a resource access in a trigger set,
+    * together with axioms to assume and snapshot-map definitions to record. Each element
+    * of the second component is one alternative; alternatives multiply the trigger sets. */
+  def resourceTriggerVariants(ra: ast.ResourceAccess, s: State, pve: PartialVerificationError, v: Verifier)
+                             : (Seq[Term], Seq[Seq[Term]], Seq[SnapshotMapDefinition], State)
+
+  /** Adapts evaluated trigger terms to the trigger form of this heap encoding. */
+  def adaptTriggerTerms(terms: Seq[Term], s: State): Seq[Term]
+
+  /** The sort of the first argument of predicates' function-unfold trigger functions. */
+  def predicateTriggerSort: Sort
+
+  /** The state-dependent arguments of a heap-dependent function application (prepended to
+    * the value arguments, also used for the f%precondition application), and the snapshot
+    * recorded for the application during function verification. `snap` is the snapshot
+    * obtained from consuming the function's precondition. */
+  def functionAppSnapArgs(s: State, func: ast.Function, tArgs: Seq[Term], snap: Term, v: Verifier): (Seq[Term], Term)
+
+  /** Consistency checks on the state at the beginning of an assert in package context. */
+  def checkEmptyExhaleExtState(s: State): Unit
 
   /** Triggers the wand resource if the produced chunk is a quantified one; a no-op otherwise. */
   def triggerWandIfNeeded(s: State, wand: ast.MagicWand, chWand: Chunk, v: Verifier): State
@@ -172,7 +222,7 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                                tArgs: Seq[Term],
                                eArgs: Option[Seq[ast.Exp]]): Seq[(Term, (ast.Exp, Option[ast.Exp]), Seq[Var], Store, Seq[Trigger])]
 
-  def getEmptyHeap(program: ast.Program): Heap
+  def getEmptyHeap(program: ast.Program, v: Verifier, mayDefineNewVars: Boolean = true): Heap
 
 }
 
@@ -232,8 +282,8 @@ class DefaultHeapSupportRules extends HeapSupportRules {
               v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2)
             }
             val s4 = s3.copy(h = h3 + ch)
-            val (debugHeapName, _) = v1.getDebugOldLabel(s4, ass.lhs.pos, Some(magicWandSupporter.getEvalHeap(s4)))
-            val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s4
+            val (debugHeapName, _) = v1.getDebugOldLabel(s4, ass.lhs.pos, Some(magicWandSupporter.getEvalHeap(s4, v1)))
+            val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4, v1))) else s4
             /* The action's continuation must be QS, not Q: otherwise the remainder of the
              * method runs inside the retryable action, and any later failure re-runs it. */
             QS(s5, v1)
@@ -258,8 +308,8 @@ class DefaultHeapSupportRules extends HeapSupportRules {
         val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tRhs, eRhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), s3.qpTag)
         chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
           val s5 = s4.copy(h = h4)
-          val (debugHeapName, _) = v4.getDebugOldLabel(s5, ass.lhs.pos, Some(magicWandSupporter.getEvalHeap(s5)))
-          val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s5))) else s5
+          val (debugHeapName, _) = v4.getDebugOldLabel(s5, ass.lhs.pos, Some(magicWandSupporter.getEvalHeap(s5, v4)))
+          val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s5, v4))) else s5
           Q(s6, v4)
         })
       })
@@ -903,9 +953,88 @@ class DefaultHeapSupportRules extends HeapSupportRules {
     }
   }
 
-  def getEmptyHeap(program: ast.Program): Heap = {
+  def getEmptyHeap(program: ast.Program, v: Verifier, mayDefineNewVars: Boolean): Heap = {
     Heap()
   }
-}
 
+  def predicateTriggerSnapArg(s: State, predicate: ast.Predicate, snap: Term, hLookup: Heap): Term =
+    snap.convert(sorts.Snap)
+
+  def foldedPredicateSnapshot(s: State, predicate: ast.Predicate, tArgs: Seq[Term], snap: Term): Term =
+    snap.convert(s.predicateSnapMap(predicate.name))
+
+  def unfoldedBodySnapshotFunction(s: State, predicate: ast.Predicate, tArgs: Seq[Term], snap: Term, hLookup: Heap, v: Verifier): (Sort, Verifier) => Term =
+    viper.silicon.utils.toSf(snap)
+
+  def appliedWandSnapshot(snapWand: Term, snapLhs: Term, s: State, v: Verifier): Term =
+    snapWand match {
+      case snapshot: MagicWandSnapshot => snapshot.applyToMWSF(snapLhs)
+      case SortWrapper(snapshot: MagicWandSnapshot, _) => snapshot.applyToMWSF(snapLhs)
+      case t if t.sort == sorts.MagicWandSnapFunction => MWSFLookup(t, snapLhs)
+      case _ => snapWand
+    }
+
+  def mergeReserveHeaps(hUsed: Heap, hOps: Heap, hLhs: Heap, s: State, v: Verifier): Heap =
+    hUsed + hOps + hLhs
+
+  def addWandChunk(h: Heap, chWand: Chunk, s: State, v: Verifier): Heap =
+    h + chWand
+
+  def handlesResourceTrigger(ra: ast.ResourceAccess, s: State): Boolean =
+    s.isUsedAsTrigger(ra.res(s.program))
+
+  def resourceTriggerVariants(ra: ast.ResourceAccess, s: State, pve: PartialVerificationError, v: Verifier)
+                             : (Seq[Term], Seq[Seq[Term]], Seq[SnapshotMapDefinition], State) = {
+    val (axioms, trigs, _, smDefs) = generateResourceTrigger(ra, s, pve, v)
+    (axioms, Seq(trigs), smDefs, s)
+  }
+
+  def adaptTriggerTerms(terms: Seq[Term], s: State): Seq[Term] = terms
+
+  def predicateTriggerSort: Sort = sorts.Snap
+
+  def functionAppSnapArgs(s: State, func: ast.Function, tArgs: Seq[Term], snap: Term, v: Verifier): (Seq[Term], Term) = {
+    val snap1 = snap.convert(sorts.Snap)
+    (Seq(snap1), snap1)
+  }
+
+  def checkEmptyExhaleExtState(s: State): Unit = {
+    Predef.assert(s.h.values.isEmpty)
+    Predef.assert(s.reserveHeaps.head.values.isEmpty)
+  }
+
+  private def generateResourceTrigger(ra: ast.ResourceAccess,
+                                      s: State,
+                                      pve: PartialVerificationError,
+                                      v: Verifier)
+  : (Seq[Term], Seq[Term], Term, Seq[SnapshotMapDefinition]) = {
+    var axioms = Seq.empty[Term]
+    var triggers = Seq.empty[Term]
+    var mostRecentTrig: Term = null
+    val resource = ra.res(s.program)
+    val codomainQVars = s.getFormalArgVars(resource, v)
+    val eArgs = ra.args(s.program)
+    val chunkId = ChunkIdentifier(resource, s.program)
+    val (relevantChunks, _) =
+      quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](s.h, chunkId)
+    val optSmDomainDefinitionCondition =
+      if (s.smDomainNeeded) {
+        v.logger.debug("Axiomatisation of an SM domain missing!"); None
+      }
+      else None
+    val (smDef1, smCache1) =
+      quantifiedChunkSupporter.summarisingSnapshotMap(
+        s, resource, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition)
+    val s1 = s.copy(smCache = smCache1)
+
+    evaluator.evals(s1.copy(triggerExp = true), eArgs, _ => pve, v)((_, tArgs, _, _) => {
+      axioms = axioms ++ smDef1.valueDefinitions
+      mostRecentTrig = ResourceTriggerFunction(resource, smDef1.sm, tArgs, s.program)
+      triggers = triggers :+ mostRecentTrig
+      viper.silicon.interfaces.Success()
+    })
+
+    (axioms, triggers, mostRecentTrig, Seq(smDef1))
+  }
+}
 object defaultHeapSupporter extends DefaultHeapSupportRules

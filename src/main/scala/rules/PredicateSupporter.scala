@@ -76,18 +76,21 @@ object predicateSupporter extends PredicateSupportRules {
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm, ePerm)
     consume(s1, body, true, pve, v)((s1a, snap, v1) => {
-      if (!Verifier.config.disableFunctionUnfoldTrigger()) {
-        val predTrigger = App(s1a.predicateData(predicate.name).triggerFunction,
-          snap.get.convert(terms.sorts.Snap) +: tArgs)
-        val eArgsString = eArgs.mkString(", ")
-        v1.decider.assume(predTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
-      }
       val s2 = s1a.copy(g = s.g,
                         smDomainNeeded = s.smDomainNeeded,
                         permissionScalingFactor = s.permissionScalingFactor,
                         permissionScalingFactorExp = s.permissionScalingFactorExp).setConstrainable(constrainableWildcards, false)
 
-      v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snap.get.convert(s2.predicateSnapMap(predicate.name)), None, tPerm, ePerm, pve, true, v1)((s3, v3) => {
+      val foldedSnap = v1.heapSupporter.foldedPredicateSnapshot(s2, predicate, tArgs, snap.get)
+      v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, foldedSnap, None, tPerm, ePerm, pve, true, v1)((s3, v3) => {
+        /* The trigger is assumed once the predicate chunk exists, so that heap encodings
+         * whose triggers refer to the chunk's heap can look it up in s3.h. */
+        if (!Verifier.config.disableFunctionUnfoldTrigger()) {
+          val predTrigger = App(s3.predicateData(predicate.name).triggerFunction,
+            v3.heapSupporter.predicateTriggerSnapArg(s3, predicate, snap.get, s3.h) +: tArgs)
+          val eArgsString = eArgs.mkString(", ")
+          v3.decider.assume(predTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
+        }
         val s4 = v3.heapSupporter.triggerResourceIfNeeded(s3, pa, tArgs, eArgs, v3)
         Q(s4, v3)
       })
@@ -198,6 +201,7 @@ object predicateSupporter extends PredicateSupportRules {
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
     val s1 = s.scalePermissionFactor(tPerm, ePerm)
 
+    val hPreUnfold = s1.h
     v.heapSupporter.consumeSingle(s1, s1.h, pa, tArgs, eArgs, tPerm, ePerm, true, pve, v)((s2, h2, snap, v1) => {
       val s3 = s2.copy(g = gIns, h = h2)
         .setConstrainable(constrainableWildcards, false)
@@ -208,7 +212,7 @@ object predicateSupporter extends PredicateSupportRules {
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =
               App(s4.predicateData(predicate.name).triggerFunction,
-                snap.get.convert(terms.sorts.Snap) +: tArgs)
+                v4.heapSupporter.predicateTriggerSnapArg(s4, predicate, snap.get, hPreUnfold) +: tArgs)
             val eargs = eArgs.mkString(", ")
             v4.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
           }
@@ -218,12 +222,12 @@ object predicateSupporter extends PredicateSupportRules {
             v4)
         })
       } else {
-        produce(s3, toSf(snap.get), body, pve, v1)((s4, v2) => {
+        produce(s3, v1.heapSupporter.unfoldedBodySnapshotFunction(s3, predicate, tArgs, snap.get, hPreUnfold, v1), body, pve, v1)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =
               App(s4.predicateData(predicate.name).triggerFunction,
-                snap.get.convert(terms.sorts.Snap) +: tArgs)
+                v2.heapSupporter.predicateTriggerSnapArg(s4, predicate, snap.get, hPreUnfold) +: tArgs)
             val eargs = eArgs.mkString(", ")
             v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
           }

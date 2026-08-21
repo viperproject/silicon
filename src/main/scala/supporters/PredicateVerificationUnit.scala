@@ -29,7 +29,7 @@ class PredicateData(val predicate: ast.Predicate)
                     *       through a verifier) is only safe if the converter is effectively
                     *       independent of the verifiers.
                     */
-                   (private val symbolConvert: SymbolConverter) extends FunctionRecorderHandler {
+                   (private val symbolConvert: SymbolConverter, triggerSort: Sort = sorts.Snap) extends FunctionRecorderHandler {
 
   var predContents: Option[PredicateContentsTree] = None
   var params: Option[Seq[Var]] = None
@@ -37,7 +37,7 @@ class PredicateData(val predicate: ast.Predicate)
   val argumentSorts = predicate.formalArgs map (fm => symbolConvert.toSort(fm.typ))
 
   val triggerFunction =
-    Fun(Identifier(s"${predicate.name}%trigger"), sorts.Snap +: argumentSorts, sorts.Bool)
+    Fun(Identifier(s"${predicate.name}%trigger"), triggerSort +: argumentSorts, sorts.Bool)
 
 }
 
@@ -69,7 +69,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
 
     def analyze(program: Program): Unit = {
       this.predicateData = toMap(
-        program.predicates map (pred => pred.name -> new PredicateData(pred)(symbolConverter)))
+        program.predicates map (pred => pred.name -> new PredicateData(pred)(symbolConverter, v.heapSupporter.predicateTriggerSort)))
     }
 
     /* Predicate supporter generates no sorts */
@@ -107,7 +107,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
       }
 
       val s = sInit.copy(g = Store(argVars),
-                         h = v.heapSupporter.getEmptyHeap(sInit.program),
+                         h = v.heapSupporter.getEmptyHeap(sInit.program, v),
                          oldHeaps = OldHeaps(),
                          functionRecorder = funcRecorder)
 
@@ -141,7 +141,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
 
       this.predicateData(predicate.name).predContents = overallResult
       this.predicateData(predicate.name).params = Some(Seq(snap) ++ argVars.map(_._2._1))
-      this.predicateData(predicate.name).addRecorders(Seq(funcRecorder))
+      this.predicateData(predicate.name).addRecorders(Seq(funcRecorder), Seq())
 
       symbExLog.closeMemberScope()
       Seq(result)

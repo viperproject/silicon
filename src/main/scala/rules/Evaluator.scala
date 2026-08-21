@@ -120,7 +120,7 @@ object evaluator extends EvaluationRules {
      * evaluation to perform involves consuming or producing permissions, e.g. because of
      * an unfolding expression, these should not be recorded.
      */
-    val s1 = s.copy(h = magicWandSupporter.getEvalHeap(s),
+    val s1 = s.copy(h = magicWandSupporter.getEvalHeap(s, v),
                     reserveHeaps = Nil,
                     exhaleExt = false)
 
@@ -204,13 +204,13 @@ object evaluator extends EvaluationRules {
 
           val ve = pve dueTo InsufficientPermission(fa)
           v.heapSupporter.evalFieldAccess(s1, fa, tRcvr, eRcvr, ve, v1)((s2, snap, v2) => {
-            val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s2, fa.pos, Some(magicWandSupporter.getEvalHeap(s2)))
+            val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s2, fa.pos, Some(magicWandSupporter.getEvalHeap(s2, v2)))
             val newFa = Option.when(withExp)({
               if (s1.isEvalInOld) ast.FieldAccess(eRcvr.get, fa.field)(fa.pos, fa.info, fa.errT)
               else ast.DebugLabelledOld(ast.FieldAccess(eRcvr.get, fa.field)(), debugLabel)(fa.pos, fa.info, fa.errT)
             })
             val s3 = if (Verifier.config.enableDebugging() && !s2.isEvalInOld)
-              s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s2)))
+              s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s2, v2)))
             else s2
             Q(s3, snap, newFa, v2)
           })
@@ -651,8 +651,8 @@ object evaluator extends EvaluationRules {
                              assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts())
                                s2.assertReadAccessOnly /* should currently always be false */ else true)
             consumes(s3, pres, true, _ => pvePre, v2)((s4, snap, v3) => {
-              val snap1 = snap.get.convert(sorts.Snap)
-              val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
+              val (stateArgs, snapToRecord) = v3.heapSupporter.functionAppSnapArgs(s3, func, tArgs, snap.get, v3)
+              val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func, s.program)), stateArgs ++ tArgs)
               val preExp = Option.when(withExp)({
                 DebugExp.createInstance(Some(s"precondition of ${func.name}(${eArgsNew.get.mkString(", ")}) holds"), None, None, InsertionOrderedSet.empty)
               })
@@ -662,14 +662,14 @@ object evaluator extends EvaluationRules {
                 case Some(a) if a.values.contains("opaque") =>
                   val funcAppAnn = fapp.info.getUniqueInfo[AnnotationInfo]
                   funcAppAnn match {
-                    case Some(a) if a.values.contains("reveal") => App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
-                    case _ => App(functionSupporter.limitedVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
+                    case Some(a) if a.values.contains("reveal") => App(v3.symbolConverter.toFunction(func, s.program), stateArgs ++ tArgs)
+                    case _ => App(functionSupporter.limitedVersion(v3.symbolConverter.toFunction(func, s.program)), stateArgs ++ tArgs)
                   }
-                case _ => App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
+                case _ => App(v3.symbolConverter.toFunction(func, s.program), stateArgs ++ tArgs)
               }
               val fr5 =
                 s4.functionRecorder.changeDepthBy(-1)
-                                   .recordSnapshot(fapp, v3.decider.pcs.branchConditions, snap1)
+                                   .recordSnapshot(fapp, v3.decider.pcs.branchConditions, snapToRecord)
               val s5 = s4.copy(g = s2.g,
                                h = s2.h,
                                recordVisited = s2.recordVisited,
@@ -736,7 +736,7 @@ object evaluator extends EvaluationRules {
                       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
                         val eArgsString = eArgsNew.mkString(", ")
                         val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))", isInternal_ = true))
-                        v4.decider.assume(App(s.predicateData(predicate.name).triggerFunction, snap.get.convert(terms.sorts.Snap) +: tArgs), debugExp)
+                        v4.decider.assume(App(s.predicateData(predicate.name).triggerFunction, v4.heapSupporter.predicateTriggerSnapArg(s4, predicate, snap.get, s4.h) +: tArgs), debugExp)
                       }
                       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
                       val s7 = s6.scalePermissionFactor(tPerm, ePermNew)
@@ -758,7 +758,7 @@ object evaluator extends EvaluationRules {
                           eval(s10, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))
                         })
                       } else {
-                        produce(s7a, toSf(snap.get), body, pve, v4)((s8, v5) => {
+                        produce(s7a, v4.heapSupporter.unfoldedBodySnapshotFunction(s7a, predicate, tArgs, snap.get, s7a.h, v4), body, pve, v4)((s8, v5) => {
                           val s9 = s8.copy(g = s7.g,
                                            functionRecorder = s8.functionRecorder.changeDepthBy(-1),
                                            recordVisited = s3.recordVisited,
@@ -1273,7 +1273,7 @@ object evaluator extends EvaluationRules {
     else {
       if (eTriggerSets.head.collect{case fa: ast.FieldAccess => fa; case pa: ast.PredicateAccess => pa; case wand: ast.MagicWand => wand }.nonEmpty ) {
         evalHeapTrigger(s, eTriggerSets.head, pve, v)((s1, ts, v1) =>
-          evalTriggers(s1, eTriggerSets.tail, tTriggersSets :+ ts, pve, v1)(Q))
+          evalTriggers(s1, eTriggerSets.tail, tTriggersSets ++ ts, pve, v1)(Q))
       } else {
         evalTrigger(s, eTriggerSets.head, pve, v)((s1, ts, v1) =>
           evalTriggers(s1, eTriggerSets.tail, tTriggersSets :+ ts, pve, v1)(Q))
@@ -1374,12 +1374,12 @@ object evaluator extends EvaluationRules {
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
         v.decider.assume(pcDelta, Option.when(withExp)(DebugExp.createInstance("pcDeltaExp", children = pcDeltaExp)), enforceAssumption = false)
-        Q(s.copy(functionRecorder = functionRecorder), cachedTriggerTerms ++ remainingTriggerTerms, v)
+        Q(s.copy(functionRecorder = functionRecorder), v.heapSupporter.adaptTriggerTerms(cachedTriggerTerms ++ remainingTriggerTerms, s), v)
       case _ =>
         for (e <- remainingTriggerExpressions)
           v.reporter.report(WarningsDuringVerification(Seq(
             VerifierWarning(s"Might not be able to use trigger $e, since it is not evaluated while evaluating the body of the quantifier", e.pos))))
-        Q(s, cachedTriggerTerms, v)
+        Q(s, v.heapSupporter.adaptTriggerTerms(cachedTriggerTerms, s), v)
     }
   }
 
@@ -1421,65 +1421,36 @@ object evaluator extends EvaluationRules {
   }
 
   def evalHeapTrigger(s: State, exps: Seq[ast.Exp], pve: PartialVerificationError, v: Verifier)
-                     (Q: (State, Seq[Term], Verifier) => VerificationResult) : VerificationResult = {
-    var triggers: Seq[Term] = Seq()
+                     (Q: (State, Seq[Seq[Term]], Verifier) => VerificationResult) : VerificationResult = {
+    /* Each element of `triggers` is one alternative trigger set; heap encodings may
+     * contribute multiple alternative terms per resource access, multiplying the sets. */
+    var triggers: Seq[Seq[Term]] = Seq(Seq())
     var triggerAxioms: Seq[Term] = Seq()
     var smDefs: Seq[SnapshotMapDefinition] = Seq()
+    var sCur = s
 
     exps foreach {
-      case ra: ast.ResourceAccess if s.isUsedAsTrigger(ra.res(s.program)) =>
-        val (axioms, trigs, _, smDef) = generateResourceTrigger(ra, s, pve, v)
-        triggers = triggers ++ trigs
+      case ra: ast.ResourceAccess if v.heapSupporter.handlesResourceTrigger(ra, s) =>
+        val (axioms, trigVariants, smDef, s1) = v.heapSupporter.resourceTriggerVariants(ra, sCur, pve, v)
+        triggers = for (ts <- triggers; variant <- trigVariants) yield ts ++ variant
         triggerAxioms = triggerAxioms ++ axioms
         smDefs = smDefs ++ smDef
+        sCur = s1
       case e => evalTrigger(s.copy(triggerExp = true), Seq(e), pve, v)((_, t, _) => {
-        triggers = triggers ++ t
+        triggers = triggers.map(ts => ts ++ t)
         Success()
       })
     }
 
     val triggerString = exps.mkString(", ")
     v.decider.assume(triggerAxioms, Option.when(withExp)(DebugExp.createInstance(s"Heap Triggers ($triggerString)")), enforceAssumption = false)
-    var fr = s.functionRecorder
+    var fr = sCur.functionRecorder
     for (smDef <- smDefs){
       fr = fr.recordFvfAndDomain(smDef)
     }
-    Q(s.copy(functionRecorder = fr), triggers, v)
+    Q(sCur.copy(functionRecorder = fr), triggers, v)
   }
 
-  private def generateResourceTrigger(ra: ast.ResourceAccess,
-                                      s: State,
-                                      pve: PartialVerificationError,
-                                      v: Verifier)
-  : (Seq[Term], Seq[Term], Term, Seq[SnapshotMapDefinition]) = {
-    var axioms = Seq.empty[Term]
-    var triggers = Seq.empty[Term]
-    var mostRecentTrig: Term = null
-    val resource = ra.res(s.program)
-    val codomainQVars = s.getFormalArgVars(resource, v)
-    val eArgs = ra.args(s.program)
-    val chunkId = ChunkIdentifier(resource, s.program)
-    val (relevantChunks, _) =
-      quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](s.h, chunkId)
-    val optSmDomainDefinitionCondition =
-      if (s.smDomainNeeded) {
-        v.logger.debug("Axiomatisation of an SM domain missing!"); None
-      }
-      else None
-    val (smDef1, smCache1) =
-      quantifiedChunkSupporter.summarisingSnapshotMap(
-        s, resource, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition)
-    val s1 = s.copy(smCache = smCache1)
-
-    evals(s1.copy(triggerExp = true), eArgs, _ => pve, v)((_, tArgs, _, _) => {
-      axioms = axioms ++ smDef1.valueDefinitions
-      mostRecentTrig = ResourceTriggerFunction(resource, smDef1.sm, tArgs, s.program)
-      triggers = triggers :+ mostRecentTrig
-      Success()
-    })
-
-    (axioms, triggers, mostRecentTrig, Seq(smDef1))
-  }
 
   /* Evaluate a sequence of expressions in Order
    * The constructor determines when the evaluation stops
