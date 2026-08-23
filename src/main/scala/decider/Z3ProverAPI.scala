@@ -29,8 +29,8 @@ import scala.util.Random
 
 object Z3ProverAPI {
   val name = "Z3-API"
-  val minVersion = Version("4.8.7.0")
-  val maxVersion = Some(Version("4.12.1.0")) /* X.Y.Z if that is the *last supported* version */
+  val minVersion = Version("4.16.0.0")
+  val maxVersion = Some(Version("4.16.0.0")) /* X.Y.Z if that is the *last supported* version */
 
   // these are not actually used, but since there is a lot of code that expects command line parameters and a
   // config file, we just supply this information here (whose contents will then be ignored)
@@ -89,7 +89,7 @@ class Z3ProverAPI(uniqueId: String,
   var preambleAssumes = mutable.LinkedHashSet[BoolExpr]()
   val emittedSorts = mutable.LinkedHashSet[com.microsoft.z3.Sort]()
   val emittedSortSymbols = mutable.LinkedHashSet[Symbol]()
-  val emittedFuncs = mutable.LinkedHashSet[FuncDecl]()
+  val emittedFuncs = mutable.LinkedHashSet[FuncDecl[_]]()
   val emittedFuncSymbols = mutable.Queue[Symbol]()
   var allDecls: Seq[Decl] = Seq()
 
@@ -379,7 +379,7 @@ class Z3ProverAPI(uniqueId: String,
     prover.add(termConverter.convertTerm(goalImplication).asInstanceOf[BoolExpr])
 
     val startTime = System.currentTimeMillis()
-    val res = prover.check(termConverter.convertTerm(guardApp))
+    val res = prover.check(termConverter.convertTerm(guardApp).asInstanceOf[BoolExpr])
     val endTime = System.currentTimeMillis()
     val result = res == Status.UNSATISFIABLE
     if (!result) {
