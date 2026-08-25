@@ -1,3 +1,7 @@
+method synchronise(val: Int) returns (res: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L10") (val > 0)
+  ensures @dependencyInfo("assumptionType:ExplicitPostcondition, label:L11") (val == res)
+
 method nested(a: Int, b: Int)
 {
   var x: Int
@@ -20,8 +24,11 @@ method nested(a: Int, b: Int)
     y := x + 5
   }
 
+  @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L20, expectedDependencies:[L2,L4,L5,L6,L7]")
+  y := synchronise(y)
+
   if (@dependencyInfo("assumptionType:PathCondition, label:L8")(a > 0 && b > 0)) {
-    @dependencyInfo("assertionType:Explicit, label:L9, expectedDependencies:[L4,L2,L3,L1,L8]")
+    @dependencyInfo("assertionType:Explicit, label:L9, expectedDependencies:[L4,L2,L3,L1,L8,L20,L11,L10]")
     assert y == 2
   }
 }

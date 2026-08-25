@@ -36,7 +36,7 @@ method gaussianPerm(a: Ref, p: Perm) returns (res: Int)
   res := 0
   @dependencyInfo("assumptionType:SourceCode, label:L39")
   i := 0
-  while(@dependencyInfo("assumptionType:PathCondition, assertionType:PathCondition, label:L11, expectedDependencies:[L9,L10,L12]")(i <= a.f))
+  while(@dependencyInfo("assumptionType:PathCondition, assertionType:PathCondition, label:L11")(i <= a.f))
     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L12, expectedDependencies:[L9,L10]")(acc(a.f, p))
     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L40, expectedDependencies:[L27,L28]")(0 <= a.f && a.f <= 5)
     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L13, expectedDependencies:[L9,L10,L11,L12,L16,L27,L39]")(i <= (a.f + 1))

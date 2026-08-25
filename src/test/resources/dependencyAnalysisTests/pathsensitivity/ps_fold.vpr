@@ -1,0 +1,33 @@
+field value: Int
+
+predicate P(x: Ref) {
+  x != null && acc(x.value) && x.value > 0
+}
+
+method client(a: Int, b: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L3")(b > 0)
+{
+  var x: Ref
+  @dependencyInfo("assumptionType:SourceCode, label:L11")
+  x := new(value)
+
+  if( @dependencyInfo("assumptionType:PathCondition, label:L4")(a < 0) ){
+    @dependencyInfo("assumptionType:SourceCode, label:L6")
+    x.value := 5
+  } else {
+    @dependencyInfo("assumptionType:SourceCode, label:L7")
+    x.value := b
+  }
+
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L10, expectedDependencies:[L11,L6,L7,L3]")
+  fold P(x)
+
+
+  if( @dependencyInfo("assumptionType:PathCondition, label:L9")(a < 0) ){
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L12, expectedDependencies:[L10,L11,L4,L6]")
+    unfold P(x)
+
+    @dependencyInfo("assertionType:Explicit, label:L13, expectedDependencies:[L12,L10,L11,L6]")
+    assert x.value == 5
+  }
+}

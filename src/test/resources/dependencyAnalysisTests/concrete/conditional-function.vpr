@@ -20,6 +20,6 @@ method client()
   @dependencyInfo("assumptionType:SourceCode, label:L8, expectedDependencies:[L6,L7]")
   z := pick(false, x, y)
 
-  @dependencyInfo("assertionType:Explicit, label:L9, expectedDependencies:[L8,L6,L7,L5]")
+  @dependencyInfo("assertionType:Explicit, label:L9, expectedDependencies:[L8,L7,L5]")
   assert z == 4
 }

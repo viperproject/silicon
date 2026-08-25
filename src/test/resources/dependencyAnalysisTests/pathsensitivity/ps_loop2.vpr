@@ -1,0 +1,26 @@
+method loopUnawareness(a: Int, b: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L1")(b > 0)
+{
+  var res: Int
+  var tmp: Int := a
+
+  if (@dependencyInfo("assumptionType:PathCondition, label:L2")(a > 0)){
+    @dependencyInfo("assumptionType:SourceCode, label:L3")
+    res := a
+  }else{
+    @dependencyInfo("assumptionType:SourceCode, label:L4")
+    res := b
+  }
+
+  while ( @dependencyInfo("assumptionType:PathCondition, label:L5")(tmp > 0))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L6, expectedDependencies:[L1,L2,L3,L4]") (res >= 0)
+  {
+    @dependencyInfo("assumptionType:SourceCode, label:L7")
+    tmp := 0
+  }
+
+  if(@dependencyInfo("assumptionType:PathCondition, label:L8")(a > 0)){
+    @dependencyInfo("assertionType:Explicit, label:L9, expectedDependencies:[L2,L3,L8]")
+    assert res >= 0
+  }
+}

@@ -27,6 +27,6 @@ method client() {
     @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L10, expectedDependencies:[L9]")
     r3 := compute_rec(a, b)
 
-    @dependencyInfo("assertionType:Explicit, label:L17, expectedDependencies:[L8,L9,L2,L4,L5,L6]")
+    @dependencyInfo("assertionType:Explicit, label:L17, expectedDependencies:[L1,L8,L9,L2,L3,L4,L5,L6,L10]")
     assert r3 == 3
 }

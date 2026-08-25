@@ -92,8 +92,8 @@ method lcp(a: IArray, x: Int, y: Int) returns (n: Int)
   requires @dependencyInfo("assumptionType:Precondition, label:L33")(y < len(a))
   ensures  @dependencyInfo("assertionType:ImplicitPostcondition, label:L34, expectedDependencies:[L29,L43]")(access(a))
   ensures  @dependencyInfo("assertionType:ImplicitPostcondition, label:L35, expectedDependencies:[L40,L42,L47]")(0 <= n)
-  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L36, expectedDependencies:[L30,L32,L40,L41,L44,L47]")(x + n <= len(a))
-  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L37, expectedDependencies:[L31,L33,L40,L41,L45,L47]")(y + n <= len(a))
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L36, expectedDependencies:[L32,L40,L41,L44,L47]")(x + n <= len(a))
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L37, expectedDependencies:[L33,L40,L41,L45,L47]")(y + n <= len(a))
   ensures  @dependencyInfo("assertionType:ImplicitPostcondition, label:L38, expectedDependencies:[L28,L29,L30,L31,L40,L41,L43,L44,L45,L46,L47]")(forall k: Int :: {loc(a, offset(k,x,y))} // instantiation trigger term
     x <= k && k < x + n ==> loc(a, k).val == loc(a, offset(k,x,y)).val)
   /* The following postcondition is logically equivalent to the previous one, and a bit
@@ -105,11 +105,11 @@ method lcp(a: IArray, x: Int, y: Int) returns (n: Int)
 {
    @dependencyInfo("assumptionType:SourceCode, label:L40")
    n := 0
-   while (@dependencyInfo("assumptionType:PathCondition, assertionType:PathCondition, label:L41, expectedDependencies:[L29,L30,L31,L40,L42,L43,L47]")(x + n < len(a) &&  y + n < len(a) && loc(a, x + n).val == loc(a, y + n).val))
+   while (@dependencyInfo("assumptionType:PathCondition, assertionType:PathCondition, label:L41")(x + n < len(a) &&  y + n < len(a) && loc(a, x + n).val == loc(a, y + n).val))
      invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L42, expectedDependencies:[L40,L47]")(n >= 0)
      invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L43, expectedDependencies:[L29]")(access(a))
-     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L44, expectedDependencies:[L30,L32,L40,L41,L47]")(x + n <= len(a))
-     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L45, expectedDependencies:[L31,L33,L40,L41,L47]")(y + n <= len(a))
+     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L44, expectedDependencies:[L32,L40,L41,L47]")(x + n <= len(a))
+     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L45, expectedDependencies:[L33,L40,L41,L47]")(y + n <= len(a))
      invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L46, expectedDependencies:[L28,L29,L40,L41,L43,L44,L45,L47]")(forall k: Int :: {loc(a, offset(k,x,y))} // instantiation trigger term
        x <= k && k < x + n ==> loc(a, k).val == loc(a, offset(k,x,y)).val)
    {

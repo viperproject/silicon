@@ -107,7 +107,7 @@ method unfoldWithImpl(a: Int, x: Ref)
     x.f := a
 
   }
-  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L32, expectedDependencies:[L28,L29,L30]")
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L32, expectedDependencies:[L28,L29]")
   fold implPred(a, x)
 }
 

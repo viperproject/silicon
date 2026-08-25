@@ -61,7 +61,7 @@ method domain3()
   while (@dependencyInfo("assumptionType:PathCondition, label:L9")(i < len(a)))
     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L10, expectedDependencies:[L7,L8,L9,L11,L14]")(access(a))
     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L11, expectedDependencies:[L8,L14]")(0 <= i)
-    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L12, expectedDependencies:[L6,L8,L9,L14]")(i <= len(a))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L12, expectedDependencies:[L8,L9,L14]")(i <= len(a))
   {
     @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L13, expectedDependencies:[L7,L8,L9,L10,L11,L14]")
     slot(a,i).val := -i

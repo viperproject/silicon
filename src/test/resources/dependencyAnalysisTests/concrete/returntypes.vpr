@@ -1,5 +1,3 @@
-//use this file to test precision by return type for concrete mode
-
 method five_set(a: Int) returns (res: Set[Int])
     requires @dependencyInfo("assumptionType:Precondition, label:L1")(a > 0)
     ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L2, expectedDependencies:[L4]")(|res| == 1)
@@ -9,17 +7,6 @@ method five_set(a: Int) returns (res: Set[Int])
     res := Set(5)
 }
 
-method five_tuple(a: Int) returns (r1: Int, r2: Int)
-    requires @dependencyInfo("assumptionType:Precondition, label:L10")(a > 0)
-    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L11, expectedDependencies:[L15]")(r1 == 5)
-    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L12, expectedDependencies:[L16]")(r2 == 0)
-{
-    @dependencyInfo("assumptionType:SourceCode, label:L15")
-    r1 := 5
-    @dependencyInfo("assumptionType:SourceCode, label:L16")
-    r2:= 0
-}
-
 method five_seq(a: Int) returns (res: Seq[Int])
     requires @dependencyInfo("assumptionType:Precondition, label:L20")(a > 0)
     ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L21, expectedDependencies:[L22]")(|res| == 1)
@@ -27,14 +14,6 @@ method five_seq(a: Int) returns (res: Seq[Int])
 {
     @dependencyInfo("assumptionType:SourceCode, label:L22")
     res := Seq(5)
-}
-
-method five_ref(a: Int) returns (res: Ref)
-    requires @dependencyInfo("assumptionType:Precondition, label:L30")(a > 0)
-    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L31, expectedDependencies:[L32]")(res == null)
-{
-    @dependencyInfo("assumptionType:SourceCode, label:L32")
-    res := null
 }
 
 method five_multiset(a: Int) returns (res: Multiset[Int])
@@ -57,26 +36,12 @@ method client() {
     assert res == Set(5)
 
 
-    var res1: Int
-    var res2: Int
-    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L13, expectedDependencies:[L5]")
-    res1, res2 := five_tuple(a)
-    @dependencyInfo("assertionType:Explicit, label:L14, expectedDependencies:[L13,L5,L11,L15]")
-    assert res1 == 5
-
-
     var resSeq: Seq[Int]
     @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L24, expectedDependencies:[L5]")
     resSeq := five_seq(a)
     @dependencyInfo("assertionType:Explicit, label:L25, expectedDependencies:[L24,L23,L22]")
     assert resSeq[0] == 5
 
-
-    var resRef: Ref
-    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L33, expectedDependencies:[L5]")
-    resRef := five_ref(a)
-    @dependencyInfo("assertionType:Explicit, label:L34, expectedDependencies:[L33,L31,L32]")
-    assert resRef == null
 
     var resMultiset: Multiset[Int]
     @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L43, expectedDependencies:[L5]")

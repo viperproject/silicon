@@ -259,8 +259,10 @@ object executor extends ExecutionRules {
               map.updated(x, xNew)}))
             val sBody = s.copy(g = gBody, h = v.heapSupporter.getEmptyHeap(s.program))
 
-            val analysisInfosInv = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos
-            val analysisInfosLoopInternal = DependencyAnalysisInfos.create(s"Loop ${block.id}\"", DependencyType.Internal)
+            val LoopPath = if (!v.decider.dependencyAnalyzer.isPathSensitive) 0 else v.decider.dependencyAnalyzer.getPathContext.get.registerOrGetLoop(v.decider.pcs.branchConditions.toList,block.id)
+
+            val analysisInfosInv = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withPathInfo(LoopPath)
+            val analysisInfosLoopInternal = DependencyAnalysisInfos.create(s"Loop ${block.id}\"", DependencyType.Internal).withPathInfo(LoopPath)
 
             val edges = s.methodCfg.outEdges(block)
             val (outEdges, otherEdges) = edges partition(_.kind == cfg.Kind.Out)
@@ -319,7 +321,8 @@ object executor extends ExecutionRules {
              * attempting to re-establish the invariant.
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
-            val analysisInfosInv = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos
+            val LoopPath = if (!v.decider.dependencyAnalyzer.isPathSensitive) 0 else v.decider.dependencyAnalyzer.getPathContext.get.registerOrGetLoop(v.decider.pcs.branchConditions.toList,block.id)
+            val analysisInfosInv = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withPathInfo(LoopPath)
             consumes(s, invs, false, e => LoopInvariantNotPreserved(e), v, analysisInfosInv)((_, _, _) =>
               Success())
         }
@@ -601,11 +604,12 @@ object executor extends ExecutionRules {
         val ePerm = pap.perm
         val predicate = s.program.findPredicate(predicateName)
         val pve = FoldFailed(fold)
-        evals(s, eArgs, _ => pve, v, analysisInfos)((s1, tArgs, eArgsNew, v1) =>
-          eval(s1, ePerm, pve, v1, analysisInfos)((s2, tPerm, ePermNew, v2) =>
-            permissionSupporter.assertPositive(s2, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2, analysisInfos)((s3, v3) => {
+        val predInfos = analysisInfos.withPathInfo(if(!v.decider.dependencyAnalyzer.isPathSensitive) 0 else v.decider.dependencyAnalyzer.getPathContext.get.getNewUniquePathID())
+        evals(s, eArgs, _ => pve, v, predInfos)((s1, tArgs, eArgsNew, v1) =>
+          eval(s1, ePerm, pve, v1, predInfos)((s2, tPerm, ePermNew, v2) =>
+            permissionSupporter.assertPositive(s2, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2, predInfos)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
-              predicateSupporter.fold(s3, predAcc, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, analysisInfos)((s4, v4) => {
+              predicateSupporter.fold(s3, predAcc, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, predInfos)((s4, v4) => {
                   v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
                   Q(s4, v4)
                 }
@@ -617,13 +621,14 @@ object executor extends ExecutionRules {
         val ePerm = pap.perm
         val predicate = s.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
-        evals(s, eArgs, _ => pve, v, analysisInfos)((s1, tArgs, eArgsNew, v1) =>
-          eval(s1, ePerm, pve, v1, analysisInfos)((s2, tPerm, ePermNew, v2) => {
-            val s2a = v2.heapSupporter.triggerResourceIfNeeded(s2, pa, tArgs, eArgsNew, v2, analysisInfos)
+        val predInfos = analysisInfos.withPathInfo(if(!v.decider.dependencyAnalyzer.isPathSensitive) 0 else v.decider.dependencyAnalyzer.getPathContext.get.getNewUniquePathID())
+        evals(s, eArgs, _ => pve, v, predInfos)((s1, tArgs, eArgsNew, v1) =>
+          eval(s1, ePerm, pve, v1, predInfos)((s2, tPerm, ePermNew, v2) => {
+            val s2a = v2.heapSupporter.triggerResourceIfNeeded(s2, pa, tArgs, eArgsNew, v2, predInfos)
 
-            permissionSupporter.assertPositive(s2a, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2, analysisInfos)((s3, v3) => {
+            permissionSupporter.assertPositive(s2a, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2, predInfos)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
-              predicateSupporter.unfold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, pa, analysisInfos)(
+              predicateSupporter.unfold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, pa, predInfos)(
                 (s4, v4) => {
                   v2.decider.finishDebugSubExp(s"unfolded ${pa.toString}")
                   Q(s4, v4)

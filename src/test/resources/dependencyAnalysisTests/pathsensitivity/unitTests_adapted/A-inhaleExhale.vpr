@@ -6,7 +6,7 @@ method exhaleInhale(a: Ref)
     exhale @dependencyInfo("assertionType:Explicit, label:L30, expectedDependencies:[L1]") (acc(a.f, 1/2))
     inhale @dependencyInfo("assumptionType:Explicit, label:L32") acc(a.f, 1/2)
 
-    @dependencyInfo("assertionType:Explicit, label:L2, expectedDependencies:[L1]")
+    @dependencyInfo("assertionType:Explicit, label:L2, expectedDependencies:[L1,L32]")
     assert perm(a.f) == write
 }
 

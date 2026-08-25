@@ -1,0 +1,39 @@
+field val: Int
+
+predicate ValidPair(x: Ref, y: Int) {
+  acc(x.val) && x.val > 0 && x.val > y
+}
+
+method usePair(x: Ref, y: Int) returns (res: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L1")(ValidPair(x,y))
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L2, expectedDependencies:[L1,L5,L6,L7,L8,L9,L10]")(res > 0)
+{
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L5")
+  unfold ValidPair(x, y)
+
+  @dependencyInfo("assumptionType:SourceCode, label:L6")
+  res := x.val
+}
+
+method client() {
+  var p: Ref
+  var b: Int
+
+  @dependencyInfo("assumptionType:SourceCode, label:L7")
+  p := new(val)
+  @dependencyInfo("assumptionType:SourceCode, label:L8")
+  p.val := 5
+
+  @dependencyInfo("assumptionType:SourceCode, label:L100")
+  b := 3
+
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L9, expectedDependencies:[L7,L8,L100]")
+  fold ValidPair(p,b)
+
+  var out: Int
+  @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L10, expectedDependencies:[L9]")
+  out := usePair(p,b)
+
+  @dependencyInfo("assertionType:Explicit, label:L11, expectedDependencies:[L1,L2,L5,L6,L7,L8,L9,L10]")
+  assert out > 0
+}

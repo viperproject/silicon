@@ -148,7 +148,6 @@ method graph_copy_rec(this: Ref, node_map: INodeMap, setOfRef: Set[Ref], node_ma
      *
      * See https://bitbucket.org/viperproject/silver/issues/111
      */
-    @trigger()
     @dependencyInfo("assertionType:Explicit, label:L30, expectedDependencies:[L1,L3,L4,L5,L6,L7,L8,L9,L10,L26,L28,L29,L31,L32,L35,L37,L39,L40,L41,L42,L43,L44,L45,L46,L47,L48,L51,L53]")
     assert (setOfRef intersection node_map_image) union (setOfRef intersection Set(nodeCopy))
            == setOfRef intersection res_copy_nodes

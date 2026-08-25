@@ -1,6 +1,7 @@
 method compute(a: Int, b: Int, c: Int) returns (res: Int)
     requires @dependencyInfo("assumptionType:Precondition, label:L1, expectedDependencies:[L6,L9,L12,L13]")(a == 10)
     requires @dependencyInfo("assumptionType:Precondition, label:L2, expectedDependencies:[L7,L10,L12,L13]")(b == 20)
+    requires @dependencyInfo("assumptionType:Precondition, label:L333, expectedDependencies:[L12,L8,L13,L11]")(c > 0)
     ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L3, expectedDependencies:[L4,L1,L2,L6,L7,L9,L10,L12,L13]")(res == 5)
 {
     @dependencyInfo("assumptionType:SourceCode, label:L4")
@@ -28,11 +29,18 @@ method client() {
     z := 10
 
     var r1: Int
-    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L12, expectedDependencies:[L6,L7]")
+    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L12, expectedDependencies:[L6,L7,L8]")
     r1 := compute(a, b, c)
+
+    @dependencyInfo("assertionType:Explicit, label:L114, expectedDependencies:[L12,L3,L4,L1,L2,L6,L7]")
+    assert r1 == 5
+
     var r2: Int
-    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L13, expectedDependencies:[L9,L10]")
+    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L13, expectedDependencies:[L9,L10,L11]")
     r2 := compute(x, y, z)
+
+    @dependencyInfo("assertionType:Explicit, label:L114, expectedDependencies:[L13,L3,L4,L1,L2,L9,L10]")
+    assert r2 == 5
 
     @dependencyInfo("assertionType:Explicit, label:L14, expectedDependencies:[L12,L13,L3,L4,L1,L2,L6,L7,L9,L10]")
     assert 10 == r1 + r2

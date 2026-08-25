@@ -1,0 +1,27 @@
+function square(x: Int): Int
+  requires @dependencyInfo("assumptionType:Precondition, label:L1, expectedDependencies:[L3,L6,L7,L8]") (x > 0)
+{
+  @dependencyInfo("assumptionType:FunctionBody, label:L2")(x * x)
+}
+
+method client(a: Int, b: Int)
+  requires @dependencyInfo("assumptionType:Precondition, label:L3")(b > 0)
+{
+  var v: Int
+
+  if( @dependencyInfo("assumptionType:PathCondition, label:L4")(a < 0) ){
+    @dependencyInfo("assumptionType:SourceCode, label:L6")
+    v := 5
+  } else {
+    @dependencyInfo("assumptionType:SourceCode, label:L7")
+    v := b
+  }
+
+  @dependencyInfo("assumptionType:SourceCode, label:L8, expectedDependencies:[L3,L6,L7]")
+  v := square(v)   // synchronisation point
+
+  if( @dependencyInfo("assumptionType:PathCondition, label:L9")(a < 0) ){
+    @dependencyInfo("assertionType:Explicit, label:L7, expectedDependencies:[L2,L4,L6,L8,L9]")
+    assert v == 25
+  }
+}

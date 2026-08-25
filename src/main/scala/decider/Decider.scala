@@ -531,9 +531,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 		def handleAndGetUpdatedAnalysisInfos(analysisInfos: DependencyAnalysisInfos, info: Info, node: ast.Node): DependencyAnalysisInfos = {
 			var newAnalysisInfos = analysisInfos.addInfo(info, node)
 
-      if(dependencyAnalyzer.isPathSensitive){
+      if(dependencyAnalyzer.isPathSensitive && newAnalysisInfos.pathContextID == 0){
         val ctx = dependencyAnalyzer.getPathContext
-        if(ctx.isDefined){  // for methods with empty body, the dependencyAnalyzer is removed
+        if(ctx.isDefined){  // needs check, because dependencyAnalyzer is removed for methods with empty body
           val pathID = ctx.get.getPathId(pcs.branchConditions.toList)
           newAnalysisInfos = newAnalysisInfos.copy(pathContextID = pathID)
         }

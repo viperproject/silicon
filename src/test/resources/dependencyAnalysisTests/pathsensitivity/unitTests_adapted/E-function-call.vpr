@@ -9,7 +9,8 @@ function sum(x: Int, y: Int): Int
 }
 
 function sumUnverified(x: Int, y: Int): Int
-  requires @dependencyInfo("assumptionType:Precondition, label:L23, expectedDependencies:[L14,L15,L16,L17,L18]")(x >= 0 && y >= 0)
+  requires @dependencyInfo("assumptionType:Precondition, label:L23, expectedDependencies:[L14,L17,L18]")(x >= 0)
+  requires @dependencyInfo("assumptionType:Precondition, label:L123, expectedDependencies:[L15,L16,L17,L18]")(y >= 0)
   ensures @dependencyInfo("assertionType:ExplicitPostcondition, label:L24")(result >= 0)
   ensures @dependencyInfo("assertionType:ExplicitPostcondition, label:L25")(result == x + y)
 

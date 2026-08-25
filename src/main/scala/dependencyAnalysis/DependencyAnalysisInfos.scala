@@ -27,7 +27,7 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo],
     val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
     val newMergeInfos = mergeInfos ++ info.getUniqueInfo[DependencyAnalysisMergeInfo].toList
     val newJoinInfos = joinInfos ++ info.getUniqueInfo[DependencyAnalysisJoinInfo].toList
-    DependencyAnalysisInfos(newSourceInfos, newDependencyInfos, newMergeInfos, newJoinInfos, nodes ++ List(node))
+    DependencyAnalysisInfos(newSourceInfos, newDependencyInfos, newMergeInfos, newJoinInfos, nodes ++ List(node), pathContextID = this.pathContextID)
   }
 
   def addInfo(info: ast.Info): DependencyAnalysisInfos = {
@@ -37,7 +37,7 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo],
     val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
     val newMergeInfos = mergeInfos ++ info.getUniqueInfo[DependencyAnalysisMergeInfo].toList
     val newJoinInfos = joinInfos ++ info.getUniqueInfo[DependencyAnalysisJoinInfo].toList
-    DependencyAnalysisInfos(newSourceInfos, newDependencyInfos, newMergeInfos, newJoinInfos, nodes)
+    DependencyAnalysisInfos(newSourceInfos, newDependencyInfos, newMergeInfos, newJoinInfos, nodes, pathContextID = this.pathContextID)
   }
 
   def addInfo(infoString: String, pos: ast.Position, dependencyType: DependencyType): DependencyAnalysisInfos = {
@@ -119,6 +119,12 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo],
 		this.copy(joinInfos = joinInfo +: joinInfos)
 	}
 
+	def withPathInfo(newId: Int): DependencyAnalysisInfos = {
+		if(!isAnalysisEnabled) return this
+
+		this.copy(pathContextID = newId)
+	}
+
 	def withEnabled(analysisEnabled: Boolean): DependencyAnalysisInfos = this.copy(analysisEnabled=analysisEnabled)
 
 	def intersectInfos(other: DependencyAnalysisInfos): DependencyAnalysisInfos = {
@@ -150,7 +156,6 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo],
 				if (x1 == y1 && x2 == y2){ List(CompositeDependencyAnalysisMergeInfo(x1, x2))}
 				else if(x1 == y1){ List(SimpleDependencyAnalysisMerge(x1))}
 				else if(x2 == y2){ List(SimpleDependencyAnalysisMerge(x2))}
-				//TODO: jho: maybe consider cross-matching merge infos
 				else List.empty
 			case _ => List.empty
 		}

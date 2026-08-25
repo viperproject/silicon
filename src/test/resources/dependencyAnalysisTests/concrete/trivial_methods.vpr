@@ -1,0 +1,49 @@
+// use this file to test unused preconditions for primitive return types in concrete mode
+
+method five_int(a: Int) returns (res: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L1")(a > 0)
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L3, expectedDependencies:[L4]")(res == 5)
+{
+    @dependencyInfo("assumptionType:SourceCode, label:L4")
+    res := 5
+}
+
+method five_bool(a: Int) returns (res: Bool)
+    requires @dependencyInfo("assumptionType:Precondition, label:L10")(a > 0)
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L12, expectedDependencies:[L13]")(res == true)
+{
+    @dependencyInfo("assumptionType:SourceCode, label:L13")
+    res := true
+}
+
+method five_ref(a: Int) returns (res: Ref)
+    requires @dependencyInfo("assumptionType:Precondition, label:L20")(a > 0)
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L22, expectedDependencies:[L23]")(res == null)
+{
+    @dependencyInfo("assumptionType:SourceCode, label:L23")
+    res := null
+}
+
+method client() {
+    var a: Int
+    @dependencyInfo("assumptionType:SourceCode, label:L5")
+    a := 10
+
+    var resInt: Int
+    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L7, expectedDependencies:[L5]")
+    resInt := five_int(a)
+    @dependencyInfo("assertionType:Explicit, label:L8, expectedDependencies:[L7,L3,L4]")
+    assert resInt == 5
+
+    var resBool: Bool
+    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L14, expectedDependencies:[L5]")
+    resBool := five_bool(a)
+    @dependencyInfo("assertionType:Explicit, label:L15, expectedDependencies:[L14,L12,L13]")
+    assert resBool == true
+
+    var resRef: Ref
+    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L24, expectedDependencies:[L5]")
+    resRef := five_ref(a)
+    @dependencyInfo("assertionType:Explicit, label:L25, expectedDependencies:[L24,L22,L23]")
+    assert resRef == null
+}

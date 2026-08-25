@@ -60,7 +60,7 @@ method loop3(){
         res := res + i
         @dependencyInfo("assumptionType:SourceCode, label:L24")
         i := i - 1
-        @dependencyInfo("assertionType:Explicit, label:L25, expectedDependencies:[L17,L19,L22,L23]")
+        @dependencyInfo("assertionType:Explicit, label:L25, expectedDependencies:[L17,L19,L23]")
         assert res > 0
     }
 }
@@ -77,7 +77,7 @@ method loop4(){
     while(@dependencyInfo("assumptionType:PathCondition, label:L28")(i > 0))
         invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L29, expectedDependencies:[L27,L33]")(i <= 10)
         invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L30, expectedDependencies:[L27,L28,L33]")(i >= 0)
-        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L31, expectedDependencies:[L26]")(res >= 0)
+        invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L31, expectedDependencies:[L26,L34]")(res >= 0)
     {
         @dependencyInfo("assumptionType:SourceCode, label:L32")
         res := res - 1
@@ -87,6 +87,6 @@ method loop4(){
         assume @dependencyInfo("assumptionType:Explicit, label:L34") (res > 0)
     }
 
-    @dependencyInfo("assertionType:Explicit, label:L35, expectedDependencies:[L26,L31]")
+    @dependencyInfo("assertionType:Explicit, label:L35, expectedDependencies:[L34,L26,L31]")
     assert res >= 0
 }

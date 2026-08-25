@@ -6,11 +6,12 @@ method seq_merge(as: Seq[Int], bs: Seq[Int]) returns (cs: Seq[Int])
   requires @dependencyInfo("assumptionType:Precondition, label:L4")(forall j: Int :: {bs[j]} 0 <= j && j <|bs| ==> 0 <= bs[j])
   requires @dependencyInfo("assumptionType:Precondition, label:L5")(forall j: Int :: {bs[j]} 0 < j && j <|bs| ==> bs[j-1] <= bs[j])
 
-  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L6, expectedDependencies:[L14,L20]")(|cs| == |as| + |bs| + 1)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L6, expectedDependencies:[L14,L20,L21,L11,L12,L13,L31,L34,L35]")(|cs| == |as| + |bs| + 1)
   ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L7, expectedDependencies:[L2,L4,L11,L12,L14,L15,L16,L22,L28,L29,L30,L31,L32,L33,L34,L35]")(forall k: Int :: {cs[k]} 0 <  k && k < |cs| ==> 0 <= cs[k])
   ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L8, expectedDependencies:[L2,L3,L4,L5,L11,L12,L14,L15,L16,L23,L24,L25,L28,L29,L30,L31,L32,L33,L34,L35]")(forall k: Int :: {cs[k]} 0 <  k && k < |cs| ==> cs[k-1] <= cs[k])
-  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L9, expectedDependencies:[L11,L12,L13,L16,L26,L28,L29,L30,L31,L34,L35]")(forall i: Int :: {as[i]} 0 <= i && i < |as| ==> as[i] in cs)
-  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L10, expectedDependencies:[L11,L12,L13,L16,L27,L28,L31,L32,L33,L34,L35]")(forall j: Int :: {bs[j]} 0 <= j && j < |bs| ==> bs[j] in cs)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L9, expectedDependencies:[L11,L12,L13,L14,L16,L20,L21,L26,L28,L29,L30,L31,L32,L33,L34,L35]")(forall i: Int :: {as[i]} 0 <= i && i < |as| ==> as[i] in cs)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L10, expectedDependencies:[L11,L12,L13,L16,L27,L28,L31,L32,L33,L34,L35,L14,L21,L20,L6,L29,L15,L30]")(forall j: Int :: {bs[j]} 0 <= j && j < |bs| ==> bs[j] in cs)
+                                                                                    
 {
   var i: Int
   var j: Int
@@ -28,12 +29,12 @@ method seq_merge(as: Seq[Int], bs: Seq[Int]) returns (cs: Seq[Int])
   cs := cs[0 := 0] // index 0 is a dummy value
 
   while(@dependencyInfo("assumptionType:PathCondition, label:L16")(k < |cs|))
-    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L17, expectedDependencies:[L11,L12,L16,L28,L31,L34]")(0 <= i && i <= |as|)
-    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L18, expectedDependencies:[L11,L12,L13,L14,L16,L20,L21,L28,L31,L34,L35]")(0 <= j && j <= |bs|)
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L17, expectedDependencies:[L11,L28,L31]")(0 <= i && i <= |as|)
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L18, expectedDependencies:[L12,L28,L35]")(0 <= j && j <= |bs|)
     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L19, expectedDependencies:[L13,L14,L16,L35]")(0 <= k && k <= |cs|)
     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L20, expectedDependencies:[L14]")(|cs| == |as| + |bs| + 1)
     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L21, expectedDependencies:[L11,L12,L13,L31,L34,L35]")(i + j + 1 == k)
-    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L22, expectedDependencies:[L2,L4,L11,L12,L14,L15,L16,L28,L29,L30,L31,L32,L33,L34,L35]")(forall k0: Int :: {cs[k0]} 0 <= k0 && k0 < k ==> 0 <= cs[k0])
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L22, expectedDependencies:[L2,L4,L11,L12,L13,L14,L15,L16,L20,L21,L28,L29,L30,L31,L32,L33,L34,L35]")(forall k0: Int :: {cs[k0]} 0 <= k0 && k0 < k ==> 0 <= cs[k0])
     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L23, expectedDependencies:[L2,L3,L11,L12,L14,L15,L16,L28,L29,L30,L31,L32,L33,L34,L35]")(forall k0: Int :: {cs[k0]} 0 <= k0 && k0 < k && i < |as| ==> cs[k0] <= as[i])
     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L24, expectedDependencies:[L4,L5,L11,L12,L14,L15,L16,L28,L29,L30,L31,L32,L33,L34,L35]")(forall k0: Int :: {cs[k0]} 0 <= k0 && k0 < k && j < |bs| ==> cs[k0] <= bs[j])
     invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L25, expectedDependencies:[L2,L3,L4,L5,L11,L12,L14,L15,L16,L23,L24,L28,L29,L30,L31,L32,L33,L34,L35]")(forall k0: Int :: {cs[k0]} 0 < k0 && k0 < k ==> cs[k0-1] <= cs[k0])
@@ -42,15 +43,15 @@ method seq_merge(as: Seq[Int], bs: Seq[Int]) returns (cs: Seq[Int])
     {
       if(@dependencyInfo("assumptionType:PathCondition, assertionType:PathCondition, label:L28, expectedDependencies:[L11,L12,L31,L34]")(i < |as| && (j >= |bs| || as[i] < bs[j]))){
         var tmp: Int
-        @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L29, expectedDependencies:[L11,L12,L28,L31,L34]")
+        @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L29, expectedDependencies:[L11,L28,L31]")
         tmp := as[i]
-        @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L30, expectedDependencies:[L16]")
+        @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L30, expectedDependencies:[L16,L11, L21, L13, L34, L12, L35, L31]")
         cs := cs[k := tmp]
         @dependencyInfo("assumptionType:SourceCode, label:L31")
         i := i + 1
       }else {
         var tmp: Int
-        @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L32, expectedDependencies:[L11,L12,L28,L31,L34]")
+        @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L32, expectedDependencies:[L12,L28,L34]")
         tmp := bs[j]
         @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L33, expectedDependencies:[L16]")
         cs := cs[k := tmp]

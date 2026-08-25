@@ -177,8 +177,6 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       res.dependencyGraphInterpreter = v.decider.dependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(function.name, _,
         allErrors, Some(function)))
 
-      res.pathContext = v.decider.dependencyAnalyzer.getPathContext
-
       Seq(res)
     }
 

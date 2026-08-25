@@ -3,34 +3,42 @@ predicate P(x: Ref, y: Ref) {
 }
 
 method calleeB(x: Ref, y: Ref)
-  requires P(x, y)
+  requires @dependencyInfo("assumptionType:Precondition, label:L10") (P(x, y))
 {
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L11")
   unfold P(x, y)
 
   //Depends only on the second conjunct.
+  @dependencyInfo("assertionType:Explicit, label:L12, expectedDependencies:[L11,L10,L2,L20,L21,L24,L22,L3]")
   assert y != null
 }
 
 method calleeA(x: Ref, y: Ref)
-  requires P(x, y)
-  ensures P(x, y)
+  requires @dependencyInfo("assumptionType:Precondition, label:L20") (P(x, y))
+  ensures @dependencyInfo("assumptionType:ImplicitPostcondition, label:L21") (P(x, y))
 {
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L22")
   unfold P(x, y)
 
   //Depends only on the first conjunct.
+  @dependencyInfo("assertionType:Explicit, label:L23, expectedDependencies:[L22,L20,L1,L3]")
   assert x != null
 
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L24, expectedDependencies:[L22,L20,L3,L1,L2]")
   fold P(x,y)
 }
 
 method assignAndCall()
 {
   var a: Ref
-  var b: Ref
+  var b: Ref 
 
+  @dependencyInfo("assumptionType:SourceCode, label:L1")
   a := new()
+  @dependencyInfo("assumptionType:SourceCode, label:L2")
   b := new()
 
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L3, expectedDependencies:[L2,L1]")
   fold P(a, b)
 
   calleeA(a, b)

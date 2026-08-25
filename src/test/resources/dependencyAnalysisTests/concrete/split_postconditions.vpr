@@ -1,0 +1,32 @@
+method select(x: Int, y: Int) returns (r1: Int, r2: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L1")(x > 0)
+    requires @dependencyInfo("assumptionType:Precondition, label:L2")(y > 0)
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L3, expectedDependencies:[L6]")(r1 == x)
+    ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L4, expectedDependencies:[L7]")(r2 == y)
+{
+    @dependencyInfo("assumptionType:SourceCode, label:L6")
+    r1 := x
+    @dependencyInfo("assumptionType:SourceCode, label:L7")
+    r2 := y
+}
+
+method client() {
+    var x: Int
+    @dependencyInfo("assumptionType:SourceCode, label:L8")
+    x := 5
+
+    var y: Int
+    @dependencyInfo("assumptionType:SourceCode, label:L9")
+    y := 7
+
+    var r1: Int
+    var r2: Int
+    @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L10, expectedDependencies:[L8,L9]")
+
+    r1,r2 := select(x, y)
+    @dependencyInfo("assertionType:Explicit, label:L11, expectedDependencies:[L10,L3,L6,L8]")
+    assert r1 == 5
+
+    @dependencyInfo("assertionType:Explicit, label:L13, expectedDependencies:[L10,L4,L7,L9]")
+    assert r2 == 7
+}

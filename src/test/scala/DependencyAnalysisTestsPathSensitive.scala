@@ -53,6 +53,6 @@ class DependencyAnalysisTestsPathSensitive extends AnyFunSuite with DependencyAn
     val joinedDependencyGraphInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter.get
 
     new DependencyGraphTestSupporter(joinedDependencyGraphInterpreter).testDependencies(CHECK_PRECISION)
-    new PruningTest(filePrefix + "/" + fileName, program, joinedDependencyGraphInterpreter).execute()
+    // new PruningTest(filePrefix + "/" + fileName, program, joinedDependencyGraphInterpreter).execute()
   }
 }

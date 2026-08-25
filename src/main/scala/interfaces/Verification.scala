@@ -8,7 +8,7 @@ package viper.silicon.interfaces
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.{DebugAxiom, DebugExp}
-import viper.silicon.dependencyAnalysis.{IntraProcedural, PathContextManager}
+import viper.silicon.dependencyAnalysis.{IntraProcedural}
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.reporting._
@@ -33,7 +33,6 @@ sealed abstract class VerificationResult {
   val continueVerification: Boolean = true
   var isReported: Boolean = false
   var dependencyGraphInterpreter: Option[DependencyGraphInterpreter[IntraProcedural]] = None
-  var pathContext: Option[PathContextManager] = None
 
   def isFatal: Boolean
   def &&(other: => VerificationResult): VerificationResult

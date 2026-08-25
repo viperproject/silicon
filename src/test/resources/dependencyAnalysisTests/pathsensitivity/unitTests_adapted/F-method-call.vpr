@@ -15,17 +15,6 @@ method sumUnverified(x: Int, y: Int) returns(res: Int)
   ensures @dependencyInfo("assertionType:ExplicitPostcondition, label:L28")(res == x + y)
   ensures @dependencyInfo("assertionType:ExplicitPostcondition, label:L29")(res >= 0)
 
-method abs(x: Ref)
-  requires @dependencyInfo("assumptionType:Precondition, label:L30, expectedDependencies:[L20,L22]")(acc(x.f))
-  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L31, expectedDependencies:[L30,L20,L22]")(acc(x.f))
-  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L32, expectedDependencies:[L30,L33,L34,L31,L20,L22]")(x.f >= 0)
-{
- if(@dependencyInfo("assumptionType:PathCondition, assertionType:PathCondition, label:L33, expectedDependencies:[L30,L20,L22]")(x.f < 0)){
-  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L34, expectedDependencies:[L30,L22,L20]")
-  x.f := -x.f
- }
-}
-
 method call1(){
     var x: Int, y: Int
     assume @dependencyInfo("assumptionType:Explicit, label:L1") (x > 10)
@@ -89,11 +78,22 @@ method call4(x: Int, y: Int, z: Int)
   assert n == x + y
 }
 
+method abs(x: Ref)
+  requires @dependencyInfo("assumptionType:Precondition, label:L30, expectedDependencies:[L20,L22]")(acc(x.f))
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L31, expectedDependencies:[L30,L20,L22]")(acc(x.f))
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L32, expectedDependencies:[L30,L33,L34,L31,L20,L22]")(x.f >= 0)
+{
+ if(@dependencyInfo("assumptionType:PathCondition, assertionType:PathCondition, label:L33, expectedDependencies:[L30,L20,L22]")(x.f < 0)){
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L34, expectedDependencies:[L30,L22,L20]")
+  x.f := -x.f
+ }
+}
+
 method absClient1(x: Ref)
   requires @dependencyInfo("assumptionType:Precondition, label:L20")(acc(x.f))
   requires @dependencyInfo("assumptionType:Precondition, label:L21")(x.f > 0)
 {
-  @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L22, expectedDependencies:[L20,L30,L31,L32]")
+  @dependencyInfo("assumptionType:MethodCall, assertionType:MethodCall, label:L22, expectedDependencies:[L20]")
   abs(x)
 
   @dependencyInfo("assertionType:Explicit, label:L23, expectedDependencies:[L20,L22,L30,L31,L32,L33,L34]")

@@ -20,6 +20,6 @@ method client() {
   var res: Int
   @dependencyInfo("assumptionType:SourceCode, label:L9, expectedDependencies:[L5,L6,L7]")
   res := five(p1,test,p3)
-  @dependencyInfo("assertionType:Explicit, label:L10, expectedDependencies:[L9,L8,L4,L1,L3,L5,L6,L7]")
+  @dependencyInfo("assertionType:Explicit, label:L10, expectedDependencies:[L9,L8,L4,L1,L3,L5,L7]")
   assert res + p3 == 35
 }

@@ -104,13 +104,13 @@ object BenchmarkCollector {
 class DependencyAnalysisTestsBenchmark extends AnyFunSuite
   with DependencyAnalysisTestFramework with BeforeAndAfterAll {
 
-  val EXECUTE_TEST = true
+  val EXECUTE_TEST = false
   val EXPORT = true
   val ignores: Seq[String] = Seq("iterativeTreeDelete")
   analysisCommandLineArguments = analysisCommandLineArguments ++ Seq("--executeDependencyAnalysisTests")
 
-  // val MODE: BenchmarkMode = BenchmarkMode.Default
-  val MODE: BenchmarkMode = BenchmarkMode.PathSensitive
+  val MODE: BenchmarkMode = BenchmarkMode.Default
+  // val MODE: BenchmarkMode = BenchmarkMode.PathSensitive
 
   val testDirectories: Seq[String] = Seq(
     //"dependencyAnalysisTests/all",

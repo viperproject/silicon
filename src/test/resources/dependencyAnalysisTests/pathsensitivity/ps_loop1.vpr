@@ -1,0 +1,28 @@
+method test_input_guard(b: Bool)
+{
+  var x: Int
+  var i: Int
+
+  if (@dependencyInfo("assumptionType:PathCondition, label:L1")(b)) {
+    @dependencyInfo("assumptionType:SourceCode, label:L2")
+    x := 42
+  } else {
+    @dependencyInfo("assumptionType:SourceCode, label:L3")
+    x := 0
+  }
+
+  @dependencyInfo("assumptionType:SourceCode, label:L4")
+  i := 0
+
+  while (@dependencyInfo("assumptionType:PathCondition, label:L5")(i < 1))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L6, expectedDependencies:[L9,L4]") (0 <= i)
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L21, expectedDependencies:[L9,L4,L5]") (i <= 1)
+  {
+    if (@dependencyInfo("assumptionType:PathCondition, label:L7")(b)) {
+      @dependencyInfo("assertionType:Explicit, label:L8, expectedDependencies:[L7,L1,L2]")
+      assert x == 42
+    }
+    @dependencyInfo("assumptionType:SourceCode, label:L9")
+    i := i + 1
+  }
+}

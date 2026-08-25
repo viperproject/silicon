@@ -1117,7 +1117,6 @@ object evaluator extends EvaluationRules {
         // In this case, we return None.
         val expPair = (viper.silicon.utils.ast.BigAnd(es1), es1New.map(viper.silicon.utils.ast.BigAnd(_)))
         v2.decider.setCurrentBranchCondition(bc, expPair, analysisInfos)
-        // TODO: jho: check if necessary
         if(v2.decider.dependencyAnalyzer.isPathSensitive) v2.decider.dependencyAnalyzer.getPathContext.get.registerOrGetBranchpoint(List.empty,bc,Not(bc))
         var es2AndTriggerTerms: Option[(Seq[Term], Option[Seq[ast.Exp]], Seq[Trigger], (Seq[Term], Seq[Quantification]), Option[(InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp])], Map[ast.Exp, Term])] = None
         var finalState = s3
