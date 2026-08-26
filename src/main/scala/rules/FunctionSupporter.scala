@@ -26,13 +26,13 @@ object functionSupporter {
     HeapDepFun(id, function.argSorts, terms.sorts.Bool)
   }
 
-  def frameVersion(function: HeapDepFun, nHeaps: Int): HeapDepFun = {
+  def frameVersion(function: HeapDepFun, nHeaps: Int): Fun = {
     val id = function.id.withSuffix("%", "frame")
-    HeapDepFun(id, sorts.Snap +: function.argSorts.drop(nHeaps), function.resultSort)
+    Fun(id, sorts.Snap +: function.argSorts.drop(nHeaps), function.resultSort)
   }
 
-  def preconditionFrameVersion(function: HeapDepFun, nHeaps: Int): HeapDepFun = {
+  def preconditionFrameVersion(function: HeapDepFun, nHeaps: Int): Fun = {
     val id = function.id.withSuffix("%", "precondition%frame")
-    HeapDepFun(id, sorts.Snap +: function.argSorts.drop(nHeaps), terms.sorts.Bool)
+    Fun(id, sorts.Snap +: function.argSorts.drop(nHeaps), terms.sorts.Bool)
   }
 }

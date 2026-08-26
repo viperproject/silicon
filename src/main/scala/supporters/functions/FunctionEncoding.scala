@@ -27,7 +27,7 @@ trait FunctionEncoding {
   def adaptAxiom(t: Term, data: FunctionData): Term = t
 
   /** Additional function symbols to declare for a function (e.g. frame functions). */
-  def auxiliaryFunctions(data: FunctionData): Seq[Function] = Seq()
+  def auxiliaryFunctions(data: FunctionData): Seq[Fun] = Seq()
 
   /** Additional axioms to emit after a function's well-definedness check
     * (e.g. frame axioms). */

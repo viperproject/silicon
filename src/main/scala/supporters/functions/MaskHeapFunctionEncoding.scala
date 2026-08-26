@@ -122,7 +122,7 @@ class MaskHeapFunctionEncoding(symbolConverter: SymbolConverter, identifierFacto
   private def preconditionFrameFunction(data: FunctionData) =
     functionSupporter.preconditionFrameVersion(data.function, resourcesOf(data).size)
 
-  override def auxiliaryFunctions(data: FunctionData): Seq[Function] =
+  override def auxiliaryFunctions(data: FunctionData): Seq[Fun] =
     Seq(frameFunction(data), preconditionFrameFunction(data))
 
   override def auxiliaryAxioms(data: FunctionData): Seq[Term] = {
