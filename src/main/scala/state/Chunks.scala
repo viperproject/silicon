@@ -316,19 +316,6 @@ case class BasicMaskHeapChunk private[state] (resourceID: ResourceID, resource: 
 }
 
 object BasicMaskHeapChunk {
-//  def apply(resourceID: ResourceID, resource: Any, mask: Term, heap: Term, d: Decider, fr: FunctionRecorder): (BasicMaskHeapChunk, FunctionRecorder) = {
-//    // Attempting to keep the mask term in a form that can be used in triggers
-//    var newFr = fr
-//    val cleanMask = mask.transform{
-//      case t if d.getTriggerGenerator().isForbiddenInTrigger(t) =>
-//        val newVar = d.fresh(t.sort)
-//        val constraint = newVar === t
-//        newFr = newFr.recordArp(newVar, constraint)
-//        d.assumeDefinition(constraint)
-//        newVar
-//    }()
-//    (new BasicMaskHeapChunk(resourceID, resource, cleanMask, heap), newFr)
-//  }
   def apply(resourceID: ResourceID, resource: Any, mask: Term, heap: Term): BasicMaskHeapChunk = {
     new BasicMaskHeapChunk(resourceID, resource, mask, heap)
   }

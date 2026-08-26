@@ -775,6 +775,42 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case _ => Right(())
   }
 
+  validateOpt(exhaleModeOption, maskHeapMode) {
+    case (Some(_), Some(true)) =>
+      Left(s"Option ${exhaleModeOption.name} is not supported in combination with ${maskHeapMode.name}")
+    case _ => Right(())
+  }
+
+  validateOpt(exhaleModeOptionQP, maskHeapMode) {
+    case (Some(_), Some(true)) =>
+      Left(s"Option ${exhaleModeOptionQP.name} is not supported in combination with ${maskHeapMode.name}")
+    case _ => Right(())
+  }
+
+  validateOpt(moreCompleteExhale, maskHeapMode) {
+    case (Some(true), Some(true)) =>
+      Left(s"Option ${moreCompleteExhale.name} is not supported in combination with ${maskHeapMode.name}")
+    case _ => Right(())
+  }
+
+  validateOpt(enableDebugging, maskHeapMode) {
+    case (Some(true), Some(true)) =>
+      Left(s"Option ${enableDebugging.name} is not supported in combination with ${maskHeapMode.name}")
+    case _ => Right(())
+  }
+
+  validateOpt(enablePredicateTriggersOnInhale, maskHeapMode) {
+    case (Some(true), Some(true)) =>
+      Left(s"Option ${enablePredicateTriggersOnInhale.name} has no effect in combination with ${maskHeapMode.name}")
+    case _ => Right(())
+  }
+
+  validateOpt(stateConsolidationMode, maskHeapMode) {
+    case (Some(m), Some(true)) if m != StateConsolidationMode.Default =>
+      Left(s"Option ${stateConsolidationMode.name} is not supported in combination with ${maskHeapMode.name}")
+    case _ => Right(())
+  }
+
   validateOpt(numberOfParallelVerifiers) {
     case Some(n) if n <= 0 => Left(s"Number of parallel verifiers must be positive, but $n was provided")
     case _ => Right()
