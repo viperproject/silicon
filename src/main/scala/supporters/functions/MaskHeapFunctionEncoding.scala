@@ -45,7 +45,7 @@ class MaskHeapFunctionEncoding(symbolConverter: SymbolConverter, identifierFacto
       val (name, sort) = r match {
         case f: ast.Field => (f.name, sorts.HeapSort(symbolConverter.toSort(f.typ)))
         case p: ast.Predicate => (p.name, sorts.PredHeapSort)
-        case mwi: MagicWandIdentifier => (mwi.toString, sorts.PredHeapSort)
+        case mwi: MagicWandIdentifier => (mwi.toString, sorts.WandHeapSort)
       }
       Var(identifierFactory.fresh(s"heap_$name"), sort, false)
     })
@@ -57,6 +57,7 @@ class MaskHeapFunctionEncoding(symbolConverter: SymbolConverter, identifierFacto
       case (s, r) =>
         val srt = r match {
           case f: ast.Field => sorts.HeapSort(symbolConverter.toSort(f.typ))
+          case _: MagicWandIdentifier => sorts.WandHeapSort
           case _ => sorts.PredHeapSort
         }
         SnapToHeap(s, r, srt)
@@ -105,6 +106,7 @@ class MaskHeapFunctionEncoding(symbolConverter: SymbolConverter, identifierFacto
           case (s, r) =>
             val srt = r match {
               case f: ast.Field => sorts.HeapSort(symbolConverter.toSort(f.typ))
+              case _: MagicWandIdentifier => sorts.WandHeapSort
               case _ => sorts.PredHeapSort
             }
             SnapToHeap(s, r, srt)

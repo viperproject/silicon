@@ -313,35 +313,13 @@ object magicWandSupporter extends SymbolicExecutionRules {
       // The MWSF definition must be assumed before the path conditions since preMark are
       // harvested into conservedPcs below; otherwise it is lost when the package scope is
       // popped and the wand's snapshot is unconstrained at apply time.
-      val wandSnapshotOpt =
-        if (Verifier.config.maskHeapMode()) {
-          None
-        } else {
-          v.decider.prover.comment(s"Create MagicWandSnapFunction for wand $wand")
-          Some(this.createMagicWandSnapshot(freshSnapRoot, snapRhs, v))
-        }
+      v.decider.prover.comment(s"Create MagicWandSnapFunction for wand $wand")
+      val wandSnapshot = this.createMagicWandSnapshot(freshSnapRoot, snapRhs, v)
 
       val bodyVars = wand.subexpressionsToEvaluate(s.program)
 
       evals(s, bodyVars, _ => pve, v)((s2, tArgs, eArgsNew, v2) => {
-        if (Verifier.config.maskHeapMode()) {
-          // maskHeapMode wand encoding: store Combine(freshSnapRoot, snapRhs) in a pred-heap
-          // chunk. At apply time, the lookup's First component is pinned to the apply-time LHS
-          // snapshot. Conserved pcs are kept unpartitioned, since this encoding creates no
-          // MWSFLookup trigger terms that could unlock a quantified pcs bundle.
-          // TODO (wand unification cleanup): adopt the MWSF-based encoding here as well and
-          // route chunk creation through heapSupporter.createWandChunk.
-          val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark).definitionsOnly
-          val argTerm = toSnapTree(tArgs)
-          val newMask = MaskAdd(PredZeroMask, argTerm, FullPerm)
-          val snapshotTerm = Combine(freshSnapRoot, snapRhs)
-          val newHeap = HeapSingleton(argTerm, snapshotTerm, PredHeapSort)
-          val newChunk = BasicMaskHeapChunk(MagicWandID, MagicWandIdentifier(wand, s.program), newMask, newHeap)
-          val s3 = s2.copy(packagingWandSnapshots = s2.packagingWandSnapshots.filterNot(_._1 == freshSnapRoot))
-          appendToResults(s3, newChunk, v2.decider.pcs.after(preMark),
-            (conservedPcs.flatMap(_.conditionalized), Option.when(withExp)(conservedPcs.flatMap(_.conditionalizedExp))), v2)
-        } else {
-        // Partition the conserved PCs here, before any definitions about the new wand chunks are assumed below, so that
+                // Partition the conserved PCs here, before any definitions about the new wand chunks are assumed below, so that
         // the ground value def is not bundled into (and trapped inside) the freshSnapRoot quantifier.
         val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark).definitionsOnly
 
@@ -355,17 +333,17 @@ object magicWandSupporter extends SymbolicExecutionRules {
             case Quantification(Forall, v :: Nil, body: Term, _, _, _, _) if v == freshSnapRoot => body
             case p => p
           }),
-          Trigger(MWSFLookup(wandSnapshotOpt.get.mwsf, freshSnapRoot)),
+          Trigger(MWSFLookup(wandSnapshot.mwsf, freshSnapRoot)),
         )
 
-        val (ch, groundPcs, groundPcsExp) = v2.heapSupporter.createWandChunk(s2, wand, tArgs, eArgsNew, wandSnapshotOpt.get, v2)
+        val (ch, groundPcs, groundPcsExp) = v2.heapSupporter.createWandChunk(s2, wand, tArgs, eArgsNew, wandSnapshot, v2)
 
         val tPcs = (pcsQuantified +: pcsWithoutFreshSnapRoot) ++ groundPcs
         val ePcs = Option.when(withExp)(DebugExp.createInstance("MWSF definition path conditions", pcsQuantified, true) +: (pcsWithoutExp.get ++ groundPcsExp.get))
 
         val s3 = s2.copy(packagingWandSnapshots = s2.packagingWandSnapshots.filterNot(_._1 == freshSnapRoot))
         appendToResults(s3, ch, v2.decider.pcs.after(preMark), (tPcs, ePcs), v2)
-        }
+
         Success()
       })
     }
@@ -542,10 +520,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val s3 = s2.copy(conservedPcs = conservedPcs +: s2.conservedPcs.tail, reserveHeaps = s.reserveHeaps.head +: hs2)
 
       val usedChunks = chs2.flatten
-      val (fr4, hUsed) = if (Verifier.config.maskHeapMode())
-        (s3.functionRecorder, usedChunks.foldLeft(s2.reserveHeaps.head)((cur, chnk) => maskHeapSupporter.mergeWandHeaps(cur, Heap(Seq(chnk)), v2, Some(s2))))
-      else
-        v2.stateConsolidator(s2).merge(s3.functionRecorder, s2, s2.reserveHeaps.head, Heap(usedChunks), v2)
+      val (fr4, hUsed) = v2.heapSupporter.mergeTransferredChunks(s3.functionRecorder, s2, s2.reserveHeaps.head, usedChunks, v2)
 
       val s4 = s3.copy(functionRecorder = fr4, reserveHeaps = hUsed +: s3.reserveHeaps.tail)
 

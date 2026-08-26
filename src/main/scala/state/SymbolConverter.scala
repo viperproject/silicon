@@ -7,7 +7,7 @@
 package viper.silicon.state
 
 import viper.silicon.rules.maskHeapSupporter
-import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort}
+import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort, WandHeapSort}
 import viper.silver.ast
 import viper.silicon.state.terms.{Sort, sorts}
 import viper.silicon.verifier.Verifier
@@ -79,6 +79,7 @@ class DefaultSymbolConverter extends SymbolConverter {
       val resources = maskHeapSupporter.getResourceSeq(function.pres, program)
       val heapSorts = resources.map {
         case f: ast.Field => HeapSort(toSort(f.typ))
+        case _: MagicWandIdentifier => WandHeapSort
         case _ => PredHeapSort
       }
       val inSorts = heapSorts ++ (function.formalArgs map (_.typ) map toSort)

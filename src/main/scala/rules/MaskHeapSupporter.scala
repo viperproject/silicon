@@ -99,7 +99,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
       case None =>
         res match {
           case mwi: MagicWandIdentifier =>
-            val heapSort = PredHeapSort
+            val heapSort = WandHeapSort
             val newHeap = v.decider.fresh("mwHeap", heapSort, Option.when(withExp)(PUnknown()))
             val newChunk = BasicMaskHeapChunk(MagicWandID, mwi, PredZeroMask, newHeap)
             (h + newChunk, newChunk)
@@ -1238,11 +1238,11 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                                eArgs: Option[Seq[ast.Exp]],
                                snapshot: terms.MagicWandSnapshot,
                                v: Verifier): (Chunk, Seq[Term], Option[Seq[DebugExp]]) = {
-    /* In maskHeapMode, wand chunks are created directly in packageWand (they store the
-     * packaged snapshot pair rather than an MWSF), so this hook is never invoked.
-     * TODO (wand unification cleanup): adopt the MWSF-based encoding and move the maskHeap
-     * chunk creation here. */
-    sys.error("createWandChunk is not used in maskHeapMode")
+    val argTerm = toSnapTree(tArgs)
+    val newMask = MaskAdd(PredZeroMask, argTerm, FullPerm)
+    val newHeap = HeapSingleton(argTerm, snapshot.mwsf, WandHeapSort)
+    val newChunk = BasicMaskHeapChunk(MagicWandID, MagicWandIdentifier(wand, s.program), newMask, newHeap)
+    (newChunk, Seq(), Option.when(withExp)(Seq()))
   }
 
   override def triggerWandIfNeeded(s: State, wand: ast.MagicWand, chWand: Chunk, v: Verifier): State = {
@@ -1313,7 +1313,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
   override def adaptTriggerTerms(terms: Seq[Term], s: State): Seq[Term] = {
     terms.map(t => t.transform {
       case App(hdf: HeapDepFun, args) =>
-        val (heapArgs, otherArgs) = args.partition(a => a.sort == PredHeapSort || a.sort.isInstanceOf[sorts.HeapSort])
+        val (heapArgs, otherArgs) = args.partition(a => a.sort == PredHeapSort || a.sort == WandHeapSort || a.sort.isInstanceOf[sorts.HeapSort])
         if (heapArgs.isEmpty) App(hdf, args)
         else {
           val funcName = hdf.id match {
@@ -1334,6 +1334,9 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
   override def mergeReserveHeaps(hUsed: Heap, hOps: Heap, hLhs: Heap, s: State, v: Verifier): Heap =
     mergeWandHeaps(mergeWandHeaps(hUsed, hOps, v, Some(s)), hLhs, v, Some(s))
 
+  override def mergeTransferredChunks(fr: viper.silicon.supporters.functions.FunctionRecorder, s: State, h: Heap, usedChunks: Seq[Chunk], v: Verifier): (viper.silicon.supporters.functions.FunctionRecorder, Heap) =
+    (fr, usedChunks.foldLeft(h)((cur, chnk) => mergeWandHeaps(cur, Heap(Seq(chnk)), v, Some(s))))
+
   override def addWandChunk(h: Heap, chWand: Chunk, s: State, v: Verifier): Heap = {
     val newChunk = chWand.asInstanceOf[BasicMaskHeapChunk]
     findMaskHeapChunkOptionally(h, newChunk.resource) match {
@@ -1349,14 +1352,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
   override def appliedWandSnapshot(snapWand: Term, snapLhs: Term, s: State, v: Verifier): Term =
     snapWand match {
       case HeapToSnap(hp, MaskAdd(_, args, _), _) =>
-        val lookup = HeapLookup(hp, args)
-        lookup.sort match {
-          case sorts.MagicWandSnapFunction =>
-            MagicWandSnapshot(lookup).applyToMWSF(snapLhs)
-          case sorts.Snap =>
-            v.decider.assume(snapLhs === First(lookup), Option.when(withExp)(viper.silicon.debugger.DebugExp.createInstance("Magic wand snapshot", true)))
-            Second(lookup)
-        }
+        MagicWandSnapshot(HeapLookup(hp, args)).applyToMWSF(snapLhs)
       case snapshot: MagicWandSnapshot => snapshot.applyToMWSF(snapLhs)
       case SortWrapper(snapshot: MagicWandSnapshot, _) => snapshot.applyToMWSF(snapLhs)
       case t if t.sort == sorts.MagicWandSnapFunction => MWSFLookup(t, snapLhs)

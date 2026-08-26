@@ -102,6 +102,10 @@ trait HeapSupportRules extends SymbolicExecutionRules {
   /** Adds a freshly packaged wand chunk to the given heap. */
   def addWandChunk(h: Heap, chWand: Chunk, s: State, v: Verifier): Heap
 
+  /** Merges the chunks consumed by a transfer (during packaging a wand) into the heap of
+    * already-transferred permissions. */
+  def mergeTransferredChunks(fr: viper.silicon.supporters.functions.FunctionRecorder, s: State, h: Heap, usedChunks: Seq[Chunk], v: Verifier): (viper.silicon.supporters.functions.FunctionRecorder, Heap)
+
   /** Whether this heap encoding contributes trigger terms for the given resource access
     * occurring in a quantifier's trigger set. */
   def handlesResourceTrigger(ra: ast.ResourceAccess, s: State): Boolean
@@ -979,6 +983,9 @@ class DefaultHeapSupportRules extends HeapSupportRules {
 
   def addWandChunk(h: Heap, chWand: Chunk, s: State, v: Verifier): Heap =
     h + chWand
+
+  def mergeTransferredChunks(fr: viper.silicon.supporters.functions.FunctionRecorder, s: State, h: Heap, usedChunks: Seq[Chunk], v: Verifier): (viper.silicon.supporters.functions.FunctionRecorder, Heap) =
+    v.stateConsolidator(s).merge(fr, s, h, Heap(usedChunks), v)
 
   def handlesResourceTrigger(ra: ast.ResourceAccess, s: State): Boolean =
     s.isUsedAsTrigger(ra.res(s.program))
