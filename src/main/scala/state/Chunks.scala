@@ -303,3 +303,20 @@ case class MagicWandChunk(id: MagicWandIdentifier,
     copy(args = args.map(_.replace(terms)), snap = snap.replace(terms).asInstanceOf[MagicWandSnapshot], perm = perm.replace(terms))
   }
 }
+
+
+
+case class BasicMaskHeapChunk private[state] (resourceID: ResourceID, resource: Any, mask: Term, heap: Term) extends MaskHeapChunk {
+  def copy(heap: Term): BasicMaskHeapChunk = new BasicMaskHeapChunk(resourceID, resource, mask, heap)
+  def copy(newMask: Term, newHeap: Term = heap): BasicMaskHeapChunk = {
+    BasicMaskHeapChunk(resourceID, resource, newMask, newHeap)
+  }
+
+  override def substitute(terms: silicon.Map[Term, Term]): Chunk = BasicMaskHeapChunk(resourceID, resource, mask.replace(terms), heap.replace(terms))
+}
+
+object BasicMaskHeapChunk {
+  def apply(resourceID: ResourceID, resource: Any, mask: Term, heap: Term): BasicMaskHeapChunk = {
+    new BasicMaskHeapChunk(resourceID, resource, mask, heap)
+  }
+}

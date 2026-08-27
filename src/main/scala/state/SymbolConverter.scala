@@ -6,8 +6,11 @@
 
 package viper.silicon.state
 
+import viper.silicon.rules.maskHeapSupporter
+import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort, WandHeapSort}
 import viper.silver.ast
 import viper.silicon.state.terms.{Sort, sorts}
+import viper.silicon.verifier.Verifier
 
 trait SymbolConverter {
   def toSort(typ: ast.Type): Sort
@@ -72,9 +75,22 @@ class DefaultSymbolConverter extends SymbolConverter {
   }
 
   def toFunction(function: ast.Function, program: ast.Program): terms.HeapDepFun = {
-    val inSorts = terms.sorts.Snap +: (function.formalArgs map (_.typ) map toSort)
-    val outSort = toSort(function.typ)
+    if (Verifier.config.maskHeapMode()) {
+      val resources = maskHeapSupporter.getResourceSeq(function.pres, program)
+      val heapSorts = resources.map {
+        case f: ast.Field => HeapSort(toSort(f.typ))
+        case _: MagicWandIdentifier => WandHeapSort
+        case _ => PredHeapSort
+      }
+      val inSorts = heapSorts ++ (function.formalArgs map (_.typ) map toSort)
+      val outSort = toSort(function.typ)
 
-    terms.HeapDepFun(Identifier(function.name), inSorts, outSort)
+      terms.HeapDepFun(Identifier(function.name), inSorts, outSort)
+    } else {
+      val inSorts = terms.sorts.Snap +: (function.formalArgs map (_.typ) map toSort)
+      val outSort = toSort(function.typ)
+
+      terms.HeapDepFun(Identifier(function.name), inSorts, outSort)
+    }
   }
 }

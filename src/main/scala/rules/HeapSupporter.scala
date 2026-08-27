@@ -10,7 +10,7 @@ import viper.silicon
 import viper.silicon.Config.ExhaleMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
-import viper.silicon.interfaces.VerificationResult
+import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.interfaces.state.{Chunk, ChunkIdentifer, NonQuantifiedChunk}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.havocSupporter.{HavocHelperData, HavocOneData, HavocallData}
@@ -19,9 +19,9 @@ import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, ChunkIdentifier, H
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.predef.{`?r`, `?s`}
-import viper.silicon.supporters.functions.NoopFunctionRecorder
+import viper.silicon.supporters.functions.{FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.utils.ast.{BigAnd, replaceVarsInExp}
-import viper.silicon.utils.freshSnap
+import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.parser.PUnknown
@@ -101,6 +101,10 @@ trait HeapSupportRules extends SymbolicExecutionRules {
 
   /** Adds a freshly packaged wand chunk to the given heap. */
   def addWandChunk(h: Heap, chWand: Chunk, s: State, v: Verifier): Heap
+
+  /** Merges the chunks consumed by a transfer (during packaging a wand) into the heap of
+    * already-transferred permissions. */
+  def mergeTransferredChunks(fr: FunctionRecorder, s: State, h: Heap, usedChunks: Seq[Chunk], v: Verifier): (FunctionRecorder, Heap)
 
   /** Whether this heap encoding contributes trigger terms for the given resource access
     * occurring in a quantifier's trigger set. */
@@ -964,7 +968,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
     snap.convert(s.predicateSnapMap(predicate.name))
 
   def unfoldedBodySnapshotFunction(s: State, predicate: ast.Predicate, tArgs: Seq[Term], snap: Term, hLookup: Heap, v: Verifier): (Sort, Verifier) => Term =
-    viper.silicon.utils.toSf(snap)
+    toSf(snap)
 
   def appliedWandSnapshot(snapWand: Term, snapLhs: Term, s: State, v: Verifier): Term =
     snapWand match {
@@ -979,6 +983,9 @@ class DefaultHeapSupportRules extends HeapSupportRules {
 
   def addWandChunk(h: Heap, chWand: Chunk, s: State, v: Verifier): Heap =
     h + chWand
+
+  def mergeTransferredChunks(fr: FunctionRecorder, s: State, h: Heap, usedChunks: Seq[Chunk], v: Verifier): (FunctionRecorder, Heap) =
+    v.stateConsolidator(s).merge(fr, s, h, Heap(usedChunks), v)
 
   def handlesResourceTrigger(ra: ast.ResourceAccess, s: State): Boolean =
     s.isUsedAsTrigger(ra.res(s.program))
@@ -1031,7 +1038,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       axioms = axioms ++ smDef1.valueDefinitions
       mostRecentTrig = ResourceTriggerFunction(resource, smDef1.sm, tArgs, s.program)
       triggers = triggers :+ mostRecentTrig
-      viper.silicon.interfaces.Success()
+      Success()
     })
 
     (axioms, triggers, mostRecentTrig, Seq(smDef1))

@@ -12,8 +12,10 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
+import viper.silicon.resources.MagicWandID
 import viper.silicon.state._
 import viper.silicon.state.terms._
+import viper.silicon.state.terms.sorts.{PredHeapSort, WandHeapSort}
 import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -308,6 +310,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
                                        : VerificationResult = {
       val preMark = v.decider.setPathConditionMark()
 
+      // The MWSF definition must be assumed before the path conditions since preMark are
+      // harvested into conservedPcs below; otherwise it is lost when the package scope is
+      // popped and the wand's snapshot is unconstrained at apply time.
       v.decider.prover.comment(s"Create MagicWandSnapFunction for wand $wand")
       val wandSnapshot = this.createMagicWandSnapshot(freshSnapRoot, snapRhs, v)
 
@@ -338,6 +343,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
         val s3 = s2.copy(packagingWandSnapshots = s2.packagingWandSnapshots.filterNot(_._1 == freshSnapRoot))
         appendToResults(s3, ch, v2.decider.pcs.after(preMark), (tPcs, ePcs), v2)
+
         Success()
       })
     }
@@ -493,7 +499,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                qvars: Seq[Var],
                v: Verifier)
               (consumeFunction: (State, Heap, Term, Option[ast.Exp], Verifier) => (ConsumptionResult, State, Heap, Option[CH]))
-              (Q: (State, Option[CH], Verifier) => VerificationResult)
+              (Q: (State, Seq[CH], Verifier) => VerificationResult)
               : VerificationResult = {
     assert(s.recordPcs)
     /* During state consolidation or the consumption of quantified permissions new chunks with new snapshots
@@ -514,17 +520,19 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val s3 = s2.copy(conservedPcs = conservedPcs +: s2.conservedPcs.tail, reserveHeaps = s.reserveHeaps.head +: hs2)
 
       val usedChunks = chs2.flatten
-      val (fr4, hUsed) = v2.stateConsolidator(s2).merge(s3.functionRecorder, s2, s2.reserveHeaps.head, Heap(usedChunks), v2)
+      val (fr4, hUsed) = v2.heapSupporter.mergeTransferredChunks(s3.functionRecorder, s2, s2.reserveHeaps.head, usedChunks, v2)
 
       val s4 = s3.copy(functionRecorder = fr4, reserveHeaps = hUsed +: s3.reserveHeaps.tail)
 
-      /* Returning the last of the usedChunks should be fine w.r.t to the snapshot
-       * of the chunk, since consumeFromMultipleHeaps should have equated the
-       * snapshots of all usedChunks, except for magic wand chunks, where usedChunks
-       * is potentially a series of empty chunks (perm = Z) followed by the that was
-       * actually consumed.
+      /* All consumed chunks are returned. For the default chunk formats, using any of
+       * them (conventionally the last) is fine w.r.t. the snapshot of the chunk, since
+       * consumeFromMultipleHeaps equates the snapshots of all usedChunks; the exception
+       * are magic wand chunks, where usedChunks is potentially a series of empty chunks
+       * (perm = Z) followed by the one that was actually consumed. Chunk formats whose
+       * consumed chunks record the taken amounts (e.g. mask/heap chunks) must combine
+       * all chunks, since the permissions may have been taken from several heaps.
        */
-      Q(s4, usedChunks.lastOption, v2)})
+      Q(s4, usedChunks, v2)})
   }
 
   def getEvalHeap(s: State, v: Verifier): Heap = {

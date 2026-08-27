@@ -17,10 +17,8 @@ import viper.silicon.state._
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.supporters._
 import viper.silicon.reporting.DefaultStateFormatter
-import viper.silicon.rules.{DefaultStateConsolidator, LastRetryFailOnlyStateConsolidator, LastRetryStateConsolidator, MinimalRetryingStateConsolidator, MinimalStateConsolidator, MoreComplexExhaleStateConsolidator, RetryingFailOnlyStateConsolidator, RetryingStateConsolidator, StateConsolidationRules}
+import viper.silicon.rules.{DefaultStateConsolidator, HeapSupportRules, LastRetryFailOnlyStateConsolidator, LastRetryStateConsolidator, MaskHeapStateConsolidator, MinimalRetryingStateConsolidator, MinimalStateConsolidator, MoreComplexExhaleStateConsolidator, RetryingFailOnlyStateConsolidator, RetryingStateConsolidator, StateConsolidationRules, defaultHeapSupporter, maskHeapSupporter}
 import viper.silicon.utils.Counter
-import viper.silver.ast
-import viper.silver.reporter.AnnotationWarning
 
 import scala.collection.mutable
 
@@ -44,6 +42,8 @@ abstract class BaseVerifier(val config: Config,
 
   private val counters = mutable.Map[AnyRef, Counter]()
 
+  override val heapSupporter: HeapSupportRules = if (config.maskHeapMode()) maskHeapSupporter else defaultHeapSupporter
+
   def counter(id: AnyRef): Counter = {
     counters.getOrElseUpdate(id, new Counter())
   }
@@ -57,7 +57,9 @@ abstract class BaseVerifier(val config: Config,
   val triggerGenerator = new TriggerGenerator()
   val axiomRewriter = new AxiomRewriter(new utils.Counter()/*, bookkeeper.logfiles(s"axiomRewriter")*/, triggerGenerator)
   val quantifierSupporter = new DefaultQuantifierSupporter(triggerGenerator)
-  val snapshotSupporter = new DefaultSnapshotSupporter(symbolConverter)
+  val snapshotSupporter: SnapshotSupporter =
+    if (config.maskHeapMode()) new MaskHeapSnapshotSupporter(symbolConverter)
+    else new DefaultSnapshotSupporter(symbolConverter)
 
   private lazy val defaultStateConsolidator: StateConsolidationRules = new DefaultStateConsolidator(config)
   private lazy val minimalStateConsolidator: StateConsolidationRules = new MinimalStateConsolidator
@@ -67,6 +69,7 @@ abstract class BaseVerifier(val config: Config,
   private lazy val lastRetryFailOnlyStateConsolidator: StateConsolidationRules = new LastRetryFailOnlyStateConsolidator(config)
   private lazy val minimalRetryingStateConsolidator: StateConsolidationRules = new MinimalRetryingStateConsolidator(config)
   private lazy val moreComplexExhaleStateConsolidator: StateConsolidationRules = new MoreComplexExhaleStateConsolidator(config)
+  private lazy val maskHeapStateConsolidator: StateConsolidationRules = new MaskHeapStateConsolidator()
 
   override def stateConsolidator(s: State): StateConsolidationRules = {
     import StateConsolidationMode._
@@ -81,6 +84,7 @@ abstract class BaseVerifier(val config: Config,
     }
 
     mode match {
+      case _ if config.maskHeapMode() => maskHeapStateConsolidator
       case Minimal => minimalStateConsolidator
       case Default => defaultStateConsolidator
       case Retrying => retryingStateConsolidator

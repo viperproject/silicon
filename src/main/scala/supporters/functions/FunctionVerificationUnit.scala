@@ -55,7 +55,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     private var freshVars: Vector[Var] = Vector.empty
     private var postConditionAxioms: Vector[Term] = Vector.empty
 
-    val functionEncoding: FunctionEncoding = new DefaultFunctionEncoding
+    val functionEncoding: FunctionEncoding =
+      if (Verifier.config.maskHeapMode()) new MaskHeapFunctionEncoding(symbolConverter, identifierFactory)
+      else new DefaultFunctionEncoding
 
     private val expressionTranslator = {
       def resolutionFailureMessage(exp: ast.Positioned, data: FunctionData): String = (

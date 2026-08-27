@@ -96,7 +96,7 @@ class FunctionData(val programFunction: ast.Function,
                    *       with/in the context of different verifiers.
                    */
                   (symbolConverter: SymbolConverter,
-                   expressionTranslator: HeapAccessReplacingExpressionTranslator,
+                   private[functions] val expressionTranslator: HeapAccessReplacingExpressionTranslator,
                    identifierFactory: IdentifierFactory,
                    predicateData: ast.Predicate => PredicateData,
                    val functionEncoding: FunctionEncoding,
@@ -127,6 +127,13 @@ class FunctionData(val programFunction: ast.Function,
   val valFormalResultExp = Option.when(Verifier.config.enableDebugging())(LocalVarWithVersion(simplifyVariableName(formalResult.id.name), programFunction.result.typ)())
 
   val arguments = stateArgs ++ formalArgs.values
+  val argumentsDuringFunctionVerification = Seq(`?s`) ++ formalArgs.values
+  val argumentExpsDuringFunctionVerification =
+    if (Verifier.config.enableDebugging()) {
+      Seq(Some(ast.LocalVar(`?s`.id.name, ast.InternalType)())) ++ formalArgs.keys.map(Some(_))
+    } else {
+      Seq.fill(1 + formalArgs.size)(None)
+    }
   val argumentExps =
     if (Verifier.config.enableDebugging())
       Seq(Some(ast.LocalVar(`?s`.id.name, ast.InternalType)())) ++ formalArgs.keys.map(Some(_))
