@@ -56,7 +56,6 @@ class MaskHeapFunctionsContributor(preambleReader: PreambleReader[String, String
     if (Verifier.config.maskHeapMode()) {
       collectedFields ++= program.fields
       collectedPredicates ++= program.predicates
-      collectedPredicates += ast.Predicate("WAND", Seq(), None)()
 
       // WARNING: DefaultSetsContributor contributes a sort that is due to QPs over fields
 
@@ -103,7 +102,7 @@ class MaskHeapFunctionsContributor(preambleReader: PreambleReader[String, String
     val maskDeclarations = preambleReader.readParametricPreamble(maskFile, Map())
     val maskResult = (s"$maskFile", maskDeclarations)
 
-    val predResults = if (collectedPredicates.nonEmpty) {
+    val predResults = if (collectedPredicates.nonEmpty || wandHeapsRequired) {
       // map Pred (snap to snap)
       val substitutions = Map("$Hp.get_$Perm" -> "$Hp.get_$PredMask", "$Hp<$Perm>" -> "$Hp<$PredMask>", "$S$" -> termConverter.convert(sorts.Snap), "$T$" -> "$Pred", termConverter.convert(sorts.Ref) -> termConverter.convert(sorts.Snap))
       val declarations = preambleReader.readParametricPreamble(mapsFile, substitutions)
@@ -174,7 +173,7 @@ class MaskHeapFunctionsContributor(preambleReader: PreambleReader[String, String
     val maskDeclarations = preambleReader.readParametricPreamble(maskFile, Map())
     val maskResult = (s"$maskFile", maskDeclarations)
 
-    val predResults = if (collectedPredicates.nonEmpty) {
+    val predResults = if (collectedPredicates.nonEmpty || wandHeapsRequired) {
       // map Pred (snap to snap)
       val substitutions = Map("$Hp.get_$Perm" -> "$Hp.get_$PredMask", "$Hp<$Perm>" -> "$Hp<$PredMask>", "$S$" -> termConverter.convert(sorts.Snap), "$T$" -> "$Pred", termConverter.convert(sorts.Ref) -> termConverter.convert(sorts.Snap))
       val declarations = preambleReader.readParametricPreamble(mapsFile, substitutions)
