@@ -1322,8 +1322,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   val s4 = s3.copy(smCache = smCache2,
                                    constrainableARPs = s.constrainableARPs)
                   (result, s4, h2, Some(consumedChunk))
-                })((s4, optCh, v3) =>
-                  optCh match {
+                })((s4, chs, v3) =>
+                  chs.lastOption match {
                     case Some(ch) if returnSnap => QS(s4, s4.h, Some(ch.snapshotMap.convert(sorts.Snap)), v3)
                     case None if returnSnap =>
                       QS(s4, s4.h, Some(freshSnap(sorts.Snap, v3)), v3)
@@ -1480,8 +1480,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef1),
                            smCache = smCache1)
           (result, s3, h2, Some(consumedChunk))
-        })((s4, optCh, v2) =>
-          optCh match {
+        })((s4, chs, v2) =>
+          chs.lastOption match {
             case Some(ch) if returnSnap =>
               val lookup = ResourceLookup(resource, ch.snapshotMap, arguments, s4.program)
               // For magic wands the lookup is already the MWSF (applied directly by applyWand).

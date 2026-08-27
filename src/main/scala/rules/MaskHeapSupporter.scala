@@ -404,12 +404,15 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
             val remaining = rPerm
             (Incomplete(remaining, None), s1, h1, None)
         }
-      })((s4, optCh, v2) =>
-        optCh match {
-          case Some(ch) if returnSnap =>
-            val snap = MaskMapTerm(immutable.ListMap[Any, Term](resourceToFind -> ch.mask))
+      })((s4, chs, v2) =>
+        chs match {
+          case _ if chs.nonEmpty && returnSnap =>
+            /* The permissions may have been taken from several heaps; the consumed mask is
+             * the sum of the individual heaps' consumed masks. */
+            val consumedMask = chs.map(_.mask).reduce((m1, m2) => MaskSum(m1, m2))
+            val snap = MaskMapTerm(immutable.ListMap[Any, Term](resourceToFind -> consumedMask))
             Q(s4, s4.h, Some(snap), v2)
-          case Some(_) =>
+          case _ if chs.nonEmpty =>
             Q(s4, s4.h, None, v2)
           case _ =>
             val emptyMask = if (resourceToFind.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask
@@ -650,12 +653,14 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                   }
                 }
 
-              })((s4, optCh, v2) => {
-                optCh match {
-                  case Some(ch) if returnSnap =>
-                    val snap = MaskMapTerm(immutable.ListMap[Any, Term](resourceToFind -> ch.mask))
+              })((s4, chs, v2) => {
+                chs match {
+                  case _ if chs.nonEmpty && returnSnap =>
+                    /* See the single-location case: sum the consumed masks of all heaps. */
+                    val consumedMask = chs.map(_.mask).reduce((m1, m2) => MaskSum(m1, m2))
+                    val snap = MaskMapTerm(immutable.ListMap[Any, Term](resourceToFind -> consumedMask))
                     Q(s4, s4.h, Some(snap), v2)
-                  case Some(_) =>
+                  case _ if chs.nonEmpty =>
                     Q(s4, s4.h, None, v2)
                   case _ =>
                     val emptyMask = if (resourceToFind.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask

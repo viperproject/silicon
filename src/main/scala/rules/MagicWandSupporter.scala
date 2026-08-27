@@ -499,7 +499,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                qvars: Seq[Var],
                v: Verifier)
               (consumeFunction: (State, Heap, Term, Option[ast.Exp], Verifier) => (ConsumptionResult, State, Heap, Option[CH]))
-              (Q: (State, Option[CH], Verifier) => VerificationResult)
+              (Q: (State, Seq[CH], Verifier) => VerificationResult)
               : VerificationResult = {
     assert(s.recordPcs)
     /* During state consolidation or the consumption of quantified permissions new chunks with new snapshots
@@ -524,13 +524,15 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
       val s4 = s3.copy(functionRecorder = fr4, reserveHeaps = hUsed +: s3.reserveHeaps.tail)
 
-      /* Returning the last of the usedChunks should be fine w.r.t to the snapshot
-       * of the chunk, since consumeFromMultipleHeaps should have equated the
-       * snapshots of all usedChunks, except for magic wand chunks, where usedChunks
-       * is potentially a series of empty chunks (perm = Z) followed by the that was
-       * actually consumed.
+      /* All consumed chunks are returned. For the default chunk formats, using any of
+       * them (conventionally the last) is fine w.r.t. the snapshot of the chunk, since
+       * consumeFromMultipleHeaps equates the snapshots of all usedChunks; the exception
+       * are magic wand chunks, where usedChunks is potentially a series of empty chunks
+       * (perm = Z) followed by the one that was actually consumed. Chunk formats whose
+       * consumed chunks record the taken amounts (e.g. mask/heap chunks) must combine
+       * all chunks, since the permissions may have been taken from several heaps.
        */
-      Q(s4, usedChunks.lastOption, v2)})
+      Q(s4, usedChunks, v2)})
   }
 
   def getEvalHeap(s: State, v: Verifier): Heap = {
