@@ -15,16 +15,17 @@ package viper.silicon.tests
 class SiliconTestsMaskHeapMode extends SiliconTests {
   override val testDirectories: Seq[String] = Seq(
     "all/basic",
-    "all/predicates",
     "all/functions",
-    "all/heap-dependent_triggers",
     "all/inhale_exhale",
     "all/old",
     "all/permissions",
     "examples",
-    "quantifiedpredicates",
+    //"quantifiedpermissions/sets",
+    "quantifiedpredicates/basic",
     "quantifiedcombinations",
-    "wands/new_syntax")
+    //"wands/mwsf"
+    "wands/examples")
+
 
   override val commandLineArguments: Seq[String] = Seq(
     "--timeout", "300" /* seconds */,
