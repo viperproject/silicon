@@ -319,7 +319,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val bodyVars = wand.subexpressionsToEvaluate(s.program)
 
       evals(s, bodyVars, _ => pve, v)((s2, tArgs, eArgsNew, v2) => {
-                // Partition the conserved PCs here, before any definitions about the new wand chunks are assumed below, so that
+        // Partition the conserved PCs here, before any definitions about the new wand chunks are assumed below, so that
         // the ground value def is not bundled into (and trapped inside) the freshSnapRoot quantifier.
         val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark).definitionsOnly
 

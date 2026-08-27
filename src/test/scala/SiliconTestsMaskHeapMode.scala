@@ -23,7 +23,7 @@ class SiliconTestsMaskHeapMode extends SiliconTests {
     //"quantifiedpermissions/sets",
     "quantifiedpredicates/basic",
     "quantifiedcombinations",
-    //"wands/mwsf"
+    "wands/mwsf",
     "wands/examples")
 
 
