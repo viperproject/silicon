@@ -183,7 +183,13 @@ class MaskHeapFunctionsContributor(preambleReader: PreambleReader[String, String
       val predMapsSubstitutions = Map("$Hp.get_$Perm" -> "$Hp.get_$PredMask", "$Hp<$Perm>" -> "$Hp<$PredMask>", "$S$" -> termConverter.convert(sorts.Perm), "$T$" -> "$PredMask", termConverter.convert(sorts.Ref) -> termConverter.convert(sorts.Snap))
       val predMapsDeclarations = preambleReader.readParametricPreamble(mapsFile, predMapsSubstitutions)
 
-      val predMapsResult = Seq((s"$mapsFile [Pred]", declarations), (s"$mapsFile [PredMask]", predMapsDeclarations))
+      var predMapsResult = Seq((s"$mapsFile [Pred]", declarations), (s"$mapsFile [PredMask]", predMapsDeclarations))
+      if (wandHeapsRequired) {
+        // map MWSF (snap to MWSF)
+        val wandSubstitutions = Map("$Hp.get_$Perm" -> "$Hp.get_$PredMask", "$Hp<$Perm>" -> "$Hp<$PredMask>", "$S$" -> termConverter.convert(sorts.MagicWandSnapFunction), "$T$" -> "$MWSF", termConverter.convert(sorts.Ref) -> termConverter.convert(sorts.Snap))
+        val wandDeclarations = preambleReader.readParametricPreamble(mapsFile, wandSubstitutions)
+        predMapsResult = predMapsResult :+ (s"$mapsFile [MWSF]", wandDeclarations)
+      }
 
       val predMaskDeclarations = preambleReader.readParametricPreamble(maskFile, Map(termConverter.convert(sorts.Ref) -> termConverter.convert(sorts.Snap), termConverter.convert(sorts.Perm) -> "$PredMask", "zeroMask" -> "zeroPredMask"))
       val predMaskResult = (s"$maskFile", predMaskDeclarations)
@@ -208,7 +214,14 @@ class MaskHeapFunctionsContributor(preambleReader: PreambleReader[String, String
       (s"$wrapperFile [predicate: $pred.name,]", declarations)
     })
 
-    mapsResults ++ Seq(maskResult) ++ predResults ++ wrapperResults ++ predWrapperResults
+    var result = mapsResults ++ Seq(maskResult) ++ predResults ++ wrapperResults ++ predWrapperResults
+
+    if (wandHeapsRequired) {
+      val substitutions = Map("$Hp.get_$Perm" -> "$Hp.get_$PredMask", "$Hp<$Perm>" -> "$Hp<$PredMask>", "$T$" -> "$MWSF", "$FLD$" -> "$MWSF", "$S$" -> termConverter.convert(sorts.MagicWandSnapFunction), termConverter.convert(sorts.Ref) -> termConverter.convert(sorts.Snap))
+      val wandWrapperDeclarations = preambleReader.readParametricPreamble(wrapperFile, substitutions)
+      result = result ++ Seq((s"$wrapperFile [wands,]", wandWrapperDeclarations))
+    }
+    result
   }
 
   def sortsAfterAnalysis: InsertionOrderedSet[Sort] = collectedSorts ++ predicateSorts

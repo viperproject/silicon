@@ -503,7 +503,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def createAlias(t: Term, s: State): Term = {
       t match {
-        case hvr: HasVarRepr if hvr.varRepr.isEmpty && s.quantifiedVariables.isEmpty && s.isMethodVerification =>
+        /* No aliases are introduced while a wand is being packaged (packagingWandSnapshots
+         * is non-empty): terms may then contain the wand's snapshot root, which ends up as a
+         * quantified variable in the MWSF definition. A macro whose body mentions the root
+         * would refer to the global constant rather than the bound variable. */
+        case hvr: HasVarRepr if hvr.varRepr.isEmpty && s.quantifiedVariables.isEmpty && s.packagingWandSnapshots.isEmpty && s.isMethodVerification =>
           val md = freshMacro("tmpTerm", Seq(), t)
           val mcr = Macro(md.id, Seq(), md.body.sort)
           hvr.varRepr = Some(App(mcr, Seq()))
