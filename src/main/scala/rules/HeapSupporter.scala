@@ -119,6 +119,9 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                         v: Verifier)
                        (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult
 
+  /** @param triggerCond Guard under which the produced resource is actually gained. Only used to
+    *                    guard the predicate trigger assumption; callers producing unconditionally
+    *                    leave it at `True`. */
   def produceSingle(s: State,
                     resource: ast.Resource,
                     tArgs: Seq[Term],
@@ -129,7 +132,8 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                     ePerm: Option[ast.Exp],
                     pve: PartialVerificationError,
                     mergeAndTrigger: Boolean,
-                    v: Verifier)
+                    v: Verifier,
+                    triggerCond: Term = True)
                    (Q: (State, Verifier) => VerificationResult): VerificationResult
 
   def produceQuantified(s: State,
@@ -491,7 +495,8 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                     ePerm: Option[ast.Exp],
                     pve: PartialVerificationError,
                     mergeAndTrigger: Boolean,
-                    v: Verifier)
+                    v: Verifier,
+                    triggerCond: Term = True)
                    (Q: (State, Verifier) => VerificationResult) : VerificationResult = {
     val useQPs = s.isQuantifiedResource(resource)
     if (useQPs) {
@@ -517,7 +522,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                 val predicate = resource.asInstanceOf[ast.Predicate]
                 val argsString = eArgs.mkString(", ")
                 val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))", isInternal_ = true))
-                v2.decider.assume(App(s2.predicateData(predicate.name).triggerFunction, snap1 +: tArgs), debugExp)
+                v2.decider.assume(Implies(triggerCond, App(s2.predicateData(predicate.name).triggerFunction, snap1 +: tArgs)), debugExp)
               }
               Q(s2.copy(h = h2), v2)
             })

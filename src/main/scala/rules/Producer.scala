@@ -11,6 +11,7 @@ import viper.silicon.Config.JoinMode
 
 import scala.collection.mutable
 import viper.silver.ast
+import viper.silver.ast.utility.Expressions
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
@@ -217,12 +218,14 @@ object producer extends ProductionRules {
       case imp @ ast.Implies(e0, a0)
           if !a.isPure
           && Verifier.config.lazyImpureImplications()
-          && isLazyApplicable(a0) =>
+          && isLazyApplicable(s, a0) =>
 
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "produce")
         val uidImplies = v.symbExLog.openScope(impliesRecord)
 
         eval(s, e0, pve, v)((s1, t0, e0New, v1) => {
+          /* Mirrors the `else` branch of the regular rule below: if the condition does not hold,
+           * the implication contributes nothing and its snapshot is Unit. */
           v1.decider.assume(Implies(Not(t0), sf(sorts.Snap, v1) === Unit),
             Option.when(withExp)(DebugExp.createInstance("Lazy implication: false-branch snapshot", true)))
           produceRLazy(s1, sf, t0, e0New, a0, pve, v1)((s2, v2) => {
@@ -287,18 +290,21 @@ object producer extends ProductionRules {
       case ite @ ast.CondExp(e0, a1, a2)
           if !a.isPure
           && Verifier.config.lazyImpureImplications()
-          && isLazyApplicable(a1)
-          && isLazyApplicable(a2) =>
+          && isLazyApplicable(s, a1)
+          && isLazyApplicable(s, a2) =>
 
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "produce")
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
 
+        /* Both branches of a conditional are given the same snapshot `sf` (as in the regular rule
+         * below); each side then decomposes it under its own guard, so the two decompositions
+         * never conflict. Note there is no `snapshot === Unit` assumption here, since both sides
+         * genuinely produce. */
         eval(s, e0, pve, v)((s1, t0, e0New, v1) => {
-          val (sf1, sf2) = v1.snapshotSupporter.createSnapshotPair(s1, sf, a1, a2, v1)
-          produceRLazy(s1, sf1, t0, e0New, a1, pve, v1)((s2, v2) => {
+          produceRLazy(s1, sf, t0, e0New, a1, pve, v1)((s2, v2) => {
             val notT0 = Not(t0)
             val notE0New = e0New.map(e => ast.Not(e)())
-            produceRLazy(s2, sf2, notT0, notE0New, a2, pve, v2)((s3, v3) => {
+            produceRLazy(s2, sf, notT0, notE0New, a2, pve, v2)((s3, v3) => {
               v3.symbExLog.closeScope(uidCondExp)
               Q(s3, v3)
             })
@@ -418,15 +424,64 @@ object producer extends ProductionRules {
     produced
   }
 
-  private def isLazyApplicable(body: ast.Exp): Boolean = {
+  /* --- Lazy production of impure implications/conditionals -------------------------------------
+   *
+   * The regular rules produce the body of `cond ==> body` inside `branch(cond)`, so everything the
+   * production does - well-definedness assertions, permission checks, heap reads and, crucially,
+   * assumptions - happens under `cond`. The lazy rules instead produce the body in the ambient path
+   * condition and put `cond` into the permission amounts (`Ite(cond, p, none)`), which avoids the
+   * branch but is only equivalent when producing the body cannot observe `cond`. The predicate
+   * below is what keeps that equivalence honest, and it is deliberately conservative: whenever it
+   * returns false we fall through to the regular, branching rules.
+   */
+
+  /** Expressions whose evaluation reads the heap. Under the lazy scheme the body's permissions are
+    * only conditionally held, so such a read would be checked against `Ite(cond, p, none)` without
+    * `cond` being assumed, and would spuriously fail. Function applications are excluded as well,
+    * since their preconditions give rise to assertions. */
+  private def isHeapIndependent(e: ast.Exp): Boolean =
+    !e.existsDefined {
+      case _: ast.FieldAccess =>
+      case _: ast.PredicateAccess =>
+      case _: ast.Unfolding =>
+      case _: ast.Applying =>
+      case _: ast.Asserting =>
+      case _: ast.Old =>
+      case _: ast.LabelledOld =>
+      case _: ast.FuncApp =>
+      case _: ast.CurrentPerm =>
+      case _: ast.ForPerm =>
+      case _: ast.MagicWand =>
+      case _: ast.InhaleExhaleExp =>
+      case _: ast.Let =>
+    }
+
+  private def isLazyApplicable(s: State, body: ast.Exp): Boolean = {
+    /* `proofObligations` is silver's well-definedness check; the same guard is used by
+     * ConditionalPermissionRewriter, which performs the analogous syntactic transformation and
+     * documents the hazard: conditionalizing `0 <= i && i < |xs| ==> acc(xs[i].f)` would leave
+     * `xs[i]` to be evaluated without its guard. */
+    def exprOk(e: ast.Exp): Boolean =
+      isHeapIndependent(e) && Expressions.proofObligations(e)(s.program).isEmpty
+
     val tlcs = body.topLevelConjuncts
+
     tlcs.exists(_.isInstanceOf[ast.AccessPredicate]) &&
     tlcs.forall {
-      case _: ast.AccessPredicate => true
-      case e if e.isPure => true
+      case accPred: ast.AccessPredicate =>
+        val resource = accPred.res(s.program)
+        /* Quantified resources and magic wands are produced via paths that assume resource
+         * triggers we cannot guard here, so they are left to the regular rules. */
+        (resource.isInstanceOf[ast.Field] || resource.isInstanceOf[ast.Predicate]) &&
+          !s.isQuantifiedResource(resource) &&
+          exprOk(accPred.perm) &&
+          accPred.loc.args(s.program).forall(exprOk)
+      case e if e.isPure => exprOk(e)
       case _ => false
     }
   }
+
+  private def toSf(t: Term): (Sort, Verifier) => Term = (sort: Sort, _: Verifier) => t.convert(sort)
 
   private def produceRLazy(s: State,
                            sf: (Sort, Verifier) => Term,
@@ -462,8 +517,27 @@ object producer extends ProductionRules {
       if (as.tail.isEmpty)
         produceTlcLazy(s, sf, cond, condExp, a, pve, v)(Q)
       else {
+        /* Deliberately *not* snapshotSupporter.createSnapshotPair: that assumes the decomposition
+         * `snap == Combine(First(snap), Second(snap))` unconditionally. `$Snap` is declared as an
+         * SMT datatype with distinct constructors `$Snap.unit` and `$Snap.combine` (preamble.smt2),
+         * so combining that unconditional equation with the caller's `!cond ==> snap == Unit` would
+         * refute `!cond` and silently make the else case infeasible. Guarding the decomposition by
+         * `cond` keeps both cases satisfiable. */
+        val snap = sf(sorts.Snap, v)
+
         val (sf0, sf1) =
-          v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v)
+          if (snap == Unit) {
+            /* A Unit snapshot cannot be decomposed. This mirrors the IllegalArgumentException that
+             * createSnapshotPair would raise; rather than failing we simply do not decompose, which
+             * is sound (we assume strictly less) and only loses precision in an unreachable case. */
+            (sf, sf)
+          } else {
+            val snap0 = First(snap)
+            val snap1 = Second(snap)
+            v.decider.assume(Implies(cond, snap === Combine(snap0, snap1)),
+              Option.when(withExp)(DebugExp.createInstance("Lazy conditional snapshot", true)))
+            (toSf(snap0), toSf(snap1))
+          }
 
         produceTlcLazy(s, sf0, cond, condExp, a, pve, v)((s1, v1) =>
           produceTlcsLazy(s1, sf1, cond, condExp, as.tail, pves.tail, v1)(Q))
@@ -488,7 +562,8 @@ object producer extends ProductionRules {
 
       evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
         eval(s1, ePerm, pve, v1)((s1a, tPerm, ePermNew, v1a) =>
-          permissionSupporter.assertNotNegative(s1a, tPerm, ePerm, ePermNew, pve, v1a)((s1b, v2) => {
+          /* The permission is only gained under `cond`, so it only has to be non-negative there. */
+          permissionSupporter.assertNotNegative(s1a, tPerm, ePerm, ePermNew, pve, v1a, cond)((s1b, v2) => {
             val s2 = s1b.copy(constrainableARPs = s.constrainableARPs)
             val snap = sf(v2.snapshotSupporter.optimalSnapshotSort(resource, s2, v2), v2)
             val baseGain = if (!Verifier.config.unsafeWildcardOptimization() ||
@@ -497,16 +572,22 @@ object producer extends ProductionRules {
             else
               WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
 
+            /* This is the whole point of the optimization: rather than branching, the guard moves
+             * into the permission amount. The snapshot stays unconditional - when `cond` does not
+             * hold the chunk carries no permission, so its snapshot is unreachable anyway. */
             val gain = Ite(cond, baseGain, NoPerm)
             val baseGainExp = ePermNew.map(p => ast.PermMul(p, s2.permissionScalingFactorExp.get)(p.pos, p.info, p.errT))
             val gainExp = condExp.flatMap(ce =>
               baseGainExp.map(bge => ast.CondExp(ce, bge, ast.NoPerm()())()))
 
-            v2.heapSupporter.produceSingle(s2, resource, tArgs, eArgsNew, snap, None, gain, gainExp, pve, true, v2)(Q)
+            /* `cond` is passed on so that the predicate trigger is assumed under it; assuming it
+             * unconditionally would claim the trigger even when the predicate is not held. */
+            v2.heapSupporter.produceSingle(s2, resource, tArgs, eArgsNew, snap, None, gain, gainExp, pve, true, v2, cond)(Q)
           })))
 
     case _ =>
-      v.decider.assume(sf(sorts.Snap, v) === Unit,
+      /* Both the snapshot equation and the assertion itself only hold under `cond`. */
+      v.decider.assume(Implies(cond, sf(sorts.Snap, v) === Unit),
         Option.when(withExp)(DebugExp.createInstance("Empty snapshot", true)))
       eval(s, a, pve, v)((s1, t, aNew, v1) => {
         v1.decider.assume(Implies(cond, t),

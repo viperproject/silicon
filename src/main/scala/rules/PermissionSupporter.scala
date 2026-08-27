@@ -10,12 +10,17 @@ import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.state.State
-import viper.silicon.state.terms.{Term, Var, perms}
+import viper.silicon.state.terms.{Implies, Term, True, Var, perms}
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.reasons.{NegativePermission, NonPositivePermission}
 
 object permissionSupporter extends SymbolicExecutionRules {
-  def assertNotNegative(s: State, tPerm: Term, ePerm: ast.Exp, ePermNew: Option[ast.Exp], pve: PartialVerificationError, v: Verifier)
+  /** @param cond Guard under which the permission amount has to be non-negative. Callers that
+    *             produce a resource unconditionally leave this at `True`; callers that only
+    *             conditionally gain the permission (see the lazy impure implication handling in
+    *             [[producer]]) pass the guard, so that a permission amount which is only
+    *             non-negative under that guard is not rejected. */
+  def assertNotNegative(s: State, tPerm: Term, ePerm: ast.Exp, ePermNew: Option[ast.Exp], pve: PartialVerificationError, v: Verifier, cond: Term = True)
                        (Q: (State, Verifier) => VerificationResult)
                        : VerificationResult = {
 
@@ -23,11 +28,12 @@ object permissionSupporter extends SymbolicExecutionRules {
       case k: Var if s.constrainableARPs.contains(k) =>
         Q(s, v)
       case _ =>
-        v.decider.assert(perms.IsNonNegative(tPerm)) {
+        val assertTerm = Implies(cond, perms.IsNonNegative(tPerm))
+        v.decider.assert(assertTerm) {
           case true => Q(s, v)
           case false =>
             val assertExp = ePermNew.map(ep => perms.IsNonNegative(ep)(ep.pos, ep.info, ep.errT))
-            createFailure(pve dueTo NegativePermission(ePerm), v, s, perms.IsNonNegative(tPerm), assertExp)
+            createFailure(pve dueTo NegativePermission(ePerm), v, s, assertTerm, assertExp)
         }
     }
   }
