@@ -340,20 +340,18 @@ class TermToSMTLib2Converter
       parens(text("$Hp.overlap_") <> renderHeapType(h1.sort) <+> render(h1) <+> render(m1) <+> render(h2) <+> render(m2))
 
 
-    case SnapToHeap(snap, resource, s) =>
+    case SnapToHeap(snap, resource, _) =>
       parens(text("$SortWrappers.$SnapTo$Heap<") <> (resource match {
         case f: ast.Field => f.name
         case p: ast.Predicate => p.name
-        case _: MagicWandIdentifier if s == sorts.WandHeapSort => "$MWSF"
-        case _: MagicWandIdentifier => "WAND"
+        case _: MagicWandIdentifier => "$MWSF"
       }) <> ">" <+> render(snap))
 
     case HeapToSnap(heap, mask, resource) =>
       parens(text("$SortWrappers.$Heap<") <> (resource match {
         case f: ast.Field => f.name
         case p: ast.Predicate => p.name
-        case _: MagicWandIdentifier if heap.sort == sorts.WandHeapSort => "$MWSF"
-        case _: MagicWandIdentifier => "WAND"
+        case _: MagicWandIdentifier => "$MWSF"
       }) <> ">To$Snap" <+> render(heap) <+> render(mask))
 
     case PredicateDomain(id, psf) => parens(text("$PSF.domain_") <> id <+> render(psf))
