@@ -75,24 +75,24 @@ object predicateSupporter extends PredicateSupportRules {
     val s0 = s.copy(g = gIns,
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm, ePerm)
-    consume(s1, body, true, pve, v)((s1a, snap, v1) => {
-      val s2 = s1a.copy(g = s.g,
+    consume(s0, body, true, pve, v)((s1, snap, v1) => {
+      val s1a = s1.copy(g = s.g,
                         smDomainNeeded = s.smDomainNeeded,
                         permissionScalingFactor = s.permissionScalingFactor,
                         permissionScalingFactorExp = s.permissionScalingFactorExp).setConstrainable(constrainableWildcards, false)
 
-      val foldedSnap = v1.heapSupporter.foldedPredicateSnapshot(s2, predicate, tArgs, snap.get)
-      v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, foldedSnap, None, tPerm, ePerm, pve, true, v1)((s3, v3) => {
+      val foldedSnap = v1.heapSupporter.foldedPredicateSnapshot(s1a, predicate, tArgs, snap.get)
+      v1.heapSupporter.produceSingle(s1a, predicate, tArgs, eArgs, foldedSnap, None, tPerm, ePerm, pve, true, v1)((s2, v2) => {
         /* The trigger is assumed once the predicate chunk exists, so that heap encodings
          * whose triggers refer to the chunk's heap can look it up in s3.h. */
         if (!Verifier.config.disableFunctionUnfoldTrigger()) {
-          val predTrigger = App(s3.predicateData(predicate.name).triggerFunction,
-            v3.heapSupporter.predicateTriggerSnapArg(s3, predicate, snap.get, s3.h) +: tArgs)
+          val predTrigger = App(s2.predicateData(predicate.name).triggerFunction,
+            v2.heapSupporter.predicateTriggerSnapArg(s2, predicate, snap.get, s2.h) +: tArgs)
           val eArgsString = eArgs.mkString(", ")
-          v3.decider.assume(predTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
+          v2.decider.assume(predTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
         }
-        val s4 = v3.heapSupporter.triggerResourceIfNeeded(s3, pa, tArgs, eArgs, v3)
-        Q(s4, v3)
+        val s2a = v2.heapSupporter.triggerResourceIfNeeded(s2, pa, tArgs, eArgs, v2)
+        Q(s2a, v2)
       })
     })
   }

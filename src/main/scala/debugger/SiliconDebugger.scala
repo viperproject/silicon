@@ -168,7 +168,7 @@ case class ProofObligation(s: State,
           s"acc($receiver.${qfc.id}, $perm)"
         } else {
           val varsString = qfc.quantifiedVarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val qvarsString = "forall " + qfc.invs.get.qvarExps.head.map(v => s"${v.name}: ${v.typ}").mkString(", ")
+          val qvarsString = "forall " + qfc.invs.head.qvarExps.head.map(v => s"${v.name}: ${v.typ}").mkString(", ")
           val varsEqualString = qfc.quantifiedVarExps.get.zip(qfc.invs.head.invertibleExps.get).map(v => s"${v._1.name} == ${simplify(v._2)}").mkString(" && ")
           s"forall $varsString :: $qvarsString :: $varsEqualString ==> acc(${qfc.quantifiedVarExps.get.head.name}.${qfc.id}, ${simplify(qfc.permExp.get)})"
         }

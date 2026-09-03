@@ -12,8 +12,8 @@ import viper.silicon.decider.{Decider, PathConditionStack}
 import viper.silicon.logger.MemberSymbExLogger
 import viper.silicon.reporting.StateFormatter
 import viper.silicon.state.terms.{AxiomRewriter, Term, TriggerGenerator}
-import viper.silicon.rules.{HeapSupportRules, StateConsolidationRules}
-import viper.silicon.state.{Heap, IdentifierFactory, State, SymbolConverter}
+import viper.silicon.rules.{HeapSupportRules, StateConsolidationRules, magicWandSupporter}
+import viper.silicon.state._
 import viper.silicon.supporters.{QuantifierSupporter, SnapshotSupporter}
 import viper.silicon.utils.Counter
 import viper.silver.ast
@@ -93,12 +93,11 @@ class DebugHeapRecorder {
     }
   }
 
-  /**
-   * Returns debug label for the current expression in the given heap.
-   * @param s the current state
-   * @param pos the position of the current expression
-   * @param h the heap to consider, if not the heap from state s
-   */
+  /** Returns debug label for the current expression in the given heap.
+    * @param s the current state
+    * @param pos the position of the current expression
+    * @param h the heap to consider, if not the heap from state s
+    */
   def getDebugOldLabel(s: State, pos: ast.Position, h: Option[Heap]): String = {
     val posString = pos match {
       case column: ast.HasLineColumn => s"l:${column.line}.${column.column}"
@@ -108,10 +107,9 @@ class DebugHeapRecorder {
     s"$heapLabel#$posString"
   }
 
-  /**
-  * Returns the label for a given heap, or None if the heap has not been recorded.
-  * In case of multiple matches, prefer labelled key heaps then debug key heaps, then tempHeaps, then childrenHeaps.
-  */
+  /** Returns the label for a given heap, or None if the heap has not been recorded.
+    * In case of multiple matches, prefer labelled key heaps then debug key heaps, then tempHeaps, then childrenHeaps.
+    */
   def getDebugHeapLabel(s: State, h: Option[Heap]): Option[String] = {
     val heap = h match {
       case Some(heap) => heap

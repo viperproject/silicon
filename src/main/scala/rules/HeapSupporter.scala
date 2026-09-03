@@ -277,17 +277,16 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             val h3 = Heap(remainingChunks ++ untouchedChunks ++ otherChunks)
             val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v1)
             v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
-            val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
+            val debugExp = Option.when(debugOn)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
             v1.decider.assumeDefinition(smValueDef, debugExp)
-            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
-              field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, newTag, s1.program)
+            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(debugOn)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
+              field, Seq(tRcvr), Option.when(debugOn)(Seq(eRcvrNew.get)), FullPerm, Option.when(debugOn)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, newTag, s1.program)
             if (s3.heapDependentTriggers.contains(field)) {
-              val debugExp2 = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString()}.${field.name})"))
+              val debugExp2 = Option.when(debugOn)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString()}.${field.name})"))
               v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2)
             }
             val s4 = s3.copy(h = h3 + ch)
-            val (debugHeapName, _) = v1.getDebugOldLabel(s4, ass.lhs.pos, Some(magicWandSupporter.getEvalHeap(s4, v1)))
-            val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4, v1))) else s4
+            val s5 = if (debugOn && s4.isRecordingHeaps) v.recordIntermediateHeap(s4) else s4
             /* The action's continuation must be QS, not Q: otherwise the remainder of the
              * method runs inside the retryable action, and any later failure re-runs it. */
             QS(s5, v1)
