@@ -10,9 +10,14 @@ import viper.silver.ast
 import viper.silicon.rules.functionSupporter
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
+import viper.silicon.verifier.Verifier
 import viper.silver.ast.{AnnotationInfo, WeightedQuantifier}
 
 trait ExpressionTranslator {
+
+  /** The state arguments used when translating applications of heap-independent
+    * (precondition-free) program functions. */
+  protected def pureFunctionSnapArgs: Seq[Term] = Seq(Unit)
   /* TODO: Shares a lot of code with DefaultEvaluator. Unfortunately, it doesn't seem to be easy to
    *       reuse code because the code in DefaultEvaluator uses the state whereas this one here
    *       doesn't. Of course, one could just evaluate the domains using the DefaultEvaluator - which
@@ -172,7 +177,7 @@ trait ExpressionTranslator {
 
       case fa@ast.FuncApp(name, args) =>
         // We are assuming here that only functions with empty preconditions are used.
-        val tArgs = Unit +: (args map f)
+        val tArgs = pureFunctionSnapArgs ++ (args map f)
         val inSorts = tArgs map (_.sort)
         val outSort = toSort(fa.typ)
         val id = Identifier(name)

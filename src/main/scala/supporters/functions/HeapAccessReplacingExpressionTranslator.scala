@@ -25,7 +25,8 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
                                               fresh: (String, Sort, Option[PType]) => Var,
                                               resolutionFailureMessage: (ast.Positioned, FunctionData) => String,
                                               stopOnResolutionFailure: (ast.Positioned, FunctionData) => Boolean,
-                                              reporter: Reporter)
+                                              reporter: Reporter,
+                                              functionEncoding: FunctionEncoding)
     extends ExpressionTranslator
        with LazyLogging {
 
@@ -148,26 +149,25 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
       case eFApp: ast.FuncApp =>
         val silverFunc = program.findFunction(eFApp.funcname)
         val funcAnn = silverFunc.info.getUniqueInfo[AnnotationInfo]
+        val callerHeight = data.height
+        val calleeHeight = functionData(eFApp.funcname).height
+        val funDefined = symbolConverter.toFunction(silverFunc, program)
+        val funDefault = if (callerHeight < calleeHeight)
+          funDefined
+        else
+          functionSupporter.limitedVersion(funDefined)
         val fun = funcAnn match {
           case Some(a) if a.values.contains("opaque") =>
             val funcAppAnn = eFApp.info.getUniqueInfo[AnnotationInfo]
             funcAppAnn match {
-              case Some(a) if a.values.contains("reveal") => symbolConverter.toFunction(silverFunc)
-              case _ => functionSupporter.limitedVersion(symbolConverter.toFunction(silverFunc))
+              case Some(a) if a.values.contains("reveal") => funDefault
+              case _ => functionSupporter.limitedVersion(funDefined)
             }
-          case _ => symbolConverter.toFunction(silverFunc)
+          case _ => funDefault
         }
         val args = eFApp.args map (arg => translate(arg))
         val snap = getOrFail(data.fappToSnap, eFApp, context, sorts.Snap, Option.when(Verifier.config.enableDebugging())(PUnknown()))
-        val fapp = App(fun, snap +: args)
-
-        val callerHeight = data.height
-        val calleeHeight = functionData(eFApp.funcname).height
-
-        if (callerHeight < calleeHeight)
-          fapp
-        else
-          fapp.copy(applicable = functionSupporter.limitedVersion(fun))
+        functionEncoding.translateFunctionApp(fun, snap, args, silverFunc, program)
 
       case _ => super.translate(symbolConverter.toSort)(e)
     }

@@ -339,13 +339,16 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
             val takenTerm = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm)
             val pTakenExp = permsExp.map(pe => ast.CondExp(eqExp.get, buildMinExp(Seq(ch.permExp.get, pNeededExp.get), ast.Perm), ast.NoPerm()(pe.pos, pe.info, pe.errT))(eqExp.get.pos, eqExp.get.info, eqExp.get.errT))
-            val pTaken = if (takenTerm.isInstanceOf[PermLiteral] || s.functionRecorder != NoopFunctionRecorder || Verifier.config.useFlyweight) {
+            val pTaken = if (takenTerm.isInstanceOf[PermLiteral] || s.functionRecorder != NoopFunctionRecorder || Verifier.config.useFlyweight || Verifier.config.counterexample.toOption.isDefined) {
               // ME: When using Z3 via API, it is beneficial to not use macros, since macro-terms will *always* be different
               // (leading to new terms that have to be translated), whereas without macros, we can usually use a term
               // that already exists.
               // During function verification, we should not define macros, since they could contain result, which is not
               // defined elsewhere.
               // Also, we don't introduce a macro if the term is a straightforward literal.
+              // Finally, when a counterexample is requested we inline the term so that the remaining permission of the
+              // chunk (PermMinus(ch.perm, pTaken)) is proper permission arithmetic the counterexample machinery can
+              // evaluate, rather than an opaque macro application (mirrors the pTaken handling in QuantifiedChunkSupport).
               takenTerm
             } else {
               val pTakenArgs = additionalArgs

@@ -268,7 +268,7 @@ case class SiliconMappedCounterexample(internalStore: Store,
 
   private def renameSnap(entry: ValueEntry): ExtractedModelEntry = {
     if (!heapNames.contains(entry)) {
-      heapNames += (entry -> ("heap_" + heapNames.size.toString))
+      heapNames += (entry -> ("hp_" + heapNames.size.toString))
     }
     UnprocessedModelEntry(ConstantEntry(
             heapNames.get(entry).orNull))

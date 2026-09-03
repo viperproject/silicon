@@ -1,0 +1,53 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+predicate h(a:Ref) {
+	acc(a.f)
+}
+
+
+method test01(xs: Set[Ref], ys: Seq[Ref])
+  requires forall x: Ref :: x in xs ==> acc(h(x))
+  requires forall ix: Int, jx: Int :: ix >= 0 && ix < |ys| && jx >= 0 && jx < |ys| && ix != jx ==> ys[ix] != ys[jx] // ys is injective
+  requires forall i: Int :: i in [0..|ys|) ==> acc(h(ys[i]))
+{}
+
+
+method test03(xs: Seq[Ref])
+  requires forall ix: Int, jx: Int :: ix >= 0 && ix < |xs| && jx >= 0 && jx < |xs| && ix != jx ==> xs[ix] != xs[jx] // xs is injective
+  requires forall i: Int :: 0 <= i && i < |xs| ==> acc(h(xs[i]))
+{}
+
+method test04(xs: Seq[Ref], n: Int)
+  requires 0 <= n && n <= |xs|
+  requires forall ix: Int, jx: Int :: ix >= 0 && ix < |xs| && jx >= 0 && jx < |xs| && ix != jx ==> xs[ix] != xs[jx] // xs is injective
+  requires forall i: Int :: i in [0..n) ==> acc(h(xs[i]))
+{}
+
+method test05(xs: Seq[Ref])
+  requires forall ix: Int, jx: Int :: ix >= 0 && ix < |xs| && jx >= 0 && jx < |xs| && ix != jx ==> xs[ix] != xs[jx] // xs is injective
+  requires forall i: Int :: i in [1..|xs| + 1) ==> acc(xs[i - 1].f)
+{}
+
+method test10(xs: Seq[Ref], a: Int, b: Int, n: Int)
+  requires 0 <= a && 0 <= b && 0 <= n
+  requires a * (n - 1) + b <= |xs|
+  //:: UnexpectedOutput(not.wellformed:seq.index.length, /silver/issue/194/)
+  //:: UnexpectedOutput(not.wellformed:qp.not.injective, /carbon/issue/194/)
+  // Actually /silver/issue/194
+  requires forall i: Int :: i in [0..n) ==> acc(h(xs[a * i + b]))
+{}
+
+method test11(xs: Seq[Ref], a: Int, b: Int, n: Int, ss: Set[Int])
+  requires 0 <= a && 0 <= b && 0 <= n
+  requires a * (n - 1) + b <= |xs|
+  requires |ss| == n
+  requires forall i: Int :: i in [0..n) ==> (a * i + b) in ss
+  requires forall i: Int :: i in ss ==> 0 <= i
+  //:: UnexpectedOutput(not.wellformed:seq.index.length, /silver/issue/194/)
+  //:: UnexpectedOutput(not.wellformed:qp.not.injective, /carbon/issue/194/)
+  // Actually /silver/issue/194
+  requires forall i: Int :: i in ss ==> acc(h(xs[i]))
+{}

@@ -79,7 +79,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     ++ method.scopedDecls.collect { case l: ast.LocalVarDecl => l }.map(_.localVar).map(x => (x, decider.fresh(x))))
 
       val s = sInit.copy(g = g,
-                         h = v.heapSupporter.getEmptyHeap(sInit.program),
+                         h = v.heapSupporter.getEmptyHeap(sInit.program, v),
                          oldHeaps = OldHeaps(),
                          debugOldHeaps = Map(),
                          methodCfg = body)
@@ -108,10 +108,10 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
               v2.recordHeap(tmp, Verifier.PRE_STATE_LABEL, parentLabel, CreateLabel, emptyPCS)
             } else s2a
             (  executionFlowController.locally(s2b, v2)((s3, v3) => {
-                  val s4 = s3.copy(h = v3.heapSupporter.getEmptyHeap(s3.program))
+                  val s3a = s3.copy(h = v3.heapSupporter.getEmptyHeap(s3.program, v3))
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
                   val sepIdentifier = symbExLog.openScope(impLog)
-                  produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
+                  produces(s3a, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
                     symbExLog.closeScope(sepIdentifier)
                     Success()})})
             && {

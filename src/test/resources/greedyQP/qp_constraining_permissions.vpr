@@ -1,0 +1,40 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Ref
+
+method test00(xs: Set[Ref])
+  requires forall x: Ref :: x in xs ==> acc(x.f, wildcard)
+  ensures  forall x: Ref :: x in xs ==> acc(x.f, wildcard)
+{}
+
+method test01(xs: Set[Ref], ys: Set[Ref])
+  requires forall x: Ref :: x in xs ==> acc(x.f, wildcard)
+  requires forall x: Ref :: x in ys ==> acc(x.f, wildcard)
+  ensures  forall x: Ref :: x in (xs union ys) ==> acc(x.f, wildcard)
+{}
+
+method test02(xs: Set[Ref], y: Ref, z: Ref)
+  requires forall x: Ref :: x in xs ==> acc(x.f, wildcard)
+  requires z in xs
+{
+  if (y in xs) {
+    exhale acc(y.f, wildcard)
+  }
+
+  exhale forall x: Ref :: x in (xs setminus Set(y)) ==> acc(x.f, wildcard)
+  exhale forall x: Ref :: x in xs ==> acc(x.f, wildcard)
+
+  var k0: Perm
+  assume k0 >= none
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+  exhale forall x: Ref :: x in xs ==> acc(x.f, k0)
+}
+
+domain Foo {
+  function foo(x: Ref): Perm
+
+  axiom foo_not_none {
+    forall x: Ref :: foo(x) > none
+  }
+}

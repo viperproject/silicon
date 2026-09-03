@@ -103,7 +103,10 @@ object producer extends ProductionRules {
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult =
 
-    produceR(s, sf, a.whenInhaling, pve, v)(Q)
+  {
+    val aWhenInhaling = a.whenInhaling
+    produceR(s, v.snapshotSupporter.adaptProduceSnapshotFunction(s, sf, aWhenInhaling.topLevelConjuncts, v), aWhenInhaling, pve, v)(Q)
+  }
 
   /** @inheritdoc */
   def produces(s: State,
@@ -125,7 +128,8 @@ object producer extends ProductionRules {
       allPves ++= pves
     })
 
-    produceTlcs(s, sf, allTlcs.result(), allPves.result(), v)(Q)
+    val tlcsResult = allTlcs.result()
+    produceTlcs(s, v.snapshotSupporter.adaptProduceSnapshotFunction(s, sf, tlcsResult, v), tlcsResult, allPves.result(), v)(Q)
   }
 
   private def produceTlcs(s: State,
@@ -227,7 +231,8 @@ object producer extends ProductionRules {
                 QB(s3, null, v3)
               }),
               (s2, v2) => {
-                v2.decider.assume(sf(sorts.Snap, v2) === Unit, Option.when(debugOn)(DebugExp.createInstance("Empty snapshot", true)))
+                v2.snapshotSupporter.emptySnapshotConstraint(sf(sorts.Snap, v2)).foreach(c =>
+                  v2.decider.assume(c, Option.when(debugOn)(DebugExp.createInstance("Empty snapshot", true))))
                 /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                  * otherwise. In order words, only make this assumption if `sf` has
                  * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
@@ -258,7 +263,8 @@ object producer extends ProductionRules {
               Q(s3, v3)
             }),
             (s2, v2) => {
-                v2.decider.assume(sf(sorts.Snap, v2) === Unit, Option.when(debugOn)(DebugExp.createInstance("Empty snapshot", true)))
+                v2.snapshotSupporter.emptySnapshotConstraint(sf(sorts.Snap, v2)).foreach(c =>
+                  v2.decider.assume(c, Option.when(debugOn)(DebugExp.createInstance("Empty snapshot", true))))
                   /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                    * otherwise. In order words, only make this assumption if `sf` has
                    * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
@@ -371,8 +377,8 @@ object producer extends ProductionRules {
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
-        v.decider.assume(sf(sorts.Snap, v) === Unit,
-          Option.when(debugOn)(DebugExp.createInstance("Empty snapshot", true))) /* TODO: See comment for case ast.Implies above */
+        v.snapshotSupporter.emptySnapshotConstraint(sf(sorts.Snap, v)).foreach(c =>
+          v.decider.assume(c, Option.when(debugOn)(DebugExp.createInstance("Empty snapshot", true)))) /* TODO: See comment for case ast.Implies above */
         eval(s, a, pve, v)((s1, t, aNew, v1) => {
           v1.decider.assume(t, Option.when(debugOn)(a), aNew)
           Q(s1, v1)})

@@ -11,9 +11,9 @@ import viper.silicon.{Config, Map}
 import viper.silicon.decider.{Decider, PathConditionStack}
 import viper.silicon.logger.MemberSymbExLogger
 import viper.silicon.reporting.StateFormatter
-import viper.silicon.rules.{HeapSupportRules, StateConsolidationRules, defaultHeapSupporter, magicWandSupporter}
 import viper.silicon.state.terms.{AxiomRewriter, Term, TriggerGenerator}
-import viper.silicon.state._
+import viper.silicon.rules.{HeapSupportRules, StateConsolidationRules}
+import viper.silicon.state.{Heap, IdentifierFactory, State, SymbolConverter}
 import viper.silicon.supporters.{QuantifierSupporter, SnapshotSupporter}
 import viper.silicon.utils.Counter
 import viper.silver.ast
@@ -40,7 +40,7 @@ trait Verifier {
   def snapshotSupporter: SnapshotSupporter
   def stateConsolidator(s: State): StateConsolidationRules
 
-  val heapSupporter: HeapSupportRules = defaultHeapSupporter
+  val heapSupporter: HeapSupportRules
 
   def verificationPoolManager: VerificationPoolManager
 
