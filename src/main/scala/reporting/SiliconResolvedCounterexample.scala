@@ -7,14 +7,14 @@
 package viper.silicon.reporting
 
 import viper.silver.verifier.{ApplicationEntry, ConstantEntry, MapEntry, Model, ValueEntry}
-import viper.silver.ast.{CondExp, Exp, FieldAccessPredicate, LocalVar, Member, NeCmp, Predicate, Program, Resource, Type}
+import viper.silver.ast.{CondExp, Exp, FieldAccessPredicate, LocalVar, NeCmp, Predicate, Program, Resource, Type}
 import viper.silver.ast
 
 import scala.util.Try
 import viper.silicon.{Map, state => st}
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.state.{BasicChunk, DefaultSymbolConverter, SimpleIdentifier, State, Store, SymbolConverter}
+import viper.silicon.state.{BasicChunk, DefaultSymbolConverter, State, Store, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.state._
 import viper.silicon.decider.TermToSMTLib2Converter
@@ -177,7 +177,7 @@ object SiliconRawCounterexample {
         }
       } else if (opName == "Seq_empty") {
         if (opValues.isInstanceOf[MapEntry]) {
-          for ((k, v) <- opValues.asInstanceOf[MapEntry].options) {
+          for ((_, v) <- opValues.asInstanceOf[MapEntry].options) {
             res += (v.toString -> Seq())
           }
         }
@@ -298,7 +298,7 @@ object SiliconRawCounterexample {
     for ((opName, opValues) <- model.entries) {
       if (opName == "Set_empty") {
         if (opValues.isInstanceOf[MapEntry]) {
-          for ((k, v) <- opValues.asInstanceOf[MapEntry].options) {
+          for ((_, v) <- opValues.asInstanceOf[MapEntry].options) {
             res += (v.toString -> Set())
           }
         } else if (opValues.isInstanceOf[ConstantEntry] && opValues.asInstanceOf[ConstantEntry].value != "false" && opValues.asInstanceOf[ConstantEntry].value != "true") {
@@ -683,7 +683,7 @@ object SiliconRawCounterexample {
         heap += detField(model, c)
       case c@BasicChunk(PredicateID, _, _, _, _, _, _, _, _) =>
         heap += detPredicate(model, c, predByName)
-      case c@BasicChunk(id, _, _, _, _, _, _, _, _) =>
+      case BasicChunk(_, _, _, _, _, _, _, _, _) =>
         println("This Basic Chunk couldn't be matched as a CE heap entry!")
       case c: st.QuantifiedFieldChunk =>
         for ((recv, value, perm) <- detQPFieldEntries(c, model)) {
@@ -981,7 +981,7 @@ object SiliconRawCounterexample {
       .fold(err => {
         return BasicFunctionEntry("ERROR", argTyp, resTyp, Map.empty, s"$fname $err")
       }, identity)
-    val smtfunc = func match {
+    val smtfunc = (func: @unchecked) match {
       case t: ast.Function => symbolConverter.toFunction(t, program).id
       case t@ast.BackendFunc(_, _, _, _) => symbolConverter.toFunction(t, program).id
       case t: ast.DomainFunc => symbolConverter.toFunction(t, argSort :+ resSort, program).id

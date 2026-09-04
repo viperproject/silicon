@@ -322,6 +322,7 @@ object consumer extends ConsumptionRules {
               Q(s3, h2, snap, v2)
             })
           case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(v1.snapshotSupporter.unitSnapshot) else None, v1)
+          case other => sys.error(s"Unexpected result $other when evaluating quantified permission $forall")
         }
 
       case let: ast.Let if !let.isPure =>

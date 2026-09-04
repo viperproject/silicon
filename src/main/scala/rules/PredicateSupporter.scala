@@ -17,7 +17,6 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.{PredicateBranchNode, PredicateLeafNode, PredicateContentsTree}
-import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError

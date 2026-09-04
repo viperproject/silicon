@@ -11,6 +11,7 @@ import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
 import viper.silicon.verifier.Verifier
+import scala.annotation.unused
 
 /** Encapsulates how heap-dependent functions are axiomatised: which state parameters
   * function symbols take, how their definitional axioms are triggered, and which
@@ -24,18 +25,18 @@ trait FunctionEncoding {
 
   /** Post-processes a generated axiom, e.g. to replace state-argument placeholders
     * in recorded terms with the formal state parameters. */
-  def adaptAxiom(t: Term, data: FunctionData): Term = t
+  def adaptAxiom(t: Term, @unused data: FunctionData): Term = t
 
   /** Additional function symbols to declare for a function (e.g. frame functions). */
-  def auxiliaryFunctions(data: FunctionData): Seq[Fun] = Seq()
+  def auxiliaryFunctions(@unused data: FunctionData): Seq[Fun] = Seq()
 
   /** Additional axioms to emit after a function's well-definedness check
     * (e.g. frame axioms). */
-  def auxiliaryAxioms(data: FunctionData): Seq[Term] = Seq()
+  def auxiliaryAxioms(@unused data: FunctionData): Seq[Term] = Seq()
 
   /** Additional declarations recorded when a function's well-definedness phase
     * completes (e.g. auxiliary functions introduced while computing frames). */
-  def declsAfterWellDefinedness(data: FunctionData): Seq[Decl] = Seq()
+  def declsAfterWellDefinedness(@unused data: FunctionData): Seq[Decl] = Seq()
 
   /** The state argument of a predicate-trigger application occurring in a
     * function's axioms. */

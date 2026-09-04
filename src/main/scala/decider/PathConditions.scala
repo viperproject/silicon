@@ -14,6 +14,8 @@ import viper.silicon.utils.Counter
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.TrueLit
+
+import scala.annotation.unused
 /*
  * Interfaces
  */
@@ -359,9 +361,9 @@ private trait LayeredPathConditionStackLike {
                     tQvars: Seq[Var],
                     triggers: Seq[ast.Trigger],
                     tTriggers: Seq[Trigger],
-                    name: String,
-                    isGlobal: Boolean,
-                    ignore: Term )
+                    @unused name: String,
+                    @unused isGlobal: Boolean,
+                    @unused ignore: Term )
                     : (InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp]) = {
     var globals = InsertionOrderedSet.empty[DebugExp]
     var nonGlobals = InsertionOrderedSet.empty[DebugExp]
@@ -408,8 +410,8 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
   val conditionalized: Seq[Term] = conditionalized(from)
   lazy val conditionalizedExp: Seq[DebugExp] = conditionalizedExp(from)
 
-  def definitionsOnly(): RecordedPathConditions = {
-    new DefaultRecordedPathConditions(from.map(_.definitionsOnly))
+  def definitionsOnly: RecordedPathConditions = {
+    new DefaultRecordedPathConditions(from.map(_.definitionsOnly()))
   }
 
   def quantified(quantifier: Quantifier,

@@ -97,7 +97,10 @@ package object utils {
     disjointnessAssumptions.result()
   }
 
-  def subterms(t: Term): Seq[Term] = t match {
+  /* Most terms are matched via their (flyweight) extractors, which prevents the compiler from
+   * seeing that the match covers all cases it is expected to cover.
+   */
+  def subterms(t: Term): Seq[Term] = (t: @unchecked) match {
     case _: Symbol | _: Literal | _: MagicWandChunkTerm => Nil
     case op: BinaryOp[Term@unchecked] => List(op.p0, op.p1)
     case op: UnaryOp[Term@unchecked] => List(op.p)
@@ -160,7 +163,7 @@ package object utils {
 
     def goTriggers(trigger: Trigger) = Trigger(trigger.p map go)
 
-    def recurse(term: Term): Term = term match {
+    def recurse(term: Term): Term = (term: @unchecked) match {
       case _: Var | _: Function | _: Literal | _: MagicWandChunkTerm | _: Distinct | _: AppHint => term
 
       case Quantification(quantifier, variables, body, triggers, name, isGlobal, weight) =>
@@ -272,8 +275,6 @@ package object utils {
       case PredicateTrigger(p, psf, args) => PredicateTrigger(p, go(psf), args map go)
       case HeapLookup(hp, at) => HeapLookup(go(hp), go(at))
       case HeapUpdate(hp, at, vl) => HeapUpdate(go(hp), go(at), go(vl))
-      case ZeroMask => ZeroMask
-      case PredZeroMask => PredZeroMask
       case MaskSum(m1, m2) => MaskSum(go(m1), go(m2))
       case MaskAdd(m, at, add) => MaskAdd(go(m), go(at), go(add))
       case MaskDiff(m1, m2) => MaskDiff(go(m1), go(m2))

@@ -6,6 +6,7 @@
 
 package viper.silicon.decider
 
+import scala.annotation.unused
 import scala.collection.mutable
 import viper.silver.ast.pretty.FastPrettyPrinterBase
 import viper.silver.ast
@@ -74,7 +75,10 @@ class TermToSMTLib2Converter
     super.pretty(defaultWidth, render(d))
   }
 
-  protected def render(decl: Decl): Cont = decl match {
+  /* Terms and declarations are matched via their (flyweight) extractors, which prevents the
+   * compiler from checking these matches for exhaustiveness.
+   */
+  protected def render(decl: Decl): Cont = (decl: @unchecked) match {
     case SortDecl(sort: Sort) =>
       parens(text("declare-sort") <+> render(sort) <+> text("0"))
 
@@ -108,14 +112,14 @@ class TermToSMTLib2Converter
     super.pretty(defaultWidth, render(t))
   }
 
-  private def renderHeapType(s: Sort) = s match {
+  private def renderHeapType(s: Sort) = (s: @unchecked) match {
     case sorts.HeapSort(valueSort) => doRender(valueSort, true)
     case sorts.PredHeapSort => text("$Pred")
     case sorts.PredMaskSort => text("$PredMask")
     case sorts.WandHeapSort => text("$MWSF")
   }
 
-  protected def render(term: Term): Cont = term match {
+  protected def render(term: Term): Cont = (term: @unchecked) match {
     case hvr: HasVarRepr if hvr.varRepr.isDefined => render(hvr.varRepr.get)
 
     case lit: Literal => render(lit)
@@ -303,7 +307,7 @@ class TermToSMTLib2Converter
     case HeapUpdate(heap, at, value) =>
       parens(text("$Hp.update_") <> renderHeapType(heap.sort) <+> render(heap) <+> render(at) <+> render(value))
 
-    case HeapSingleton(at, value, r) =>
+    case HeapSingleton(at, value, _) =>
       parens(text("$Hp.singleton_") <> renderHeapType(term.sort) <+> render(at) <+> render(value))
 
     case IdenticalOnKnownLocations(oldHeap, newHeap, mask) =>
@@ -431,7 +435,7 @@ class TermToSMTLib2Converter
   }
 
   @inline
-  protected def renderSMTApp(functionName: String, args: Seq[Term], outSort: Sort) = {
+  protected def renderSMTApp(functionName: String, args: Seq[Term], @unused outSort: Sort) = {
     val docAppNoParens =
       text(functionName) <+> ssep((args map render).to(collection.immutable.Seq), space)
 
@@ -447,7 +451,11 @@ class TermToSMTLib2Converter
   }
 
   protected def render(literal: Literal): Cont = literal match {
-    case IntLiteral(n) =>
+    /* Matching on the type (instead of using IntLiteral's extractor) allows the compiler to
+     * verify that this match is exhaustive.
+     */
+    case intLiteral: IntLiteral =>
+      val n = intLiteral.n
       if (n >= 0) n.toString()
       else parens(text("- 0") <+> value(-n))
 

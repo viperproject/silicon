@@ -12,6 +12,8 @@ import scala.collection.mutable
     * sets and maps have been replaced by those that guarantee a deterministic
     * traversal order.
     */
+@deprecated("MMultiMap inherits from LinkedHashMap, which is scheduled to become final. Use a " +
+            "mutable.LinkedHashMap[A, mutable.LinkedHashSet[B]] directly instead.", "Silicon 1.1")
 trait MMultiMap[A, B] extends mutable.LinkedHashMap[A, mutable.LinkedHashSet[B]] {
   def addBinding(key: A, value: B): this.type = {
     get(key) match {

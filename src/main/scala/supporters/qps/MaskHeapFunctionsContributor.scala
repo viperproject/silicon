@@ -15,12 +15,13 @@ import viper.silicon.state.SymbolConverter
 import viper.silicon.state.terms.sorts.{PredHeapSort, PredMaskSort, WandHeapSort}
 import viper.silicon.state.terms.{Sort, SortDecl, sorts}
 import viper.silicon.verifier.Verifier
+import scala.annotation.unused
 
 
 class MaskHeapFunctionsContributor(preambleReader: PreambleReader[String, String],
                                    symbolConverter: SymbolConverter,
                                    termConverter: TermConverter[String, String, String],
-                                   config: Config)
+                                   @unused config: Config)
   extends PreambleContributor[Sort, String, String]{
 
   /* PreambleBlock = Comment x Lines */

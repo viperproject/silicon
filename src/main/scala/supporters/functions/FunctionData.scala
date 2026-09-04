@@ -22,7 +22,6 @@ import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Config, Map, toMap}
 import viper.silver.ast.LocalVarWithVersion
-import viper.silver.parser.PUnknown
 import viper.silver.reporter.Reporter
 
 trait FunctionRecorderHandler {

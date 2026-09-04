@@ -7,7 +7,7 @@
 package viper.silicon.state.terms
 
 import java.util.concurrent.atomic.AtomicInteger
-import scala.annotation.tailrec
+import scala.annotation.{nowarn, tailrec}
 import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -529,7 +529,7 @@ trait ConditionalFlyweight[T, V] { self: AnyRef =>
       (
         this.eq(other.asInstanceOf[AnyRef])
           || (other match {
-          case se: ConditionalFlyweight[T, V] if this.getClass.eq(se.getClass) =>
+          case se: ConditionalFlyweight[T@unchecked, V@unchecked] if this.getClass.eq(se.getClass) =>
             equalityDefiningMembers == se.equalityDefiningMembers
           case _ => false
         }))
@@ -2421,7 +2421,7 @@ class HeapLookup(val heap: Term, val at: Term) extends Term with ConditionalFlyw
 
   val equalityDefiningMembers = (heap, at)
 
-  val sort = heap.sort match {
+  val sort = (heap.sort: @unchecked) match {
     case sorts.PredHeapSort => sorts.Snap
     case sorts.PredMaskSort => sorts.Perm
     case sorts.HeapSort(valueSort) => valueSort
@@ -2516,6 +2516,13 @@ class HeapSingleton(val at: Term, val value: Term, val sort: Sort) extends Term 
 }
 
 object HeapSingleton extends CondFlyweightTermFactory[(Term, Term, Sort), HeapSingleton] {
+  /* TODO: The following match is on v0._3, i.e. on the sort, which can never be a HeapLookup.
+   *       The simplification is therefore dead code and has never been applied. Presumably, the
+   *       intention was to match on v0._2, i.e. on the value. Enabling the simplification would
+   *       change how heaps are encoded, hence the behaviour is left as it is for now, and the
+   *       resulting "fruitless type test" warning is suppressed.
+   */
+  @nowarn("msg=fruitless type test")
   override def apply(v0: (Term, Term, Sort)) = v0._3 match {
     case HeapLookup(otherHeap, at2) if v0._1 == at2 => otherHeap
     case _ => createIfNonExistent(v0)
