@@ -12,13 +12,6 @@ import scala.collection.mutable
     * sets and maps have been replaced by those that guarantee a deterministic
     * traversal order.
     */
-/* MMultiMap is unused inside Silicon, and it cannot be kept as it is: it inherits from
- * LinkedHashMap, which is deprecated since Scala 2.13.11 because LinkedHashMap is scheduled to
- * become final. Reimplementing MMultiMap on top of composition would change its (public) type,
- * hence it is deprecated instead, to give potential clients outside of Silicon a chance to
- * migrate. Deprecating MMultiMap also suppresses the warning about the deprecated inheritance,
- * because that warning is not reported inside deprecated definitions.
- */
 @deprecated("MMultiMap inherits from LinkedHashMap, which is scheduled to become final. Use a " +
             "mutable.LinkedHashMap[A, mutable.LinkedHashSet[B]] directly instead.", "Silicon 1.1")
 trait MMultiMap[A, B] extends mutable.LinkedHashMap[A, mutable.LinkedHashSet[B]] {
