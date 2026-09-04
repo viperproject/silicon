@@ -49,21 +49,21 @@ trait Verifier {
   private lazy val heapRecorder = new DebugHeapRecorder()
 
   def getDebugOldLabel(s: State, pos: ast.Position, h: Option[Heap] = None): String =
-    heapRecorder.getDebugOldLabel(s, pos, h)
+    heapRecorder.getDebugOldLabel(s, this, pos, h)
   def getDebugHeapLabel(s: State, h: Option[Heap] = None): Option[String] =
-    heapRecorder.getDebugHeapLabel(s, h)
+    heapRecorder.getDebugHeapLabel(s, this, h)
   def recordHeap(s: State, parentLabel: String, cause: HeapCause, oldPCS: PathConditionStack): State =
-    heapRecorder.recordHeap(s, None, parentLabel, cause, oldPCS, decider.pcs.duplicate())
+    heapRecorder.recordHeap(s, this, None, parentLabel, cause, oldPCS, decider.pcs.duplicate())
   def recordHeap(s: State, currentLabel: String, parentLabel: String, cause: HeapCause, oldPCS: PathConditionStack): State =
-    heapRecorder.recordHeap(s, Some(currentLabel), parentLabel, cause, oldPCS, decider.pcs.duplicate())
+    heapRecorder.recordHeap(s, this, Some(currentLabel), parentLabel, cause, oldPCS, decider.pcs.duplicate())
   def startKeyHeap(s: State, parentLabel: String, cause: HeapCause): State =
     heapRecorder.startKeyHeap(s, parentLabel, cause, decider.pcs.duplicate())
   def recordIntermediateHeap(s: State): State =
-    heapRecorder.recordIntermediateHeap(s, decider.pcs.duplicate(), None)
+    heapRecorder.recordIntermediateHeap(s, this, decider.pcs.duplicate(), None)
   def recordIntermediateHeap(s: State, cause: HeapCause): State =
-    heapRecorder.recordIntermediateHeap(s, decider.pcs.duplicate(), Some(cause))
+    heapRecorder.recordIntermediateHeap(s, this, decider.pcs.duplicate(), Some(cause))
   def finishKeyHeap(s: State): State =
-    heapRecorder.finishKeyHeap(s, decider.pcs.duplicate())
+    heapRecorder.finishKeyHeap(s, this, decider.pcs.duplicate())
 
   def reportFurtherErrors(): Boolean = (Verifier.config.numberOfErrorsToReport() > errorsReportedSoFar.get()
     || Verifier.config.numberOfErrorsToReport() == 0);
@@ -84,8 +84,8 @@ class DebugHeapRecorder {
   private val debugHeapCounter = new AtomicInteger(0);
 
   // Returns Left for an existing label or Right when it made a new label.
-  private def getOrMakeHeapLabel(s: State, h: Option[Heap]): Either[String, String] = {
-    getDebugHeapLabel(s, h) match {
+  private def getOrMakeHeapLabel(s: State, v: Verifier, h: Option[Heap]): Either[String, String] = {
+    getDebugHeapLabel(s, v, h) match {
       case Some(label) => Left(label)
       case None =>
         val counter = debugHeapCounter.getAndIncrement()
@@ -98,22 +98,22 @@ class DebugHeapRecorder {
     * @param pos the position of the current expression
     * @param h the heap to consider, if not the heap from state s
     */
-  def getDebugOldLabel(s: State, pos: ast.Position, h: Option[Heap]): String = {
+  def getDebugOldLabel(s: State, v: Verifier, pos: ast.Position, h: Option[Heap]): String = {
     val posString = pos match {
       case column: ast.HasLineColumn => s"l:${column.line}.${column.column}"
       case _ => s"l:unknown"
     }
-    val heapLabel = getDebugHeapLabel(s, h).getOrElse("unrecordedHeap")
+    val heapLabel = getDebugHeapLabel(s, v, h).getOrElse("unrecordedHeap")
     s"$heapLabel#$posString"
   }
 
   /** Returns the label for a given heap, or None if the heap has not been recorded.
     * In case of multiple matches, prefer labelled key heaps then debug key heaps, then tempHeaps, then childrenHeaps.
     */
-  def getDebugHeapLabel(s: State, h: Option[Heap]): Option[String] = {
+  def getDebugHeapLabel(s: State, v: Verifier, h: Option[Heap]): Option[String] = {
     val heap = h match {
       case Some(heap) => heap
-      case None => magicWandSupporter.getEvalHeap(s)
+      case None => magicWandSupporter.getEvalHeap(s, v)
     }
 
     val equalKeyHeaps = s.debugOldHeaps.collect {
@@ -141,15 +141,15 @@ class DebugHeapRecorder {
   }
 
   // Record a heap as a key heap with no intermediates
-  def recordHeap(s: State, currentLabel: Option[String], parentLabel: String, cause: HeapCause,
+  def recordHeap(s: State, v: Verifier, currentLabel: Option[String], parentLabel: String, cause: HeapCause,
                  oldPCS: PathConditionStack, newPCS: PathConditionStack): State = {
     lazy val branchConds = branchCondDiff(oldPCS, newPCS)
-    lazy val heapRecord = HeapRecord(magicWandSupporter.getEvalHeap(s), parentLabel, cause, branchConds, Map.empty)
+    lazy val heapRecord = HeapRecord(magicWandSupporter.getEvalHeap(s, v), parentLabel, cause, branchConds, Map.empty)
 
     currentLabel match {
       case Some(label) => s.copy(debugOldHeaps = s.debugOldHeaps + (label -> heapRecord))
       case None =>
-        getOrMakeHeapLabel(s, None) match {
+        getOrMakeHeapLabel(s, v, None) match {
           case Left(_) => s // Don't overwrite existing label
           case Right(newLabel) => s.copy(debugOldHeaps = s.debugOldHeaps + (newLabel -> heapRecord))
         }
@@ -160,12 +160,12 @@ class DebugHeapRecorder {
     s.copy(temporaryHeapRecord = Some(parentLabel, cause, pcs, Map.empty))
   }
 
-  def recordIntermediateHeap(s: State, newPCS: PathConditionStack, cause: Option[HeapCause]): State = {
+  def recordIntermediateHeap(s: State, v: Verifier, newPCS: PathConditionStack, cause: Option[HeapCause]): State = {
     assert(s.isRecordingHeaps, "recordIntermediateHeap called but no temporaryHeapRecord")
-    getOrMakeHeapLabel(s, None) match {
+    getOrMakeHeapLabel(s, v, None) match {
       case Left(_) => s
       case Right(newLabel) =>
-        val h = magicWandSupporter.getEvalHeap(s)
+        val h = magicWandSupporter.getEvalHeap(s, v)
         val (parentLabel, parentCause, oldPCS, interHeaps) = s.temporaryHeapRecord.get
         val newInterHeap = IntermediateHeapRecord(h, cause, branchCondDiff(oldPCS, newPCS))
         val newTemp = (parentLabel, parentCause, oldPCS, interHeaps + (newLabel -> newInterHeap))
@@ -173,12 +173,12 @@ class DebugHeapRecorder {
     }
   }
 
-  def finishKeyHeap(s: State, newPCS: PathConditionStack): State = {
+  def finishKeyHeap(s: State, v: Verifier, newPCS: PathConditionStack): State = {
     assert(s.isRecordingHeaps, "finishKeyHeap called but no temporaryHeapRecord")
     val (parentLabel, cause, oldPCS, interHeaps) = s.temporaryHeapRecord.get
-    val h = magicWandSupporter.getEvalHeap(s)
+    val h = magicWandSupporter.getEvalHeap(s, v)
 
-    getOrMakeHeapLabel(s, None) match {
+    getOrMakeHeapLabel(s, v, None) match {
       case Left(existingLabel) =>
         if (interHeaps contains existingLabel) {
           // If the current heap is in the temporary record, promote it to a key heap
