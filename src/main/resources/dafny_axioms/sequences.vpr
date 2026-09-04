@@ -61,7 +61,7 @@ domain $Seq[E] {
     }
     axiom Seq_append_index3 {
         forall s0: $Seq[E], s1: $Seq[E], m: Int :: { Seq_index(s1, m), Seq_append(s0, s1) }
-            s0 != Seq_empty() && s1 != Seq_empty() && 0 <= m && m < Seq_length(s1) ==> Seq_sub(Seq_add(m, Seq_length(s0)), Seq_length(s0)) == m
+            s0 != Seq_empty() && s1 != Seq_empty() && s0 != Seq_append(s0, s1) && s1 != Seq_append(s0, s1) && 0 <= m && m < Seq_length(s1) ==> Seq_sub(Seq_add(m, Seq_length(s0)), Seq_length(s0)) == m
             && Seq_index(Seq_append(s0, s1), Seq_add(m, Seq_length(s0))) == Seq_index(s1, m)
     }
 
@@ -133,7 +133,7 @@ domain $Seq[E] {
     axiom Seq_append_drop2 {
         forall s: $Seq[E], t: $Seq[E], n: Int ::
         { Seq_drop(Seq_append(s,t), n) }
-        n > 0 && n > Seq_length(s) ==> Seq_add(Seq_sub(n, Seq_length(s)), Seq_length(s)) == n && Seq_drop(Seq_append(s, t), n) == Seq_drop(t, Seq_sub(n, Seq_length(s)))
+        n > 0 && n > Seq_length(s) && n < Seq_length(Seq_append(s,t)) ==> Seq_add(Seq_sub(n, Seq_length(s)), Seq_length(s)) == n && Seq_drop(Seq_append(s, t), n) == Seq_drop(t, Seq_sub(n, Seq_length(s)))
     }
     // Note: the following (especially the third) are actually needed to cut matching loops that can otherwise be introduced by the axioms above (which introduce new append terms)
     axiom Seq_take_zero {

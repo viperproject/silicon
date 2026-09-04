@@ -115,9 +115,9 @@ object chunkSupporter extends ChunkSupportRules {
     val id = ChunkIdentifier(resource, s.program)
     if (s.exhaleExt) {
       val failure = createFailure(ve, v, s, "chunk consume in package")
-      magicWandSupporter.transfer(s, perms, permsExp, failure, Seq(), v)(consumeGreedy(_, _, id, args, _, _, _))((s1, optCh, v1) =>
+      magicWandSupporter.transfer(s, perms, permsExp, failure, Seq(), v)(consumeGreedy(_, _, id, args, _, _, _))((s1, chs, v1) =>
         if (returnSnap){
-          Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1)
+          Q(s1, h, chs.lastOption.map(_.snap), v1)
         } else {
           Q(s1, h, None, v1)
         })

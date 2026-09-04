@@ -11,13 +11,15 @@ import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.terms._
 import viper.silicon.state.{Identifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
 import viper.silver.components.StatefulComponent
-import com.microsoft.z3.{ArithExpr, BoolExpr, Context, DatatypeSort, IntExpr, RealExpr, Expr => Z3Expr, FuncDecl => Z3FuncDecl, Sort => Z3Sort, Symbol => Z3Symbol}
+import com.microsoft.z3.{ArithSort, BoolExpr, BoolSort, Constructor, Context, DatatypeSort, IntSort, RealSort, Expr => Z3Expr, FuncDecl => Z3FuncDecl, Sort => Z3Sort, Symbol => Z3Symbol}
 
 import scala.collection.mutable
 
 class TermToZ3APIConverter
-    extends TermConverter[Z3Expr, Z3Sort, Unit]
+    extends TermConverter[Z3Expr[_], Z3Sort, Unit]
        with StatefulComponent {
+
+  import TermToZ3APIConverter._
 
   private var sanitizedNamesCache: mutable.Map[String, String] = _
 
@@ -29,9 +31,9 @@ class TermToZ3APIConverter
   val macros = mutable.HashMap[String, (Seq[Var], Term)]()
 
   val sortCache = mutable.HashMap[Sort, Z3Sort]()
-  val funcDeclCache = mutable.HashMap[(String, Seq[Sort], Sort), Z3FuncDecl]()
-  val smtFuncDeclCache = mutable.HashMap[(String, Seq[Sort]), (Z3FuncDecl, Seq[Z3Expr])]()
-  val termCache = mutable.HashMap[Term, Z3Expr]()
+  val funcDeclCache = mutable.HashMap[(String, Seq[Sort], Sort), Z3FuncDecl[Z3Sort]]()
+  val smtFuncDeclCache = mutable.HashMap[(String, Seq[Sort]), (Z3FuncDecl[Z3Sort], Seq[Z3Expr[Z3Sort]])]()
+  val termCache = mutable.HashMap[Term, Z3Expr[_]]()
 
   def convert(s: Sort): Z3Sort = convertSort(s)
 
@@ -46,16 +48,16 @@ class TermToZ3APIConverter
       ($Snap.unit)
       ($Snap.combine ($Snap.first $Snap) ($Snap.second $Snap)))))
      */
-      val unit = ctx.mkConstructor("$Snap.unit", "is_$Snap.unit", null, null, null)
+      val unit = ctx.mkConstructor[SnapMarker]("$Snap.unit", "is_$Snap.unit", null, null, null)
 
       val sortArray: Array[Z3Sort] = Array(null, null)
-      val combine = ctx.mkConstructor("$Snap.combine", "is_$Snap.combine", Array("$Snap.first", "$Snap.second"), sortArray, Array(0, 0))
-      snapSort = ctx.mkDatatypeSort("$Snap", Array(unit, combine))
+      val combine = ctx.mkConstructor[SnapMarker]("$Snap.combine", "is_$Snap.combine", Array("$Snap.first", "$Snap.second"), sortArray, Array(0, 0))
+      snapSort = ctx.mkDatatypeSort[SnapMarker]("$Snap", Array[Constructor[SnapMarker]](unit, combine))
       unitConstructor = unit.ConstructorDecl()
       combineConstructor = combine.ConstructorDecl()
       val accessors = combine.getAccessorDecls
-      firstFunc = accessors(0)
-      secondFunc = accessors(1)
+      firstFunc = asFuncDecl(accessors(0))
+      secondFunc = asFuncDecl(accessors(1))
     }
     snapSort
   }
@@ -83,17 +85,17 @@ class TermToZ3APIConverter
     secondFunc
   }
 
-  var snapSort : DatatypeSort = _
-  var unitConstructor : Z3FuncDecl = _
-  var combineConstructor: Z3FuncDecl = _
-  var firstFunc: Z3FuncDecl = _
-  var secondFunc: Z3FuncDecl = _
+  var snapSort : DatatypeSort[SnapMarker] = _
+  var unitConstructor : Z3FuncDecl[DatatypeSort[SnapMarker]] = _
+  var combineConstructor: Z3FuncDecl[DatatypeSort[SnapMarker]] = _
+  var firstFunc: Z3FuncDecl[Z3Sort] = _
+  var secondFunc: Z3FuncDecl[Z3Sort] = _
 
   def convertSort(s: Sort): Z3Sort = {
     val existingEntry = sortCache.get(s)
     if (existingEntry.isDefined)
       return existingEntry.get
-    val res = s match {
+    val res = (s: @unchecked) match {
       case sorts.Int => ctx.mkIntSort()
       case sorts.Bool => ctx.mkBoolSort()
       case sorts.Perm => ctx.mkRealSort()
@@ -135,7 +137,7 @@ class TermToZ3APIConverter
   }
 
   def convertSortSymbol(s: Sort): Option[Z3Symbol] = {
-    s match {
+    (s: @unchecked) match {
       case sorts.Int => None
       case sorts.Bool => None
       case sorts.Perm => None
@@ -168,7 +170,7 @@ class TermToZ3APIConverter
     smtlibConverter.convertSanitized(sort)
   }
 
-  def convert(fd: FunctionDecl): Z3FuncDecl = {
+  def convert(fd: FunctionDecl): Z3FuncDecl[Z3Sort] = {
     ctx.mkFuncDecl(convertId(fd.func.id), fd.func.argSorts.filter(s => s != viper.silicon.state.terms.sorts.Unit).map(convertSort(_)).toArray, convertSort(fd.func.resultSort))
   }
 
@@ -176,7 +178,7 @@ class TermToZ3APIConverter
     ctx.mkSymbol(convertId(fd.func.id))
   }
   
-  def convert(md: MacroDecl): (Z3FuncDecl, BoolExpr) = {
+  def convert(md: MacroDecl): (Z3FuncDecl[Z3Sort], BoolExpr) = {
     val func = ctx.mkFuncDecl(convertId(md.id), md.args.map(a => convertSort(a.sort)).toArray, convertSort(md.body.sort))
     val app = ctx.mkApp(func, md.args.map(convert(_)).toArray : _*)
     val patterns = Array(ctx.mkPattern(app))
@@ -184,7 +186,7 @@ class TermToZ3APIConverter
     (func, quant)
   }
 
-  def convert(swd: SortWrapperDecl): Z3FuncDecl = {
+  def convert(swd: SortWrapperDecl): Z3FuncDecl[Z3Sort] = {
     val id = swd.id
     val fct = FunctionDecl(Fun(id, swd.from, swd.to))
     convert(fct)
@@ -201,12 +203,12 @@ class TermToZ3APIConverter
     ???
   }
 
-  def convert(t: Term): Z3Expr = {
+  def convert(t: Term): Z3Expr[_] = {
     convertTerm(t)
   }
 
 
-  def convertTerm(term: Term): Z3Expr = {
+  def convertTerm(term: Term): Z3Expr[_] = {
     val cached = termCache.get(term)
     if (cached.isDefined)
       return cached.get
@@ -215,7 +217,7 @@ class TermToZ3APIConverter
      */
     val res = (term: @unchecked) match {
       case l: Literal => {
-        l match {
+        (l: @unchecked) match {
           /* Matching on the type (instead of using IntLiteral's extractor) allows the compiler to
            * verify that this match is exhaustive.
            */
@@ -238,7 +240,7 @@ class TermToZ3APIConverter
       }
 
       case Ite(t0, t1, t2) =>
-        ctx.mkITE(convertTerm(t0).asInstanceOf[BoolExpr], convertTerm(t1), convertTerm(t2))
+        ctx.mkITE(asBool(convertTerm(t0)), asAny(convertTerm(t1)), asAny(convertTerm(t2)))
 
       case x: Var =>
         ctx.mkConst(convertId(x.id), convertSort(x.sort))
@@ -277,23 +279,23 @@ class TermToZ3APIConverter
           } else null
           val weightValue = weight.getOrElse(1)
           if (quant == Forall) {
-            ctx.mkForall(qvarExprs, convertTerm(body), weightValue, patterns, null, ctx.mkSymbol(name), null)
+            ctx.mkForall(qvarExprs, asBool(convertTerm(body)), weightValue, patterns, null, ctx.mkSymbol(name), null)
           } else {
-            ctx.mkExists(qvarExprs, convertTerm(body), weightValue, patterns, null, ctx.mkSymbol(name), null)
+            ctx.mkExists(qvarExprs, asBool(convertTerm(body)), weightValue, patterns, null, ctx.mkSymbol(name), null)
           }
         }
       }
 
       /* Booleans */
 
-      case uop: Not => ctx.mkNot(convertTerm(uop.p).asInstanceOf[BoolExpr])
-      case And(ts) => ctx.mkAnd(ts.map(convertTerm(_).asInstanceOf[BoolExpr]): _*)
-      case Or(ts) => ctx.mkOr(ts.map(convertTerm(_).asInstanceOf[BoolExpr]): _*)
-      case bop: Implies => ctx.mkImplies(convertTerm(bop.p0).asInstanceOf[BoolExpr], convertTerm(bop.p1).asInstanceOf[BoolExpr])
+      case uop: Not => ctx.mkNot(asBool(convertTerm(uop.p)))
+      case And(ts) => ctx.mkAnd(ts.map(t => asBool(convertTerm(t))): _*)
+      case Or(ts) => ctx.mkOr(ts.map(t => asBool(convertTerm(t))): _*)
+      case bop: Implies => ctx.mkImplies(asBool(convertTerm(bop.p0)), asBool(convertTerm(bop.p1)))
       case bop: Iff =>
       {
-        val t0 = convertTerm(bop.p0).asInstanceOf[BoolExpr]
-        val t1 = convertTerm(bop.p1).asInstanceOf[BoolExpr]
+        val t0 = asBool(convertTerm(bop.p0))
+        val t1 = asBool(convertTerm(bop.p1))
         val implication1 = ctx.mkImplies(t0, t1)
         val implication2 = ctx.mkImplies(t1, t0)
         ctx.mkAnd(implication1, implication2)
@@ -310,18 +312,18 @@ class TermToZ3APIConverter
 
       /* Arithmetic */
 
-      case bop: Minus => ctx.mkSub(convertTerm(bop.p0).asInstanceOf[ArithExpr], convertTerm(bop.p1).asInstanceOf[ArithExpr])
-      case bop: Plus => ctx.mkAdd(convertTerm(bop.p0).asInstanceOf[ArithExpr], convertTerm(bop.p1).asInstanceOf[ArithExpr])
-      case bop: Times => ctx.mkMul(convertTerm(bop.p0).asInstanceOf[ArithExpr], convertTerm(bop.p1).asInstanceOf[ArithExpr])
-      case bop: Div => ctx.mkDiv(convertTerm(bop.p0).asInstanceOf[ArithExpr], convertTerm(bop.p1).asInstanceOf[ArithExpr])
-      case bop: Mod => ctx.mkMod(convertTerm(bop.p0).asInstanceOf[IntExpr], convertTerm(bop.p1).asInstanceOf[IntExpr])
+      case bop: Minus => ctx.mkSub(asArith(convertTerm(bop.p0)), asArith(convertTerm(bop.p1)))
+      case bop: Plus => ctx.mkAdd(asArith(convertTerm(bop.p0)), asArith(convertTerm(bop.p1)))
+      case bop: Times => ctx.mkMul(asArith(convertTerm(bop.p0)), asArith(convertTerm(bop.p1)))
+      case bop: Div => ctx.mkDiv(asArith(convertTerm(bop.p0)), asArith(convertTerm(bop.p1)))
+      case bop: Mod => ctx.mkMod(asInt(convertTerm(bop.p0)), asInt(convertTerm(bop.p1)))
 
       /* Arithmetic comparisons */
 
-      case bop: Less => ctx.mkLt(convertTerm(bop.p0).asInstanceOf[ArithExpr], convertTerm(bop.p1).asInstanceOf[ArithExpr])
-      case bop: AtMost => ctx.mkLe(convertTerm(bop.p0).asInstanceOf[ArithExpr], convertTerm(bop.p1).asInstanceOf[ArithExpr])
-      case bop: AtLeast => ctx.mkGe(convertTerm(bop.p0).asInstanceOf[ArithExpr], convertTerm(bop.p1).asInstanceOf[ArithExpr])
-      case bop: Greater => ctx.mkGt(convertTerm(bop.p0).asInstanceOf[ArithExpr], convertTerm(bop.p1).asInstanceOf[ArithExpr])
+      case bop: Less => ctx.mkLt(asArith(convertTerm(bop.p0)), asArith(convertTerm(bop.p1)))
+      case bop: AtMost => ctx.mkLe(asArith(convertTerm(bop.p0)), asArith(convertTerm(bop.p1)))
+      case bop: AtLeast => ctx.mkGe(asArith(convertTerm(bop.p0)), asArith(convertTerm(bop.p1)))
+      case bop: Greater => ctx.mkGt(asArith(convertTerm(bop.p0)), asArith(convertTerm(bop.p1)))
 
       /* Permissions */
 
@@ -330,12 +332,12 @@ class TermToZ3APIConverter
       case NoPerm => ctx.mkReal(0)
       case FractionPermLiteral(r) => ctx.mkDiv(convertToReal(IntLiteral(r.numerator)), convertToReal(IntLiteral(r.denominator)))
       case FractionPerm(n, d) => ctx.mkDiv(convertToReal(n), convertToReal(d))
-      case PermLess(t0, t1) => ctx.mkLt(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
-      case PermAtMost(t0, t1) => ctx.mkLe(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
-      case PermPlus(t0, t1) => ctx.mkAdd(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
-      case PermMinus(t0, t1) => ctx.mkSub(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
-      case PermTimes(t0, t1) => ctx.mkMul(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
-      case IntPermTimes(t0, t1) => ctx.mkMul(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
+      case PermLess(t0, t1) => ctx.mkLt(asArith(convertTerm(t0)), asArith(convertTerm(t1)))
+      case PermAtMost(t0, t1) => ctx.mkLe(asArith(convertTerm(t0)), asArith(convertTerm(t1)))
+      case PermPlus(t0, t1) => ctx.mkAdd(asArith(convertTerm(t0)), asArith(convertTerm(t1)))
+      case PermMinus(t0, t1) => ctx.mkSub(asArith(convertTerm(t0)), asArith(convertTerm(t1)))
+      case PermTimes(t0, t1) => ctx.mkMul(asArith(convertTerm(t0)), asArith(convertTerm(t1)))
+      case IntPermTimes(t0, t1) => ctx.mkMul(asArith(convertTerm(t0)), asArith(convertTerm(t1)))
       case PermIntDiv(t0, t1) => ctx.mkDiv(convertToReal(t0), convertToReal(t1))
       case PermPermDiv(t0, t1) => ctx.mkDiv(convertToReal(t0), convertToReal(t1))
       case PermMin(t0, t1) => {
@@ -343,8 +345,8 @@ class TermToZ3APIConverter
         (define-fun $Perm.min ((p1 $Perm) (p2 $Perm)) Real
     (ite (<= p1 p2) p1 p2))
          */
-        val e0 = convert(t0).asInstanceOf[ArithExpr]
-        val e1 = convert(t1).asInstanceOf[ArithExpr]
+        val e0 = asArith(convert(t0))
+        val e1 = asArith(convert(t1))
         ctx.mkITE(ctx.mkLe(e0, e1), e0, e1)
       }
       case IsValidPermVal(v) => {
@@ -352,7 +354,7 @@ class TermToZ3APIConverter
         (define-fun $Perm.isValidVar ((p $Perm)) Bool
 	        (<= $Perm.No p))
          */
-        ctx.mkLe(ctx.mkReal(0), convert(v).asInstanceOf[ArithExpr])
+        ctx.mkLe(ctx.mkReal(0), asArith(convert(v)))
       }
       case IsReadPermVar(v) => {
         /*
@@ -360,9 +362,9 @@ class TermToZ3APIConverter
          (and ($Perm.isValidVar p)
          (not (= p $Perm.No))))
          */
-        ctx.mkLt(ctx.mkReal(0), convert(v).asInstanceOf[ArithExpr]) // simplified
-        //ctx.mkAnd(ctx.mkLe(ctx.mkReal(0), convert(v).asInstanceOf[ArithExpr]),
-        //  ctx.mkNot(ctx.mkEq(convert(v).asInstanceOf[ArithExpr], ctx.mkReal(0))))
+        ctx.mkLt(ctx.mkReal(0), asArith(convert(v))) // simplified
+        //ctx.mkAnd(ctx.mkLe(ctx.mkReal(0), asArith(convert(v))),
+        //  ctx.mkNot(ctx.mkEq(asArith(convert(v)), ctx.mkReal(0))))
       }
 
       /* Sequences */
@@ -469,11 +471,11 @@ class TermToZ3APIConverter
   }
 
   @inline
-  protected def createApp(functionName: String, args: Seq[Term], outSort: Sort): Z3Expr = {
+  protected def createApp(functionName: String, args: Seq[Term], outSort: Sort): Z3Expr[Z3Sort] = {
     ctx.mkApp(getFuncDecl(functionName, outSort, args.map(_.sort)), args.map(convertTerm(_)): _*)
   }
 
-  def getFuncDecl(name: String, resSort: Sort, argSorts: Seq[Sort]): Z3FuncDecl = {
+  def getFuncDecl(name: String, resSort: Sort, argSorts: Seq[Sort]): Z3FuncDecl[Z3Sort] = {
     val existingEntry = funcDeclCache.get((name, argSorts, resSort))
     if (existingEntry.isDefined)
       return existingEntry.get
@@ -484,13 +486,13 @@ class TermToZ3APIConverter
 
 
   @inline
-  protected def createSMTApp(functionName: String, args: Seq[Term]): Z3Expr = {
+  protected def createSMTApp(functionName: String, args: Seq[Term]): Z3Expr[_] = {
     // workaround: since we cannot create a function application with just the name, we let Z3 parse
     // a string that uses the function, take the AST, and get the func decl from there, so that we can
     // programmatically create a func app.
 
     val cacheKey = (functionName, args.map(_.sort))
-    val (decl, additionalArgs: Seq[Z3Expr]) = if (smtFuncDeclCache.contains(cacheKey)) {
+    val (decl, additionalArgs) = if (smtFuncDeclCache.contains(cacheKey)) {
       smtFuncDeclCache(cacheKey)
     } else {
       val declPreamble = "(define-sort $Perm () Real) " // ME: Re-declare the Perm sort.
@@ -506,11 +508,11 @@ class TermToZ3APIConverter
       val assertion = decls + s" (assert (= ${funcAppString} ${funcAppString}))"
       val workaround = ctx.parseSMTLIB2String(assertion, null, null, null, null)
       val app = workaround(0).getArgs()(0)
-      val decl = app.getFuncDecl
-      val additionalArgs = if (decl.getArity > args.length) {
+      val decl = asFuncDecl(app.getFuncDecl)
+      val additionalArgs: Seq[Z3Expr[Z3Sort]] = if (decl.getArity > args.length) {
         // the function name we got wasn't just a function name but also contained a first argument.
         // this happens with float operations where functionName contains a rounding mode.
-        app.getArgs.toSeq.slice(0, decl.getArity - args.length)
+        app.getArgs.toSeq.slice(0, decl.getArity - args.length).map(asAny)
       } else {
         Seq()
       }
@@ -518,16 +520,16 @@ class TermToZ3APIConverter
       (decl, additionalArgs)
     }
 
-    val actualArgs = additionalArgs ++ args.map(convertTerm(_))
+    val actualArgs = additionalArgs ++ args.map(a => asAny(convertTerm(a)))
     ctx.mkApp(decl, actualArgs.toArray : _*)
   }
 
 
-  protected def convertToReal(t: Term): RealExpr =
+  protected def convertToReal(t: Term): Z3Expr[RealSort] =
     if (t.sort == sorts.Int)
-      ctx.mkInt2Real(convertTerm(t).asInstanceOf[IntExpr])
+      ctx.mkInt2Real(asInt(convertTerm(t)))
     else
-      convertTerm(t).asInstanceOf[RealExpr]
+      asReal(convertTerm(t))
 
   protected def render(id: Identifier, sanitizeIdentifier: Boolean = true): String = {
     val repr: String = id match {
@@ -572,4 +574,26 @@ class TermToZ3APIConverter
   }
 
   override def convertSanitized(s: Sort): Z3Sort = convertSort(s)
+}
+
+object TermToZ3APIConverter {
+  /**
+    * Since Z3 4.9, the Java API's datatype-related classes carry a type parameter that only serves to distinguish
+    * different datatype sorts on the Java type level; it is unrelated to Z3's own type system and erased at runtime.
+    * We use this marker for the (single) datatype we declare, namely $Snap.
+    */
+  sealed trait SnapMarker
+
+  /* Z3's Java API is generic in the sort of an expression, but Silicon's terms are only sorted on the Silicon level,
+   * so all conversion functions return expressions of an unknown sort. The following helpers re-attach the sort
+   * information that the caller (i.e., the shape of the term being converted) guarantees. Since the type parameters
+   * are erased, these casts always succeed; they are checked by Z3 itself when the expression is created.
+   */
+
+  @inline def asAny(e: Z3Expr[_]): Z3Expr[Z3Sort] = e.asInstanceOf[Z3Expr[Z3Sort]]
+  @inline def asBool(e: Z3Expr[_]): Z3Expr[BoolSort] = e.asInstanceOf[Z3Expr[BoolSort]]
+  @inline def asArith(e: Z3Expr[_]): Z3Expr[ArithSort] = e.asInstanceOf[Z3Expr[ArithSort]]
+  @inline def asInt(e: Z3Expr[_]): Z3Expr[IntSort] = e.asInstanceOf[Z3Expr[IntSort]]
+  @inline def asReal(e: Z3Expr[_]): Z3Expr[RealSort] = e.asInstanceOf[Z3Expr[RealSort]]
+  @inline def asFuncDecl(f: Z3FuncDecl[_]): Z3FuncDecl[Z3Sort] = f.asInstanceOf[Z3FuncDecl[Z3Sort]]
 }

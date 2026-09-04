@@ -55,6 +55,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     private var freshVars: Vector[Var] = Vector.empty
     private var postConditionAxioms: Vector[Term] = Vector.empty
 
+    val functionEncoding: FunctionEncoding =
+      if (Verifier.config.maskHeapMode()) new MaskHeapFunctionEncoding(symbolConverter, identifierFactory)
+      else new DefaultFunctionEncoding
+
     private val expressionTranslator = {
       def resolutionFailureMessage(exp: ast.Positioned, data: FunctionData): String = (
           s"Could not resolve expression $exp (${exp.pos}) during the axiomatisation of "
@@ -63,7 +67,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         +  "a fresh symbol, i.e. an arbitrary value.")
 
       new HeapAccessReplacingExpressionTranslator(
-        symbolConverter, fresh, resolutionFailureMessage, (_, _) => false, reporter)
+        symbolConverter, fresh, resolutionFailureMessage, (_, _) => false, reporter, functionEncoding)
     }
 
     var predicateData: Map[String, PredicateData] = _
@@ -97,8 +101,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           val func = program.findFunction(funcName)
           val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(func, program))
           val data = new FunctionData(func, height, quantifiedFields, program)(symbolConverter, expressionTranslator,
-                                      identifierFactory, pred => predicateData(pred.name), Verifier.config,
-                                      reporter)
+                                      identifierFactory, pred => predicateData(pred.name), functionEncoding,
+                                      Verifier.config, reporter)
           funcName -> data})
 
       /* TODO: FunctionData and HeapAccessReplacingExpressionTranslator depend
@@ -119,7 +123,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     private def generateFunctionSymbolsAfterAnalysis: Iterable[Either[String, Decl]] = (
          Seq(Left("Declaring symbols related to program functions (from program analysis)"))
       ++ functionData.values.flatMap(data =>
-            Seq(data.function, data.limitedFunction, data.statelessFunction, data.preconditionFunction).map(FunctionDecl)
+            (Seq(data.function, data.limitedFunction, data.statelessFunction, data.preconditionFunction)
+              ++ functionEncoding.auxiliaryFunctions(data)).map(FunctionDecl)
          ).map(Right(_))
     )
 
@@ -187,6 +192,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (result1, phase1data) =>
           emitAndRecordFunctionAxioms(data.limitedAxiom)
           emitAndRecordFunctionAxioms(data.triggerAxiom)
+          functionEncoding.declsAfterWellDefinedness(data) map decider.prover.declare
+          emitAndRecordFunctionAxioms(functionEncoding.auxiliaryAxioms(data): _*)
           emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
           emitAndRecordFunctionAxioms(data.postPreconditionPropagationAxiom: _*)
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom.toSeq
@@ -224,7 +231,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (localVar, t) => (localVar, (t, Option.when(evaluator.withExp)(LocalVarWithVersion(simplifyVariableName(t.id.name), localVar.typ)(localVar.pos, localVar.info, localVar.errT))))
       }
       val g = Store(argsStore + (function.result -> (data.formalResult, data.valFormalResultExp)))
-      val s = sInit.copy(g = g, h = v.heapSupporter.getEmptyHeap(sInit.program), oldHeaps = OldHeaps())
+      val s = sInit.copy(g = g, h = v.heapSupporter.getEmptyHeap(sInit.program, v, mayDefineNewVars = false), oldHeaps = OldHeaps())
 
       var phase1Data: Seq[Phase1Data] = Vector.empty
       var recorders: Seq[FunctionRecorder] = Vector.empty

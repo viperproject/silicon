@@ -9,13 +9,11 @@ package viper.silicon.rules
 import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.Config.JoinMode
-
-import scala.annotation.unused
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.verifier.{CounterexampleTransformer, NullPartialVerificationError, PartialVerificationError}
 import viper.silver.verifier.errors._
-import viper.silver.reporter.{PathProcessedMessage, BlockReachedMessage}
+import viper.silver.reporter.{BlockReachedMessage, PathProcessedMessage}
 import viper.silver.verifier.reasons._
 import viper.silver.{ast, cfg}
 import viper.silicon.decider.RecordedPathConditions
@@ -24,9 +22,10 @@ import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, 
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableName}
-import viper.silicon.utils.freshSnap
+import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
+import scala.annotation.unused
 import java.util.concurrent.atomic.AtomicInteger
 
 trait ExecutionRules extends SymbolicExecutionRules {
@@ -275,7 +274,7 @@ object executor extends ExecutionRules {
             val gBody = Store(wvs.foldLeft(sLocal.g.values)((map, x) => {
               val xNew = v.decider.fresh(x)
               map.updated(x, xNew)}))
-            val sBody = sLocal.copy(g = gBody, h = v.heapSupporter.getEmptyHeap(s.program))
+            val sBody = sLocal.copy(g = gBody, h = v.heapSupporter.getEmptyHeap(s.program, v))
 
             val edges = sLocal.methodCfg.outEdges(block)
             val (outEdges, otherEdges) = edges partition(_.kind == cfg.Kind.Out)
@@ -395,7 +394,7 @@ object executor extends ExecutionRules {
         execs(s, stmts, v)(Q)
 
       case ast.Label(name, _) =>
-        val s1 = s.copy(oldHeaps = s.oldHeaps + (name -> magicWandSupporter.getEvalHeap(s)))
+        val s1 = s.copy(oldHeaps = s.oldHeaps + (name -> magicWandSupporter.getEvalHeap(s, v)))
         Q(s1, v)
 
       case ast.LocalVarDeclStmt(decl) =>
@@ -451,8 +450,8 @@ object executor extends ExecutionRules {
         val esNew = eRcvrNew.map(rcvr => BigAnd(viper.silicon.state.utils.computeReferenceDisjointnessesExp(s, rcvr)))
         addFieldPerms(s, fields, v)((s0, v0) => {
           val s1 = s0.copy(g = s0.g + (x, (tRcvr, eRcvrNew)))
-          val (debugHeapName, _) = v.getDebugOldLabel(s1, stmt.pos, Some(magicWandSupporter.getEvalHeap(s1)))
-          val s2 = if (withExp) s1.copy(oldHeaps = s1.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s1))) else s1
+          val (debugHeapName, _) = v.getDebugOldLabel(s1, stmt.pos, Some(magicWandSupporter.getEvalHeap(s1, v0)))
+          val s2 = if (withExp) s1.copy(oldHeaps = s1.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s1, v0))) else s1
           v0.decider.assume(ts, Option.when(withExp)(DebugExp.createInstance(Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false)
           Q(s2, v0)
         })
@@ -474,7 +473,7 @@ object executor extends ExecutionRules {
 
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
-        executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
+        executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s, v)), v)((s1, v1, QS) => {
           if (v1.decider.checkSmoke(true))
             QS(s1.copy(h = s.h), v1)
           else
@@ -492,8 +491,7 @@ object executor extends ExecutionRules {
         val pve = AssertFailed(assert)
 
         if (s.exhaleExt) {
-          Predef.assert(s.h.values.isEmpty)
-          Predef.assert(s.reserveHeaps.head.values.isEmpty)
+          v.heapSupporter.checkEmptyExhaleExtState(s)
 
           /* When exhaleExt is set magicWandSupporter.transfer is used to transfer permissions to
            * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
@@ -561,13 +559,49 @@ object executor extends ExecutionRules {
             tArgs zip Seq.fill(tArgs.size)(None)
           val s2 = s1.copy(g = Store(fargs.zip(argsWithExp)),
                            recordVisited = true)
-          consumes(s2, meth.pres, false, _ => pvePre, v1)((s3, _, v2) => {
+          // Check if we need to reconstruct an old heap for producing the postcondition, which is
+          // the case if we're inside a package statement and the postcondition contains and old expression.
+          val needsOldHeapReconstruct = s.exhaleExt && meth.posts.exists(post => post.exists {
+            case _: ast.Old => true
+            case _ => false
+          })
+          consumes(s2, meth.pres, needsOldHeapReconstruct, _ => pvePre, v1)((s3, preSnap, v2) => {
             v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
             val postCondId = v2.symbExLog.openScope(postCondLog)
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
-            val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
+
+            val newOldHeaps = if (needsOldHeapReconstruct) {
+              // We're in the process of packaging a wand, which means that we cannot simply use the
+              // heap before the call as the old heap for producing the postcondition.
+              // Instead, we produce the preconditions again to get an evalHeap that contains all permissions
+              // that were consumed by the call, but does *not* contain arbitrary permissions from outer
+              // heaps. This is not pretty, but it seems necessary:
+              // If we simply take the evalHeap of s1, we might be missing permissions that were moved
+              // into the wand heaps from outer reserveHeaps while consuming the precondition (see issue #996).
+              // If we simply make an evalHeap out of *all* reserveHeaps, we may get a heap that contains
+              // e.g. duplicate permissions for the same field (from the wand lhs and the surrounding
+              // context), which would be inconsistent, so that if state consolidation happens during
+              // the postcondition consume, we'll assume false.
+              var oldHeapState: Option[State] = None
+              produces(s3, toSf(preSnap.get), meth.pres, _ => pveCallTransformed, v2)((so, _) => {
+                oldHeapState = Some(so)
+                Success()
+              })
+              val oldHeap = oldHeapState match {
+                case Some(so) => magicWandSupporter.getEvalHeap(so, v2)
+                case None => {
+                  // This basically should not happen, but to fail gracefully if it does because
+                  // of some incompleteness, we use an incomplete heap instead.
+                  magicWandSupporter.getEvalHeap(s1, v2)
+                }
+              }
+              s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> oldHeap)
+            } else {
+              s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1, v2))
+            }
+            val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = newOldHeaps)
             produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2)((s5, v3) => {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
@@ -618,11 +652,11 @@ object executor extends ExecutionRules {
         val pve = PackageFailed(pckg)
           magicWandSupporter.packageWand(s.copy(isInPackage = true), wand, proofScript, pve, v)((s1, chWand, v1) => {
 
-            val hOps = s1.reserveHeaps.head + chWand
+            val hOps = v1.heapSupporter.addWandChunk(s1.reserveHeaps.head, chWand, s1, v1)
             assert(s.exhaleExt || s1.reserveHeaps.length == 1)
             val s2 =
               if (s.exhaleExt) {
-                s1.copy(h = v1.heapSupporter.getEmptyHeap(s1.program),
+                s1.copy(h = v1.heapSupporter.getEmptyHeap(s1.program, v1),
                         exhaleExt = true,
                         /* It is assumed, that s.reserveHeaps.head (hUsed) is not used or changed
                          * by the packageWand method. hUsed is normally used during transferring

@@ -85,6 +85,8 @@ trait Decider {
   def freshARP(id: String = "$k"): (Var, Term, Option[ast.LocalVarWithVersion])
   def appliedFresh(id: String, sort: Sort, appliedArgs: Seq[Term]): App
 
+  def createAlias(t: Term, s: State): Term
+
   def generateModel(): Unit
   def getModel(): Model
   def clearModel(): Unit
@@ -498,6 +500,21 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       _declaredFreshFunctions = _declaredFreshFunctions + decl /* [BRANCH-PARALLELISATION] */
 
       fun
+    }
+
+    def createAlias(t: Term, s: State): Term = {
+      t match {
+        /* No aliases are introduced while a wand is being packaged (packagingWandSnapshots
+         * is non-empty): terms may then contain the wand's snapshot root, which ends up as a
+         * quantified variable in the MWSF definition. A macro whose body mentions the root
+         * would refer to the global constant rather than the bound variable. */
+        case hvr: HasVarRepr if hvr.varRepr.isEmpty && s.quantifiedVariables.isEmpty && s.packagingWandSnapshots.isEmpty && s.isMethodVerification =>
+          val md = freshMacro("tmpTerm", Seq(), t)
+          val mcr = Macro(md.id, Seq(), md.body.sort)
+          hvr.varRepr = Some(App(mcr, Seq()))
+          t
+        case _ => t
+      }
     }
 
 

@@ -22,7 +22,6 @@ import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Config, Map, toMap}
 import viper.silver.ast.LocalVarWithVersion
-import viper.silver.parser.PUnknown
 import viper.silver.reporter.Reporter
 
 trait FunctionRecorderHandler {
@@ -45,7 +44,7 @@ trait FunctionRecorderHandler {
 
   def getFreshSymbolsAcrossAllPhases: InsertionOrderedSet[Decl] = freshSymbolsAcrossAllPhases
 
-  def addRecorders(recorders: Seq[FunctionRecorder]): Unit = {
+  def addRecorders(recorders: Seq[FunctionRecorder], additionalFunctionDecls: Seq[Decl] = Seq()): Unit = {
     val mergedFunctionRecorder: FunctionRecorder =
       if (recorders.isEmpty)
         NoopFunctionRecorder
@@ -81,6 +80,7 @@ trait FunctionRecorderHandler {
         case App(f: Function, _) => FunctionDecl(f)
         case other => sys.error(s"Unexpected permission map $other of type ${other.getClass.getSimpleName}")
       })
+    freshSymbolsAcrossAllPhases ++= additionalFunctionDecls
   }
 
 }
@@ -95,9 +95,10 @@ class FunctionData(val programFunction: ast.Function,
                    *       with/in the context of different verifiers.
                    */
                   (symbolConverter: SymbolConverter,
-                   expressionTranslator: HeapAccessReplacingExpressionTranslator,
+                   private[functions] val expressionTranslator: HeapAccessReplacingExpressionTranslator,
                    identifierFactory: IdentifierFactory,
                    predicateData: ast.Predicate => PredicateData,
+                   val functionEncoding: FunctionEncoding,
                    @unused config: Config,
                    @unused reporter: Reporter)
     extends LazyLogging with FunctionRecorderHandler {
@@ -106,9 +107,10 @@ class FunctionData(val programFunction: ast.Function,
    * Properties computed from the constructor arguments
    */
 
-  val function: HeapDepFun = symbolConverter.toFunction(programFunction)
+  val function: HeapDepFun = symbolConverter.toFunction(programFunction, program)
+  val stateArgs: Seq[Var] = functionEncoding.stateArgs(programFunction, program, identifierFactory)
   val limitedFunction = functionSupporter.limitedVersion(function)
-  val statelessFunction = functionSupporter.statelessVersion(function)
+  val statelessFunction = functionSupporter.statelessVersion(function, stateArgs.length)
   val preconditionFunction = functionSupporter.preconditionVersion(function)
 
   val formalArgs: Map[ast.AbstractLocalVar, Var] = toMap(
@@ -123,17 +125,24 @@ class FunctionData(val programFunction: ast.Function,
 
   val valFormalResultExp = Option.when(Verifier.config.enableDebugging())(LocalVarWithVersion(simplifyVariableName(formalResult.id.name), programFunction.result.typ)())
 
-  val arguments = Seq(`?s`) ++ formalArgs.values
+  val arguments = stateArgs ++ formalArgs.values
+  val argumentsDuringFunctionVerification = Seq(`?s`) ++ formalArgs.values
+  val argumentExpsDuringFunctionVerification =
+    if (Verifier.config.enableDebugging()) {
+      Seq(Some(ast.LocalVar(`?s`.id.name, ast.InternalType)())) ++ formalArgs.keys.map(Some(_))
+    } else {
+      Seq.fill(1 + formalArgs.size)(None)
+    }
   val argumentExps =
     if (Verifier.config.enableDebugging())
       Seq(Some(ast.LocalVar(`?s`.id.name, ast.InternalType)())) ++ formalArgs.keys.map(Some(_))
     else
-      Seq.fill(1 + formalArgs.size)(None)
+      Seq.fill(stateArgs.size + formalArgs.size)(None)
 
-  val functionApplication = App(function, `?s` +: formalArgs.values.toSeq)
-  val limitedFunctionApplication = App(limitedFunction, `?s` +: formalArgs.values.toSeq)
+  val functionApplication = App(function, stateArgs ++ formalArgs.values.toSeq)
+  val limitedFunctionApplication = App(limitedFunction, stateArgs ++ formalArgs.values.toSeq)
   val triggerFunctionApplication = App(statelessFunction, formalArgs.values.toSeq)
-  val preconditionFunctionApplication = App(preconditionFunction, `?s` +: formalArgs.values.toSeq)
+  val preconditionFunctionApplication = App(preconditionFunction, stateArgs ++ formalArgs.values.toSeq)
 
   val limitedAxiom =
     Forall(arguments,
@@ -159,7 +168,8 @@ class FunctionData(val programFunction: ast.Function,
   private[functions] def advancePhase(recorders: Seq[FunctionRecorder]): Unit = {
     assert(0 <= phase && phase <= 1, s"Cannot advance from phase $phase")
 
-    addRecorders(recorders)
+    val additionalDecls = if (phase == 0) functionEncoding.declsAfterWellDefinedness(this) else Seq()
+    addRecorders(recorders, additionalDecls)
     phase += 1
   }
 
@@ -225,7 +235,7 @@ class FunctionData(val programFunction: ast.Function,
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
       val body = Let(toMap(bodyBindings), innermostBody)
 
-      Some(Forall(arguments, body, Trigger(limitedFunctionApplication)))
+      Some(functionEncoding.adaptAxiom(Forall(arguments, body, Trigger(limitedFunctionApplication)), this))
     } else
       None
   }
@@ -266,7 +276,7 @@ class FunctionData(val programFunction: ast.Function,
 
       /* TODO: Don't use translatePrecondition - refactor expressionTranslator */
       val args = (
-           expressionTranslator.getOrFail(locToSnap, predAcc, Seq(), sorts.Snap, Option.when(Verifier.config.enableDebugging())(PUnknown()))
+           functionEncoding.predicateTriggerStateArg(this, predAcc, expressionTranslator)
         +: expressionTranslator.translatePrecondition(program, predAcc.args, this))
 
       val fapp = App(triggerFunction, args)
@@ -291,19 +301,17 @@ class FunctionData(val programFunction: ast.Function,
       val funcAnn = programFunction.info.getUniqueInfo[ast.AnnotationInfo]
       val actualPredicateTriggers = funcAnn match {
         case Some(a) if a.values.contains("opaque") => Seq()
-        case _ => predicateTriggers.values.map(pt => Trigger(Seq(triggerFunctionApplication, pt)))
+        case _ => predicateTriggers.values.toSeq
       }
-      val allTriggers = (
-           Seq(Trigger(functionApplication)) ++ actualPredicateTriggers)
 
-      Forall(arguments, body, allTriggers)})
+      functionEncoding.adaptAxiom(functionEncoding.definitionalAxiom(this, body, actualPredicateTriggers), this)})
   }
 
   lazy val bodyPreconditionPropagationAxiom: Seq[Term] = {
     val pre = preconditionFunctionApplication
     val bodyPreconditions = if (programFunction.body.isDefined) optBody.map(translatedBody => {
       val body = Implies(pre, FunctionPreconditionTransformer.transform(translatedBody, program))
-      Forall(arguments, body, Seq(Trigger(functionApplication)))
+      functionEncoding.adaptAxiom(Forall(arguments, body, Seq(Trigger(functionApplication))), this)
     }) else None
     bodyPreconditions.toSeq
   }
@@ -313,7 +321,7 @@ class FunctionData(val programFunction: ast.Function,
     val postPreconditions = if (programFunction.posts.nonEmpty) {
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
       val bodies = translatedPosts.map(tPost => Let(bodyBindings, Implies(pre, FunctionPreconditionTransformer.transform(tPost, program))))
-      bodies.map(b => Forall(arguments, b, Seq(Trigger(limitedFunctionApplication))))
+      bodies.map(b => functionEncoding.adaptAxiom(Forall(arguments, b, Seq(Trigger(limitedFunctionApplication))), this))
     } else Seq()
     postPreconditions
   }

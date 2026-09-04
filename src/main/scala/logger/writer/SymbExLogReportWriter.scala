@@ -23,54 +23,62 @@ import viper.silver.ast.AbstractLocalVar
 /** Wrapper for the SymbExLogReport conversion to JSON. */
 object SymbExLogReportWriter {
 
-  private def inverseFunctionsToJSON(invs: InverseFunctions): JsValue = {
-    JsArray(
-      TermWriter.toJSON(invs.axiomInversesOfInvertibles),
-      TermWriter.toJSON(invs.axiomInvertiblesOfInverses)
-    )
+  private def inverseFunctionsToJSON(invs: Seq[InverseFunctions]): JsValue = {
+    if (invs.isEmpty)
+      JsNull
+    else
+      JsArray(
+        invs.flatMap(inv =>
+          inv.definitionalAxioms.map(a => TermWriter.toJSON(a))
+        ).toVector
+      )
   }
 
   private def heapChunkToJSON(chunk: Chunk) = chunk match {
-    case BasicChunk(PredicateID, id, args, _, snap, _, perm, _) =>
+    case BasicChunk(PredicateID, id, args, _, snap, _, perm, _, tag) =>
       JsObject(
         "type" -> JsString("basic_predicate_chunk"),
         "predicate" -> JsString(id.toString),
         "args" -> JsArray(args.map(TermWriter.toJSON).toVector),
         "snap" -> TermWriter.toJSON(snap),
-        "perm" -> TermWriter.toJSON(perm)
+        "perm" -> TermWriter.toJSON(perm),
+        "tag" -> JsString(tag.toString)
       )
 
-    case BasicChunk(FieldID, id, Seq(receiver), _, snap, _, perm, _) =>
+    case BasicChunk(FieldID, id, Seq(receiver), _, snap, _, perm, _, tag) =>
       JsObject(
         "type" -> JsString("basic_field_chunk"),
         "field" -> JsString(id.toString),
         "receiver" -> TermWriter.toJSON(receiver),
         "snap" -> TermWriter.toJSON(snap),
-        "perm" -> TermWriter.toJSON(perm)
+        "perm" -> TermWriter.toJSON(perm),
+        "tag" -> JsString(tag.toString)
       )
 
     // TODO: Are ID and bindings needed?
-    case MagicWandChunk(_, _, args, _, snap, perm, _) =>
+    case MagicWandChunk(_, _, args, _, snap, perm, _, tag) =>
       JsObject(
         "type" -> JsString("basic_magic_wand_chunk"),
         "args" -> JsArray(args.map(TermWriter.toJSON).toVector),
         "snap" -> TermWriter.toJSON(snap),
-        "perm" -> TermWriter.toJSON(perm)
+        "perm" -> TermWriter.toJSON(perm),
+        "tag" -> JsString(tag.toString)
       )
 
-    case QuantifiedFieldChunk(id, fvf, condition, _, perm, _, invs, receiver, _, hints) =>
+    case QuantifiedFieldChunk(id, fvf, _, condition, _, perm, _, invs, receiver, _, tag, hints) =>
       JsObject(
         "type" -> JsString("quantified_field_chunk"),
         "field" -> JsString(id.toString),
         "field_value_function" -> TermWriter.toJSON(fvf),
         "condition" -> TermWriter.toJSON(condition),
         "perm" -> TermWriter.toJSON(perm),
-        "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
+        "invs" -> inverseFunctionsToJSON(invs),
         "receiver" -> receiver.map(TermWriter.toJSON).getOrElse(JsNull),
+        "tag" -> JsString(tag.toString),
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
-    case QuantifiedPredicateChunk(id, vars, _, psf, condition, _, perm, _, invs, singletonArgs, _, hints) =>
+    case QuantifiedPredicateChunk(id, vars, _, psf, _,condition, _, perm, _, invs, singletonArgs, _, tag, hints) =>
       JsObject(
         "type" -> JsString("quantified_predicate_chunk"),
         "vars" -> JsArray(vars.map(TermWriter.toJSON).toVector),
@@ -78,20 +86,22 @@ object SymbExLogReportWriter {
         "predicate_snap_function" -> TermWriter.toJSON(psf),
         "condition" -> TermWriter.toJSON(condition),
         "perm" -> TermWriter.toJSON(perm),
-        "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
-        "singleton_args" -> singletonArgs.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).getOrElse(JsNull),
+        "invs" -> inverseFunctionsToJSON(invs),
+        "singleton_args" -> JsArray(singletonArgs.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).toVector),
+        "tag" -> JsString(tag.toString),
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
-    case QuantifiedMagicWandChunk(id, vars, _, wsf, perm, _, invs, singletonArgs, _, hints) =>
+    case QuantifiedMagicWandChunk(id, vars, _, wsf, _, perm, _, invs, singletonArgs, _, tag, hints) =>
       JsObject(
         "type" -> JsString("quantified_magic_wand_chunk"),
         "vars" -> JsArray(vars.map(TermWriter.toJSON).toVector),
         "predicate" -> JsString(id.toString),
         "wand_snap_function" -> TermWriter.toJSON(wsf),
         "perm" -> TermWriter.toJSON(perm),
-        "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
-        "singleton_args" -> singletonArgs.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).getOrElse(JsNull),
+        "invs" -> inverseFunctionsToJSON(invs),
+        "singleton_args" -> JsArray(singletonArgs.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).toVector),
+        "tag" -> JsString(tag.toString),
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 

@@ -40,7 +40,7 @@ object Silicon {
   val version: String =
     s"${BuildInfo.projectVersion}${buildVersion.fold("")(v => s" ($v)")}"
 
-  val copyright = "(c) Copyright ETH Zurich 2012 - 2019"
+  val copyright = "(c) Copyright ETH Zurich 2012 - 2026"
   val dependencies = Z3ProverStdIO.dependencies ++ Cvc5ProverStdIO.dependencies
 
   def optionsFromScalaTestConfigMap(configMap: collection.Map[String, Any]): Seq[String] =

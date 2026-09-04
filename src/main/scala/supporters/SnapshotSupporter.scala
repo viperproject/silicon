@@ -8,7 +8,7 @@ package viper.silicon.supporters
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon.state.terms.{Combine, First, Second, Sort, Term, Unit, sorts}
-import viper.silicon.state.{State, SymbolConverter}
+import viper.silicon.state.{Heap, State, SymbolConverter}
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -28,9 +28,50 @@ trait SnapshotSupporter {
                          a1: ast.Exp,
                          v: Verifier)
                         : ((Sort, Verifier) => Term, (Sort, Verifier) => Term)
+
+  /** The snapshot of an empty sequence of consumed conjuncts. */
+  def unitSnapshot: Term
+
+  /** Combines the snapshots of two consumed conjunct sequences into one; `a1` is the
+    * conjunct that produced `snap1`, `a2` the remaining conjuncts that produced `snap2`. */
+  def combineSnapshots(s: State, snap1: Term, snap2: Term, a1: ast.Exp, a2: Seq[ast.Exp], v: Verifier): Term
+
+  /** Converts the accumulated snapshot of a completed (top-level) consume into the
+    * snapshot representation handed to clients of consume/consumes. `h` is the heap
+    * the assertions were consumed from (before the consume), `as` the consumed
+    * top-level conjuncts. */
+  def finalizeConsumedSnapshot(s: State, h: Heap, snap: Term, as: Seq[ast.Exp], v: Verifier): Term
+
+  /** The constraint (if any) stating that the given snapshot is empty; assumed when a
+    * produced conjunct contributes no snapshot (e.g. pure assertions, dead branches).
+    * The snapshot is passed by name since evaluating the snapshot function may have
+    * side effects (e.g. creating fresh symbols) that implementations may want to avoid. */
+  def emptySnapshotConstraint(snap: => Term): Option[Term]
+
+  /** Adapts the snapshot function passed to a (top-level) produce to the internal
+    * snapshot representation used while producing `as`. */
+  def adaptProduceSnapshotFunction(s: State,
+                                   sf: (Sort, Verifier) => Term,
+                                   as: Seq[ast.Exp],
+                                   v: Verifier)
+                                  : (Sort, Verifier) => Term
 }
 
 class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends SnapshotSupporter {
+  def unitSnapshot: Term = Unit
+
+  def combineSnapshots(s: State, snap1: Term, snap2: Term, a1: ast.Exp, a2: Seq[ast.Exp], v: Verifier): Term = Combine(snap1, snap2)
+
+  def finalizeConsumedSnapshot(s: State, h: Heap, snap: Term, as: Seq[ast.Exp], v: Verifier): Term = snap
+
+  def emptySnapshotConstraint(snap: => Term): Option[Term] = Some(snap === Unit)
+
+  def adaptProduceSnapshotFunction(s: State,
+                                   sf: (Sort, Verifier) => Term,
+                                   as: Seq[ast.Exp],
+                                   v: Verifier)
+                                  : (Sort, Verifier) => Term = sf
+
   def optimalSnapshotSort(a: ast.Exp, program: ast.Program): (Sort, Boolean) =
     optimalSnapshotSort(a, program, Nil)
 

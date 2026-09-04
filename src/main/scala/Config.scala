@@ -536,6 +536,18 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  lazy val maskHeapMode: ScallopOption[Boolean] = opt[Boolean]("maskHeapMode",
+    descr = "Use total heap encoding with mask and heap maps",
+    default = Some(false),
+    noshort = true
+  )
+
+  lazy val simplifyOnConsume: ScallopOption[Boolean] = opt[Boolean]("simplifyOnConsume",
+    descr = "Simplify mask on consume in maskHeapMode",
+    default = Some(false),
+    noshort = true
+  )
+
   val moreJoins: ScallopOption[JoinMode] = opt[JoinMode]("moreJoins",
     descr = s"Decides when to join branches. Options are:\n${JoinMode.helpText}",
     default = Some(JoinMode.Off),
@@ -548,6 +560,15 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )(exhaleModeConverter)
 
+  val exhaleModeOptionQP: ScallopOption[ExhaleMode] = opt[ExhaleMode]("exhaleModeQP",
+    descr = "Exhale mode for quantified permissions. Options are 0 (greedy), "
+          + "1 (standard complete exhale, default), 2 (greedy, retrying with the complete exhale on failure). "
+          + "The greedy modes also enable tag- and original-condition-based merging of quantified chunks "
+          + "during state consolidation.",
+    default = None,
+    noshort = true
+  )(exhaleModeConverter)
+
   lazy val exhaleMode: ExhaleMode = {
     if (exhaleModeOption.isDefined)
       exhaleModeOption()
@@ -555,6 +576,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       ExhaleMode.MoreComplete
     else
       ExhaleMode.Greedy
+  }
+
+  lazy val exhaleModeQP: ExhaleMode = {
+    if (exhaleModeOptionQP.isDefined)
+      exhaleModeOptionQP()
+    else
+      ExhaleMode.MoreComplete
   }
 
   val unsafeWildcardOptimization: ScallopOption[Boolean] = opt[Boolean]("unsafeWildcardOptimization",
@@ -732,6 +760,54 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
         + s"${exhaleModeOption.name} to 1 (more complete exhale)")
     case (_, Some(true), Some(m)) if m != ExhaleMode.MoreComplete =>
       Left(s"Contradictory values given for options ${moreCompleteExhale.name} and ${exhaleModeOption.name}")
+    case _ => Right(())
+  }
+
+  validateOpt(simplifyOnConsume, maskHeapMode) {
+    case (Some(true), Some(true)) => Right(())
+    case (Some(true), _) => Left(s"Option ${simplifyOnConsume.name} is only supported in combination with ${maskHeapMode.name}")
+    case _ => Right(())
+  }
+
+  validateOpt(counterexample, maskHeapMode) {
+    case (Some(_), Some(true)) =>
+      Left(s"Option ${counterexample.name} is not supported in combination with ${maskHeapMode.name}")
+    case _ => Right(())
+  }
+
+  validateOpt(exhaleModeOption, maskHeapMode) {
+    case (Some(_), Some(true)) =>
+      Left(s"Option ${exhaleModeOption.name} is not supported in combination with ${maskHeapMode.name}")
+    case _ => Right(())
+  }
+
+  validateOpt(exhaleModeOptionQP, maskHeapMode) {
+    case (Some(_), Some(true)) =>
+      Left(s"Option ${exhaleModeOptionQP.name} is not supported in combination with ${maskHeapMode.name}")
+    case _ => Right(())
+  }
+
+  validateOpt(moreCompleteExhale, maskHeapMode) {
+    case (Some(true), Some(true)) =>
+      Left(s"Option ${moreCompleteExhale.name} is not supported in combination with ${maskHeapMode.name}")
+    case _ => Right(())
+  }
+
+  validateOpt(enableDebugging, maskHeapMode) {
+    case (Some(true), Some(true)) =>
+      Left(s"Option ${enableDebugging.name} is not supported in combination with ${maskHeapMode.name}")
+    case _ => Right(())
+  }
+
+  validateOpt(enablePredicateTriggersOnInhale, maskHeapMode) {
+    case (Some(true), Some(true)) =>
+      Left(s"Option ${enablePredicateTriggersOnInhale.name} has no effect in combination with ${maskHeapMode.name}")
+    case _ => Right(())
+  }
+
+  validateOpt(stateConsolidationMode, maskHeapMode) {
+    case (Some(m), Some(true)) if m != StateConsolidationMode.Default =>
+      Left(s"Option ${stateConsolidationMode.name} is not supported in combination with ${maskHeapMode.name}")
     case _ => Right(())
   }
 
