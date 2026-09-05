@@ -407,35 +407,39 @@ object consumer extends ConsumptionRules {
      * the tryOrFail that wraps the consumption of each top-level conjunct would not consolidate
      * the right heap.
      */
-    val s1 = s.copy(h = magicWandSupporter.getEvalHeap(s, v),
+    val s0 = s.copy(h = magicWandSupporter.getEvalHeap(s, v),
                     reserveHeaps = Nil,
                     exhaleExt = false)
 
-    executionFlowController.tryOrFail0(s1, v)((s2, v1, QS) => {
-      eval(s2, e, pve, v1)((s3, t, eNew, v2) => {
+    executionFlowController.tryOrFail0(s0, v)((s1, v1, QS) => {
+      eval(s1, e, pve, v1)((s2, t, eNew, v2) => {
         val termToAssert = t match {
           case Quantification(q, vars, body, trgs, name, isGlob, weight) =>
-            val transformed = FunctionPreconditionTransformer.transform(body, s3.program)
+            val transformed = FunctionPreconditionTransformer.transform(body, s2.program)
+            val comment = eNew match {
+              case Some(eNew2) => "Function preconditions hold in quantifier: " + eNew2.toString
+              case None => "Function preconditions hold in quantifier"
+            }
             v2.decider.assume(Quantification(q, vars, transformed, trgs, name+"_precondition", isGlob, weight),
-              Option.when(debugOn)(DebugExp.createInstance("Function preconditions hold in quantifier " + eNew.toString, true)))
+              Option.when(debugOn)(DebugExp.createInstance(comment, true)))
             Quantification(q, vars, Implies(transformed, body), trgs, name, isGlob, weight)
           case _ => t
         }
         v2.decider.assert(termToAssert) {
           case true =>
             v2.decider.assume(t, Option.when(debugOn)(e), eNew)
-            QS(s3, v2)
+            QS(s2, v2)
           case false =>
-            val failure = createFailure(pve dueTo AssertionFalse(e), v2, s3, termToAssert, eNew)
-            if (s3.retryLevel == 0 && v2.reportFurtherErrors()){
+            val failure = createFailure(pve dueTo AssertionFalse(e), v2, s2, termToAssert, eNew)
+            if (s2.retryLevel == 0 && v2.reportFurtherErrors()){
               v2.decider.assume(t, Option.when(debugOn)(e), eNew)
-              failure combine QS(s3, v2)
+              failure combine QS(s2, v2)
             } else failure}})
     })((s4, v4) => {
-      val s5 = s4.copy(h = s.h,
+      val s4a = s4.copy(h = s.h,
                        reserveHeaps = s.reserveHeaps,
                        exhaleExt = s.exhaleExt)
-      Q(s5, if (returnSnap) Some(v4.snapshotSupporter.unitSnapshot) else None, v4)
+      Q(s4a, if (returnSnap) Some(v4.snapshotSupporter.unitSnapshot) else None, v4)
     })
   }
 }
