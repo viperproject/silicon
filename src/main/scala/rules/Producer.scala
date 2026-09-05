@@ -232,7 +232,7 @@ object producer extends ProductionRules {
               }),
               (s2, v2) => {
                 v2.snapshotSupporter.emptySnapshotConstraint(sf(sorts.Snap, v2)).foreach(c =>
-                  v2.decider.assume(c, Option.when(withExp)(DebugExp.createInstance("Empty snapshot", true))))
+                  v2.decider.assume(c, Option.when(debugOn)(DebugExp.createInstance("Empty snapshot", true))))
                 /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                  * otherwise. In order words, only make this assumption if `sf` has
                  * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
@@ -264,7 +264,7 @@ object producer extends ProductionRules {
             }),
             (s2, v2) => {
                 v2.snapshotSupporter.emptySnapshotConstraint(sf(sorts.Snap, v2)).foreach(c =>
-                  v2.decider.assume(c, Option.when(withExp)(DebugExp.createInstance("Empty snapshot", true))))
+                  v2.decider.assume(c, Option.when(debugOn)(DebugExp.createInstance("Empty snapshot", true))))
                   /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                    * otherwise. In order words, only make this assumption if `sf` has
                    * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
@@ -345,7 +345,7 @@ object producer extends ProductionRules {
         val resAcc = accPred.loc
         val eArgs = resAcc.args(s.program)
         val tFormalArgs = s.getFormalArgVars(resource, v)
-        val eFormalArgs = Option.when(withExp)(s.getFormalArgDecls(resource))
+        val eFormalArgs = Option.when(debugOn)(s.getFormalArgDecls(resource))
         val ePerm = accPred.perm
         val qid =
           accPred match {
@@ -363,12 +363,13 @@ object producer extends ProductionRules {
         evalQuantified(s0, Forall, forall.variables, Seq(cond), ePerm +: eArgs, optTrigger, qid, pve, v) {
           case (s1, qvars, qvarExps, Seq(tCond), eCondNew, Some((Seq(tPerm, tArgs@_*), permArgs, tTriggers, (auxGlobals, auxNonGlobals), auxExps)), v1) =>
             val s1a = s1.copy(constrainableARPs = s.constrainableARPs)
-            v1.heapSupporter.produceQuantified(s1a, sf, forall, resource, qvars, qvarExps, tFormalArgs, eFormalArgs, qid, optTrigger, tTriggers, auxGlobals, auxNonGlobals,
-              auxExps.map(_._1), auxExps.map(_._2), tCond, eCondNew.map(_.head), tArgs, permArgs.map(_.tail), tPerm, permArgs.map(_.head), pve, NegativePermission(ePerm),
-              QPAssertionNotInjective(resAcc), v1)((s2, v2) => {
-              Q(s2.copy(functionRecorder = s2.functionRecorder.leaveQuantifiedExp(qpa)), v2)
-            })
-          case (s1, _, _, _, _, None, v1) => Q(s1.copy(constrainableARPs = s.constrainableARPs), v1)
+            v1.heapSupporter.produceQuantified(s1a, sf, forall, resource, qvars, qvarExps, tFormalArgs, eFormalArgs, qid, optTrigger, tTriggers,
+              auxGlobals, auxNonGlobals, auxExps.map(_._1), auxExps.map(_._2), tCond, eCondNew.map(_.head), tArgs, permArgs.map(_.tail),
+              tPerm, permArgs.map(_.head), pve, NegativePermission(ePerm), QPAssertionNotInjective(resAcc), v1)((s2, v2) =>
+                Q(s2.copy(functionRecorder = s2.functionRecorder.leaveQuantifiedExp(qpa)), v2)
+              )
+          case (s1, _, _, _, _, None, v1) =>
+            Q(s1.copy(constrainableARPs = s.constrainableARPs), v1)
         }
 
       case _: ast.InhaleExhaleExp =>
@@ -377,9 +378,9 @@ object producer extends ProductionRules {
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
         v.snapshotSupporter.emptySnapshotConstraint(sf(sorts.Snap, v)).foreach(c =>
-          v.decider.assume(c, Option.when(withExp)(DebugExp.createInstance("Empty snapshot", true)))) /* TODO: See comment for case ast.Implies above */
+          v.decider.assume(c, Option.when(debugOn)(DebugExp.createInstance("Empty snapshot", true)))) /* TODO: See comment for case ast.Implies above */
         eval(s, a, pve, v)((s1, t, aNew, v1) => {
-          v1.decider.assume(t, Option.when(withExp)(a), aNew)
+          v1.decider.assume(t, Option.when(debugOn)(a), aNew)
           Q(s1, v1)})
     }
 

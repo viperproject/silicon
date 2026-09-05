@@ -96,7 +96,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                  : VerificationResult = {
     evaluateWandArguments(s, wand, pve, v)((s1, ts, esNew, v1) =>
       Q(s1, MagicWandChunk(MagicWandIdentifier(wand, s.program), s1.g.values, ts, esNew, snap, FullPerm,
-        Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), None), v1)
+        Option.when(debugOn)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), None), v1)
     )
   }
 
@@ -114,13 +114,13 @@ object magicWandSupporter extends SymbolicExecutionRules {
    * @return Fresh instance of [[viper.silicon.state.terms.MagicWandSnapshot]]
    */
   def createMagicWandSnapshot(abstractLhs: Var, rhsSnapshot: Term, v: Verifier): MagicWandSnapshot = {
-    val mwsf = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction, Option.when(withExp)(PUnknown()))
+    val mwsf = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction, Option.when(debugOn)(PUnknown()))
     val magicWandSnapshot = MagicWandSnapshot(mwsf)
     v.decider.assumeDefinition(Forall(
       abstractLhs,
       MWSFLookup(mwsf, abstractLhs) === rhsSnapshot,
       Trigger(MWSFLookup(mwsf, abstractLhs))
-    ), Option.when(withExp)(DebugExp.createInstance("Magic wand snapshot definition", true)))
+    ), Option.when(debugOn)(DebugExp.createInstance("Magic wand snapshot definition", true)))
     magicWandSnapshot
   }
 
@@ -183,7 +183,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
               case (Some(ch1: QuantifiedBasicChunk), Some(ch2: QuantifiedBasicChunk)) => ch1.snapshotMap === ch2.snapshotMap
               case _ => True
             }
-            v.decider.assume(tEq, Option.when(withExp)(DebugExp.createInstance("Snapshots", isInternal_ = true)))
+            v.decider.assume(tEq, Option.when(debugOn)(DebugExp.createInstance("Snapshots", isInternal_ = true)))
 
             /* In the future it might be worth to recheck whether the permissions needed, in the case of
              * success being an instance of Incomplete, are zero.
@@ -324,7 +324,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark).definitionsOnly
 
         val (pcsWithFreshSnapRoot, pcsWithoutFreshSnapRoot) = conservedPcs.flatMap(pcs => pcs.conditionalized).partition(_.contains(freshSnapRoot))
-        val pcsWithoutExp = Option.when(withExp)(filterDebugExpsWithoutSnapshot(conservedPcs.flatMap(pcs => pcs.conditionalizedExp), freshSnapRoot))
+        val pcsWithoutExp = Option.when(debugOn)(filterDebugExpsWithoutSnapshot(conservedPcs.flatMap(pcs => pcs.conditionalizedExp), freshSnapRoot))
         // For all path conditions which include the freshSnapRoot, add those as part of the definition of the MWSF in the same forall quantifier
         val pcsQuantified = Forall(
           freshSnapRoot,
@@ -339,7 +339,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         val (ch, groundPcs, groundPcsExp) = v2.heapSupporter.createWandChunk(s2, wand, tArgs, eArgsNew, wandSnapshot, v2)
 
         val tPcs = (pcsQuantified +: pcsWithoutFreshSnapRoot) ++ groundPcs
-        val ePcs = Option.when(withExp)(DebugExp.createInstance("MWSF definition path conditions", pcsQuantified, true) +: (pcsWithoutExp.get ++ groundPcsExp.get))
+        val ePcs = Option.when(debugOn)(DebugExp.createInstance("MWSF definition path conditions", pcsQuantified, true) +: (pcsWithoutExp.get ++ groundPcsExp.get))
 
         val s3 = s2.copy(packagingWandSnapshots = s2.packagingWandSnapshots.filterNot(_._1 == freshSnapRoot))
         appendToResults(s3, ch, v2.decider.pcs.after(preMark), (tPcs, ePcs), v2)
@@ -359,7 +359,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
       // Record the abstract LHS snapshot so that new declarations created while packaging are parameterized by it
       // (see State.packagingWandSnapshots); each apply of the resulting wand then gets its own LHS snapshot.
-      val freshSnapshotRootVar = Option.when(withExp)(ast.LocalVar("LHS", ast.InternalType)())
+      val freshSnapshotRootVar = Option.when(debugOn)(ast.LocalVar("LHS", ast.InternalType)())
       val s1WithSnapRoot = s1.copy(packagingWandSnapshots = (freshSnapRoot, freshSnapshotRootVar) +: s1.packagingWandSnapshots)
 
       // Produce the wand's LHS.
@@ -428,7 +428,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         // We execute the continuation Q in a new scope with all branch conditions and all conserved path conditions.
         executionFlowController.locally(s1, v)((s2, v1) => {
           val exp = viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_._1))
-          val expNew = Option.when(withExp)(viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_._2.get)))
+          val expNew = Option.when(debugOn)(viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_._2.get)))
           // Set the branch conditions
           v1.decider.setCurrentBranchCondition(And(branchConditions), (exp, expNew))
 
