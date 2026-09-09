@@ -152,6 +152,7 @@ object havocSupporter extends SymbolicExecutionRules {
             Q(s1.copy(h = newHeap), v1)
         }
       case (s1, _, _, _, _, None, v1) => Q(s1, v1)
+      case other => sys.error(s"Unexpected result $other when evaluating havocall statement $havocall")
     }
   }
 

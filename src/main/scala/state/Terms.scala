@@ -529,7 +529,7 @@ trait ConditionalFlyweight[T, V] { self: AnyRef =>
       (
         this.eq(other.asInstanceOf[AnyRef])
           || (other match {
-          case se: ConditionalFlyweight[T, V] if this.getClass.eq(se.getClass) =>
+          case se: ConditionalFlyweight[T@unchecked, V@unchecked] if this.getClass.eq(se.getClass) =>
             equalityDefiningMembers == se.equalityDefiningMembers
           case _ => false
         }))
@@ -2421,7 +2421,7 @@ class HeapLookup(val heap: Term, val at: Term) extends Term with ConditionalFlyw
 
   val equalityDefiningMembers = (heap, at)
 
-  val sort = heap.sort match {
+  val sort = (heap.sort: @unchecked) match {
     case sorts.PredHeapSort => sorts.Snap
     case sorts.PredMaskSort => sorts.Perm
     case sorts.HeapSort(valueSort) => valueSort
@@ -2516,7 +2516,7 @@ class HeapSingleton(val at: Term, val value: Term, val sort: Sort) extends Term 
 }
 
 object HeapSingleton extends CondFlyweightTermFactory[(Term, Term, Sort), HeapSingleton] {
-  override def apply(v0: (Term, Term, Sort)) = v0._3 match {
+  override def apply(v0: (Term, Term, Sort)) = v0._2 match {
     case HeapLookup(otherHeap, at2) if v0._1 == at2 => otherHeap
     case _ => createIfNonExistent(v0)
   }

@@ -22,17 +22,16 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.utils.consumeExactRead
 import viper.silicon.supporters.functions.{FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.utils.ast.{BigAnd, buildMinExp}
-import viper.silicon.utils.freshSnap
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.TrueLit
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.InternalWarningMessage
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
-import viper.silver.verifier.{ErrorReason, PartialVerificationError, VerificationError}
+import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 
+import scala.annotation.unused
 import scala.collection.immutable.ArraySeq
 import scala.reflect.ClassTag
 
@@ -1557,7 +1556,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         consumeQP(s0.copy(h = s.h), s0.h, v0)(QS))(Q)
   }
 
-  def assertReadPermission(s: State,
+  def assertReadPermission(@unused s: State,
                            candidates: Seq[QuantifiedBasicChunk],
                            codomainQVars: Seq[Var],
                            condition: Term,
@@ -2035,7 +2034,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       qvars.zip(inverseFunctions).map{case (qvar, inv) => (qvar, inv)}.to(Map),
       qvars.zip(imageFunctions).filter(_._2 != null).map{case (qvar, img) => (qvar, img)}.to(Map)
     )
-    (res, imagesOfCodomains)
+    (res, imagesOfCodomains.toIndexedSeq)
   }
 
   def hintBasedChunkOrderHeuristic(hints: Seq[Term])

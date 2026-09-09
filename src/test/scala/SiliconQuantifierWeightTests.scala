@@ -11,18 +11,23 @@ import viper.silicon.state.DefaultSymbolConverter
 import viper.silicon.state.terms.Term
 import viper.silicon.supporters.ExpressionTranslator
 import viper.silver.ast
-import viper.silver.ast.{AnnotationInfo, AnonymousDomainAxiom, Bool, Domain, DomainFunc, DomainFuncApp, EqCmp, Exists, Forall, Int, IntLit, LocalVar, LocalVarDecl, Method, Program, Seqn, Trigger, TrueLit, WeightedQuantifier}
+import viper.silver.ast.{AnnotationInfo, AnonymousDomainAxiom, Domain, DomainFunc, DomainFuncApp, EqCmp, Exists, Forall, Int, IntLit, LocalVar, LocalVarDecl, Method, Program, Seqn, Trigger, TrueLit, WeightedQuantifier}
 import viper.silver.reporter.NoopReporter
 import viper.silver.verifier.{Failure, Success}
 
 class SiliconQuantifierWeightTests extends AnyFunSuite {
   val symbolConverter = new DefaultSymbolConverter()
   val termConverter = new TermToSMTLib2Converter()
-  val translator = new ExpressionTranslator {
+  /* A named class (instead of an anonymous one) avoids that calls to translateExpr are compiled
+   * into reflective calls on a structural type.
+   */
+  class TestExpressionTranslator extends ExpressionTranslator {
     def translateExpr(exp: ast.Exp): Term = {
       translate(symbolConverter.toSort)(exp)
     }
   }
+
+  val translator = new TestExpressionTranslator
   termConverter.start()
 
   val silicon: Silicon = {

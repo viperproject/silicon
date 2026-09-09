@@ -20,9 +20,7 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.FunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.Exp
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
-import viper.silver.parser.PUnknown
 
 import scala.annotation.unused
 
@@ -401,18 +399,6 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     }
   }
 
-  @inline
-  private final def partition(h: Heap): (Seq[NonQuantifiedChunk], Seq[Chunk]) = {
-    var nonQuantifiedChunks = Seq[NonQuantifiedChunk]()
-    var otherChunks = Seq[Chunk]()
-
-    h.values foreach {
-      case ch: NonQuantifiedChunk => nonQuantifiedChunks +:= ch
-      case ch => otherChunks +:= ch
-    }
-
-    (nonQuantifiedChunks, otherChunks)
-  }
 }
 
 /** A variant of [[DefaultStateConsolidator]]:

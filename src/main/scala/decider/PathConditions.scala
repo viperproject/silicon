@@ -14,6 +14,8 @@ import viper.silicon.utils.Counter
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.TrueLit
+
+import scala.annotation.unused
 /*
  * Interfaces
  */
@@ -53,8 +55,6 @@ trait RecordedPathConditions {
                     tQvars: Seq[Var],
                     triggers: Seq[ast.Trigger],
                     tTriggers: Seq[Trigger],
-                    name: String,
-                    isGlobal: Boolean,
                     ignore: Term /* TODO: Hack, implement properly, see quantified above */)
   : (InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp])
 }
@@ -359,9 +359,7 @@ private trait LayeredPathConditionStackLike {
                     tQvars: Seq[Var],
                     triggers: Seq[ast.Trigger],
                     tTriggers: Seq[Trigger],
-                    name: String,
-                    isGlobal: Boolean,
-                    ignore: Term )
+                    @unused ignore: Term )
                     : (InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp]) = {
     var globals = InsertionOrderedSet.empty[DebugExp]
     var nonGlobals = InsertionOrderedSet.empty[DebugExp]
@@ -408,8 +406,8 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
   val conditionalized: Seq[Term] = conditionalized(from)
   lazy val conditionalizedExp: Seq[DebugExp] = conditionalizedExp(from)
 
-  def definitionsOnly(): RecordedPathConditions = {
-    new DefaultRecordedPathConditions(from.map(_.definitionsOnly))
+  def definitionsOnly: RecordedPathConditions = {
+    new DefaultRecordedPathConditions(from.map(_.definitionsOnly()))
   }
 
   def quantified(quantifier: Quantifier,
@@ -428,12 +426,10 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
                     tQvars: Seq[Var],
                     triggers: Seq[ast.Trigger],
                     tTriggers: Seq[Trigger],
-                    name: String,
-                    isGlobal: Boolean,
                     ignore: Term)
                     : (InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp]) = {
 
-    quantifiedExp(from, quantifier, qvars, tQvars, triggers, tTriggers, name, isGlobal, ignore)
+    quantifiedExp(from, quantifier, qvars, tQvars, triggers, tTriggers, ignore)
   }
 }
 
@@ -593,12 +589,10 @@ private[decider] class LayeredPathConditionStack
                     tQvars: Seq[Var],
                     triggers: Seq[ast.Trigger],
                     tTriggers: Seq[Trigger],
-                    name: String,
-                    isGlobal: Boolean,
                     ignore: Term)
   : (InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp]) = {
 
-    quantifiedExp(layers, quantifier, qvars, tQvars, triggers, tTriggers, name, isGlobal, ignore)
+    quantifiedExp(layers, quantifier, qvars, tQvars, triggers, tTriggers, ignore)
   }
 
   def mark(): Mark = pushLayer()

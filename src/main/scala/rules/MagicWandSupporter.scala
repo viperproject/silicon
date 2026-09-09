@@ -12,10 +12,8 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
-import viper.silicon.resources.MagicWandID
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.sorts.{PredHeapSort, WandHeapSort}
 import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast

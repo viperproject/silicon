@@ -8,7 +8,6 @@ package viper.silicon.rules
 
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.verifier.Verifier
 
 object functionSupporter {
   def limitedVersion(function: HeapDepFun): HeapDepFun = {

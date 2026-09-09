@@ -14,7 +14,6 @@ import viper.silicon.rules.{functionSupporter, maskHeapSupporter}
 import viper.silicon.state.{Identifier, IdentifierFactory, MagicWandIdentifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
-import viper.silicon.verifier.Verifier
 
 /** Function encoding of the maskHeap mode: heap-dependent functions take one heap
   * argument per resource in their precondition, definitional axioms are triggered
@@ -201,7 +200,7 @@ class MaskHeapFunctionEncoding(symbolConverter: SymbolConverter, identifierFacto
       t.convert(sorts.Snap)
     }
 
-    assertion match {
+    (assertion: @unchecked) match {
       case ast.AccessPredicate(la, perm) =>
         val resAcc = la match {
           case ast.FieldAccess(rcv, f) =>
@@ -262,7 +261,7 @@ class MaskHeapFunctionEncoding(symbolConverter: SymbolConverter, identifierFacto
       val heaps1: Seq[Var] = heapVars.map(v => Var(identifierFactory.fresh(v.id.name), v.sort, false))
       val heaps2: Seq[Var] = heapVars.map(v => Var(identifierFactory.fresh(v.id.name), v.sort, false))
       val restArgs: Seq[Var] = data.arguments.drop(resources.size)
-      val (condTerm, argTermOrig, heap) = func._2 match {
+      val (condTerm, argTermOrig, heap) = (func._2: @unchecked) match {
         case QuantifiedPermissionAssertion(_, cond, ast.AccessPredicate(la, perm)) =>
           val condTrans = translateExp(cond)
           val permGreaterNone = Greater(translateExp(perm.replace(ast.WildcardPerm()(), ast.FullPerm()())), NoPerm)
