@@ -404,7 +404,7 @@ object executor extends ExecutionRules {
 
       case ass @ ast.LocalVarAssign(x, rhs) =>
         eval(s, rhs, AssignmentFailed(ass), v)((s1, tRhs, rhsNew, v1) => {
-          val (t, e) = ssaifyRhs(tRhs, rhs, rhsNew, x.name, x.typ, v, s1)
+          val (t, e) = ssaifyRhs(tRhs, rhs, rhsNew, x.name, x.typ, v)
           Q(s1.copy(g = s1.g + (x, (t, e))), v1)})
 
       /* TODO: Encode assignments e1.f := e2 as
@@ -418,7 +418,7 @@ object executor extends ExecutionRules {
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) => {
           eval(s1, rhs, pve, v1)((s2, tRhs, eRhsNew, v2) => {
-            val (tSnap, _) = ssaifyRhs(tRhs, rhs, eRhsNew, field.name, field.typ, v2, s2)
+            val (tSnap, _) = ssaifyRhs(tRhs, rhs, eRhsNew, field.name, field.typ, v2)
             v2.heapSupporter.execFieldAssign(s2, ass, tRcvr, eRcvrNew, tSnap, eRhsNew, pve, v2)(Q)
           })
         })
@@ -711,7 +711,7 @@ object executor extends ExecutionRules {
     executed
   }
 
-   private def ssaifyRhs(rhs: Term, rhsExp: ast.Exp, rhsExpNew: Option[ast.Exp], name: String, typ: ast.Type, v: Verifier, @unused s : State): (Term, Option[ast.Exp]) = {
+   private def ssaifyRhs(rhs: Term, rhsExp: ast.Exp, rhsExpNew: Option[ast.Exp], name: String, typ: ast.Type, v: Verifier): (Term, Option[ast.Exp]) = {
      rhs match {
        case _: Var | _: Literal =>
          (rhs, rhsExpNew)

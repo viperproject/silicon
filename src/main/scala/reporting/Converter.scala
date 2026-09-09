@@ -804,13 +804,15 @@ object Converter {
     val resSort = toSortWithSubstitutions(resTyp, s"typeError in return type $resTyp")
       .fold(err => { return errorfunc(s"$fname $err") }, identity)
 
-    /* Only user-declared functions are translated; the built-in operations that also are
-     * ast.FuncLikes never reach this point.
-     */
-    val smtfunc = (func: @unchecked) match {
+    val smtfunc = func match {
       case t: ast.Function => symbolConverter.toFunction(t, program).id
       case t@ast.BackendFunc(_, _, _, _) => symbolConverter.toFunction(t, program).id
       case t: ast.DomainFunc => symbolConverter.toFunction(t, argSort :+ resSort, program).id
+      case other =>
+        /* Only user-declared functions are translated; the built-in operations that also are
+         * ast.FuncLikes never reach this point.
+         */
+        sys.error(s"Unexpected function $other cannot be translated")
     }
     val kek = smtfunc.toString
       .replace("[", "<")

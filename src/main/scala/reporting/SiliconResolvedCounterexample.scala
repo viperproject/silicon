@@ -981,10 +981,15 @@ object SiliconRawCounterexample {
       .fold(err => {
         return BasicFunctionEntry("ERROR", argTyp, resTyp, Map.empty, s"$fname $err")
       }, identity)
-    val smtfunc = (func: @unchecked) match {
+    val smtfunc = func match {
       case t: ast.Function => symbolConverter.toFunction(t, program).id
       case t@ast.BackendFunc(_, _, _, _) => symbolConverter.toFunction(t, program).id
       case t: ast.DomainFunc => symbolConverter.toFunction(t, argSort :+ resSort, program).id
+      case other =>
+        /* Only user-declared functions are translated; the built-in operations that also are
+         * ast.FuncLikes never reach this point.
+         */
+        sys.error(s"Unexpected function $other cannot be translated")
     }
     val kek = smtfunc.toString
       .replace("[", "<")
