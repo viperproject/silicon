@@ -55,8 +55,6 @@ trait RecordedPathConditions {
                     tQvars: Seq[Var],
                     triggers: Seq[ast.Trigger],
                     tTriggers: Seq[Trigger],
-                    name: String,
-                    isGlobal: Boolean,
                     ignore: Term /* TODO: Hack, implement properly, see quantified above */)
   : (InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp])
 }
@@ -361,8 +359,6 @@ private trait LayeredPathConditionStackLike {
                     tQvars: Seq[Var],
                     triggers: Seq[ast.Trigger],
                     tTriggers: Seq[Trigger],
-                    @unused name: String,
-                    @unused isGlobal: Boolean,
                     @unused ignore: Term )
                     : (InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp]) = {
     var globals = InsertionOrderedSet.empty[DebugExp]
@@ -430,12 +426,10 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
                     tQvars: Seq[Var],
                     triggers: Seq[ast.Trigger],
                     tTriggers: Seq[Trigger],
-                    name: String,
-                    isGlobal: Boolean,
                     ignore: Term)
                     : (InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp]) = {
 
-    quantifiedExp(from, quantifier, qvars, tQvars, triggers, tTriggers, name, isGlobal, ignore)
+    quantifiedExp(from, quantifier, qvars, tQvars, triggers, tTriggers, ignore)
   }
 }
 
@@ -595,12 +589,10 @@ private[decider] class LayeredPathConditionStack
                     tQvars: Seq[Var],
                     triggers: Seq[ast.Trigger],
                     tTriggers: Seq[Trigger],
-                    name: String,
-                    isGlobal: Boolean,
                     ignore: Term)
   : (InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp]) = {
 
-    quantifiedExp(layers, quantifier, qvars, tQvars, triggers, tTriggers, name, isGlobal, ignore)
+    quantifiedExp(layers, quantifier, qvars, tQvars, triggers, tTriggers, ignore)
   }
 
   def mark(): Mark = pushLayer()
