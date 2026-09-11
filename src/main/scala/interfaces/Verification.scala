@@ -158,8 +158,11 @@ case class SiliconDebuggingFailureContext(branchConditions: Seq[Term],
 
 /* Term-level symbolic state attached to failures under --smtStateOnError.
  * failingCheck is the prover query that produced the failure; None when the
- * error was raised without one (e.g. a missing permission). */
+ * error was raised without one (e.g. a missing permission). The branch
+ * conditions come both as terms and, as in SiliconFailureContext, as the
+ * source expressions front ends map back to their own syntax. */
 case class SiliconSmtStateContext(branchConditions: Seq[Term],
+                                  branchConditionExps: Seq[ast.Exp],
                                   counterExample: Option[Counterexample],
                                   failingCheck: Option[CheckInfo],
                                   sessionLog: Option[String],

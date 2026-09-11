@@ -72,10 +72,12 @@ object executor extends ExecutionRules {
           val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
           val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
           val s1 = handleOutEdge(s, edge, v)
+          v.decider.prover.enterStatement(ce.condition.pos)
           eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, condNew, v1) =>
             /* Using branch(...) here ensures that the edge condition is recorded
              * as a branch condition on the pathcondition stack.
              */
+            { v.decider.prover.leaveScope()
             brancher.branch(s2.copy(parallelizeBranches = false), tCond, (ce.condition, condNew), v1)(
               (s3, v3) =>
                 exec(s3.copy(parallelizeBranches = s2.parallelizeBranches), ce.target, ce.kind, v3, joinPoint, pathId)((s4, v4) => {
@@ -85,7 +87,7 @@ object executor extends ExecutionRules {
               (_, v3) => {
                 v3.symbExLog.closeScope(sepIdentifier)
                 Success()
-              }))
+              })})
 
         case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
           val s1 = handleOutEdge(s, edge, v)
@@ -364,8 +366,10 @@ object executor extends ExecutionRules {
   def exec(s: State, stmt: ast.Stmt, v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
+    v.decider.prover.enterStatement(stmt.pos)
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
     exec2(s, stmt, v)((s1, v1) => {
+      v.decider.prover.leaveScope()
       v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, v1)})
   }

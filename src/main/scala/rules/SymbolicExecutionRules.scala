@@ -110,7 +110,7 @@ trait SymbolicExecutionRules {
         v.decider.macroDecls, v.decider.functionDecls, assumptions, failedAssert, failedAssertExp.get)
       res.failureContexts = Seq(debugCtx)
     } else if (Verifier.config.smtStateOnError()) {
-      val stateCtx = SiliconSmtStateContext(v.decider.pcs.branchConditions,
+      val stateCtx = SiliconSmtStateContext(v.decider.pcs.branchConditions, branchconditions,
         counterexample, failingCheck, sessionLog, Some(s), v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions,
         v.decider.macroDecls, v.decider.functionDecls, v.decider.pcs.assumptions, failedAssert)
       res.failureContexts = Seq(stateCtx)

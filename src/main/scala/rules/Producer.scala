@@ -141,9 +141,12 @@ object producer extends ProductionRules {
     else {
       val a = as.head.whenInhaling
       val pve = pves.head
+      v.decider.prover.enterClause(a.pos)
 
       if (as.tail.isEmpty)
-        wrappedProduceTlc(s, sf, a, pve, v)(Q)
+        wrappedProduceTlc(s, sf, a, pve, v)((s1, v1) => {
+          v.decider.prover.leaveScope()
+          Q(s1, v1)})
       else {
         try {
           val (sf0, sf1) =
@@ -154,13 +157,15 @@ object producer extends ProductionRules {
            *       over and over again.
            */
 
-          wrappedProduceTlc(s, sf0, a, pve, v)((s1, v1) =>
-            produceTlcs(s1, sf1, as.tail, pves.tail, v1)(Q))
+          wrappedProduceTlc(s, sf0, a, pve, v)((s1, v1) => {
+            v.decider.prover.leaveScope()
+            produceTlcs(s1, sf1, as.tail, pves.tail, v1)(Q)})
         } catch {
           // We will get an IllegalArgumentException from createSnapshotPair if sf(...) returns Unit.
           // This should never happen if we're in a reachable state, so here we check for that
           // (without timeout, since there is no fallback) and stop verifying the current branch.
           case _: IllegalArgumentException if v.decider.check(False, Verifier.config.assertTimeout.getOrElse(0)) =>
+            v.decider.prover.leaveScope()
             Unreachable()
         }
 

@@ -124,11 +124,15 @@ object consumer extends ConsumptionRules {
     else {
       val a = tlcs.head
       val pve = pves.head
+      v.decider.prover.enterClause(a.pos)
 
       if (tlcs.tail.isEmpty)
-        wrappedConsumeTlc(s, h, a, returnSnap, pve, v)(Q)
+        wrappedConsumeTlc(s, h, a, returnSnap, pve, v)((s1, h1, snap1, v1) => {
+          v.decider.prover.leaveScope()
+          Q(s1, h1, snap1, v1)})
       else
         wrappedConsumeTlc(s, h, a, returnSnap, pve, v)((s1, h1, snap1, v1) => {
+          v.decider.prover.leaveScope()
           consumeTlcs(s1, h1, tlcs.tail, returnSnap, pves.tail, v1)((s2, h2, snap2, v2) =>
 
             (snap1, snap2) match {

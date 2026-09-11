@@ -47,6 +47,9 @@ abstract class ProverStdIO(uniqueId: String,
   protected var checkCounter = 0
   protected var _lastCheck: Option[CheckInfo] = None
   override def lastCheck: Option[CheckInfo] = _lastCheck
+  protected var currentPosition: Option[String] = None
+  protected var positionDepth = 0
+  protected var lastInstantiations: Option[Long] = None
 
   def exeEnvironmentalVariable: String
   def dependencies: Seq[SilDefaultDependency]
@@ -92,6 +95,9 @@ abstract class ProverStdIO(uniqueId: String,
     }
     pushPopScopeDepth = 0
     lastTimeout = -1
+    currentPosition = None
+    positionDepth = 0
+    lastInstantiations = None
     /* SMT state capture implies session logging: failure/slow bundles are
      * copies of this file, so they replay on a bare prover without Viper. The
      * file lives in smtStateDir and is left behind (the caller owns that
@@ -284,12 +290,31 @@ abstract class ProverStdIO(uniqueId: String,
     }
   }
 
-  /* Whether to bracket each check-sat with (get-info :rlimit). assertTimeout
-   * is enforced as an rlimit budget, so cap tuning needs rlimit deltas, not
-   * wall time (the ms->rlimit calibration is off by 10-50x on some query
-   * classes). Two one-line round trips per check. */
-  protected def trackRlimit: Boolean =
+  /* Whether to account each check-sat: an rlimit read before it and a
+   * statistics read after it (assertTimeout is enforced as an rlimit budget,
+   * so cap tuning needs rlimit deltas, not wall time: the ms->rlimit
+   * calibration is off by 10-50x on some query classes), plus the source
+   * position stamped on it. One one-line and one multi-line round trip per
+   * check. */
+  protected def trackChecks: Boolean =
     sessionLogFile != null || Verifier.config.reportReasonUnknown()
+
+  private def setPosition(pos: viper.silver.ast.Position): Unit = pos match {
+    case p: viper.silver.ast.AbstractSourcePosition => currentPosition = Some(p.toString)
+    case _ =>
+  }
+
+  override def enterStatement(pos: viper.silver.ast.Position): Unit = {
+    if (trackChecks) setPosition(pos)
+    positionDepth += 1
+  }
+
+  override def enterClause(pos: viper.silver.ast.Position): Unit = {
+    if (trackChecks && positionDepth == 0) setPosition(pos)
+    positionDepth += 1
+  }
+
+  override def leaveScope(): Unit = positionDepth = math.max(0, positionDepth - 1)
 
   protected def readRlimitCount(): Option[Long] = {
     writeLine("(get-info :rlimit)")
@@ -297,19 +322,47 @@ abstract class ProverStdIO(uniqueId: String,
     "\\d+".r.findFirstIn(answer).map(_.toLong)
   }
 
+  /* Z3's cumulative counters (rlimit-count, quant-instantiations, ...) as
+   * strings; empty when the prover does not answer with an s-expression. */
+  protected def readStatistics(): Map[String, String] = {
+    writeLine("(get-info :all-statistics)")
+    val sb = new StringBuilder
+    var depth = 0
+    var first = true
+    while (first || depth > 0) {
+      val line = readLineFromInput()
+      if (first && !line.startsWith("(")) return Map.empty
+      depth += line.count(_ == '(') - line.count(_ == ')')
+      sb.append(line).append(' ')
+      first = false
+    }
+    toMap("(:[\\w-]+)\\s+([^\\s)]+)".r.findAllMatchIn(sb.toString)
+      .map(m => m.group(1).drop(1) -> m.group(2)).toSeq)
+  }
+
   /* Sends one check-sat command and records it as lastCheck. The session log
-   * gets a one-line summary after the answer and is flushed, so a killed run
-   * leaves a log that ends at its in-flight check. */
+   * gets the check's start line before the command and its summary after the
+   * answer, each flushed, so a killed run leaves a log that ends at its
+   * in-flight check. */
   protected def runCheckSat(cmd: String, kind: String): String = {
-    val rlimitBefore = if (trackRlimit) readRlimitCount() else None
-    val startTime = System.currentTimeMillis()
-    writeLine(cmd)
-    val answer = readLine()
-    val ms = System.currentTimeMillis() - startTime
-    val rlimit = rlimitBefore.flatMap(before => readRlimitCount().map(_ - before))
-    val reason = if (answer == "unknown") Some(retrieveReasonUnknown()) else None
     checkCounter += 1
-    _lastCheck = Some(CheckInfo(checkCounter, kind, answer, reason, ms, rlimit, math.max(lastTimeout, 0)))
+    val rlimitBefore = if (trackChecks) readRlimitCount() else None
+    val startedAt = System.currentTimeMillis()
+    if (trackChecks) comment(s"[${CheckInfo.startLine(checkCounter, kind, startedAt, currentPosition)}]")
+    writeLine(cmd)
+    flushSessionLog()
+    val answer = readLine()
+    val ms = System.currentTimeMillis() - startedAt
+    val stats = if (trackChecks) readStatistics() else Map.empty[String, String]
+    val rlimitAfter = stats.get("rlimit-count").flatMap(_.toLongOption)
+      .orElse(if (rlimitBefore.isDefined) readRlimitCount() else None)
+    val rlimit = for (before <- rlimitBefore; after <- rlimitAfter) yield after - before
+    val instantiationsTotal = stats.get("quant-instantiations").flatMap(_.toLongOption)
+    val instantiations = for (now <- instantiationsTotal; before <- lastInstantiations) yield now - before
+    if (instantiationsTotal.isDefined) lastInstantiations = instantiationsTotal
+    val reason = if (answer == "unknown") Some(retrieveReasonUnknown()) else None
+    _lastCheck = Some(CheckInfo(checkCounter, kind, answer, reason, ms, rlimit, math.max(lastTimeout, 0),
+                                instantiations, currentPosition, startedAt))
     comment(s"[${_lastCheck.get.summary}]")
     flushSessionLog()
     answer

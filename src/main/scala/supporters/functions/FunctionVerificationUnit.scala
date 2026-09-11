@@ -269,7 +269,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
             decider.setCurrentBranchCondition(And(bcsPre), (BigAnd(bcsPreExp.map(_._1)), Option.when(wExp)(BigAnd(bcsPreExp.map(_._2.get)))))
             decider.assume(pcsPre, Option.when(wExp)(DebugExp.createInstance(s"precondition of ${function.name}", pcsPreExp.get)), enforceAssumption = false)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+            v.decider.prover.enterStatement(function.pos)
             eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, bodyNew, _) => {
+              v.decider.prover.leaveScope()
               val debugExp = if (wExp) {
                 val e = ast.EqCmp(ast.Result(function.typ)(), body)(function.pos, function.info, function.errT)
                 val eNew = ast.EqCmp(ast.Result(function.typ)(), bodyNew.get)(function.pos, function.info, function.errT)

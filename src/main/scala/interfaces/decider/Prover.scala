@@ -22,20 +22,33 @@ object Unknown extends Result
 
 /* One check-sat as seen by the prover: its ordinal in the session (counting
  * every check-sat sent, incl. saturation), what issued it, the answer, the
- * prover's reason when unknown, wall time, rlimit spent (Z3 only) and the
- * budget in force as configured (ms; 0 = unlimited; enforced as rlimit
- * unless proverEnableTimeBounds). */
+ * prover's reason when unknown, wall time, rlimit spent and quantifier
+ * instantiations made (Z3 only), the budget in force as configured (ms;
+ * 0 = unlimited; enforced as rlimit unless proverEnableTimeBounds), the
+ * source position the symbolic execution was at, and the start (epoch ms).
+ * The session log carries `startLine` before the check-sat and `summary`
+ * after it, so a log that ends mid-check names the in-flight check. */
 case class CheckInfo(ordinal: Int,
                      kind: String,
                      answer: String,
                      reason: Option[String],
                      ms: Long,
                      rlimit: Option[Long],
-                     budgetMs: Int) {
+                     budgetMs: Int,
+                     instantiations: Option[Long] = None,
+                     at: Option[String] = None,
+                     startedAt: Long = 0) {
   def summary: String =
     s"check #$ordinal kind=$kind answer=$answer" +
       reason.fold("")(r => s" reason=$r") + s" ms=$ms" +
-      rlimit.fold("")(r => s" rlimit=$r") + s" budgetMs=$budgetMs"
+      rlimit.fold("")(r => s" rlimit=$r") + s" budgetMs=$budgetMs" +
+      instantiations.fold("")(q => s" qi=$q") + s" t=$startedAt" +
+      at.fold("")(p => s" at=$p")
+}
+
+object CheckInfo {
+  def startLine(ordinal: Int, kind: String, startedAt: Long, at: Option[String]): String =
+    s"check #$ordinal start kind=$kind t=$startedAt" + at.fold("")(p => s" at=$p")
 }
 
 /* TODO: Should be generic, not hardcoded to Strings */
@@ -71,6 +84,15 @@ trait Prover extends ProverLike with StatefulComponent {
   def getReasonUnknown(): String
   /* The most recent check-sat, None until the first one or after clearLastAssert. */
   def lastCheck: Option[CheckInfo] = None
+  /* The source position stamped on the checks issued, best effort: a
+   * statement scope always sets it, a clause scope (one contract conjunct)
+   * only outside any scope, so a callee's contract or a function's
+   * precondition met inside a statement keeps the statement's position.
+   * Scopes are left from the symbolic-execution continuation, which a
+   * branching statement runs once per path, so the depth is clamped at 0. */
+  def enterStatement(pos: viper.silver.ast.Position): Unit = ()
+  def enterClause(pos: viper.silver.ast.Position): Unit = ()
+  def leaveScope(): Unit = ()
   /* Complete on-disk log of this prover session (every line sent), when
    * session logging is active; replayable on a bare prover. */
   def sessionLogPath: Option[java.nio.file.Path] = None
