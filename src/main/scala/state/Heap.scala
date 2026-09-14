@@ -13,6 +13,12 @@ trait Heap {
   def +(chunk: Chunk): Heap
   def +(other: Heap): Heap
   def -(chunk: Chunk): Heap
+
+  // Naively orders chunks to check equality of heap values
+  def equalChunks(other: Heap): Boolean = {
+    implicit def chunkOrd: Ordering[Chunk] = Ordering.by(_.toString)
+    this.values.toList.sorted == other.values.toList.sorted
+  }
 }
 
 trait HeapFactory[H <: Heap] {
