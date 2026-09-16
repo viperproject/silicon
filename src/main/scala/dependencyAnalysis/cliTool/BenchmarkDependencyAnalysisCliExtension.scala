@@ -109,7 +109,7 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
         println(output)
       }
 
-      def evalSingleAssertion(assertionLabel: String, groundTruthLabels: Set[String], callGraphLabels: Set[String], bw: BufferedWriter): Unit = {
+      def evalSingleAssertion(assertionLabel: String, groundTruthLabels: Set[String], callGraphLabels: Set[String], bw: BufferedWriter, reported_bw: BufferedWriter): Unit = {
         val startAnalysis = System.nanoTime()
         val queriedAssertions = interpreter.getNodesByLabel(assertionLabel)
         val allDependencies = interpreter.computeNonInternalDependencies(queriedAssertions)
@@ -127,7 +127,12 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
         val imprecise = actualLabelInReportedDeps.diff(groundTruthLabels)
 
         assert(!isSound || groundTruthLabels.size + imprecise.size == actualLabelInReportedDeps.size, s"Imprecision calculation is wrong.")
-        assert(actualLabelInReportedDeps.size <= callGraphLabels.size, "Call graph size is smaller than reported dependencies.")
+        
+        val isBiggerThanCallGraph = actualLabelInReportedDeps.size > callGraphLabels.size
+        if (isBiggerThanCallGraph) println("Reported more dependencies than the size of the call graph!")
+
+        reported_bw.write(s"$assertionLabel=${actualLabelInReportedDeps.toList.sorted.mkString(",")};isBiggerThanCallGraph=$isBiggerThanCallGraph")
+        reported_bw.newLine()
 
         addOutput(bw, s"$assertionLabel,${if (isSound) "YES" else "NO"},${groundTruthLabels.size},${actualLabelInReportedDeps.size},${imprecise.size},${callGraphLabels.size},${durationMs}ms,${noise.size}")
       }
@@ -142,14 +147,17 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
 
       val output: Path = dir.resolve(s"result_$timestamp.csv")
       val bw = new BufferedWriter(new FileWriter(output.toUri.getPath))
+      val reported: Path = dir.resolve(s"reported_$timestamp.txt")
+      val reported_bw = new BufferedWriter(new FileWriter(reported.toUri.getPath))
 
       try {
         val groundTruths = readFile(pathToGroundTruth.toUri.getPath)
         val callGraphs = readFile(pathToCallGraphs.toUri.getPath)
         addOutput(bw, header)
-        callGraphs.foreach { case (assertionLabel, callGraphLabels) => evalSingleAssertion(assertionLabel, groundTruths(assertionLabel), callGraphLabels, bw) }
+        callGraphs.foreach { case (assertionLabel, callGraphLabels) => evalSingleAssertion(assertionLabel, groundTruths(assertionLabel), callGraphLabels, bw, reported_bw) }
 
         bw.close()
+        reported_bw.close()
 
       } catch {
         case e: Throwable => println(s"Failed. ${e.getMessage}")
