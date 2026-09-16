@@ -671,7 +671,7 @@ object evaluator extends EvaluationRules {
                              moreJoins = JoinMode.Off,
                              assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts())
                                s2.assertReadAccessOnly /* should currently always be false */ else true)
-            val precondAnalysisInfos = analysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Up))
+            val precondAnalysisInfos = analysisInfos.overrideJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Up))
             consumes(s3, presWithDAInfo, true, _ => pvePre, v2, precondAnalysisInfos)((s4, snap, v3) => {
               val snap1 = snap.get.convert(sorts.Snap)
               val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)

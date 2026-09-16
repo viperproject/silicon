@@ -176,6 +176,9 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
   def withJoinInfo(joinInfo: DependencyAnalysisJoinInfo): DependencyAnalysisInfos =
     if (isAnalysisEnabled) this.copy(joinInfos = joinInfo +: joinInfos) else this
 
+  def overrideJoinInfo(joinInfo: DependencyAnalysisJoinInfo): DependencyAnalysisInfos =
+    if (isAnalysisEnabled) this.copy(joinInfos = List(joinInfo)) else this
+
   def withEnabled(analysisEnabled: Boolean): DependencyAnalysisInfos = this.copy(analysisEnabled=analysisEnabled)
 
   def withInfo(sourceInfo: DependencyAnalysisSourceInfo, dependencyType: DependencyType): DependencyAnalysisInfos =
