@@ -176,8 +176,8 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
   def withJoinInfo(joinInfo: DependencyAnalysisJoinInfo): DependencyAnalysisInfos =
     if (isAnalysisEnabled) this.copy(joinInfos = joinInfo +: joinInfos) else this
 
-  def overrideJoinInfo(joinInfo: DependencyAnalysisJoinInfo): DependencyAnalysisInfos =
-    if (isAnalysisEnabled) this.copy(joinInfos = List(joinInfo)) else this
+  def removeSinkJoinInfos(): DependencyAnalysisInfos =
+    if (isAnalysisEnabled) this.copy(joinInfos = joinInfos.filterNot(_.joinType.equals(JoinType.Sink))) else this
 
   def withEnabled(analysisEnabled: Boolean): DependencyAnalysisInfos = this.copy(analysisEnabled=analysisEnabled)
 

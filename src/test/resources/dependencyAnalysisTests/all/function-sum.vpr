@@ -1,19 +1,19 @@
 field f: Int
 
 function sum(x: Int, y: Int) : Int
-  requires @dependencyInfo("assumptionType:Precondition, label:L2, expectedDependencies:[L11,L19]")(x >= 0)
-  requires @dependencyInfo("assumptionType:Precondition, label:L3, expectedDependencies:[L12,L20]")(y >= 0)
+  requires @dependencyInfo("assumptionType:Precondition, label:L2, expectedDependencies:[L11,L19,L23]")(x >= 0)
+  requires @dependencyInfo("assumptionType:Precondition, label:L3, expectedDependencies:[L12,L20,L24]")(y >= 0)
   ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L4, expectedDependencies:[L6]")(result == x + y)
-  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L5, expectedDependencies:[L6,L2,L3,L11,L12,L19,L20]")(result >= 0)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L5, expectedDependencies:[L6,L2,L3,L11,L12,L19,L20,L23,L24]")(result >= 0)
 {
  @dependencyInfo("assumptionType:FunctionBody, label:L6")(x + y)
 }
 
 function sumUnverified(x: Int, y: Int): Int
-  requires @dependencyInfo("assumptionType:Precondition, label:L7, expectedDependencies:[L15,L19]")(x >= 0)
-  requires @dependencyInfo("assumptionType:Precondition, label:L8, expectedDependencies:[L16,L20]")(y >= 0)
-  ensures @dependencyInfo("assertionType:ExplicitPostcondition, label:L9, expectedDependencies:[L7,L8,L15,L16,L19,L20]")(result == x + y)
-  ensures @dependencyInfo("assertionType:ExplicitPostcondition, label:L10, expectedDependencies:[L7,L8,L15,L16,L19,L20]")(result >= 0)
+  requires @dependencyInfo("assumptionType:Precondition, label:L7, expectedDependencies:[L15,L19,L27]")(x >= 0)
+  requires @dependencyInfo("assumptionType:Precondition, label:L8, expectedDependencies:[L16,L20,L28]")(y >= 0)
+  ensures @dependencyInfo("assertionType:ExplicitPostcondition, label:L9, expectedDependencies:[L7,L8,L15,L16,L19,L20,L27,L28]")(result == x + y)
+  ensures @dependencyInfo("assertionType:ExplicitPostcondition, label:L10, expectedDependencies:[L7,L8,L15,L16,L19,L20,L27,L28]")(result >= 0)
 
 method call2(){
     var x: Int, y: Int, z: Int
@@ -49,4 +49,22 @@ method client2() {
 
     @dependencyInfo("assertionType:Explicit, label:L22, expectedDependencies:[L19,L20,L21,L6,L7,L8,L9]")
     assert z == 3*x + 2*y + 4
+}
+
+method func_call_precond(a: Int, b: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L23, expectedDependencies:[]")(a >= 0)
+    requires @dependencyInfo("assumptionType:Precondition, label:L24, expectedDependencies:[]")(b >= 0)
+    requires @dependencyInfo("assumptionType:Precondition, label:L25, expectedDependencies:[L23, L24]")(sum(a, b) > 100)
+{
+    @dependencyInfo("assertionType:Explicit, label:L26, expectedDependencies:[L23, L24, L25, L6]")
+    assert a + b > 100
+}
+
+method func_call_precond2(a: Int, b: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L27, expectedDependencies:[]")(a >= 0)
+    requires @dependencyInfo("assumptionType:Precondition, label:L28, expectedDependencies:[]")(b >= 0)
+    requires @dependencyInfo("assumptionType:Precondition, label:L29, expectedDependencies:[L27, L28]")(sumUnverified(a, b) < 100)
+{
+    @dependencyInfo("assertionType:Explicit, label:L30, expectedDependencies:[L27, L28, L29, L7,L8, L9]")
+    assert a + b < 100
 }

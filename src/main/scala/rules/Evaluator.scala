@@ -671,7 +671,10 @@ object evaluator extends EvaluationRules {
                              moreJoins = JoinMode.Off,
                              assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts())
                                s2.assertReadAccessOnly /* should currently always be false */ else true)
-            val precondAnalysisInfos = analysisInfos.overrideJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Up))
+            /* asserting preconditions should never lead to joining with other call-sites of the function. We explicitly remove
+             * sink join infos such that this does not happen. In particular, this resolves imprecision related to function calls
+             * in preconditions */
+            val precondAnalysisInfos = analysisInfos.removeSinkJoinInfos().withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Up))
             consumes(s3, presWithDAInfo, true, _ => pvePre, v2, precondAnalysisInfos)((s4, snap, v3) => {
               val snap1 = snap.get.convert(sorts.Snap)
               val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
