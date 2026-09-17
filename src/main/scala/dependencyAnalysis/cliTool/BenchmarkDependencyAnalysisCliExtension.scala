@@ -94,7 +94,7 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
             .map { line =>
               val Array(left, right) = line.split("=", 2) // split into key and rest
               val key = left.trim
-              val values = right.split(",").map(_.trim).toSet
+              val values: Set[String] = right.split(",").map(_.trim).filter(_.nonEmpty).toSet
               key -> values
             }
             .toMap
