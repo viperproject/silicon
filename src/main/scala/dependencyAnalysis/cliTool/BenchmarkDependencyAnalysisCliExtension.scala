@@ -123,7 +123,7 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
         val actualLabelInReportedDeps = labelsInReportedDeps.filter(_.size == 1).flatten
         val noise = labelsInReportedDeps.filterNot(_.size == 1)
 
-        val isSound = groundTruthLabels.diff(actualLabelInReportedDeps).isEmpty
+        val isSound = groundTruthLabels.nonEmpty && groundTruthLabels.diff(actualLabelInReportedDeps).isEmpty
         val imprecise = actualLabelInReportedDeps.diff(groundTruthLabels)
 
         assert(!isSound || groundTruthLabels.size + imprecise.size == actualLabelInReportedDeps.size, s"Imprecision calculation is wrong.")
