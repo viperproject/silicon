@@ -1154,7 +1154,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
                 val ummmm = consumeFromOneOfMultipleHeaps(resource, qvars, formalQVars, tArgs, qvarsToInvOfLoc, condOfInvOfLoc, argumentsMatch, imagesOfFormalQVars, optTrigger, tTriggers, qid, chunkOrderHeuristics) _
 
-                magicWandSupporter.consumeFromMultipleHeaps(s, heaps, tPerm, failure, Seq(), v)(ummmm)((s1, hs1, cHeap1, optChunks, v1) => {
+                magicWandSupporter.consumeFromMultipleHeapsKInd(s, heaps, tPerm, failure, Seq(), v)(ummmm)((s1, hs1, cHeap1, optChunks, v1) => {
                   //val (fr1, newTopHeap) = v1.stateConsolidator(s1).merge(s1.functionRecorder, s1.h, cHeap1, v1)
                   //val (fr1, newTopHeap) = (s1.functionRecorder, s1.h + cHeap1)
 
@@ -1506,7 +1506,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(arguments,
               quantifiedChunkSupporter.extractHints(None, arguments), v)
         }
-        magicWandSupporter.consumeFromMultipleHeaps(s, heaps, permissions, failure, Seq(), v)(
+        magicWandSupporter.consumeFromMultipleHeapsKInd(s, heaps, permissions, failure, Seq(), v)(
           consumeSingleFromOneOfMultipleHeaps(identifier, codomainQVars, arguments, resource, chunkOrderHeuristics)
         )((s1, hs1, cHeap1, optChunks, v1) => {
           //val newTopHeap = hs1.head + cHeap1
@@ -1857,7 +1857,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val additionalArgs = s.relevantQuantifiedVariables
     var currentFunctionRecorder = s.functionRecorder
 
-    val precomputedData = candidates map { ch =>
+    def permsTakenFrom(ch: QuantifiedBasicChunk, permsNeeded: Term): Term = {
       // ME: When using Z3 via API, it is beneficial to not use macros, since macro-terms will *always* be different
       // (leading to new terms that have to be translated), whereas without macros, we can usually use a term
       // that already exists.
@@ -1869,7 +1869,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       val declareMacro = s.functionRecorder == NoopFunctionRecorder // && !Verifier.config.useFlyweight
 
       val permsProvided = ch.perm
-      val permsTaken = if (declareMacro) {  // needed for kinduct
+      if (declareMacro) {  // needed for kinduct
         val permsTakenBody = Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm)
         val permsTakenArgs = codomainQVars ++ additionalArgs
         val permsTakenDecl = v.decider.freshMacro("pTaken", permsTakenArgs, permsTakenBody)
@@ -1881,21 +1881,23 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       } else {
         Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm)
       }
-
-      permsNeeded = PermMinus(permsNeeded, permsTaken)
-
-      (ch, permsTaken, permsNeeded)
     }
 
-    v.decider.prover.comment(s"Done precomputing, updating quantified chunks")
+    v.decider.prover.comment(s"Updating quantified chunks")
     v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.beforeIteration)
 
     var tookEnoughCheck = Forall(codomainQVars, Implies(condition, permsNeeded === NoPerm), Nil)
 
-    precomputedData foreach { case (ithChunk, ithPTaken, ithPNeeded) =>
+    candidates foreach { ithChunk =>
       if (success.isComplete)
         remainingChunks = remainingChunks :+ ithChunk
       else {
+        /* The permissions taken from this chunk are computed from the amount still needed *after* the
+         * previous chunks, i.e. after the chunks that were actually used. Skipping unused chunks keeps
+         * permsNeeded syntactically simple; in particular, a constrainable (read) permission stays a
+         * plain variable and is not turned into an "exact" difference (see consumeExactRead). */
+        val ithPTaken = permsTakenFrom(ithChunk, permsNeeded)
+
         val (permissionConstraint, depletedCheck) =
           createPermissionConstraintAndDepletedCheck(
             codomainQVars, condition, optQVarValues, perms, constrainPermissions, ithChunk, ithPTaken, v)
@@ -1907,6 +1909,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           remainingChunks =
             remainingChunks :+ ithChunk.permMinus(ithPTaken)
           consumedChunks = consumedChunks :+ ithChunk.withPerm(ithPTaken)
+          permsNeeded = PermMinus(permsNeeded, ithPTaken)
         } else {
           v.decider.prover.comment(s"Chunk depleted?")
           val unusedCheck = Forall(codomainQVars, ithPTaken === NoPerm, Nil)
@@ -1920,6 +1923,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               remainingChunks =
                 remainingChunks :+ ithChunk.permMinus(ithPTaken)
             }
+            permsNeeded = PermMinus(permsNeeded, ithPTaken)
           }
         }
 
@@ -1929,13 +1933,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
          * the assertion to check is recorded by tookEnoughCheck.
          */
         tookEnoughCheck =
-          Forall(codomainQVars, Implies(condition, ithPNeeded === NoPerm), Nil)
+          Forall(codomainQVars, Implies(condition, permsNeeded === NoPerm), Nil)
 
         v.decider.prover.comment(s"Intermediate check if already taken enough permissions")
         success = if (v.decider.check(tookEnoughCheck, Verifier.config.splitTimeout())) {
           Complete()
         } else {
-          Incomplete(ithPNeeded)
+          Incomplete(permsNeeded)
         }
       }
     }

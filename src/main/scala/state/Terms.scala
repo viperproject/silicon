@@ -261,10 +261,6 @@ class Var private[terms] (val id: Identifier, val sort: Sort, val isWildcard: Bo
 
   override lazy val toString = id.toString
 
-  if (id.toString == "p@13@16") {
-    println("++")
-  }
-
   def copy(id: Identifier = id, sort: Sort = sort, isWildcard: Boolean = isWildcard) = Var(id, sort, isWildcard)
 }
 

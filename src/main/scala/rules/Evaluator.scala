@@ -277,7 +277,9 @@ object evaluator extends EvaluationRules {
                   case Seq(e) => (e.s, e.data)
                   case Seq(e1, e2) =>
                     val mergedState = State.merge(e1.s, e1.pathConditions, e2.s, e2.pathConditions)
-                    (mergedState, (mergedState.h, e1.data._2))
+                    val snap1 = e1.data._2
+                    val snap2 = e2.data._2.convert(snap1.sort)
+                    (mergedState, (mergedState.h, Ite(And(e1.pathConditions.branchConditions), snap1, snap2)))
                 }((s2, ht2, v2) => {
                   val (h2, tSnap) = ht2
                   Q(s2, tSnap, v2)
@@ -936,6 +938,19 @@ object evaluator extends EvaluationRules {
             eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
               v2.decider.assert(IsPositive(tPerm), s2) {
                 case true =>
+                  /* k-induction: during the transferring and assuming phases, the predicate instance may
+                   * have to be transferred from (or conjured for) an outer loop heap. The join below resets
+                   * the heap to the one it starts from, so make sure that the predicate is in the loop heap
+                   * *before* joining (and stays there afterwards, since the unfolding needed it), instead of
+                   * transferring it inside the join, where the outer heap would lose it for good.
+                   */
+                  val ensurePredicateInLoopHeap: ((State, Verifier) => VerificationResult) => VerificationResult =
+                    if (s2.loopPhaseStack.nonEmpty && s2.loopPhaseStack.head._1 != LoopPhases.Checking)
+                      cont => consume(s2, acc, pve, v2, true)((s2p, _, v2p) => cont(s2p, v2p))
+                    else
+                      cont => cont(s2, v2)
+
+                  ensurePredicateInLoopHeap((s2, v2) =>
                   joiner.join[Term, Term](s2, v2)((s3, v3, QB) => {
                     val s4 = s3.incCycleCounter(predicate)
                                .copy(recordVisited = true)
@@ -973,7 +988,7 @@ object evaluator extends EvaluationRules {
                                    .decCycleCounter(predicate)
                         val s10 = v5.stateConsolidator(s9).consolidateOptionally(s9, v5)
                         eval(s10, eIn, pve, v5)(QB)})})
-                  })(join(v2.symbolConverter.toSort(eIn.typ), "joined_unfolding", s2.relevantQuantifiedVariables, v2))(Q)
+                  })(join(v2.symbolConverter.toSort(eIn.typ), "joined_unfolding", s2.relevantQuantifiedVariables, v2))(Q))
                 case false =>
                   createFailure(pve dueTo NonPositivePermission(ePerm), v2, s2)}))
         } else {

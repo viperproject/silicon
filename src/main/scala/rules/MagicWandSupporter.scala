@@ -194,7 +194,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
              * from heap, i.e. that tEq does not result in already having the required permissions before
              * consuming from heap.
              */
-            if (v.decider.checkSmoke()) {
+            /* Only check for smoke (which turns an incomplete consumption into a complete one on an
+             * infeasible path) if the consumption is still incomplete; the check is pointless otherwise. */
+            if (!success.isComplete && v.decider.checkSmoke()) {
               (Complete(), sOut, h +: hps, ch + cHeap, cch +: cchs)
             } else {
               (success, sOut, h +: hps, ch + cHeap, cch +: cchs)
@@ -266,7 +268,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
              * from heap, i.e. that tEq does not result in already having the required permissions before
              * consuming from heap.
              */
-            if (v.decider.checkSmoke()) {
+            /* Only check for smoke (which turns an incomplete consumption into a complete one on an
+             * infeasible path) if the consumption is still incomplete; the check is pointless otherwise. */
+            if (!success.isComplete && v.decider.checkSmoke()) {
               (Complete(), sOut, h +: hps, ch + cHeap, cch +: cchs)
             } else {
               (success, sOut, h +: hps, ch + cHeap, cch +: cchs)

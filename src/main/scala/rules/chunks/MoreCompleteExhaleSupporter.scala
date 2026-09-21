@@ -421,6 +421,13 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
             if (v.decider.check(Not(eq), Verifier.config.checkTimeout())) {
               newChunks.append(ch)
+            } else if (v.decider.check(pTaken === NoPerm, Verifier.config.splitTimeout())) {
+              /* Nothing can be taken from this chunk (e.g. its permission is conditionally zero and the
+               * condition is known to be false). Keep the chunk and, importantly, the needed amount as
+               * they are: subtracting a provably-zero pTaken would only make pNeeded syntactically more
+               * complex, and could e.g. turn a constrainable read permission into an "exact" amount
+               * (see consumeExactRead), which matters when the remainder is consumed from another heap. */
+              newChunks.append(ch)
             } else {
               pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm))
 
@@ -428,9 +435,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
               pNeeded = PermMinus(pNeeded, pTaken)
               val consumedChunk = ch.withPerm(pTaken)
 
-              if (!v.decider.check(pTaken === NoPerm, Verifier.config.splitTimeout())) {
-                consumedChunks.append(consumedChunk)
-              }
+              consumedChunks.append(consumedChunk)
 
               if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout())) {
                 newChunks.append(newChunk)

@@ -1,0 +1,36 @@
+// unfolding inside a loop body: the predicate has to be transferred from the
+// outer heap into the loop heap and must still be there after the unfolding
+// (the join at the end of the unfolding resets the loop heap). Regression test
+// for a permission leak.
+
+field f: Int
+
+predicate P(x: Ref) { acc(x.f) }
+
+method havocBool() returns (b: Bool)
+
+method unfoldingTwice(x: Ref)
+  requires P(x)
+{
+  var b: Bool := true
+  while (b)
+  {
+    var t: Int := unfolding P(x) in x.f
+    var t2: Int := unfolding P(x) in x.f
+    assert t == t2
+    b := havocBool()
+  }
+  unfold P(x)
+}
+
+method unfoldingOnce(x: Ref)
+  requires P(x)
+{
+  var b: Bool := true
+  while (b)
+  {
+    var t: Int := unfolding P(x) in x.f
+    b := havocBool()
+  }
+  unfold P(x)
+}

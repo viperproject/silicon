@@ -1,0 +1,53 @@
+// Exiting the loop after exactly k iterations must be a concrete path
+// (it used to be covered only by the generalised exit).
+
+field f: Int
+
+// Every iteration writes the constant 1, so the generalised exit still knows r.f == 1.
+method exactK(r: Ref)
+  requires acc(r.f)
+{
+  var i: Int := 0
+  r.f := 0
+  while (i < 1)
+  {
+    r.f := 1
+    i := i + 1
+  }
+  assert r.f == 1
+}
+
+// The loop runs exactly once and increments r.f, so r.f == 1 in reality, and the
+// concrete exit after the first iteration knows this. The generalised exit after
+// the checking iteration does not: without an invariant, nothing bounds i from
+// below, so two more iterations from an arbitrary state are feasible there.
+// Passes with k >= 2, where the checking phase is never reached.
+method exactKIncrement(r: Ref)
+  requires acc(r.f)
+{
+  var i: Int := 0
+  r.f := 0
+  while (i < 1)
+  {
+    r.f := r.f + 1
+    i := i + 1
+  }
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert r.f == 1
+}
+
+// The loop body runs at most once. Exiting after exactly k = 1 iterations must be
+// a concrete path; the generalised exit after the checking iteration is infeasible
+// because b is false after any iteration.
+method exactKOnce(r: Ref, b0: Bool)
+  requires acc(r.f)
+{
+  r.f := 0
+  var b: Bool := b0
+  while (b)
+  {
+    r.f := r.f + 1
+    b := false
+  }
+  assert r.f == (b0 ? 1 : 0)
+}

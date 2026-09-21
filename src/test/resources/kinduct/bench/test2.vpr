@@ -1,0 +1,59 @@
+
+field val: Int
+field next: Ref
+
+predicate list(r: Ref) {
+    acc(r.val) && acc(r.next) && (r.next != null ==> list(r.next))
+}
+
+method concat(head: Ref, end: Ref, nxt: Ref)
+    requires lseg(head, end)
+    requires single(end, nxt)
+    ensures lseg(head, nxt)
+
+method itSum(head: Ref)
+    requires list(head)
+{
+    var cur: Ref
+    cur := head
+    var sum: Int
+    sum := 0
+    while (cur != null)
+      //invariant cur != null ==> list(cur)
+    {
+        unfold list(cur)
+        sum := sum + cur.val
+        cur := cur.next
+    }
+}
+
+predicate lseg(this: Ref, end: Ref) {
+    this != end ==> (acc(this.val, write) && acc(this.next, write) && lseg(this.next, end))
+}
+
+predicate single(end: Ref, nxt: Ref) {
+    acc(end.next) && acc(end.val) && end.next == nxt
+}
+
+method listSumLseg(head: Ref)
+    requires list(head)
+{
+    var cur: Ref
+    cur := head
+    var sum: Int
+    sum := 0
+    fold lseg(head, cur)
+    while (cur != null)
+        invariant lseg(head, cur)
+         invariant cur != null ==> list(cur)
+    {
+        unfold list(cur)
+        sum := sum + cur.val
+        var nxt: Ref
+        nxt := cur.next
+        fold single(cur, nxt)
+        concat(head, cur, nxt)
+        cur := nxt
+    }
+    assert lseg(head, cur)
+}

@@ -238,7 +238,9 @@ object chunkSupporter extends ChunkSupportRules {
             case Seq(e) => (e.s, e.data)
             case Seq(e1, e2) =>
               val mergedState = State.merge(e1.s, e1.pathConditions, e2.s, e2.pathConditions)
-              (mergedState, (mergedState.h, e1.data._2))
+              val snap1 = e1.data._2
+              val snap2 = e2.data._2.convert(snap1.sort)
+              (mergedState, (mergedState.h, Ite(And(e1.pathConditions.branchConditions), snap1, snap2)))
           }((s7, hs7, v7) => {
             QS(s7, hs7._1, hs7._2, v7)
           })

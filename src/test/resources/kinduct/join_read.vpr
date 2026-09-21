@@ -1,0 +1,21 @@
+// A read whose "have permission" check branches and joins.
+
+field f: Int
+
+method havocBool() returns (b: Bool)
+
+method joinTest(x: Ref, c: Bool)
+  requires acc(x.f, 1/2) && x.f == 0
+{
+  var b: Bool := true
+  while (b)
+  {
+    inhale c ==> acc(x.f, 1/4)
+    var tmp: Int := x.f
+    // Holds in reality: with !c we read the value 0 held from the precondition;
+    // with c we inhaled 1/4 while already holding 1/2 so the value is still 0.
+    assert !c ==> tmp == 0
+    exhale c ==> acc(x.f, 1/4)
+    b := havocBool()
+  }
+}

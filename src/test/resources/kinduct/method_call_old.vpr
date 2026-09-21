@@ -1,0 +1,68 @@
+// Tests for old(...) in the postcondition of a method called inside a loop.
+// The pre-state heap used for old(...) must include the chunks that were
+// transferred into the loop heap by the precondition.
+
+field f: Int
+
+method havocBool() returns (b: Bool)
+
+method incOld(x: Ref)
+  requires acc(x.f)
+  ensures acc(x.f) && x.f == old(x.f) + 1
+
+method incNoOld(x: Ref)
+  requires acc(x.f)
+  ensures acc(x.f) && x.f > 0
+
+method loopNoOld(x: Ref)
+  requires acc(x.f) && x.f == 0
+{
+  var b: Bool := true
+  while (b)
+  {
+    incNoOld(x)
+    b := havocBool()
+  }
+}
+
+method loopOldWithInv(x: Ref)
+  requires acc(x.f) && x.f == 0
+{
+  var b: Bool := true
+  while (b)
+    invariant acc(x.f)
+  {
+    incOld(x)
+    b := havocBool()
+  }
+}
+
+method loopOldNoInv(x: Ref)
+  requires acc(x.f) && x.f == 0
+{
+  var b: Bool := true
+  while (b)
+  {
+    incOld(x)
+    b := havocBool()
+  }
+}
+
+// Labelled old inside the loop body. Everything holds in reality, but the
+// lookup in the label heap transfers read permission out of the outer heap
+// into a heap copy that is discarded afterwards, so permission is leaked.
+method labelledOld(x: Ref)
+  requires acc(x.f) && x.f == 0
+{
+  var b: Bool := true
+  while (b)
+  {
+    label l
+    var t: Int := x.f
+    assert old[l](x.f) == t
+    b := havocBool()
+  }
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/000/)
+  assert perm(x.f) == write
+  exhale acc(x.f)
+}

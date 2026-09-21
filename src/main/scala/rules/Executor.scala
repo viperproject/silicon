@@ -99,8 +99,9 @@ object executor extends ExecutionRules {
               loopHeapStack = s.loopHeapStack.tail, loopReadVarStack = s.loopReadVarStack.tail, loopPhaseStack = s.loopPhaseStack.tail)
             s1
           case LoopPhases.Assuming =>
+            /* Only reachable via out-edges that do not originate from the loop head (e.g. gotos).
+             * Exits during the assuming phase are not verified, see the loop head case in exec. */
             v.decider.assume(False)
-            // assume false
             val s1 = s.copy(loopHeapStack = s.loopHeapStack.tail, loopReadVarStack = s.loopReadVarStack.tail, loopPhaseStack = s.loopPhaseStack.tail)
             s1
           case LoopPhases.Checking =>
@@ -332,45 +333,56 @@ object executor extends ExecutionRules {
                             edgeCondWelldefinedness combine follows(s4, sortedEdges, WhileFailed, v3, joinPoint)(Q)})}})}})}))
 
           case _ if Verifier.config.kinduction.isSupplied =>
+            /* We've reached the loop head via a back-edge while doing k-induction. The loop is exited
+             *   - concretely, after each of the k unrolled iterations of the transferring phase
+             *     (the exit after zero iterations is handled by the in-edge case above), and
+             *   - once more, generalised, after the checking iteration.
+             * During the assuming phase, and when switching from the assuming to the checking phase,
+             * the out-edges are not followed (exits after n+j iterations for j < k are covered by the
+             * concrete exits for n = 0 and by the generalised exit otherwise).
+             */
             val (phase, kRemaining, loopHeap) = s.loopPhaseStack.head
             val edges = s.methodCfg.outEdges(block)
+            val (outEdges, inEdges) = edges.partition(_.kind == cfg.Kind.Out)
+
+            def followOutEdges(s: State, v: Verifier): VerificationResult =
+              if (outEdges.isEmpty) Success() /* Loop cannot be exited via the head */
+              else execs(s, stmts, v)((s4, v3) => follows(s4, outEdges, WhileFailed, v3, None)(Q))
+
+            def followInEdges(s: State, v: Verifier): VerificationResult =
+              execs(s, stmts, v)((s4, v3) => follows(s4, inEdges, WhileFailed, v3, None)(Q))
+
             consumes(s, invs, e => LoopInvariantNotPreserved(e), v, true)((sp, _, v) => {
               phase match {
                 case LoopPhases.Transferring =>
                   if (kRemaining > 1) {
                     val sNew = sp.copy(loopPhaseStack = (LoopPhases.Transferring, kRemaining - 1, loopHeap) +: sp.loopPhaseStack.tail)
-                    execs(sNew, stmts, v)((s4, v3) => {
-                      follows(s4, edges, WhileFailed, v3, None)(Q)
-                    })
+                    /* Concrete exit and next unrolled iteration */
+                    followOutEdges(sp, v) combine followInEdges(sNew, v)
                   } else {
-                    /* Havoc local variables that are assigned to in the loop body */
-                    val wvs = sp.methodCfg.writtenVars(block)
-                    /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
+                    /* Concrete exit after the k-th unrolled iteration */
+                    followOutEdges(sp, v) combine {
+                      /* Havoc local variables that are assigned to in the loop body */
+                      val wvs = sp.methodCfg.writtenVars(block)
+                      /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
 
-                    val gBody = Store(wvs.foldLeft(sp.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
-                    val sNew = sp.copy(g = gBody, h = Heap(),
-                      loopPhaseStack = (LoopPhases.Assuming, Verifier.config.kinduction(), loopHeap) +: sp.loopPhaseStack.tail)
-                    execs(sNew, stmts, v)((s4, v3) => {
-                      follows(s4, edges, WhileFailed, v3, None)(Q)
-                    })
+                      val gBody = Store(wvs.foldLeft(sp.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
+                      val sNew = sp.copy(g = gBody, h = Heap(),
+                        loopPhaseStack = (LoopPhases.Assuming, Verifier.config.kinduction(), loopHeap) +: sp.loopPhaseStack.tail)
+                      followInEdges(sNew, v)
+                    }
                   }
                 case LoopPhases.Assuming =>
                   if (kRemaining > 1) {
                     val sNew = sp.copy(loopPhaseStack = (LoopPhases.Assuming, kRemaining - 1, loopHeap) +: sp.loopPhaseStack.tail)
-                    execs(sNew, stmts, v)((s4, v3) => {
-                      follows(s4, edges, WhileFailed, v3, None)(Q)
-                    })
+                    followInEdges(sNew, v)
                   } else {
                     val sNew = sp.copy(loopPhaseStack = (LoopPhases.Checking, 1, loopHeap) +: sp.loopPhaseStack.tail)
-                    execs(sNew, stmts, v)((s4, v3) => {
-                      follows(s4, edges, WhileFailed, v3, None)(Q)
-                    })
+                    followInEdges(sNew, v)
                   }
                 case LoopPhases.Checking =>
-                  val outEdges = edges filter(_.kind == cfg.Kind.Out)
-                  execs(sp, stmts, v)((s4, v3) => {
-                    follows(s4, outEdges, WhileFailed, v3, None)(Q)
-                  })
+                  /* Generalised exit after the checking iteration */
+                  followOutEdges(sp, v)
               }}
             )
 
@@ -622,13 +634,16 @@ object executor extends ExecutionRules {
           val preCondId = v1.symbExLog.openScope(preCondLog)
           val s2 = s1.copy(g = Store(fargs.zip(tArgs)),
                            recordVisited = true)
-          consumes(s2, meth.pres, _ => pvePre, v1)((s3, _, v2) => {
+          consumesWithPreHeap(s2, meth.pres, _ => pvePre, v1)((s3, hPre, _, v2) => {
             v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
             val postCondId = v2.symbExLog.openScope(postCondLog)
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
-            val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
+            /* The pre-state heap for old(...) in the postcondition. hPre is s1.h plus the chunks that the
+             * precondition transferred into it from outer loop heaps (k-induction); outside of loops it is s1.h. */
+            val hPreState = if (s1.exhaleExt) magicWandSupporter.getEvalHeap(s1) else hPre
+            val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> hPreState))
             produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2)((s5, v3) => {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)

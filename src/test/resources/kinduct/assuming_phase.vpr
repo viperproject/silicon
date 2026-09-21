@@ -1,0 +1,49 @@
+field f: Int
+field g: Int
+
+method havocBool() returns (b: Bool)
+
+// Iteration k+1 reads y.f under a guard that the first k iterations do not
+// satisfy, so the induction step must fail (the checking iteration finds no
+// permission to y.f in the loop heap).
+method needsGrow(x: Ref, y: Ref)
+  requires acc(x.f) && acc(y.f)
+{
+  var i: Int := 0
+  while (i < 10)
+  {
+    if (i > 5) {
+      //:: ExpectedOutput(assignment.failed:insufficient.permission)
+      var t: Int := y.f
+    }
+    i := i + 1
+  }
+}
+
+// Reads x.f in every iteration; the frame keeps the value and the rest of the permission.
+method readOnly(x: Ref)
+  requires acc(x.f) && x.f == 3
+{
+  var b: Bool := true
+  var s: Int := 0
+  while (b)
+  {
+    s := s + x.f
+    b := havocBool()
+  }
+  assert x.f == 3
+  assert perm(x.f) == write
+}
+
+// After the loop, the total permission to x.f must be write again.
+method readOnly2(x: Ref)
+  requires acc(x.f)
+{
+  var b: Bool := true
+  while (b)
+  {
+    var t: Int := x.f
+    b := havocBool()
+  }
+  exhale acc(x.f)
+}

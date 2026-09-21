@@ -59,6 +59,18 @@ trait ConsumptionRules extends SymbolicExecutionRules {
                v: Verifier, isAssert: Boolean = false)
               (Q: (State, Term, Verifier) => VerificationResult)
               : VerificationResult
+
+  /** Like [[consumes]], but additionally passes the heap as it was before the consumption
+    * (2nd argument of `Q`). During the transferring/assuming phases of k-induction, this heap
+    * also contains the chunks that were transferred from (or conjured for) the outer loop heaps
+    * in order to satisfy the assertions, so it is the right heap to evaluate `old(...)` in.
+    */
+  def consumesWithPreHeap(s: State,
+                          as: Seq[ast.Exp],
+                          pvef: ast.Exp => PartialVerificationError,
+                          v: Verifier, isAssert: Boolean = false)
+                         (Q: (State, Heap, Term, Verifier) => VerificationResult)
+                         : VerificationResult
 }
 
 object consumer extends ConsumptionRules {
@@ -88,6 +100,17 @@ object consumer extends ConsumptionRules {
               (Q: (State, Term, Verifier) => VerificationResult)
               : VerificationResult = {
 
+    consumesWithPreHeap(s, as, pvef, v, isAssert)((s1, _, snap1, v1) => Q(s1, snap1, v1))
+  }
+
+  /** @inheritdoc */
+  def consumesWithPreHeap(s: State,
+                          as: Seq[ast.Exp],
+                          pvef: ast.Exp => PartialVerificationError,
+                          v: Verifier, isAssert: Boolean = false)
+                         (Q: (State, Heap, Term, Verifier) => VerificationResult)
+                         : VerificationResult = {
+
     val allTlcs = mutable.ListBuffer[ast.Exp]()
     val allPves = mutable.ListBuffer[PartialVerificationError]()
 
@@ -100,9 +123,11 @@ object consumer extends ConsumptionRules {
     })
 
     consumeTlcs(s, s.h, allTlcs.result(), allPves.result(), v)((s1, h1, cHeap, snap1, v1) => {
+      /* s1.h is the heap before the consumption, plus any chunks that were transferred into it
+       * from outer loop heaps (k-induction). */
       val s2 = s1.copy(h = if (isAssert) s1.h else h1,
                        partiallyConsumedHeap = s.partiallyConsumedHeap)
-      Q(s2, snap1, v1)
+      Q(s2, s1.h, snap1, v1)
     })
   }
 

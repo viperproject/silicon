@@ -1,0 +1,32 @@
+// Non-QP variant of qp_conditional_read.vpr: the loop heap holds a chunk whose
+// permission is a conditional literal, then the location is read.
+
+field f: Int
+
+method havocBool() returns (b: Bool)
+
+method condRead(x: Ref, c: Bool)
+  requires acc(x.f, 1/2) && x.f == 0
+{
+  var b: Bool := true
+  while (b)
+  {
+    inhale acc(x.f, c ? 1/4 : none)
+    var tmp: Int := x.f
+    exhale acc(x.f, c ? 1/4 : none)
+    b := havocBool()
+  }
+}
+
+method uncondRead(x: Ref)
+  requires acc(x.f, 1/2) && x.f == 0
+{
+  var b: Bool := true
+  while (b)
+  {
+    inhale acc(x.f, 1/4)
+    var tmp: Int := x.f
+    exhale acc(x.f, 1/4)
+    b := havocBool()
+  }
+}

@@ -1,0 +1,65 @@
+// Reads of a QP field inside a loop. When the loop heap holds a QP chunk whose
+// permission is conditionally zero, the read permission has to be taken from
+// the outer heap under the negated condition. Regression test: the remaining
+// amount used to be (p - Ite(...)), which counts as an exact amount, so the read
+// variable p never got an upper bound.
+
+field f: Int
+
+method havocBool() returns (b: Bool)
+
+method forceQP(x: Ref) { inhale forall r: Ref :: false ==> acc(r.f) }
+
+method qpRead(x: Ref)
+  requires acc(x.f, 1/2) && x.f == 0
+{
+  var b: Bool := true
+  while (b)
+  {
+    var tmp: Int := x.f
+    assert tmp == 0
+    b := havocBool()
+  }
+  assert x.f == 0
+}
+
+method qpCondRead(x: Ref, c: Bool)
+  requires acc(x.f, 1/2) && x.f == 0
+{
+  var b: Bool := true
+  while (b)
+  {
+    inhale forall r: Ref :: r == x && c ==> acc(r.f, 1/4)
+    var tmp: Int := x.f
+    exhale forall r: Ref :: r == x && c ==> acc(r.f, 1/4)
+    b := havocBool()
+  }
+}
+
+method qpCondReadValue(x: Ref, c: Bool)
+  requires acc(x.f, 1/2) && x.f == 0
+{
+  var b: Bool := true
+  while (b)
+  {
+    inhale forall r: Ref :: r == x && c ==> acc(r.f, 1/4)
+    var tmp: Int := x.f
+    // With !c we read the value held from the precondition.
+    assert !c ==> tmp == 0
+    exhale forall r: Ref :: r == x && c ==> acc(r.f, 1/4)
+    b := havocBool()
+  }
+}
+
+method qpUncondRead(x: Ref)
+  requires acc(x.f, 1/2) && x.f == 0
+{
+  var b: Bool := true
+  while (b)
+  {
+    inhale forall r: Ref :: r == x ==> acc(r.f, 1/4)
+    var tmp: Int := x.f
+    exhale forall r: Ref :: r == x ==> acc(r.f, 1/4)
+    b := havocBool()
+  }
+}

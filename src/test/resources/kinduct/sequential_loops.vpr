@@ -1,0 +1,111 @@
+// Two loops in sequence over the same location, with method calls inside.
+// The frame of the first loop must be merged back before the second loop.
+
+field f: Int
+
+method havocBool() returns (b: Bool)
+
+method read(x: Ref) returns (r: Int)
+  requires acc(x.f, 1/4)
+  ensures acc(x.f, 1/4) && r == x.f
+
+method inc(x: Ref)
+  requires acc(x.f)
+  ensures acc(x.f) && x.f == old(x.f) + 1
+
+method twoLoops(x: Ref)
+  requires acc(x.f) && x.f == 0
+{
+  var b: Bool := true
+  var s: Int := 0
+  while (b)
+  {
+    var t: Int
+    t := read(x)
+    s := s + t
+    b := havocBool()
+  }
+  assert x.f == 0
+  assert perm(x.f) == write
+  b := true
+  while (b)
+  {
+    inc(x)
+    b := havocBool()
+  }
+  assert perm(x.f) == write
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert x.f == 0
+}
+
+method incLoop(x: Ref)
+  requires acc(x.f) && x.f == 0
+{
+  var b: Bool := true
+  while (b)
+  {
+    inc(x)
+    b := havocBool()
+  }
+  assert perm(x.f) == write
+}
+
+method readThenExhale(x: Ref)
+  requires acc(x.f) && x.f == 0
+{
+  var b: Bool := true
+  while (b)
+  {
+    var t: Int
+    t := read(x)
+    b := havocBool()
+  }
+  exhale acc(x.f)
+}
+
+method readThenCall(x: Ref)
+  requires acc(x.f) && x.f == 0
+{
+  var b: Bool := true
+  while (b)
+  {
+    var t: Int
+    t := read(x)
+    b := havocBool()
+  }
+  inc(x)
+}
+
+method fieldReadThenIncLoop(x: Ref)
+  requires acc(x.f) && x.f == 0
+{
+  var b: Bool := true
+  while (b)
+  {
+    var t: Int := x.f
+    b := havocBool()
+  }
+  b := true
+  while (b)
+  {
+    inc(x)
+    b := havocBool()
+  }
+}
+
+method twoIncLoops(x: Ref)
+  requires acc(x.f) && x.f == 0
+{
+  var b: Bool := true
+  while (b)
+  {
+    inc(x)
+    b := havocBool()
+  }
+  b := true
+  while (b)
+  {
+    inc(x)
+    b := havocBool()
+  }
+}
