@@ -8,7 +8,7 @@ ensures list(res)
     fold list(res)
     var curr: Ref := x 
     while(curr != null)
-    //invariant list(curr)
+    invariant list(curr)
     //invariant list(res)
     {
         var tmp: Ref := curr

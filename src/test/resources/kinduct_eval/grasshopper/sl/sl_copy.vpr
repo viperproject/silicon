@@ -10,7 +10,8 @@ ensures list(x) && list(res)
     package list(curr) --* list(x)
 
     while (curr != null)
-    //invariant list(curr) && list(cp)
+    invariant list(curr)
+    //invariant list(cp)
     //invariant list(curr) --* list(x)
     {
         var old_curr: Ref := curr

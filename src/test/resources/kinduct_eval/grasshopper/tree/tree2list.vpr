@@ -29,7 +29,7 @@ ensures list(res)
 
         while(remaining != null)
         //invariant tList(remaining)
-        //invariant list(res)
+        invariant list(res)
         {
             unfold tList(remaining)
             var current: Ref := remaining.elem

@@ -20,11 +20,11 @@ ensures list(x)
         package list(prev) --* list(x)
 
         while(curr != null)
-        //invariant list(prev) --* list(x)
-        //invariant acc(prev.next)
-        //invariant acc(prev.data)
-        //invariant prev.next == curr
-        //invariant list(curr)
+        invariant list(prev) --* list(x)
+        invariant acc(prev.next)
+        invariant acc(prev.data)
+        invariant prev.next == curr
+        invariant list(curr)
         {
             var old_curr: Ref := curr
             var old_prev: Ref := prev

@@ -20,8 +20,9 @@ ensures tree(res)
         unfold tree(curr)
 
         while(curr != null && curr.val != value)
-        //invariant acc(curr.left) && acc(curr.right) && acc(curr.val)
-        //invariant tree(curr.left) && tree(curr.right)
+        invariant acc(curr.val)
+        //invariant acc(curr.left) && acc(curr.right)
+        invariant tree(curr.left) && tree(curr.right)
         //invariant tree(curr) --* tree(root)
         {
             var prev: Ref := curr

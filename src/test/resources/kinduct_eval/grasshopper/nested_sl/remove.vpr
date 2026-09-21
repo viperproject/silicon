@@ -13,7 +13,7 @@ ensures OuterNode(res)
         unfold OuterNode(currO)
 
         while(nondet && currO.onext != null)
-        //invariant acc(currO.onext) && acc(currO.down) && InnerNode(currO.down)
+        invariant acc(currO.onext) && acc(currO.down) && InnerNode(currO.down)
         //invariant OuterNode(currO.onext)
         //invariant OuterNode(currO) --* OuterNode(x)
         {
@@ -45,7 +45,7 @@ ensures OuterNode(res)
                 nondet := havoc()
 
                 while(nondet && currI.inext != null)
-                //invariant acc(currI.inext)
+                invariant acc(currI.inext)
                 //invariant InnerNode(currI.inext)
                 //invariant InnerNode(currI) --* InnerNode(ic)
                 {

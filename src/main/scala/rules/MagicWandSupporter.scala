@@ -213,6 +213,22 @@ object magicWandSupporter extends SymbolicExecutionRules {
   }
 
 
+  /** k-induction: consume `pLoss` from the stack of loop heaps `hs`.
+    *
+    * `hs` is the loop heap of the innermost loop (index 0, which is in its transferring phase)
+    * followed by `s.loopHeapStack`, i.e. heap i is the loop heap of the i-th enclosing loop, the
+    * last one being the method heap. Taking permissions from heap i is an exhale performed by loop i
+    * in its own phase:
+    *   - Transferring: take what heap i can provide and pass the remainder on to heap i+1;
+    *   - Assuming: take what heap i can provide and conjure the remainder (the enclosing iteration is
+    *     assumed to have had the permission), done;
+    *   - Checking, and the method heap: take what heap i can provide, fail if anything remains.
+    *
+    * `conjure(s, perm, v)` must create a fresh chunk for the consumed resource with permission `perm`.
+    * Consumed chunks are returned per heap (`None` for heaps that provided nothing; a conjured chunk
+    * takes the place of its heap's chunk if that heap provided nothing) and, together with any conjured
+    * chunk, as a heap.
+    */
   def consumeFromMultipleHeapsKInd[CH <: Chunk]
                                   (s: State,
                                    hs: Stack[Heap],
@@ -221,61 +237,52 @@ object magicWandSupporter extends SymbolicExecutionRules {
                                    qvars: Seq[Var],
                                    v: Verifier)
                                   (consumeFunction: (State, Heap, Term, Verifier, Boolean) => (ConsumptionResult, State, Heap, Heap, Option[CH]))
+                                  (conjure: (State, Term, Verifier) => (State, CH))
                                   (Q: (State, Stack[Heap], Heap, Stack[Option[CH]], Verifier) => VerificationResult)
                                   : VerificationResult = {
 
     val initialConsumptionResult = ConsumptionResult(pLoss, qvars, v, Verifier.config.checkTimeout())
-    /* TODO: Introduce a dedicated timeout for the permission check performed by ConsumptionResult,
-     *       instead of using checkTimeout. Reason: checkTimeout is intended for checks that are
-     *       optimisations, e.g. detecting if a chunk provided no permissions or if a branch is
-     *       infeasible. The situation is somewhat different here: the check should be time-bounded
-     *       because not all permissions need to come from this stack, but the bound should be
-     *       (significantly) higher to reduce the chances of missing a chunk that can provide
-     *       permissions.
-     */
-    val initial = (initialConsumptionResult, s, Stack.empty[Heap], Heap(), Stack.empty[Option[CH]])
-    val (result, s1, heaps, actualConsumedChunks, consumedChunks) =
-      hs.foldLeft[(ConsumptionResult, State, Stack[Heap], Heap, Stack[Option[CH]])](initial)((partialResult, heap) =>
-        partialResult match {
-          case (r: Complete, sIn, hps, ch, cchs) =>
-            (r, sIn, heap +: hps, ch, None +: cchs)
-          case (Incomplete(permsNeeded), sIn, hps, ch, cchs) =>
-            val sInP = if (hps.nonEmpty) sIn else sIn.copy(loopReadVarStack = sIn.loopReadVarStack.tail.prepended((sIn.loopReadVarStack.head._1, false)))
-            val (success, sOutP, h, cHeap, cch) = consumeFunction(sInP, heap, permsNeeded, v, hps.length == hs.length - 1)
-            val sOut = sOutP.copy(loopReadVarStack = sIn.loopReadVarStack)
-            val tEq = (cchs.flatten.lastOption, cch) match {
-              /* Equating wand snapshots would indirectly equate the actual left hand sides when they are applied
-               * and thus be unsound. Since fractional wands do not exist it is not necessary to equate their
-               * snapshots. Also have a look at the comments in the packageWand and applyWand methods.
-               */
-              //case (Some(_: MagicWandChunk), Some(_: MagicWandChunk)) => True
-              //case (Some(ch1: NonQuantifiedChunk), Some(ch2: NonQuantifiedChunk)) => ch1.snap === ch2.snap
-              //case (Some(ch1: QuantifiedBasicChunk), Some(ch2: QuantifiedBasicChunk)) => ch1.snapshotMap === ch2.snapshotMap
-              case _ => True
-            }
-            v.decider.assume(tEq)
 
-            /* In the future it might be worth to recheck whether the permissions needed, in the case of
-             * success being an instance of Incomplete, are zero.
-             * For example if an assertion similar to x.f == 0 ==> acc(x.f) has previously been exhaled, Silicon
-             * currently branches and if we learn that x.f != 0 from tEq above one of the branches becomes
-             * infeasible. If a future version of Silicon would introduce conditionals to the permission term
-             * of the corresponding chunk instead of branching we might get something similar to
-             * Incomplete(W - (x.f == 0 ? Z : W)) for success, when using transfer to consume acc(x.f).
-             * After learning x.f != 0 we would then be done, which is not detected by a smoke check.
-             *
-             * Note that when tEq is assumed it should be ensured, that permissions have actually been taken
-             * from heap, i.e. that tEq does not result in already having the required permissions before
-             * consuming from heap.
-             */
+    def phaseOfLoopOwningHeap(i: Int): LoopPhases.LoopPhase =
+      if (i < s.loopPhaseStack.length) s.loopPhaseStack(i)._1
+      else LoopPhases.Checking /* The method heap: behaves like a checking-phase heap */
+
+    case class Acc(result: ConsumptionResult, s: State, heaps: Stack[Heap], cHeap: Heap, chunks: Stack[Option[CH]], stopped: Boolean)
+
+    val initial = Acc(initialConsumptionResult, s, Stack.empty[Heap], Heap(), Stack.empty[Option[CH]], stopped = false)
+    val Acc(result, s1, heaps, actualConsumedChunks, consumedChunks, _) =
+      hs.zipWithIndex.foldLeft(initial) { case (acc, (heap, i)) =>
+        acc.result match {
+          case _ if acc.stopped =>
+            acc.copy(heaps = heap +: acc.heaps, chunks = None +: acc.chunks)
+          case _: Complete =>
+            acc.copy(heaps = heap +: acc.heaps, chunks = None +: acc.chunks)
+          case Incomplete(permsNeeded) =>
+            val sIn = acc.s
+            /* The read permission variable of the requesting (innermost) loop is exact w.r.t. its own heap
+             * and constrainable w.r.t. all enclosing heaps. */
+            val sInP = if (i > 0) sIn else sIn.copy(loopReadVarStack = sIn.loopReadVarStack.tail.prepended((sIn.loopReadVarStack.head._1, false)))
+            val (success, sOutP, h, cHeap, cch) = consumeFunction(sInP, heap, permsNeeded, v, i == hs.length - 1)
+            val sOut = sOutP.copy(loopReadVarStack = sIn.loopReadVarStack)
+
             /* Only check for smoke (which turns an incomplete consumption into a complete one on an
              * infeasible path) if the consumption is still incomplete; the check is pointless otherwise. */
-            if (!success.isComplete && v.decider.checkSmoke()) {
-              (Complete(), sOut, h +: hps, ch + cHeap, cch +: cchs)
-            } else {
-              (success, sOut, h +: hps, ch + cHeap, cch +: cchs)
+            val success1 = if (!success.isComplete && v.decider.checkSmoke()) Complete() else success
+
+            (success1, phaseOfLoopOwningHeap(i)) match {
+              case (_: Complete, _) =>
+                Acc(Complete(), sOut, h +: acc.heaps, acc.cHeap + cHeap, cch +: acc.chunks, stopped = false)
+              case (Incomplete(_), LoopPhases.Transferring) =>
+                Acc(success1, sOut, h +: acc.heaps, acc.cHeap + cHeap, cch +: acc.chunks, stopped = false)
+              case (Incomplete(remaining), LoopPhases.Assuming) =>
+                val (sOut2, conjured) = conjure(sOut, remaining, v)
+                Acc(Complete(), sOut2, h +: acc.heaps, acc.cHeap + cHeap + conjured, cch.orElse(Some(conjured)) +: acc.chunks, stopped = false)
+              case (Incomplete(_), _) => /* LoopPhases.Checking */
+                Acc(success1, sOut, h +: acc.heaps, acc.cHeap + cHeap, cch +: acc.chunks, stopped = true)
             }
-        })
+        }
+      }
+
     result match {
       case Complete() =>
         assert(heaps.length == hs.length)

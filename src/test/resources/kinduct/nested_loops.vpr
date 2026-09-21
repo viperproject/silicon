@@ -1,0 +1,65 @@
+// Nested loops: an inner loop's transferring phase requests permissions from
+// the enclosing loop, which handles the request according to its own phase
+// (transferring: pass on outwards; assuming: conjure; checking: plain exhale).
+
+field f: Int
+
+// Inner loop writes y.f in every outer iteration. During the outer assuming
+// phase the outer loop heap is empty and the method heap gave y.f away in the
+// outer transferring phase, so the inner transfer must be conjured.
+method nestedWrite(y: Ref)
+  requires acc(y.f)
+{
+  var i: Int := 0
+  while (i < 10)
+  {
+    var j: Int := 0
+    while (j < 1)
+    {
+      y.f := i
+      j := j + 1
+    }
+    i := i + 1
+  }
+  assert perm(y.f) == write
+}
+
+method nestedRead(y: Ref)
+  requires acc(y.f) && y.f == 3
+{
+  var i: Int := 0
+  var s: Int := 0
+  while (i < 10)
+  {
+    var j: Int := 0
+    while (j < 1)
+    {
+      s := s + y.f
+      j := j + 1
+    }
+    i := i + 1
+  }
+  assert perm(y.f) > none
+  assert y.f == 3
+}
+
+// The inner loop needs y.f only from the second outer iteration on; the outer
+// checking iteration must fail since the outer loop heap does not contain y.f.
+method nestedNeedsGrow(x: Ref, y: Ref)
+  requires acc(x.f) && acc(y.f)
+{
+  var i: Int := 0
+  while (i < 10)
+  {
+    var j: Int := 0
+    while (j < 1)
+    {
+      if (i > 0) {
+        //:: ExpectedOutput(assignment.failed:insufficient.permission)
+        y.f := 1
+      }
+      j := j + 1
+    }
+    i := i + 1
+  }
+}

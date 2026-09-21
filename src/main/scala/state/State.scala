@@ -88,7 +88,7 @@ final case class State(g: Store = Store(),
     extends Mergeable[State] {
 
   val mustNotUseValueMapCache: Boolean = {
-    Verifier.config.disableValueMapCaching() || (loopPhaseStack.nonEmpty && loopPhaseStack.head._1 != LoopPhases.Checking)
+    Verifier.config.disableValueMapCaching()
   }
 
   assert(loopPhaseStack.length == loopHeapStack.length)

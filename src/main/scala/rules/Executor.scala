@@ -250,6 +250,7 @@ object executor extends ExecutionRules {
       case block @ cfg.LoopHeadBlock(invs, stmts, _) =>
         incomingEdgeKind match {
           case cfg.Kind.In if Verifier.config.kinduction.isSupplied =>
+            v.decider.prover.comment(s"k-induction: entering loop ${block.id}, transferring phase, k = ${Verifier.config.kinduction()}")
             val readPerm = v.decider.fresh(sorts.Perm)
             v.decider.assume(PermLess(NoPerm, readPerm))
             val sFirstPhase = s.copy(loopPhaseStack = s.loopPhaseStack.prepended((LoopPhases.Transferring, Verifier.config.kinduction(), block)),
@@ -352,6 +353,7 @@ object executor extends ExecutionRules {
             def followInEdges(s: State, v: Verifier): VerificationResult =
               execs(s, stmts, v)((s4, v3) => follows(s4, inEdges, WhileFailed, v3, None)(Q))
 
+            v.decider.prover.comment(s"k-induction: loop ${block.id} head reached in phase $phase with kRemaining = $kRemaining")
             consumes(s, invs, e => LoopInvariantNotPreserved(e), v, true)((sp, _, v) => {
               phase match {
                 case LoopPhases.Transferring =>
@@ -369,6 +371,7 @@ object executor extends ExecutionRules {
                       val gBody = Store(wvs.foldLeft(sp.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
                       val sNew = sp.copy(g = gBody, h = Heap(),
                         loopPhaseStack = (LoopPhases.Assuming, Verifier.config.kinduction(), loopHeap) +: sp.loopPhaseStack.tail)
+                      v.decider.prover.comment(s"k-induction: loop ${block.id} switching to assuming phase (havoc)")
                       followInEdges(sNew, v)
                     }
                   }
@@ -378,6 +381,7 @@ object executor extends ExecutionRules {
                     followInEdges(sNew, v)
                   } else {
                     val sNew = sp.copy(loopPhaseStack = (LoopPhases.Checking, 1, loopHeap) +: sp.loopPhaseStack.tail)
+                    v.decider.prover.comment(s"k-induction: loop ${block.id} switching to checking phase")
                     followInEdges(sNew, v)
                   }
                 case LoopPhases.Checking =>

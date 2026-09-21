@@ -9,7 +9,7 @@ package viper.silicon.rules.chunks
 import viper.silicon.rules.chunks.chunkSupporter.findChunksWithID
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Success, Unreachable, VerificationResult}
-import viper.silicon.resources.{FieldID, NonQuantifiedPropertyInterpreter, Resources}
+import viper.silicon.resources.{FieldID, NonQuantifiedPropertyInterpreter, PredicateID, Resources}
 import viper.silicon.rules.{Complete, ConsumptionResult, ConsumptionRules, Incomplete, SnapshotMapDefinition, SymbolicExecutionRules, magicWandSupporter}
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -236,7 +236,12 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       actualConsumeComplete(s, h, resource, args, perms, ve, v, isFinalHeap)((s2, h2, cHeap2, optSnap, v2) => {
         val cChunk = optSnap match {
           case Some(snap) => resource match {
-            case mw: ast.MagicWand => Some(MagicWandChunk(MagicWandIdentifier(mw, s.program), Map(), args, snap.asInstanceOf[MagicWandSnapshot], perms))
+            case mw: ast.MagicWand =>
+              val wandSnap = snap match {
+                case mws: MagicWandSnapshot => mws
+                case t => MagicWandSnapshot(t) /* e.g. a summarising snapshot of the wand snap function sort */
+              }
+              Some(MagicWandChunk(MagicWandIdentifier(mw, s.program), Map(), args, wandSnap, perms))
             case _ => Some(BasicChunk(FieldID, ChunkIdentifier(resource, s.program).asInstanceOf[BasicChunkIdentifier], args, snap, perms))
           }
           case None => None
@@ -271,7 +276,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         //  doActualConsumeComplete2(s, h, resource, args, perms, ve, v)
         //}
 
-        magicWandSupporter.consumeFromMultipleHeapsKInd(s, heaps, perms, failure, Seq(), v)(consumeSingle(resource, args, ve))((s1, hs1, cHeap1, optChunks, v1) => {
+        val conjure = (sC: State, perm: Term, vC: Verifier) => (sC, conjureChunk(sC, resource, args, perm, vC): Chunk)
+
+        magicWandSupporter.consumeFromMultipleHeapsKInd(s, heaps, perms, failure, Seq(), v)(consumeSingle(resource, args, ve))(conjure)((s1, hs1, cHeap1, optChunks, v1) => {
           //val (fr1, newTopHeap) = v1.stateConsolidator(s1).merge(s1.functionRecorder, s1.h, cHeap1, v1)
           //val (fr1, newTopHeap) = (s1.functionRecorder, s1.h + cHeap1)
           val totalConsumedAmount = perms
@@ -319,21 +326,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           })
         val maxGain = PermMinus(perms, currentPermAmount)
         val gain = PermMax(maxGain, NoPerm)
-        val snapSort = resource match {
-          case f: ast.Field => v.symbolConverter.toSort(f.typ)
-          case p: ast.Predicate => p.body.map(v.snapshotSupporter.optimalSnapshotSort(_, s.program)._1)
-            .getOrElse(sorts.Snap)
-          case _ => sorts.Snap
-        }
-
-        val ch = identifier match {
-          case mwi: MagicWandIdentifier =>
-            val snap = MagicWandSnapshot(v.decider.fresh(sorts.MagicWandSnapFunction))//v.decider.fresh(snapSort)
-            MagicWandChunk(mwi, Map(), args, snap, gain)
-          case bci: BasicChunkIdentifier =>
-            val snap = v.decider.fresh(snapSort)
-            BasicChunk(FieldID, bci, args, snap, gain)
-        }
+        val ch = conjureChunk(s, resource, args, gain, v)
 
         chunkSupporter.produce(s, h, ch, v)((s2, h2, v2) => {
           val (fr3, s3h) = v2.stateConsolidator(s2).merge(s2.functionRecorder, s2.h, ch, v2)
@@ -342,6 +335,21 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       }
     } else {
       doActualConsumeComplete(s, h, resource, args, perms, ve, v)(Q)
+    }
+  }
+
+  /** k-induction (assuming semantics): a fresh chunk for `resource(args)` with permission `perm`. */
+  def conjureChunk(s: State, resource: ast.Resource, args: Seq[Term], perm: Term, v: Verifier): NonQuantifiedChunk = {
+    resource match {
+      case mw: ast.MagicWand =>
+        val snap = MagicWandSnapshot(v.decider.fresh(sorts.MagicWandSnapFunction))
+        MagicWandChunk(MagicWandIdentifier(mw, s.program), Map(), args, snap, perm)
+      case f: ast.Field =>
+        BasicChunk(FieldID, BasicChunkIdentifier(f.name), args, v.decider.fresh(v.symbolConverter.toSort(f.typ)), perm)
+      case p: ast.Predicate =>
+        /* Predicate chunks carry snapshots of sort Snap (see e.g. the producer); using the predicate's
+         * optimal snapshot sort here leads to sort mismatches when the chunk is merged with others. */
+        BasicChunk(PredicateID, BasicChunkIdentifier(p.name), args, v.decider.fresh(sorts.Snap), perm)
     }
   }
 
@@ -374,7 +382,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         var res: (ConsumptionResult, State, Heap, Heap, Option[Chunk]) = (Incomplete(perms), s, h, Heap(), None)
         actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, perms, ve, v)((s1, updatedChunks, consumedChunks, optSnap, v2) => {
           //Q(s1, Heap(updatedChunks ++ otherChunks), Heap(consumedChunks), optSnap, v2)
-          val consumedChunk = Some(consumedChunks.head.withSnap(optSnap.get).withPerm(perms).withArgs(args))
+          val consumedChunk = consumedChunks.headOption.map(_.withSnap(optSnap.get).withPerm(perms).withArgs(args))
           res = (Complete(), s1, Heap(updatedChunks ++ otherChunks), Heap(consumedChunks), consumedChunk)
           Success()
         })
@@ -468,24 +476,18 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           } else {
             Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit).convert(snap.sort)
           }
-          if (!moreNeeded) {
-            val consumedChunk = Some(consumedChunks.head.withSnap(condSnap).withPerm(perms).withArgs(args))
-            result = (Complete(), s1, newHeap, consumedHeap, consumedChunk)//Q(s1, newHeap, consumedHeap, Some(condSnap), v1)
-            Success()
+          /* This is a decision ("did this heap provide everything?"), not a verification check, so it must
+           * not go through decider.assert (which is turned into an assumption in k-induction assuming phases).
+           * The caller decides what to do with an incomplete consumption. */
+          val tookEnough = !moreNeeded || v1.decider.check(pNeeded === NoPerm, Verifier.config.assertTimeout.getOrElse(0))
+          if (tookEnough) {
+            val consumedChunk = consumedChunks.headOption.map(_.withSnap(condSnap).withPerm(perms).withArgs(args))
+            result = (Complete(), s1, newHeap, consumedHeap, consumedChunk)
           } else {
-            v1.decider.assert(pNeeded === NoPerm, s1) {
-              case true =>
-                val consumedChunk = Some(consumedChunks.head.withSnap(condSnap).withPerm(perms).withArgs(args))
-                result = (Complete(), s1, newHeap, consumedHeap, consumedChunk)
-                //Q(s1, newHeap, consumedHeap, Some(condSnap), v1)
-                Success()
-              case false =>
-                val consumedChunk = if (consumedChunks.isEmpty) None else Some(consumedChunks.head.withSnap(condSnap).withPerm(PermMinus(perms, pNeeded)).withArgs(args))
-                result = (Incomplete(pNeeded), s1, newHeap, consumedHeap, consumedChunk)
-                //Q(s1, newHeap, consumedHeap, Some(condSnap), v1)
-                Success()
-            }
+            val consumedChunk = consumedChunks.headOption.map(_.withSnap(condSnap).withPerm(PermMinus(perms, pNeeded)).withArgs(args))
+            result = (Incomplete(pNeeded), s1, newHeap, consumedHeap, consumedChunk)
           }
+          Success()
         })
         result
       }

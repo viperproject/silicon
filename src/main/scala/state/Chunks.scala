@@ -212,6 +212,8 @@ case class MagicWandChunk(id: MagicWandIdentifier,
   override def withPerm(newPerm: Term) = MagicWandChunk(id, bindings, args, snap, newPerm)
   override def withSnap(newSnap: Term) = newSnap match {
     case s: MagicWandSnapshot => MagicWandChunk(id, bindings, args, s, perm)
+    /* E.g. a summarising snapshot (see moreCompleteExhaleSupporter.summarise) of the wand snap function sort */
+    case t if t.sort == sorts.MagicWandSnapFunction => MagicWandChunk(id, bindings, args, MagicWandSnapshot(t), perm)
     case _ => sys.error(s"MagicWand snapshot has to be of type MagicWandSnapshot but found ${newSnap.getClass}")
   }
 

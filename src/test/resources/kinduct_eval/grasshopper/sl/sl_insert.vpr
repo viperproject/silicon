@@ -19,7 +19,7 @@ ensures list(res)
         unfold list(curr)
 
         while(nondet && curr.next != null)
-        //invariant acc(curr.next) && acc(curr.data)
+        invariant acc(curr.next) && acc(curr.data)
         //invariant list(curr.next)
         //invariant list(curr) --* list(x)
         {

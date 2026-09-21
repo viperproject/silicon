@@ -286,7 +286,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def assert(t: Term, s: State, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
               (Q: Boolean => VerificationResult)
               : VerificationResult = {
-      if (s.loopPhaseStack.nonEmpty && s.loopPhaseStack.head._1 == LoopPhases.Assuming) {
+      /* k-induction: inside an assuming-phase iteration of *any* enclosing loop, everything that would
+       * be checked is assumed instead (the iteration, including any nested loops, is assumed to verify). */
+      if (s.loopPhaseStack.exists(_._1 == LoopPhases.Assuming)) {
         assume(t)
         return Q(true)
       }

@@ -1154,7 +1154,21 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
                 val ummmm = consumeFromOneOfMultipleHeaps(resource, qvars, formalQVars, tArgs, qvarsToInvOfLoc, condOfInvOfLoc, argumentsMatch, imagesOfFormalQVars, optTrigger, tTriggers, qid, chunkOrderHeuristics) _
 
-                magicWandSupporter.consumeFromMultipleHeapsKInd(s, heaps, tPerm, failure, Seq(), v)(ummmm)((s1, hs1, cHeap1, optChunks, v1) => {
+                /* k-induction (assuming semantics of an enclosing loop): a fresh chunk for the remaining permissions */
+                val conjure = (sC: State, remaining: Term, vC: Verifier) => {
+                  val sm = vC.decider.fresh(freshSnapshotMapSort(sC, resource, vC))
+                  val (conjuredChunk, conjuredInvs) = quantifiedChunkSupporter.createQuantifiedChunk(
+                    qvars, condOfInvOfLoc, resource, tArgs, remaining, formalQVars, sm,
+                    sC.relevantQuantifiedVariables(tArgs), optTrigger.map(_ => tTriggers), qid, vC, sC.program)
+                  vC.decider.assume(FunctionPreconditionTransformer.transform(conjuredInvs.axiomInvertiblesOfInverses, sC.program))
+                  vC.decider.assume(conjuredInvs.axiomInvertiblesOfInverses)
+                  val conjuredInversesOfInvertibles = conjuredInvs.axiomInversesOfInvertibles.replace(formalQVars, tArgs)
+                  vC.decider.assume(FunctionPreconditionTransformer.transform(conjuredInversesOfInvertibles, sC.program))
+                  vC.decider.assume(conjuredInversesOfInvertibles)
+                  (sC, conjuredChunk)
+                }
+
+                magicWandSupporter.consumeFromMultipleHeapsKInd(s, heaps, tPerm, failure, Seq(), v)(ummmm)(conjure)((s1, hs1, cHeap1, optChunks, v1) => {
                   //val (fr1, newTopHeap) = v1.stateConsolidator(s1).merge(s1.functionRecorder, s1.h, cHeap1, v1)
                   //val (fr1, newTopHeap) = (s1.functionRecorder, s1.h + cHeap1)
 
@@ -1506,9 +1520,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(arguments,
               quantifiedChunkSupporter.extractHints(None, arguments), v)
         }
+        /* k-induction (assuming semantics of an enclosing loop): a fresh chunk for the remaining permissions */
+        val conjure = (sC: State, remaining: Term, vC: Verifier) => {
+          val sm = vC.decider.fresh(freshSnapshotMapSort(sC, resource, vC))
+          (sC, quantifiedChunkSupporter.createSingletonQuantifiedChunk(codomainQVars, resource, arguments, remaining, sm, sC.program))
+        }
         magicWandSupporter.consumeFromMultipleHeapsKInd(s, heaps, permissions, failure, Seq(), v)(
           consumeSingleFromOneOfMultipleHeaps(identifier, codomainQVars, arguments, resource, chunkOrderHeuristics)
-        )((s1, hs1, cHeap1, optChunks, v1) => {
+        )(conjure)((s1, hs1, cHeap1, optChunks, v1) => {
           //val newTopHeap = hs1.head + cHeap1
           val totalConsumedAmount = cHeap1.values.foldLeft(NoPerm: Term)((q, ch) => PermPlus(q, ch.asInstanceOf[GeneralChunk].perm))
           val totalConsumedFromFirst = if (optChunks.length > 0 && optChunks.head.nonEmpty) {
@@ -1576,6 +1595,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     } else {
       doConsumeSingleLocation(s, h, codomainQVars, arguments, resourceAccess, permissions, optChunkOrderHeuristic, pve, v)(Q)
     }
+  }
+
+  private def freshSnapshotMapSort(s: State, resource: ast.Resource, v: Verifier): Sort = resource match {
+    case f: ast.Field => sorts.FieldValueFunction(v.symbolConverter.toSort(f.typ), f.name)
+    case p: ast.Predicate => sorts.PredicateSnapFunction(s.predicateSnapMap(p), p.name)
+    case _: ast.MagicWand => sys.error("Quantified magic wands are not supported by k-induction")
   }
 
   def consumeFromOneOfMultipleHeaps(resource: ast.Resource, qvars: Seq[Var], formalQVars: Seq[Var], tArgs: Seq[Term],

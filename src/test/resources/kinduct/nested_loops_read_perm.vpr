@@ -1,0 +1,27 @@
+// Known precision limit for nested loops: the read permission the inner loop
+// obtains during the outer loop's assuming phase is conjured, so it is a fresh
+// amount unrelated to what the frame gave up in the outer transferring phase.
+// After the loops, the frame holds write - p_a and the outer loop heap p_b, which
+// is at most write but not provably equal to it.
+
+field f: Int
+
+method nestedRead(y: Ref)
+  requires acc(y.f) && y.f == 3
+{
+  var i: Int := 0
+  var s: Int := 0
+  while (i < 10)
+  {
+    var j: Int := 0
+    while (j < 1)
+    {
+      s := s + y.f
+      j := j + 1
+    }
+    i := i + 1
+  }
+  assert y.f == 3
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/000/)
+  assert perm(y.f) == write
+}

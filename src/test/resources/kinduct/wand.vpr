@@ -143,11 +143,13 @@ method sumIter3(root: Ref) returns (res: Int)
         //invariant list(cur) --* list(root)
         //invariant res + len(cur) == old(len(root))
     {
+        // The package below moves list(cur) into the wand's footprint, so the next
+        // iteration's unfold has no permission (the checking iteration reports it).
+        //:: ExpectedOutput(unfold.failed:insufficient.permission)
         unfold list(cur)
         res := res + 1
         var tmp: Ref := cur
         cur := cur.next
-        //:: ExpectedOutput(package.failed:insufficient.permission)
         package list(cur) --* list(root) {
             fold list(tmp)
             //apply list(tmp) --* list(root)

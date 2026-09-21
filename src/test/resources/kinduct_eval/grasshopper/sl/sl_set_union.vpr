@@ -19,9 +19,9 @@ ensures list(res)
         var l2: Ref := lst2
 
         while(l1 != null && l2 != null)
-        //invariant list(l1) && list(l2)
-        //invariant acc(curr.data) && acc(curr.next)
-        //invariant list(curr) --* list(res)
+        invariant list(l1) && list(l2)
+        invariant acc(curr.data) && acc(curr.next)
+        invariant list(curr) --* list(res)
         {
             unfold list(l1)
             unfold list(l2)

@@ -24,10 +24,10 @@ ensures list(x) && list(y) && list(z)
         
 
         while(curr_x != null && curr_y != null)
-            //invariant list(curr_x)
-            //invariant list(curr_x) --* list(x)
-            //invariant list(curr_y)
-            //invariant list(curr_y) --* list(y)
+            invariant list(curr_x)
+            invariant list(curr_x) --* list(x)
+            invariant list(curr_y)
+            invariant list(curr_y) --* list(y)
             //invariant acc(curr_z.next) && acc(curr_z.data)
             //invariant list(curr_z) --* list(z)
         {

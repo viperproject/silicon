@@ -23,12 +23,12 @@ ensures tree(max) && max != null
 
         while(curr.right != null)
         //invariant tree(prev) --* tree(root)
-        //invariant acc(prev.left) && acc(prev.val)
-        //invariant acc(prev.right)
-        //invariant prev.right == curr
-        //invariant tree(prev.left)
-        //invariant acc(curr.left) && acc(curr.right) && acc(curr.val)
-        //invariant tree(curr.left) && tree(curr.right)
+        invariant acc(prev.left) && acc(prev.val)
+        invariant acc(prev.right)
+        invariant prev.right == curr
+        invariant tree(prev.left)
+        invariant acc(curr.left) && acc(curr.right) && acc(curr.val)
+        invariant tree(curr.left) && tree(curr.right)
         {
             var prev_old: Ref := prev
             prev := curr
