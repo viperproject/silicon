@@ -82,7 +82,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           val roundLog = new CommentRecord("Round " + fixedPointRound, s, v.decider.pcs)
           val roundSepIdentifier = v.symbExLog.openScope(roundLog)
 
-          val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, s, destChunks, newChunks, s.functionRecorderQuantifiedVariables().map(_._1), v)
+          val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, s, destChunks, newChunks, (s.functionRecorderQuantifiedVariables() ++ s.packagingWandSnapshots).map(_._1), v)
 
           snapEqs foreach (t => v.decider.assume(t, Option.when(debugOn)(DebugExp.createInstance("Snapshot Equations", true))))
 
@@ -118,11 +118,22 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     val s1 = if (debugOn && !alreadyRecording)
       v.startKeyHeap(s, v.getDebugHeapLabel(s).getOrElse("preConsolidateHeapMissing"), StateConsolidation)
     else s
+    /* While packaging a wand (s.exhaleExt), the reserve heaps [hUsed, hOps, hLhs, ...] consist of the
+     * three heaps that belong to the package operation, followed by the heaps of the surrounding
+     * state. The facts derived from consolidating the latter (e.g. permission bounds) are sound under the
+     * assumptions made while packaging, and thus useful, but the merged heaps themselves must not be kept:
+     * they are still used after the package operation, where these assumptions (in particular, those
+     * about the wand's LHS) do not necessarily hold.
+     */
+    val reserveHeaps =
+      if (s.exhaleExt) mergedHeaps.tail.take(3) ++ s.reserveHeaps.drop(3)
+      else mergedHeaps.tail
+
     val s2 = s1.copy(functionRecorder = functionRecorderAfterHeapMerging,
                      h = mergedHeaps.head,
-                     reserveHeaps = mergedHeaps.tail)
+                     reserveHeaps = reserveHeaps)
 
-    val s3 = assumeUpperPermissionBoundForQPFields(s2, v)
+    val s3 = assumeUpperPermissionBoundForQPFields(s2, mergedHeaps, v)
 
     if (debugOn && !alreadyRecording) v.finishKeyHeap(s3) else s3
   }
@@ -138,7 +149,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   def merge(fr1: FunctionRecorder, s: State, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
     val mergeLog = new CommentRecord("Merge", null, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(mergeLog)
-    val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, s, h.values.toSeq, newH.values.toSeq, s.functionRecorderQuantifiedVariables().map(_._1), v)
+    val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, s, h.values.toSeq, newH.values.toSeq, (s.functionRecorderQuantifiedVariables() ++ s.packagingWandSnapshots).map(_._1), v)
 
     v.decider.assume(snapEqs, Option.when(debugOn)(DebugExp.createInstance("Snapshot", isInternal_ = true)), enforceAssumption = false)
 

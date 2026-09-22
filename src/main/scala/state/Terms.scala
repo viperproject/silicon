@@ -2372,6 +2372,16 @@ class MagicWandSnapshot(val mwsf: Term) extends Term with ConditionalFlyweight[T
    * @return The snapshot of the right-hand side that preserves the values of the left-hand side.
    */
   def applyToMWSF(snapLhs: Term): Term = MWSFLookup(mwsf, snapLhs)
+
+  /**
+   * Yield the token for the given snapshot of the left-hand side.
+   * Assuming the token makes the path conditions that were recorded while packaging
+   * the wand (in particular, the definition of the MWSF) available for that left-hand side.
+   *
+   * @param snapLhs The snapshot of the left-hand side that the wand is applied to.
+   * @return The token term for this wand and left-hand side.
+   */
+  def yieldToken(snapLhs: Term): Term = MagicWandToken(mwsf, snapLhs)
 }
 
 object MagicWandSnapshot extends PreciseCondFlyweightFactory[Term, MagicWandSnapshot]  {
@@ -2405,6 +2415,35 @@ object MWSFLookup extends PreciseCondFlyweightFactory[(Term, Term), MWSFLookup] 
   /** Create an instance of [[viper.silicon.state.terms.MWSFLookup]]. */
   override def actualCreate(args: (Term, Term)): MWSFLookup =
     new MWSFLookup(args._1, args._2)
+}
+
+/**
+ * Token that guards the path conditions recorded while packaging a magic wand.
+ * Packaging a wand assumes, for every possible snapshot `lhs` of the wand's left-hand side, that
+ * `MW_token(mwsf, lhs)` implies that the branch and path conditions of one of the branches taken
+ * while packaging hold (including the definition of `mwsf` for `lhs`). Applying the wand yields
+ * the token for the concrete snapshot of the consumed left-hand side.
+ *
+ * @param mwsf Term of sort [[sorts.MagicWandSnapFunction]].
+ * @param snapLhs Term of sort [[sorts.Snap]] that represents the values of the wand's left-hand side.
+ */
+class MagicWandToken(val mwsf: Term, val snapLhs: Term) extends BooleanTerm with ConditionalFlyweightBinaryOp[MagicWandToken] {
+  override def p0: Term = mwsf
+  override def p1: Term = snapLhs
+  override lazy val toString = s"MW_token($mwsf, $snapLhs)"
+}
+
+object MagicWandToken extends PreciseCondFlyweightFactory[(Term, Term), MagicWandToken] {
+  override def apply(pair: (Term, Term)): MagicWandToken = {
+    val (mwsf, snapLhs) = pair
+    utils.assertSort(mwsf, "mwsf", sorts.MagicWandSnapFunction)
+    utils.assertSort(snapLhs, "snap", sorts.Snap)
+    createIfNonExistent(pair)
+  }
+
+  /** Create an instance of [[viper.silicon.state.terms.MagicWandToken]]. */
+  override def actualCreate(args: (Term, Term)): MagicWandToken =
+    new MagicWandToken(args._1, args._2)
 }
 
 class MagicWandChunkTerm(val chunk: MagicWandChunk) extends Term with ConditionalFlyweight[MagicWandChunk, MagicWandChunkTerm] {

@@ -393,6 +393,7 @@ class TermToSMTLib2Converter
 
     case MagicWandSnapshot(mwsf) => render(mwsf)
     case MWSFLookup(mwsf, snap) => renderApp("MWSF_apply", Seq(mwsf, snap), sorts.Snap)
+    case MagicWandToken(mwsf, snapLhs) => renderApp("MW_token", Seq(mwsf, snapLhs), sorts.Bool)
 
     case _: MagicWandChunkTerm
        | _: Quantification =>
