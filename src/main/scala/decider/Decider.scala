@@ -63,6 +63,7 @@ trait Decider {
   def assume(t: Term, debugExp: Option[DebugExp]): Unit
   def assume(terms: Seq[Term], debugExps: Option[Seq[DebugExp]]): Unit
   def assumeDefinition(t: Term, debugExp: Option[DebugExp]): Unit
+  def assumeDefinition(terms: Iterable[Term], debugExp: Option[DebugExp]): Unit
   def assume(assumptions: Iterable[(Term, Option[DebugExp])]): Unit
   def assume(assumptions: InsertionOrderedSet[(Term, Option[DebugExp])], enforceAssumption: Boolean = false, isDefinition: Boolean = false): Unit
   def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean): Unit
@@ -296,6 +297,16 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def assumeDefinition(t: Term, debugExp: Option[DebugExp]): Unit = {
       assume(InsertionOrderedSet(Seq((t, debugExp))), enforceAssumption=false, isDefinition=true)
+    }
+
+    def assumeDefinition(terms: Iterable[Term], debugExp: Option[DebugExp]): Unit = {
+      val filteredTerms = terms filterNot isKnownToBeTrue
+
+      if (debugMode && filteredTerms.nonEmpty) {
+        addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
+      }
+
+      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms), isDefinition = true)
     }
 
     def assume(assumptions: Iterable[(Term, Option[DebugExp])]): Unit =

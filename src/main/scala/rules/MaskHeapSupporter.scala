@@ -957,13 +957,9 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
 
             val comment = "Definitional axioms for inverse functions"
             v.decider.prover.comment(comment)
-            val definitionalAxiomMark = v.decider.setPathConditionMark()
-            v.decider.assume(inv.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)),
-              Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
-            v.decider.assume(inv.definitionalAxioms, Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
-            val conservedPcs =
-              if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
-              else s.conservedPcs
+            v.decider.assumeDefinition(inv.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)),
+              Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)))
+            v.decider.assumeDefinition(inv.definitionalAxioms, Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)))
 
             val h1 = hp - currentChunk + newChunk
             v.decider.assume(permBoundConstraint, Option.when(debugOn)(DebugExp.createInstance("Permission upper bound")))
@@ -971,8 +967,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
 
             val s1 =
               s.copy(h = h1,
-                functionRecorder = newFr,
-                conservedPcs = conservedPcs)
+                functionRecorder = newFr)
             Q(s1, v)
           case false =>
             createFailure(pve dueTo notInjectiveReason, v, s, completeReceiverInjectivityCheck, "QP receiver is injective")}
