@@ -75,6 +75,7 @@ trait Decider {
    *         2. The implementation reacts to a failing assertion by e.g. a state consolidation
    */
   def assert(t: Term, timeout: Option[Int] = None)(Q:  Boolean => VerificationResult): VerificationResult
+  def assertNonCps(t: Term, timeout: Option[Int] = None): Boolean
 
   def fresh(id: String, sort: Sort, ptype: Option[PType]): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
@@ -383,8 +384,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def assert(t: Term, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
               (Q: Boolean => VerificationResult)
-              : VerificationResult = {
+              : VerificationResult =
+      Q(assertNonCps(t, timeout))
 
+    /** Like assert, but returns whether the assertion succeeded instead of invoking a continuation. */
+    def assertNonCps(t: Term, timeout: Option[Int] = Verifier.config.assertTimeout.toOption): Boolean = {
       val success = deciderAssert(t, timeout)
 
       // If the SMT query was not successful, store it (possibly "overwriting"
@@ -396,7 +400,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       else
         symbExLog.setSMTQuery(t)
 
-      Q(success)
+      success
     }
 
     private def deciderAssert(t: Term, timeout: Option[Int]) = {
