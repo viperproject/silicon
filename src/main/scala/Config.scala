@@ -645,6 +645,16 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = false
   )
 
+  val reportStateAfter: ScallopOption[Int] = opt[Int]("reportStateAfter",
+    descr = ( "If Silicon makes no visible progress for approx. n seconds (e.g., because it is waiting for the "
+            + "prover to answer a single query), report what it is currently working on, i.e., the statements, "
+            + "expressions, and prover queries currently being processed and the branch conditions of the current "
+            + "execution path. The report is issued via the reporter, at most once per period without progress. "
+            + "Not supported in combination with --parallelizeBranches (default: disabled)."),
+    default = None,
+    noshort = true
+  )
+
   val disableCatchingExceptions: ScallopOption[Boolean] = opt[Boolean]("disableCatchingExceptions",
     descr =s"Don't catch exceptions (can be useful for debugging problems with ${Silicon.name})",
     default = Some(false),
@@ -745,6 +755,17 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       Left(s"Option ${ideModeAdvanced.name} is not supported in combination with ${parallelizeBranches.name}")
     case other =>
       sys.error(s"Unexpected combination: $other")
+  }
+
+  validate(reportStateAfter) { n =>
+    if (n <= 0) Left(s"Option ${reportStateAfter.name} must be positive, but $n was provided")
+    else Right(())
+  }
+
+  validateOpt(reportStateAfter, parallelizeBranches) {
+    case (Some(_), Some(true)) =>
+      Left(s"Option ${reportStateAfter.name} is not supported in combination with ${parallelizeBranches.name}")
+    case _ => Right(())
   }
 
   validateOpt(disableNL, prover) {

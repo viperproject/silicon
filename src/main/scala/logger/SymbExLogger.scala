@@ -19,6 +19,7 @@ import viper.silicon.state.terms._
 import viper.silicon.{Config, Map}
 import viper.silver.ast
 import viper.silver.ast.{Exp, Member}
+import viper.silver.reporter.Reporter
 
 import java.util.concurrent.atomic.AtomicInteger
 import scala.annotation.elidable
@@ -31,6 +32,8 @@ import scala.util.{Failure, Success, Try}
   * SymbExLogger Usage
   * ================================
   * The SymbExLogger has to be enabled by passing `--ideModeAdvanced` to Silicon.
+  * (Passing `--reportStateAfter <n>` enables a lightweight logger that discards all records and only uses them to
+  * report what Silicon is currently working on if it makes no progress for n seconds; see [[StateReporter]].)
   * Unless otherwise specified, the default logConfig will be used (viper.silicon.logger.LogConfig.default()):
   * All logged records will be included in the report, but store, heap, and path conditions will be omitted.
   *
@@ -192,11 +195,19 @@ import scala.util.{Failure, Success, Try}
   */
 
 case object SymbExLogger {
-  def ofConfig(config: Config): SymbExLogger[_ <: MemberSymbExLogger] = {
+  def ofConfig(config: Config, reporter: Reporter): SymbExLogger[_ <: MemberSymbExLogger] = {
+    /* Non-positive values are rejected by the config's validation; they are filtered here since the config might
+     * still be used if validation failed (e.g. by the test suite, which passes a dummy input file) */
+    val stateReporter =
+      config.reportStateAfter.toOption.filter(_ > 0).map(seconds => new StateReporter(reporter, seconds * 1000L))
+
     if (config.ideModeAdvanced())
-      SymbExLog(parseLogConfig(config))
+      SymbExLog(parseLogConfig(config), stateReporter)
     else
-      NoopSymbExLog
+      stateReporter match {
+        case Some(sr) => new StateReportingSymbExLog(sr)
+        case None => NoopSymbExLog
+      }
   }
 
   private lazy val textLogger = LoggerFactory.getLogger(classOf[SymbExLogger[_]])
@@ -272,9 +283,25 @@ case object NoopSymbExLog extends SymbExLogger[NoopMemberSymbExLog.type] {
     NoopMemberSymbExLog
 }
 
-case class SymbExLog(logConfig: LogConfig) extends SymbExLogger[MemberSymbExLog]() {
+case class SymbExLog(logConfig: LogConfig, stateReporter: Option[StateReporter] = None)
+    extends SymbExLogger[MemberSymbExLog]() {
+
   override def newEntityLogger(member: ast.Member, pcs: PathConditionStack): MemberSymbExLog =
-    new MemberSymbExLog(this, logConfig, member, pcs)
+    stateReporter match {
+      case None =>
+        new MemberSymbExLog(this, logConfig, member, pcs)
+      case Some(sr) =>
+        val log = new MemberSymbExLog(this, logConfig, member, pcs) with StateReportingMemberSymbExLogger {
+          override protected val stateReporter: StateReporter = sr
+        }
+        sr.register(log)
+        log
+    }
+
+  override def close(): Unit = {
+    super.close()
+    stateReporter.foreach(_.close())
+  }
 
   /**
     * Simple string representation of the logs.
@@ -480,6 +507,38 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
   def addMacro(m: App, body: Term): Unit = whenEnabled {
     _macros = _macros + (m -> body)
   }
+}
+
+/** Root log that only keeps track of Silicon's current state in order to report it if Silicon does not make
+  * progress for too long (see [[StateReporter]]); the records themselves are discarded. */
+class StateReportingSymbExLog(stateReporter: StateReporter) extends SymbExLogger[StateReportingMemberSymbExLogger]() {
+  override protected def newEntityLogger(member: Member, pcs: PathConditionStack): StateReportingMemberSymbExLogger = {
+    val sr = stateReporter
+    val log = new DiscardingMemberSymbExLog(this, member, pcs) with StateReportingMemberSymbExLogger {
+      override protected val stateReporter: StateReporter = sr
+    }
+    sr.register(log)
+    log
+  }
+
+  override def close(): Unit = {
+    super.close()
+    stateReporter.close()
+  }
+}
+
+/** A member log that discards all records. In contrast to [[NoopMemberSymbExLog]], it still assigns ids to records
+  * and invokes the record hooks, which makes it a suitable base for mixins such as
+  * [[StateReportingMemberSymbExLogger]]. */
+class DiscardingMemberSymbExLog(log: SymbExLogger[_], member: ast.Member, pcs: PathConditionStack)
+    extends MemberSymbExLogger(log, member, pcs) {
+
+  override protected def appendDataRecord(r: DataRecord): Unit = {}
+  override protected def appendScopingRecord(r: ScopingRecord, ignoreBranchingStack: Boolean): Unit = {}
+  override protected def appendBranchingRecord(r: BranchingRecord): Unit = {}
+  override protected def markBranchReachable(uidBranchPoint: Int): Unit = {}
+  override protected def doSwitchToNextBranch(uidBranchPoint: Int): Unit = {}
+  override protected def doEndBranchPoint(uidBranchPoint: Int): Unit = {}
 }
 
 case object NoopMemberSymbExLog extends MemberSymbExLogger(null, null, null) {
