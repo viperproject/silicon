@@ -487,7 +487,8 @@ class TermToSMTLib2Converter
   }
 
   def start(): Unit = {
-    sanitizedNamesCache = mutable.Map.empty
+    /* A concurrent map, since the members of a portfolio of provers (see PortfolioProver) convert terms concurrently */
+    sanitizedNamesCache = scala.collection.concurrent.TrieMap.empty
   }
 
   def reset(): Unit = {

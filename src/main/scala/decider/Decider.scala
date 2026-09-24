@@ -40,6 +40,12 @@ trait Decider {
   def setProverOptions(options: Map[String, String]): Unit
   def getProverOptions(): Map[String, String]
   def resetProverOptions(): Unit
+
+  /** Restricts the provers that answer queries to the named ones (None lifts the restriction). Only affects a
+    * portfolio of provers (see PortfolioProver), whose remaining members keep their state up to date nevertheless.
+    */
+  def setActiveProvers(names: Option[Seq[String]]): Unit
+  def getActiveProvers(): Option[Seq[String]]
   def createProver(proverName: String, userArgsString: Option[String]): Option[DependencyNotFoundError]
 
   def pcs: PathConditionStack
@@ -155,45 +161,60 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       })
     }
 
-    private def getProver(prover: String): Prover = prover match {
-      case Z3ProverStdIO.name => new Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
-      case Cvc5ProverStdIO.name => new Cvc5ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
-      case Z3ProverAPI.name => new Z3ProverAPI(uniqueId, new TermToZ3APIConverter(), identifierFactory, reporter, triggerGenerator)
+    private def getProver(prover: String, id: String): Prover = prover match {
+      case Z3ProverStdIO.name => new Z3ProverStdIO(id, termConverter, identifierFactory, reporter)
+      case Cvc5ProverStdIO.name => new Cvc5ProverStdIO(id, termConverter, identifierFactory, reporter)
+      case Z3ProverAPI.name => new Z3ProverAPI(id, new TermToZ3APIConverter(), identifierFactory, reporter, triggerGenerator)
+      case Cvc5ProverAPI.name => new Cvc5ProverAPI(id, termConverter, identifierFactory, reporter)
+      case portfolio if PortfolioProver.isPortfolio(portfolio) =>
+        /* Members get distinct ids, which e.g. keeps their log files apart */
+        val members = PortfolioProver.memberNames(portfolio).map(name => getProver(name, s"$id-$name"))
+        new PortfolioProver(members, reporter)
       case prover =>
         val msg1 = s"Unknown prover '$prover' provided. Defaulting to ${Z3ProverStdIO.name}."
         logger warn msg1
-        getProver(Z3ProverStdIO.name)
+        getProver(Z3ProverStdIO.name, id)
     }
 
     def createProver(proverName: String, userArgsString: Option[String]): Option[DependencyNotFoundError] = {
-      _prover = getProver(proverName)
+      _prover = getProver(proverName, uniqueId)
 
       _prover.start(userArgsString) /* Cannot query prover version otherwise */
 
-      val proverVersion = _prover.version()
+      /* Each member of a portfolio is checked individually */
+      val members = _prover match {
+        case portfolio: PortfolioProver => portfolio.members
+        case prover => Seq(prover)
+      }
+
+      members foreach checkProverVersion
+
+      None
+    }
+
+    private def checkProverVersion(prover: Prover): Unit = {
+      val proverVersion = prover.version()
       // One can pass some options. This allows to check whether they have been received.
 
       val path = prover match {
         case pio: ProverStdIO => pio.proverPath
         case _ => "No Path"
       }
-      val msg = s"Using ${_prover.name} $proverVersion located at ${path}"
+      val msg = s"Using ${prover.name} $proverVersion located at ${path}"
       reporter report ConfigurationConfirmation(msg)
       logger debug msg
 
-      if (proverVersion < _prover.minVersion) {
-        val msg1 = s"Expected at least ${_prover.name} version ${_prover.minVersion.version}, but found $proverVersion"
+      if (proverVersion < prover.minVersion) {
+        val msg1 = s"Expected at least ${prover.name} version ${prover.minVersion.version}, but found $proverVersion"
         reporter report InternalWarningMessage(msg1)
         logger warn msg1
       }
 
-      if (_prover.maxVersion.fold(false)(_ < proverVersion)) {
-        val msg1 = s"Silicon might not work with ${_prover.name} version $proverVersion, consider using ${_prover.maxVersion.get}"
+      if (prover.maxVersion.fold(false)(_ < proverVersion)) {
+        val msg1 = s"Silicon might not work with ${prover.name} version $proverVersion, consider using ${prover.maxVersion.get}"
         reporter report InternalWarningMessage(msg1)
         logger warn msg1
       }
-
-      None
     }
 
     override def setProverOptions(options: Map[String, String]): Unit = {
@@ -208,6 +229,16 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       _proverResetOptions.foreach { case (k, v) => _prover.setOption(k, v) }
       _proverResetOptions = Map.empty
       _proverOptions = Map.empty
+    }
+
+    override def setActiveProvers(names: Option[Seq[String]]): Unit = _prover match {
+      case portfolio: PortfolioProver => portfolio.setActiveMembers(names)
+      case _ => /* A single prover answers all queries */
+    }
+
+    override def getActiveProvers(): Option[Seq[String]] = _prover match {
+      case portfolio: PortfolioProver => portfolio.activeMemberNames
+      case _ => None
     }
 
     /* Life cycle */
