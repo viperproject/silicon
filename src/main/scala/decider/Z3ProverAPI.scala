@@ -98,6 +98,10 @@ class Z3ProverAPI(uniqueId: String,
   // In terms of performance, I could not measure any substantial difference.
   val expandMacros = true
 
+  /* Interrupt support, see interrupt(). The flag is guarded by queryLock. */
+  private val queryLock = new Object
+  private var queryRunning = false
+
 
 
   def version(): Version = {
@@ -323,7 +327,7 @@ class Z3ProverAPI(uniqueId: String,
     val negatedGoal = ctx.mkNot(termConverter.convert(goal).asInstanceOf[BoolExpr])
     prover.add(negatedGoal)
     val startTime = System.currentTimeMillis()
-    val res = prover.check()
+    val res = runQuery(prover.check())
     val endTime = System.currentTimeMillis()
     val result = res == Status.UNSATISFIABLE
     pop()
@@ -347,7 +351,7 @@ class Z3ProverAPI(uniqueId: String,
   def saturate(timeout: Int, comment: String): Unit = {
     endPreamblePhase()
     setTimeout(Some(timeout))
-    prover.check()
+    runQuery(prover.check())
   }
 
   protected def retrieveAndSaveModel(): Unit = {
@@ -379,7 +383,7 @@ class Z3ProverAPI(uniqueId: String,
     prover.add(termConverter.convertTerm(goalImplication).asInstanceOf[BoolExpr])
 
     val startTime = System.currentTimeMillis()
-    val res = prover.check(termConverter.convertTerm(guardApp).asInstanceOf[BoolExpr])
+    val res = runQuery(prover.check(termConverter.convertTerm(guardApp).asInstanceOf[BoolExpr]))
     val endTime = System.currentTimeMillis()
     val result = res == Status.UNSATISFIABLE
     if (!result) {
@@ -393,12 +397,34 @@ class Z3ProverAPI(uniqueId: String,
     endPreamblePhase()
     setTimeout(timeout)
 
-    val res = prover.check()
+    val res = runQuery(prover.check())
 
     res match {
       case Status.SATISFIABLE => Sat
       case Status.UNSATISFIABLE => Unsat
       case Status.UNKNOWN=> Unknown
+    }
+  }
+
+  /* Runs a query on the solver while recording that it is running, so that a concurrent call to interrupt()
+   * only interrupts the solver while a query is actually in progress. */
+  private def runQuery(query: => Status): Status = {
+    queryLock.synchronized { queryRunning = true }
+
+    try { query }
+    finally { queryLock.synchronized { queryRunning = false } }
+  }
+
+  /** Interrupts the query currently running on this prover, if any, typically from another thread.
+    *
+    * Note that Solver.interrupt, unlike Context.interrupt, is harmless if no query is running: the latter leaves the
+    * context in a state in which every subsequent operation fails as cancelled.
+    */
+  def interrupt(): Unit = {
+    queryLock.synchronized {
+      if (queryRunning && prover != null) {
+        prover.interrupt()
+      }
     }
   }
 

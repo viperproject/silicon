@@ -453,8 +453,11 @@ class DefaultMainVerifier(config: Config,
   /* Prover preamble: Static preamble */
 
   private def emitStaticPreamble(sink: ProverLike): Unit = {
-    sink.comment(s"\n; ${decider.prover.staticPreamble}")
-    preambleReader.emitPreamble(decider.prover.staticPreamble, sink, true)
+    /* A portfolio of provers has no static preamble of its own; its members emit theirs, see PortfolioProver */
+    if (decider.prover.staticPreamble.nonEmpty) {
+      sink.comment(s"\n; ${decider.prover.staticPreamble}")
+      preambleReader.emitPreamble(decider.prover.staticPreamble, sink, true)
+    }
 
     if (config.proverRandomizeSeeds()) {
       sink.comment(s"\n; Randomise seeds [--${config.proverRandomizeSeeds.name}]")

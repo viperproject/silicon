@@ -9,6 +9,8 @@ package viper.silicon.supporters
 import viper.silicon.Config.JoinMode.JoinMode
 import viper.silicon.Config.StateConsolidationMode._
 import viper.silicon.Config.{ExhaleMode, JoinMode, StateConsolidationMode}
+import viper.silicon.decider.PortfolioProver
+import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, toMap}
 import viper.silver.ast
 import viper.silver.reporter.{AnnotationWarning, Reporter}
@@ -19,6 +21,7 @@ object AnnotationSupporter {
   val exhaleModeAnnotationQP = "exhaleModeQP"
   val joinModeAnnotation = "moreJoins"
   val stateConsolidationModeAnnotation = "stateConsolidationMode"
+  val proverAnnotation = "prover"
 
   def getProverConfigArgs(member: ast.Member, reporter: Reporter): Map[String, String] = {
     member.info.getUniqueInfo[ast.AnnotationInfo] match {
@@ -36,6 +39,33 @@ object AnnotationSupporter {
         }))
       case _ =>
         Map.empty
+    }
+  }
+
+  /** The provers (among those in use, see Config.proverNames) that the member's prover annotation selects to
+    * answer queries while the member is verified, if it has such an annotation. Both @prover("Z3", "cvc5") and
+    * @prover("Z3,cvc5") are accepted.
+    */
+  def getProvers(member: ast.Member, reporter: Reporter): Option[Seq[String]] = {
+    member.info.getUniqueInfo[ast.AnnotationInfo] match {
+      case Some(ai) if ai.values.contains(proverAnnotation) =>
+        val proversInUse = Verifier.config.proverNames
+        val (selected, unknown) = ai.values(proverAnnotation).flatMap(PortfolioProver.memberNames).distinct.partition(proversInUse.contains)
+
+        if (unknown.nonEmpty) {
+          reporter report AnnotationWarning(s"Member ${member.name} has a $proverAnnotation annotation that names provers not in use " +
+            s"(${unknown.mkString(", ")}); provers in use are ${proversInUse.mkString(", ")}.")
+        }
+
+        if (selected.isEmpty) {
+          reporter report AnnotationWarning(s"The $proverAnnotation annotation of member ${member.name} selects none of the provers in use " +
+            s"and will be ignored.")
+          None
+        } else {
+          Some(selected)
+        }
+      case _ =>
+        None
     }
   }
 

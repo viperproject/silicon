@@ -13,7 +13,8 @@ import scala.util.Properties._
 import org.rogach.scallop._
 import viper.silicon.Config.JoinMode.JoinMode
 import viper.silicon.Config.StateConsolidationMode.StateConsolidationMode
-import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverAPI, Z3ProverStdIO}
+import viper.silicon.decider.{Cvc5ProverAPI, Cvc5ProverStdIO, PortfolioProver, Z3ProverAPI, Z3ProverStdIO}
+import viper.silicon.supporters.AnnotationSupporter
 import viper.silver.frontend.SilFrontendConfig
 
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
@@ -465,7 +466,10 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
             proverArgs.flatMap(args => proverTimeoutArg findFirstMatchIn args map(_.group(1).toInt))}
         .getOrElse(0)
 
-  lazy val useFlyweight: Boolean = prover() == "Z3-API"
+  /** The names of the provers to use; more than one name means that a portfolio of these provers is used. */
+  lazy val proverNames: Seq[String] = PortfolioProver.memberNames(prover())
+
+  lazy val useFlyweight: Boolean = proverNames.contains(Z3ProverAPI.name)
 
   val assertionMode: ScallopOption[AssertionMode] = opt[AssertionMode]("assertionMode",
     descr = (  "Determines how assertion checks are encoded in SMTLIB. Options are "
@@ -714,7 +718,11 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val prover: ScallopOption[String] = opt[String]("prover",
-    descr = s"One of the provers ${Z3ProverStdIO.name}, ${Cvc5ProverStdIO.name}, ${Z3ProverAPI.name}. " +
+    descr = s"One of the provers ${Z3ProverStdIO.name}, ${Cvc5ProverStdIO.name}, ${Z3ProverAPI.name}, ${Cvc5ProverAPI.name}, " +
+            s"or several of them separated by '${PortfolioProver.separator}' (e.g. ${Z3ProverAPI.name}${PortfolioProver.separator}${Cvc5ProverAPI.name}) " +
+            "to run a portfolio of provers side by side, in which each query is answered by whichever prover finishes first. " +
+            s"A ${AnnotationSupporter.proverAnnotation} annotation on a method, function or predicate, e.g. @${AnnotationSupporter.proverAnnotation}(\"${Z3ProverAPI.name}\"), " +
+            "restricts the provers of the portfolio that answer queries while that member is verified. " +
             s"(default: ${Z3ProverStdIO.name}).",
     default = Some(Z3ProverStdIO.name),
     noshort = true
@@ -728,9 +736,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   /* Option validation (trailing file argument is validated by parent class) */
 
-  validateOpt(prover) {
-    case Some(Z3ProverStdIO.name) | Some(Cvc5ProverStdIO.name) | Some(Z3ProverAPI.name) => Right(())
-    case prover => Left(s"Unknown prover '$prover' provided. Expected one of ${Z3ProverStdIO.name}, ${Cvc5ProverStdIO.name}, ${Z3ProverAPI.name}.")
+  validateOpt(prover) { case Some(names) =>
+    val knownProvers = Seq(Z3ProverStdIO.name, Cvc5ProverStdIO.name, Z3ProverAPI.name, Cvc5ProverAPI.name)
+    PortfolioProver.memberNames(names).find(name => !knownProvers.contains(name)) match {
+      case Some(unknown) => Left(s"Unknown prover '$unknown' provided. Expected one of ${knownProvers.mkString(", ")}.")
+      case None if PortfolioProver.memberNames(names).isEmpty => Left("No prover provided.")
+      case None => Right(())
+    }
   }
 
   validateOpt(timeout) {
@@ -748,7 +760,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   }
 
   validateOpt(disableNL, prover) {
-    case (Some(true), n) if (n != Some(Z3ProverStdIO.name) && n != Some(Z3ProverAPI.name)) =>
+    case (Some(true), Some(names)) if !PortfolioProver.memberNames(names).forall(n => n == Z3ProverStdIO.name || n == Z3ProverAPI.name) =>
         Left(s"Option ${disableNL.name} is only supported with Z3")
     case _ => Right(())
   }

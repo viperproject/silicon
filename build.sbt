@@ -10,6 +10,18 @@ lazy val silver = project in file("silver")
 lazy val common = (project in file("common"))
   .dependsOn(silver)
 
+// Platform of the cvc5 Java API jar to use, see the corresponding dependency below
+lazy val cvc5Version = "1.4.0"
+lazy val cvc5Platform: String = {
+  val os = System.getProperty("os.name").toLowerCase
+  val arm = Set("aarch64", "arm64").contains(System.getProperty("os.arch").toLowerCase)
+
+  if (os.contains("mac")) { if (arm) "macOS-arm64" else "macOS-x86_64" }
+  else if (os.contains("win")) { if (arm) "Win64-arm64" else "Win64-x86_64" }
+  else if (arm) "Linux-arm64"
+  else "Linux-x86_64"
+}
+
 // Silicon specific project settings
 lazy val silicon = (project in file("."))
   .dependsOn(silver % "compile->compile;test->test")
@@ -31,6 +43,9 @@ lazy val silicon = (project in file("."))
     libraryDependencies += "org.apache.commons" % "commons-pool2" % "2.9.0",
     libraryDependencies += "io.spray" %%  "spray-json" % "1.3.6",
     libraryDependencies += "com.microsoft.z3" % "z3" % "4.16.0" from "https://www.sosy-lab.org/ivy/org.sosy_lab/javasmt-solver-z3/com.microsoft.z3-4.16.0.jar",
+    // cvc5's Java API. Each cvc5 release ships this jar per platform, with the native library bundled, so the jar
+    // matching the platform sbt runs on is fetched (assemblies built here are hence specific to that platform, too).
+    libraryDependencies += "io.github.cvc5" % s"cvc5-$cvc5Platform" % cvc5Version from s"https://github.com/cvc5/cvc5/releases/download/cvc5-$cvc5Version/cvc5-$cvc5Platform-java-api.jar",
 
     // Only get a few compilation errors at once
     maxErrors := 5,

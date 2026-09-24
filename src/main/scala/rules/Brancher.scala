@@ -90,9 +90,11 @@ object brancher extends BranchingRules {
     var functionsOfCurrentDecider: Set[FunctionDecl] = null
     var macrosOfCurrentDecider: Vector[MacroDecl] = null
     var proverConfigArgsOfCurrentDecider: viper.silicon.Map[String, String] = null
+    var activeProversOfCurrentDecider: Option[Seq[String]] = None
     var wasElseExecutedOnDifferentVerifier = false
     var functionsOfElseBranchDecider: Set[FunctionDecl] = null
     var proverConfigArgsOfElseBranchDecider: viper.silicon.Map[String, String] = null
+    var activeProversOfElseBranchDecider: Option[Seq[String]] = None
     var macrosOfElseBranchDecider: Seq[MacroDecl] = null
     var pcsForElseBranch: PathConditionStack = null
     var noOfErrors = 0
@@ -111,6 +113,7 @@ object brancher extends BranchingRules {
           functionsOfCurrentDecider = v.decider.freshFunctions
           macrosOfCurrentDecider = v.decider.freshMacros
           proverConfigArgsOfCurrentDecider = v.decider.getProverOptions()
+          activeProversOfCurrentDecider = v.decider.getActiveProvers()
           pcsForElseBranch = v.decider.pcs.duplicate()
           noOfErrors = v.errorsReportedSoFar.get()
         }
@@ -129,8 +132,10 @@ object brancher extends BranchingRules {
 
             v0.decider.prover.comment(s"[Shifting execution from ${v.uniqueId} to ${v0.uniqueId}]")
             proverConfigArgsOfElseBranchDecider = v0.decider.getProverOptions()
+            activeProversOfElseBranchDecider = v0.decider.getActiveProvers()
             v0.decider.resetProverOptions()
             v0.decider.setProverOptions(proverConfigArgsOfCurrentDecider)
+            v0.decider.setActiveProvers(activeProversOfCurrentDecider)
             v0.decider.prover.comment(s"Bulk-declaring functions")
             v0.decider.declareAndRecordAsFreshFunctions(newFunctions)
             v0.decider.prover.comment(s"Bulk-declaring macros")
@@ -161,6 +166,7 @@ object brancher extends BranchingRules {
             if (wasElseExecutedOnDifferentVerifier) {
               v1.decider.resetProverOptions()
               v1.decider.setProverOptions(proverConfigArgsOfElseBranchDecider)
+              v1.decider.setActiveProvers(activeProversOfElseBranchDecider)
               if (s.underJoin) {
                 functionsOfElseBranchDecider = v1.decider.freshFunctions -- functionsOfElseBranchdDeciderBefore
                 macrosOfElseBranchDecider = v1.decider.freshMacros.drop(nMacrosOfElseBranchDeciderBefore)
@@ -228,6 +234,7 @@ object brancher extends BranchingRules {
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             v.decider.resetProverOptions()
             v.decider.setProverOptions(proverConfigArgsOfCurrentDecider)
+            v.decider.setActiveProvers(activeProversOfCurrentDecider)
           }
         } else {
           rs = elseBranchFuture.get()
