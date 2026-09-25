@@ -63,6 +63,9 @@ object Z3ProverAPI {
     "smt.qi.eager_threshold" -> 100.0,
   )
   val allParams = boolParams ++ intParams ++ stringParams ++ doubleParams
+
+  /* How long stop() waits for a running query to react to being interrupted */
+  val idleWaitMillis = 3000
 }
 
 
@@ -98,9 +101,12 @@ class Z3ProverAPI(uniqueId: String,
   // In terms of performance, I could not measure any substantial difference.
   val expandMacros = true
 
-  /* Interrupt support, see interrupt(). The flag is guarded by queryLock. */
+  /* Interrupt support, see interrupt() and awaitIdle(). Both fields are guarded by queryLock: queryRunning is set
+   * while Z3 is checking, and busy counts the (possibly nested) assert, check and saturate calls in progress. */
   private val queryLock = new Object
   private var queryRunning = false
+  private var busy = 0
+  private var stopped = false
 
 
 
@@ -116,6 +122,7 @@ class Z3ProverAPI(uniqueId: String,
   }
 
   def start(userArgsString: Option[String]): Unit = {
+    queryLock.synchronized { stopped = false }
     pushPopScopeDepth = 0
     lastTimeout = -1
 
@@ -199,6 +206,7 @@ class Z3ProverAPI(uniqueId: String,
   }
 
   def stop(): Unit = {
+    val (idle, interrupted) = awaitIdle()
     emittedPreambleString.clear()
     allDecls = Seq()
     preambleAssumptions = Seq()
@@ -210,12 +218,23 @@ class Z3ProverAPI(uniqueId: String,
     prover = null
     lastModel = null
     if (ctx != null){
-      ctx.close()
+      if (idle && !interrupted) {
+        ctx.close()
+      } else {
+        /* The context is leaked instead of closed: closing it underneath a query crashes the JVM, and closing it
+         * after a query had to be interrupted was observed to crash or hang inside Z3 4.16 as well (a Z3 bug that
+         * Silicon's --timeout triggers on some inputs). */
+        val msg =
+          if (idle) "Z3 had to be interrupted while stopping; its context is not closed"
+          else "Z3 did not react to being interrupted; its context is not closed"
+        reporter report InternalWarningMessage(msg)
+        logger warn msg
+      }
       ctx = null
     }
   }
 
-  def push(n: Int = 1, timeout: Option[Int] = None): Unit = {
+  def push(n: Int = 1, timeout: Option[Int] = None): Unit = whileBusy {
     endPreamblePhase()
     setTimeout(timeout)
     pushPopScopeDepth += n
@@ -228,7 +247,7 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
-  def pop(n: Int = 1): Unit = {
+  def pop(n: Int = 1): Unit = whileBusy {
     endPreamblePhase()
     prover.pop(n)
     pushPopScopeDepth -= n
@@ -250,7 +269,7 @@ class Z3ProverAPI(uniqueId: String,
 
   def getAllEmits(): Seq[String] = emittedPreambleString.toSeq
 
-  override def emitSettings(contents: Iterable[String]): Unit = {
+  override def emitSettings(contents: Iterable[String]): Unit = whileBusy {
     // we ignore this, don't know any better solution atm.
     // our settings are defined in this class (see above).
     // except we check if someone gives us our custom randomization string, in which
@@ -267,7 +286,7 @@ class Z3ProverAPI(uniqueId: String,
     throw new ProverInteractionFailed(uniqueId, "Dynamically setting prover options via Z3 API is currently not supported.")
   }
 
-  def assume(term: Term): Unit = {
+  def assume(term: Term): Unit = whileBusy {
     try {
       if (preamblePhaseOver)
         prover.add(termConverter.convert(term).asInstanceOf[BoolExpr])
@@ -298,7 +317,7 @@ class Z3ProverAPI(uniqueId: String,
     cleanTerm
   }
 
-  def assert(goal: Term, timeout: Option[Int]): Boolean = {
+  def assert(goal: Term, timeout: Option[Int]): Boolean = whileBusy {
     endPreamblePhase()
 
     try {
@@ -348,7 +367,7 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
-  def saturate(timeout: Int, comment: String): Unit = {
+  def saturate(timeout: Int, comment: String): Unit = whileBusy {
     endPreamblePhase()
     setTimeout(Some(timeout))
     runQuery(prover.check())
@@ -393,7 +412,7 @@ class Z3ProverAPI(uniqueId: String,
     (result, endTime - startTime)
   }
 
-  def check(timeout: Option[Int] = None): Result = {
+  def check(timeout: Option[Int] = None): Result = whileBusy {
     endPreamblePhase()
     setTimeout(timeout)
 
@@ -406,13 +425,64 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
+  /* Records that a call that uses the context is in progress, see awaitIdle. Once the prover has been stopped, no
+   * further calls are admitted, since they would use the context concurrently with its being closed (they can
+   * come from the thread of a verification that timed out, which keeps running). */
+  private def whileBusy[A](body: => A): A = {
+    queryLock.synchronized {
+      if (stopped) {
+        throw ProverInteractionFailed(uniqueId, "The prover has been stopped")
+      }
+      busy += 1
+    }
+
+    try { body }
+    finally {
+      queryLock.synchronized {
+        busy -= 1
+        queryLock.notifyAll()
+      }
+    }
+  }
+
   /* Runs a query on the solver while recording that it is running, so that a concurrent call to interrupt()
    * only interrupts the solver while a query is actually in progress. */
   private def runQuery(query: => Status): Status = {
     queryLock.synchronized { queryRunning = true }
 
     try { query }
-    finally { queryLock.synchronized { queryRunning = false } }
+    finally {
+      queryLock.synchronized {
+        queryRunning = false
+        queryLock.notifyAll()
+      }
+    }
+  }
+
+  /* Stops admitting calls, interrupts the query that is currently running, if any, and waits until the calls in
+   * progress have completed, but at most for idleWaitMillis. This matters when a verification timed out: its
+   * thread may still be inside a call, and closing the context underneath it crashes the JVM. Returns whether the
+   * prover is idle now, and whether a query had to be interrupted. */
+  private def awaitIdle(): (Boolean, Boolean) = {
+    queryLock.synchronized {
+      stopped = true
+      var interrupted = false
+      val deadline = System.currentTimeMillis() + Z3ProverAPI.idleWaitMillis
+
+      while (busy > 0 && System.currentTimeMillis() < deadline) {
+        /* Interrupting is only effective while Z3 is actually checking, and the call in progress may start
+         * further checks, so the interrupt is repeated periodically until the call has completed. Z3 does not
+         * always react to it (observed with a deep search that Silicon's --timeout cut short). */
+        if (queryRunning && prover != null) {
+          prover.interrupt()
+          interrupted = true
+        }
+
+        queryLock.wait(100)
+      }
+
+      (busy == 0, interrupted)
+    }
   }
 
   /** Interrupts the query currently running on this prover, if any, typically from another thread.
@@ -446,7 +516,7 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
-  def statistics(): Map[String, String] = {
+  def statistics(): Map[String, String] = whileBusy {
     val statistics = prover.getStatistics
     val result = mutable.HashMap[String, String]()
     for (e <- statistics.getEntries()) {
@@ -459,7 +529,7 @@ class Z3ProverAPI(uniqueId: String,
     // ignore
   }
 
-  def fresh(name: String, argSorts: Seq[Sort], resultSort: Sort): Fun = {
+  def fresh(name: String, argSorts: Seq[Sort], resultSort: Sort): Fun = whileBusy {
     val id = identifierFactory.fresh(name)
     val fun = Fun(id, argSorts, resultSort)
     val decl = FunctionDecl(fun)
@@ -469,7 +539,7 @@ class Z3ProverAPI(uniqueId: String,
     fun
   }
 
-  def declare(decl: Decl): Unit = {
+  def declare(decl: Decl): Unit = whileBusy {
     // We convert the declaration into a Z3-level declaration (which is automatically added to Z3's
     // current state) and record it in out collection(s) of emmitted declarations.
     // Special handling for macro declarations if expandMacros is true; in that case,
@@ -513,7 +583,7 @@ class Z3ProverAPI(uniqueId: String,
 
   override def getAllDecls(): Seq[Decl] = allDecls
 
-  override def getModel(): ViperModel = {
+  override def getModel(): ViperModel = whileBusy {
     val entries = new mutable.HashMap[String, ModelEntry]()
     for (constDecl <- lastModel.getConstDecls){
       val constInterp = lastModel.getConstInterp(constDecl)

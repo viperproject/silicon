@@ -36,10 +36,51 @@ object Cvc5ProverAPI {
   val resourceLimitOption = "reproducible-resource-limit"
   val timeLimitOption = "tlimit-per"
 
-  /* Options that control where cvc5 writes diagnostic output, see start */
-  val verbosityOption = "verbosity"
+  /* Option that controls where cvc5 writes diagnostic output (warnings), see start */
   val errorChannelOption = "err"
   val nullDevice: String = if (System.getProperty("os.name").toLowerCase.contains("win")) "NUL" else "/dev/null"
+
+  /* How long stop() waits for a running query to react to being interrupted */
+  val idleWaitMillis = 3000
+
+  /* Whenever cvc5 suppresses diagnostic output because the verbosity is too low, it nevertheless formats the output,
+   * terms included, into a null stream shared by the whole process. Formatting a term reads and writes per-stream
+   * settings of that stream (std::ios_base::iword), which the first few times grows the array holding them, and
+   * concurrent growth by solvers that run in parallel (in different verifiers) corrupts the heap. Growth only happens
+   * until the array is large enough for all settings, so it is provoked once, before any solver runs in parallel, by
+   * a throwaway solver: reducing a quantified formula that is alpha-equivalent to an earlier, annotated one makes
+   * cvc5 format the formula into the suppressed verbose output. (Enabling the verbose output instead is no option,
+   * since cvc5's SAT solver then prints statistics straight to stdout.) */
+  private lazy val sharedStreamsInitialised: Unit = {
+    val termManager = new TermManager()
+    val solver = new Solver(termManager)
+    val symbolManager = new SymbolManager(termManager)
+    val parser = new InputParser(solver, symbolManager)
+
+    try {
+      parser.setStringInput(InputLanguage.SMT_LIB_2_6,
+        """(set-logic ALL)
+          |(declare-fun f (Int) Bool)
+          |(assert (forall ((x Int)) (! (f x) :qid |q1|)))
+          |(assert (forall ((y Int)) (! (f y) :qid |q2|)))
+          |""".stripMargin, "initialisation")
+
+      var command = parser.nextCommand()
+      while (!command.isNull) {
+        command.invoke(solver, symbolManager)
+        command.deletePointer()
+        command = parser.nextCommand()
+      }
+      command.deletePointer()
+
+      solver.checkSat().deletePointer()
+    } finally {
+      parser.deletePointer()
+      symbolManager.deletePointer()
+      solver.deletePointer()
+      termManager.deletePointer()
+    }
+  }
 }
 
 /** Binding to cvc5 via its Java API, i.e. cvc5 runs inside Silicon's JVM.
@@ -72,12 +113,15 @@ class Cvc5ProverAPI(uniqueId: String,
   var lastReasonUnknown: String = _
   var lastModel: String = _
 
-  /* Interrupt support, see interrupt(). Both fields are guarded by queryLock. */
+  /* Interrupt support, see interrupt() and awaitIdle(). All fields are guarded by queryLock: queryRunning is set
+   * while cvc5 is checking, and busy counts the assert, check and saturate calls in progress. */
   private val queryLock = new Object
   private var queryRunning = false
   private var queryInterrupted = false
+  private var busy = 0
+  private var stopped = false
 
-  def version(): Version = {
+  def version(): Version = whileBusy {
     /* Development versions are reported as e.g. "1.3.0-dev.12.abc", of which only the leading part is a version */
     Version(solver.getVersion.split('-').head)
   }
@@ -90,6 +134,9 @@ class Cvc5ProverAPI(uniqueId: String,
     if (solver != null) {
       throw new AssertionError("stop() should be called between any pair of start() calls")
     }
+    Cvc5ProverAPI.sharedStreamsInitialised
+
+    queryLock.synchronized { stopped = false }
     pushPopScopeDepth = 0
     lastTimeout = -1
     logfileWriter = if (!Verifier.config.outputProverLog) null else viper.silver.utility.Common.PrintWriter(Verifier.config.proverLogFile(uniqueId).toFile)
@@ -98,14 +145,10 @@ class Cvc5ProverAPI(uniqueId: String,
     symbolManager = new SymbolManager(termManager)
     parser = new InputParser(solver, symbolManager)
 
-    /* Whenever cvc5 suppresses diagnostic output because the verbosity is too low, it nevertheless formats the
-     * output, terms included, into a stream object shared by the whole process. Formatting a term reads and writes
-     * per-stream settings, which is not thread-safe, so solvers used in parallel (by different verifiers) corrupt
-     * the memory of that stream; this was observed with quantifiers that are alpha-equivalent to earlier ones.
-     * Diagnostic output is therefore enabled, but sent to a file stream owned by this solver that discards it. */
-    solver.setOption(Cvc5ProverAPI.verbosityOption, "2")
+    /* Warnings are written to the diagnostic output channel, which by default is stderr and thus shared by all
+     * solvers (see also sharedStreamsInitialised); each solver gets its own channel instead, which discards them. */
     solver.setOption(Cvc5ProverAPI.errorChannelOption, Cvc5ProverAPI.nullDevice)
-    comment(s"(set-option :${Cvc5ProverAPI.verbosityOption} 2) (set-option :${Cvc5ProverAPI.errorChannelOption} ${Cvc5ProverAPI.nullDevice})")
+    comment(s"(set-option :${Cvc5ProverAPI.errorChannelOption} ${Cvc5ProverAPI.nullDevice})")
 
     userArgsString foreach applyCommandLineArguments
   }
@@ -137,16 +180,30 @@ class Cvc5ProverAPI(uniqueId: String,
   }
 
   def stop(): Unit = {
+    val idle = awaitIdle()
+
     if (logfileWriter != null) {
       logfileWriter.close()
       logfileWriter = null
     }
 
-    /* Objects are released in reverse order of creation, since each depends on the ones created before it */
-    if (parser != null) { parser.deletePointer(); parser = null }
-    if (symbolManager != null) { symbolManager.deletePointer(); symbolManager = null }
-    if (solver != null) { solver.deletePointer(); solver = null }
-    if (termManager != null) { termManager.deletePointer(); termManager = null }
+    if (idle) {
+      /* Objects are released in reverse order of creation, since each depends on the ones created before it */
+      if (parser != null) { parser.deletePointer(); parser = null }
+      if (symbolManager != null) { symbolManager.deletePointer(); symbolManager = null }
+      if (solver != null) { solver.deletePointer(); solver = null }
+      if (termManager != null) { termManager.deletePointer(); termManager = null }
+    } else {
+      /* Releasing the solver underneath the query would crash the JVM, so the solver (and the thread running the
+       * query) is leaked instead */
+      val msg = "cvc5 did not react to being interrupted; its solver is not released"
+      reporter report InternalWarningMessage(msg)
+      logger warn msg
+      parser = null
+      symbolManager = null
+      solver = null
+      termManager = null
+    }
 
     lastModel = null
     lastReasonUnknown = null
@@ -155,14 +212,14 @@ class Cvc5ProverAPI(uniqueId: String,
     preambleAssumptions = Seq()
   }
 
-  def push(n: Int = 1, timeout: Option[Int] = None): Unit = {
+  def push(n: Int = 1, timeout: Option[Int] = None): Unit = whileBusy {
     setTimeout(timeout)
     pushPopScopeDepth += n
     logToFile((if (n == 1) "(push)" else s"(push $n)") + " ; " + pushPopScopeDepth)
     solver.push(n)
   }
 
-  def pop(n: Int = 1): Unit = {
+  def pop(n: Int = 1): Unit = whileBusy {
     logToFile((if (n == 1) "(pop)" else s"(pop $n)") + " ; " + pushPopScopeDepth)
     pushPopScopeDepth -= n
     solver.pop(n)
@@ -179,7 +236,7 @@ class Cvc5ProverAPI(uniqueId: String,
 
   override def emitSettings(contents: Iterable[String]): Unit = emit(contents)
 
-  override def setOption(name: String, value: String): String = {
+  override def setOption(name: String, value: String): String = whileBusy {
     val oldVal =
       try { solver.getOption(name) }
       catch { case _: CVC5ApiException => throw ProverInteractionFailed(uniqueId, s"Prover does not support option $name") }
@@ -190,7 +247,7 @@ class Cvc5ProverAPI(uniqueId: String,
   }
 
   /* Executes SMT-LIB commands via cvc5's parser. As for the StdIO provers, every command must succeed. */
-  protected def execute(commands: String): Unit = {
+  protected def execute(commands: String): Unit = whileBusy {
     logToFile(commands)
 
     try {
@@ -226,7 +283,7 @@ class Cvc5ProverAPI(uniqueId: String,
   def assert(goal: Term, timeout: Option[Int] = None): Boolean =
     assert(termConverter.convert(goal), timeout)
 
-  def assert(goal: String, timeout: Option[Int]): Boolean = {
+  def assert(goal: String, timeout: Option[Int]): Boolean = whileBusy {
     val (result, duration) = Verifier.config.assertionMode() match {
       case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal, timeout)
       case Config.AssertionMode.PushPop => assertUsingPushPop(goal, timeout)
@@ -283,23 +340,36 @@ class Cvc5ProverAPI(uniqueId: String,
     (result, endTime - startTime)
   }
 
-  def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {
-    data match {
-      case Some(Config.ProverStateSaturationTimeout(timeout, comment)) => saturate(timeout, comment)
-      case None => /* Don't do anything */
-    }
-  }
+  /* State saturation is a Z3-specific heuristic (see Cvc5ProverStdIO) and thus not performed */
 
-  def saturate(timeout: Int, comment: String): Unit = {
-    this.comment(s"State saturation: $comment")
-    setTimeout(Some(timeout))
-    checkSat()
-  }
+  def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {}
 
-  def check(timeout: Option[Int] = None): Result = {
+  def saturate(timeout: Int, comment: String): Unit = {}
+
+  def check(timeout: Option[Int] = None): Result = whileBusy {
     setTimeout(timeout)
 
     checkSat()._1
+  }
+
+  /* Records that a call that uses the solver is in progress, see awaitIdle. Once the prover has been stopped, no
+   * further calls are admitted, since they would use the solver concurrently with its being released (they can
+   * come from the thread of a verification that timed out, which keeps running). */
+  private def whileBusy[A](body: => A): A = {
+    queryLock.synchronized {
+      if (stopped) {
+        throw ProverInteractionFailed(uniqueId, "The prover has been stopped")
+      }
+      busy += 1
+    }
+
+    try { body }
+    finally {
+      queryLock.synchronized {
+        busy -= 1
+        queryLock.notifyAll()
+      }
+    }
   }
 
   private def checkSat(): (Result, Option[String]) = {
@@ -336,7 +406,32 @@ class Cvc5ProverAPI(uniqueId: String,
           queryInterrupted = false
           applyTimeout()
         }
+
+        queryLock.notifyAll()
       }
+    }
+  }
+
+  /* Stops admitting calls, interrupts the query that is currently running, if any, and waits until the calls in
+   * progress have completed, but at most for idleWaitMillis. This matters when a verification timed out: its
+   * thread may still be inside a call, and releasing the solver underneath it crashes the JVM. Returns whether the
+   * prover is idle now. */
+  private def awaitIdle(): Boolean = {
+    queryLock.synchronized {
+      stopped = true
+      val deadline = System.currentTimeMillis() + Cvc5ProverAPI.idleWaitMillis
+
+      while (busy > 0 && System.currentTimeMillis() < deadline) {
+        /* The call in progress may start further queries, so this is repeated periodically until it completes */
+        if (queryRunning && !queryInterrupted) {
+          queryInterrupted = true
+          setSolverOption(Cvc5ProverAPI.resourceLimitOption, "1")
+        }
+
+        queryLock.wait(100)
+      }
+
+      busy == 0
     }
   }
 
@@ -395,7 +490,7 @@ class Cvc5ProverAPI(uniqueId: String,
     lastModel = null
   }
 
-  def statistics(): Map[String, String] = {
+  def statistics(): Map[String, String] = whileBusy {
     /* As for the StdIO provers, only numeric statistics are of interest */
     val statistics = solver.getStatistics
 

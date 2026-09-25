@@ -7,7 +7,9 @@
 package viper.silicon.decider
 
 import com.typesafe.scalalogging.LazyLogging
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.config.Version
+import viper.silicon.debugger.DebugAxiom
 import viper.silicon.interfaces.decider.{Prover, Result}
 import viper.silicon.state.terms.{Decl, Function, FunctionDecl, Sort, Term}
 import viper.silicon.verifier.Verifier
@@ -39,11 +41,17 @@ object PortfolioProver {
 
 /** A prover that runs a portfolio of provers side by side.
   *
-  * Everything that changes the prover state (declarations, assumptions, push/pop, options) is forwarded to every
-  * member, so that all members always know the same facts. Queries (assert, check) are started on all members at
-  * once: the answer of the first member to finish is returned, and the queries still running on the other members
-  * are interrupted (see [[Prover.interrupt]]). Members that cannot be interrupted, such as the StdIO provers, delay
-  * the answer until they finish or time out.
+  * Queries (assert, check) are started on all active members at once: the answer of the first member to finish is
+  * returned, and the queries still running on the other members are interrupted (see [[Prover.interrupt]]). Members
+  * that cannot be interrupted, such as the StdIO provers, delay the answer until they finish or time out.
+  *
+  * By default, all members are active and receive all assumptions, so that they always know the same facts. Members
+  * can be deactivated for a while (see [[setActiveMembers]]), during which they cost nothing: they receive neither
+  * assumptions nor pushes and pops, and are merely brought to the current scope depth when they are activated again
+  * (which is expected to happen at the scope depth at which they were deactivated). Declarations and axioms, on the
+  * other hand, are always forwarded to every member, since symbols and axioms are global: they may be referenced by
+  * later declarations or path conditions (e.g. those transferred to another verifier when branches are verified in
+  * parallel), and the cost of declaring them is negligible.
   */
 class PortfolioProver(val members: Seq[Prover], reporter: Reporter)
     extends Prover
@@ -54,8 +62,11 @@ class PortfolioProver(val members: Seq[Prover], reporter: Reporter)
   private val preambleReader = new SMTLib2PreambleReader
   private var executor: ExecutorService = _
 
-  /* The members that answer queries, see setActiveMembers. All other members merely keep their state up to date. */
+  /* The members that answer queries and receive assumptions, see setActiveMembers */
   private var activeMembers: Seq[Prover] = members
+
+  /* The scope depth of the portfolio, which is the depth of its active members */
+  private var depth = 0
 
   /* The member whose answer to the most recent query was used; models and reasons for unknown results are its */
   private var lastAnswered: Prover = _
@@ -67,26 +78,38 @@ class PortfolioProver(val members: Seq[Prover], reporter: Reporter)
   }
 
   def start(userArgsString: Option[String]): Unit = {
+    startExecutor()
+    members foreach (_.start(userArgsString))
+    emitMemberPreambles()
+  }
+
+  /* Members are reset through their own reset methods (which may do more than stopping and starting, e.g. reset
+   * a term converter). Silicon may reset a prover that has been stopped, in which case the executor is recreated. */
+  def reset(): Unit = {
+    members foreach (_.reset())
+    activeMembers = members
+    depth = 0
+    lastAnswered = null
+
+    if (executor == null) {
+      startExecutor()
+    }
+
+    emitMemberPreambles()
+  }
+
+  private def startExecutor(): Unit = {
     executor = Executors.newFixedThreadPool(members.size, (runnable: Runnable) => {
       val thread = new Thread(null, runnable, "portfolio-prover", PortfolioProver.threadStackSize)
       thread.setDaemon(true)
       thread
     })
-
-    members foreach (_.start(userArgsString))
-    emitMemberPreambles()
-  }
-
-  def reset(): Unit = {
-    members foreach (_.reset())
-    activeMembers = members
-    lastAnswered = null
-    emitMemberPreambles()
   }
 
   def stop(): Unit = {
     members foreach (_.stop())
     activeMembers = members
+    depth = 0
     lastAnswered = null
 
     if (executor != null) {
@@ -110,17 +133,27 @@ class PortfolioProver(val members: Seq[Prover], reporter: Reporter)
 
   lazy val staticPreamble: String = "" /* See emitMemberPreambles */
 
-  /** Restricts the members that answer queries to those whose names are given (None lifts the restriction). The
-    * other members keep their state up to date nevertheless, so that they can be activated again at any time.
-    * Must not be called while a query is running.
+  /** Restricts the members that answer queries and receive assumptions to those whose names are given (None lifts
+    * the restriction). Must not be called while a query is running.
+    *
+    * Members that are activated by the call are brought to the current scope depth: while they were inactive, they
+    * missed all pushes and pops (and the assumptions made in the scopes concerned, so they are less complete until
+    * these scopes are popped, which is harmless).
     */
   def setActiveMembers(names: Option[Seq[String]]): Unit = {
-    activeMembers = names match {
-      case Some(selected) => members.filter(member => selected.contains(member.name))
+    val selected = names match {
+      case Some(selectedNames) => members.filter(member => selectedNames.contains(member.name))
       case None => members
     }
 
-    require(activeMembers.nonEmpty, s"None of the provers ${names.get.mkString(", ")} is a member of portfolio $name")
+    require(selected.nonEmpty, s"None of the provers ${names.get.mkString(", ")} is a member of portfolio $name")
+
+    selected filterNot activeMembers.contains foreach { member =>
+      while (member.pushPopScopeDepth > depth) member.pop()
+      while (member.pushPopScopeDepth < depth) member.push()
+    }
+
+    activeMembers = selected
   }
 
   /** The names of the members that answer queries, or None if all of them do. */
@@ -129,7 +162,7 @@ class PortfolioProver(val members: Seq[Prover], reporter: Reporter)
 
   lazy val randomizeSeedsOptions: Seq[String] = Seq() /* See emitMemberPreambles */
 
-  /* Operations that are forwarded to all members */
+  /* Operations that are forwarded to all members (see the class documentation) */
 
   def emit(content: String): Unit = members foreach (_.emit(content))
 
@@ -139,17 +172,31 @@ class PortfolioProver(val members: Seq[Prover], reporter: Reporter)
 
   def setOption(name: String, value: String): String = (members map (_.setOption(name, value))).head
 
-  def assume(term: Term): Unit = members foreach (_.assume(term))
-
   def declare(decl: Decl): Unit = members foreach (_.declare(decl))
+
+  override def assumeAxioms(terms: InsertionOrderedSet[Term], description: String): Unit = {
+    if (debugMode)
+      preambleAssumptions :+= new DebugAxiom(description, terms)
+    members foreach (member => terms foreach member.assume)
+  }
 
   def comment(content: String): Unit = members foreach (_.comment(content))
 
-  def push(n: Int = 1, timeout: Option[Int] = None): Unit = members foreach (_.push(n, timeout))
+  /* Operations that only concern the active members */
 
-  def pop(n: Int = 1): Unit = members foreach (_.pop(n))
+  def assume(term: Term): Unit = activeMembers foreach (_.assume(term))
 
-  def pushPopScopeDepth: Int = members.head.pushPopScopeDepth
+  def push(n: Int = 1, timeout: Option[Int] = None): Unit = {
+    activeMembers foreach (_.push(n, timeout))
+    depth += n
+  }
+
+  def pop(n: Int = 1): Unit = {
+    activeMembers foreach (_.pop(n))
+    depth -= n
+  }
+
+  def pushPopScopeDepth: Int = depth
 
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function = {
     /* The first member creates the fresh symbol; the others merely declare it, so that all use the same name */

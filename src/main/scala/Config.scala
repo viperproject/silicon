@@ -781,6 +781,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case _ => Right()
   }
 
+  validateOpt(counterexample, prover) {
+    case (Some(_), Some(names)) if PortfolioProver.memberNames(names).exists(n => n == Cvc5ProverStdIO.name || n == Cvc5ProverAPI.name) =>
+      Left(s"Option ${counterexample.name} is not supported with cvc5 (${Cvc5ProverStdIO.name}, ${Cvc5ProverAPI.name}), since cvc5's models cannot be parsed")
+    case _ => Right(())
+  }
+
   validateOpt(counterexample, maskHeapMode) {
     case (Some(_), Some(true)) =>
       Left(s"Option ${counterexample.name} is not supported in combination with ${maskHeapMode.name}")
