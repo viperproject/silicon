@@ -11,9 +11,8 @@ import viper.silicon.logger.records.data.DataRecord
 import viper.silicon.logger.records.scoping.{CloseScopeRecord, OpenScopeRecord, ScopingRecord}
 import viper.silicon.logger.records.structural.BranchingRecord
 import viper.silicon.state.terms
-import viper.silicon.state.terms.Term
 import viper.silver.ast
-import viper.silver.reporter.{Entity, Reporter, VerifierStateMessage}
+import viper.silver.reporter.{BranchCondition, Entity, Reporter, VerifierState, VerifierStateFrame, VerifierStateMessage, VerifierStep}
 
 import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
 import scala.collection.mutable
@@ -90,64 +89,49 @@ class StateReporter(val reporter: Reporter, val reportAfterMillis: Long) {
 object StateReporter {
   private lazy val textLogger = LoggerFactory.getLogger(classOf[StateReporter])
 
-  /** Renders a record together with its source position (if any); multi-line descriptions are cut after the first
-    * line. */
-  def describe(record: DataRecord): String = {
-    val text = record.toString
+  /** Converts a record into a step of a [[VerifierState]]; multi-line descriptions are cut after the first line. */
+  def step(record: DataRecord): VerifierStep = {
+    val text = record.toSimpleString
     val firstLine = text.linesIterator.nextOption().getOrElse("")
     val description = if (firstLine.length < text.length) s"$firstLine ..." else firstLine
 
-    position(record.value) match {
-      case Some(pos) => s"$description ($pos)"
-      case None => description
-    }
-  }
-
-  def position(node: ast.Node): Option[String] = node match {
-    case positioned: ast.Positioned =>
-      positioned.pos match {
-        case lc: ast.HasLineColumn => Some(s"${lc.line}:${lc.column}")
-        case _ => None
-      }
-    case _ => None
+    VerifierStep(record.toTypeString, Option(record.value), description)
   }
 }
 
-/** The condition under which the branch currently being explored at some branch point was taken. */
-sealed trait BranchCondition {
-  def next: BranchCondition
-  def describe: String
+/** The branch currently being explored at some branch point. */
+sealed trait TakenBranch {
+  /** The next branch of the same branch point. */
+  def next: TakenBranch
+  def condition: BranchCondition
 }
 
-object BranchCondition {
-  def initial(r: BranchingRecord): BranchCondition =
+object TakenBranch {
+  def first(r: BranchingRecord): TakenBranch =
     (r.conditionExp, r.condition) match {
       case (Some(exp), _) => Exp(exp)
       case (None, Some(term)) => Term(term)
       case (None, None) => Alternative(0, r.getBranchInfos.size)
     }
 
-  case class Exp(exp: ast.Exp) extends BranchCondition {
-    def next: BranchCondition = Exp(exp match {
+  case class Exp(exp: ast.Exp) extends TakenBranch {
+    def next: TakenBranch = Exp(exp match {
       case ast.Not(inner) => inner
       case other => ast.Not(other)(other.pos, other.info)
     })
 
-    def describe: String = StateReporter.position(exp) match {
-      case Some(pos) => s"$exp ($pos)"
-      case None => exp.toString
-    }
+    def condition: BranchCondition = BranchCondition.Condition(exp)
   }
 
-  case class Term(term: terms.Term) extends BranchCondition {
-    def next: BranchCondition = Term(terms.Not(term))
-    def describe: String = term.toString
+  case class Term(term: terms.Term) extends TakenBranch {
+    def next: TakenBranch = Term(terms.Not(term))
+    def condition: BranchCondition = BranchCondition.OpaqueCondition(term.toString)
   }
 
   /** Branch points without a condition, e.g. the successor edges of a CFG block. */
-  case class Alternative(index: Int, count: Int) extends BranchCondition {
-    def next: BranchCondition = Alternative(index + 1, count)
-    def describe: String = s"alternative ${index + 1} of $count"
+  case class Alternative(index: Int, count: Int) extends TakenBranch {
+    def next: TakenBranch = Alternative(index + 1, count)
+    def condition: BranchCondition = BranchCondition.Alternative(index, count)
   }
 }
 
@@ -176,8 +160,8 @@ trait StateReportingMemberSymbExLogger extends MemberSymbExLogger {
   /** Like `closedWithinCurrentBranch`, but accumulated over all branches of each branch point. */
   private var closedWithinAnyBranch: List[mutable.Set[Int]] = List(mutable.Set())
 
-  /** Branch conditions of the current execution path, innermost first. */
-  private var branchConditions: List[BranchCondition] = Nil
+  /** Branches taken on the current execution path, innermost first. */
+  private var takenBranches: List[TakenBranch] = Nil
 
   private var lastProgressMillis: Long = System.currentTimeMillis()
   private var reportedSinceLastProgress: Boolean = false
@@ -219,7 +203,7 @@ trait StateReportingMemberSymbExLogger extends MemberSymbExLogger {
       openScopeFrames ::= mutable.LinkedHashMap()
       closedWithinCurrentBranch ::= mutable.Set()
       closedWithinAnyBranch ::= mutable.Set()
-      branchConditions ::= BranchCondition.initial(r)
+      takenBranches ::= TakenBranch.first(r)
       progressed()
     }
   }
@@ -230,7 +214,7 @@ trait StateReportingMemberSymbExLogger extends MemberSymbExLogger {
     lock.synchronized {
       openScopeFrames.head.clear()
       closedWithinCurrentBranch.head.clear()
-      branchConditions = branchConditions.head.next :: branchConditions.tail
+      takenBranches = takenBranches.head.next :: takenBranches.tail
       progressed()
     }
   }
@@ -250,7 +234,7 @@ trait StateReportingMemberSymbExLogger extends MemberSymbExLogger {
       closedWithinAnyBranch.head.foreach(id => openScopeFrames.foreach(_.remove(id)))
       closedWithinCurrentBranch = closedWithinCurrentBranch.tail
       closedWithinAnyBranch = closedWithinAnyBranch.tail
-      branchConditions = branchConditions.tail
+      takenBranches = takenBranches.tail
       progressed()
     }
   }
@@ -279,33 +263,28 @@ trait StateReportingMemberSymbExLogger extends MemberSymbExLogger {
         None
       } else {
         reportedSinceLastProgress = true
-        Some(VerifierStateMessage(viper.silicon.Silicon.name, member.asInstanceOf[Entity], stalledFor, renderState()))
+        Some(VerifierStateMessage(viper.silicon.Silicon.name, member.asInstanceOf[Entity], stalledFor, currentState()))
       }
     }
 
     message.foreach(stateReporter.reporter.report)
   }
 
-  /** Renders the currently open records, outermost frame first, together with the branch conditions that led to
-    * the inner frames. Must be called while holding `lock`. */
-  private def renderState(): String = {
+  /** The currently open records as a [[VerifierState]], outermost frame first. Must be called while holding
+    * `lock`. */
+  private def currentState(): VerifierState = {
     val notOnCurrentPath = closedWithinCurrentBranch.flatten.toSet
     val frames = openScopeFrames.reverse
-    val conditions = branchConditions.reverse
-    val lines = mutable.ArrayBuffer[String]()
+    val conditions = None +: takenBranches.reverse.map(branch => Some(branch.condition))
 
-    frames.zipWithIndex.foreach { case (frame, depth) =>
-      val indent = "  " * depth
+    VerifierState(frames.zip(conditions).map { case (frame, condition) =>
+      val steps =
+        frame.values.toSeq
+          .sortBy(_.id)
+          .filterNot(r => notOnCurrentPath.contains(r.id))
+          .map(StateReporter.step)
 
-      if (depth > 0)
-        lines += s"${"  " * (depth - 1)}branch ${conditions(depth - 1).describe}:"
-
-      frame.values.toSeq
-        .sortBy(_.id)
-        .filterNot(r => notOnCurrentPath.contains(r.id))
-        .foreach(r => lines += indent + StateReporter.describe(r))
-    }
-
-    lines.mkString("\n")
+      VerifierStateFrame(condition, steps)
+    })
   }
 }

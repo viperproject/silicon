@@ -12,7 +12,7 @@ import viper.silicon.logger.records.data.ExecuteRecord
 import viper.silicon.logger.{StateReporter, StateReportingSymbExLog}
 import viper.silicon.state.terms
 import viper.silver.ast
-import viper.silver.reporter.{Message, Reporter, VerifierStateMessage}
+import viper.silver.reporter.{BranchCondition, Message, Reporter, VerifierStateMessage}
 
 import java.nio.file.Paths
 import scala.collection.mutable.ArrayBuffer
@@ -51,11 +51,19 @@ class StateReportingTests extends AnyFunSuite with Matchers {
     first.head.verifier shouldBe viper.silicon.Silicon.name
     first.head.concerning shouldBe method
     first.head.millisSinceProgress should be >= reportAfterMillis
-    first.head.state.linesIterator.toSeq shouldBe Seq(
+    first.head.state.render.linesIterator.toSeq shouldBe Seq(
       "method m (3:1)",
       "execute inhale true (5:3)",
       "branch b (6:5):",
       "  execute exhale true (7:3)")
+
+    val frames = first.head.state.frames
+    frames should have size 2
+    frames(0).branchCondition shouldBe None
+    frames(0).steps.map(_.kind) shouldBe Seq("method", "execute")
+    frames(0).steps.map(_.node) shouldBe Seq(Some(method), Some(outerStmt))
+    frames(1).branchCondition shouldBe Some(BranchCondition.Condition(condition))
+    frames(1).steps.map(_.node) shouldBe Seq(Some(innerStmt))
 
     /* No progress: the state must not be reported again */
     Thread.sleep(3 * reportAfterMillis)
@@ -70,10 +78,12 @@ class StateReportingTests extends AnyFunSuite with Matchers {
 
     val second = reporter.stateMessages
     second should have size 2
-    second(1).state.linesIterator.toSeq shouldBe Seq(
+    second(1).state.render.linesIterator.toSeq shouldBe Seq(
       "method m (3:1)",
       "execute inhale true (5:3)",
       "branch !b (6:5):")
+    second(1).state.frames(1).branchCondition shouldBe Some(BranchCondition.Condition(ast.Not(condition)()))
+    second(1).state.frames(1).steps shouldBe empty
 
     /* The member finishes: nothing further is reported */
     log.endBranchPoint(branchPoint)
@@ -113,7 +123,7 @@ class StateReportingTests extends AnyFunSuite with Matchers {
 
     val messages = reporter.stateMessages
     messages should have size 1
-    messages.head.state.linesIterator.toSeq shouldBe Seq(
+    messages.head.state.render.linesIterator.toSeq shouldBe Seq(
       "method m (3:1)",
       "execute exhale true (9:3)")
 
