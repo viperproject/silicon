@@ -58,14 +58,21 @@ abstract class ProverStdIO(uniqueId: String,
   protected def setTimeout(timeout: Option[Int]): Unit
   protected def getProverPath: Path
 
+  private var lastLine: String = null
+
   @inline
   private def readLineFromInput(): String = {
     val line = input.readLine()
 
     if (line == null) {
-      throw ProverInteractionFailed(uniqueId, s"Interaction with prover yielded null. This might indicate that the prover crashed.")
+      val exit =
+        if (prover != null && prover.waitFor(1, TimeUnit.SECONDS)) s"exited with code ${prover.exitValue()}"
+        else "is still running"
+      val last = if (lastLine == null) "" else s"; its last output was: $lastLine"
+      throw ProverInteractionFailed(uniqueId, s"Interaction with prover yielded null: the prover $exit$last. This might indicate that the prover crashed.")
     }
 
+    lastLine = line
     line
   }
 
