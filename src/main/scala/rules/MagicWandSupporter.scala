@@ -373,20 +373,29 @@ object magicWandSupporter extends SymbolicExecutionRules {
         /* Merge the states of all branches into a single state, in which the heaps (and the store) are
          * conditionalised by the branch conditions.
          *
-         * Branch conditions that depend on the LHS, i.e. on freshSnapRoot, refer to the hypothetical LHS
-         * that was assumed while packaging the wand. After the package operation, freshSnapRoot is an
-         * unconstrained constant, and chunks that only exist on some branches remain guarded by
-         * conditions on it. E.g. for
+         * The branch conditions, and the resulting heaps, may depend on the LHS (i.e. on freshSnapRoot).
+         * The LHS is only known when the wand is applied, which may happen several times with different
+         * LHSs (e.g. using applying-expressions), so after the package operation, the state must not
+         * allow deducing anything about "the" LHS: for each branch, freshSnapRoot is replaced by a fresh
+         * and unconstrained snapshot. E.g. for
          *   package acc(x.b) --* (x.b ? acc(x.f) : acc(x.g))
-         * x.g remains available under the condition that the hypothetical LHS's x.b holds, and x.f
-         * under the condition that it does not. Neither can be used directly, but once the wand is
-         * applied and e.g. acc(x.f) is produced, permission constraints imply that the hypothetical
-         * LHS's x.b holds, and thus that x.g is available (cf. wands/examples_paper/conditionals.vpr).
+         * the footprint must include both x.f and x.g: afterwards, x.g remains available only under a
+         * condition on one unknown snapshot, and x.f only under a condition on another one, so neither is
+         * available, not even after applying the wand (and learning something about the actual LHS).
+         * Chunks that exist on all branches remain unconditionally available, and branch conditions that
+         * do not depend on the LHS are kept as they are, e.g. for
+         *   package acc(x.b) --* (b ? (x.b ? acc(x.f) : acc(x.g)) : acc(x.h))
+         * x.h remains available if b holds, and x.f and x.g remain available if b does not hold.
          */
         val branchesToMerge = recordedBranches.map({ case (sBranch, pcs) =>
-          val condition = And(pcs.branchConditions)
+          val unknownLhs = freshSnap(sorts.Snap, v)
+          val replaceLhs = (t: Term) => t.replace(freshSnapRoot, unknownLhs)
+          val replaceLhsInHeap = (h: Heap) => Heap(h.values.map(_.substitute(Map(freshSnapRoot -> unknownLhs))))
+          val sBranchWithUnknownLhs = sBranch.copy(h = replaceLhsInHeap(sBranch.h),
+                                                   reserveHeaps = sBranch.reserveHeaps.map(replaceLhsInHeap))
+          val condition = replaceLhs(And(pcs.branchConditions))
           val conditionExp = Option.when(debugOn)(BigAnd(pcs.branchConditionExps.map(_._2.get)))
-          (sBranch, condition, conditionExp)
+          (sBranchWithUnknownLhs, condition, conditionExp)
         })
 
         val (sMerged, _, _) =
