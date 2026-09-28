@@ -49,8 +49,11 @@ object brancher extends BranchingRules {
     /* Skip path feasibility check if one of the following holds:
      *   (1) the branching is due to the short-circuiting evaluation of a conjunction
      *   (2) the branch condition contains a quantified variable
+     * Note that the snapshot of the LHS of a wand that is being packaged (s.packagingWandSnapshots) is
+     * not considered a quantified variable here: a branch that is infeasible for the (symbolic) LHS
+     * cannot be taken when the wand is applied either, see MagicWandSupporter.packageWand.
      */
-    val allQuantifiedVariables = s.quantifiedVariables ++ s.packagingWandSnapshots
+    val allQuantifiedVariables = s.quantifiedVariables
     val skipPathFeasibilityCheck = (
          fromShortCircuitingAnd
       || (   allQuantifiedVariables.nonEmpty
