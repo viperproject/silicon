@@ -976,13 +976,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers, s"$qid-invOfFct"))
             val comment = "Definitional axioms for inverse functions"
             v.decider.prover.comment(comment)
-            val definitionalAxiomMark = v.decider.setPathConditionMark()
-            v.decider.assume(inv.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)),
-              Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
-            v.decider.assume(inv.definitionalAxioms, Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
-            val conservedPcs =
-              if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
-              else s.conservedPcs
+            v.decider.assumeDefinition(inv.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)),
+              Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)))
+            v.decider.assumeDefinition(inv.definitionalAxioms, Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)))
 
             val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
             val interpreter = new QuantifiedPropertyInterpreter
@@ -1035,7 +1031,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             val s1 =
               s.copy(h = h1,
                      functionRecorder = fr2.recordFieldInv(inv),
-                     conservedPcs = conservedPcs,
                      smCache = smCache1)
             Q(s1, v)
           case false => {
@@ -1065,11 +1060,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val smDef2 = SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq())
     val comment = "Definitional axioms for singleton-SM's value"
     v.decider.prover.comment(comment)
-    val definitionalAxiomMark = v.decider.setPathConditionMark()
     v.decider.assumeDefinition(smValueDef, Option.when(debugOn)(DebugExp.createInstance(comment, true)))
-    val conservedPcs =
-      if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
-      else s.conservedPcs
     val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalQVars, formalQVarsExp, resource, tArgs, eArgs, tPerm, ePerm, sm, Some(s.qpTag.getOrElse(v.counter(this).next())), s.program)
 
     val s1 = if (mergeAndTrigger) {
@@ -1093,13 +1084,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       }
 
       s.copy(h = h1,
-        conservedPcs = conservedPcs,
         functionRecorder = fr1.recordFvfAndDomain(smDef2),
         smCache = smCache1)
     } else {
       s.copy(h = s.h + ch,
-             functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef2),
-             conservedPcs = conservedPcs)
+             functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef2))
     }
     Q(s1, v)
   }
