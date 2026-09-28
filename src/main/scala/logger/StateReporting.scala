@@ -24,7 +24,7 @@ import scala.util.control.NonFatal
   * ================================
   * When Silicon spends a long time on a single proof obligation (typically: waiting for the prover to answer a hard
   * query), users get no feedback about what Silicon is doing. This functionality, which is modelled after the
-  * corresponding functionality of VerCors' Silicon backend, reports Silicon's current state whenever no new records
+  * corresponding functionality in VerCors, reports Silicon's current state whenever no new records
   * have been added to a member's symbolic execution log for a configurable amount of time.
   *
   * [[StateReportingMemberSymbExLogger]] is a stackable mixin for [[MemberSymbExLogger]] implementations that keeps
