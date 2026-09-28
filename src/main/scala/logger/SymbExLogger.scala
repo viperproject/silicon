@@ -195,6 +195,9 @@ import scala.util.{Failure, Success, Try}
   */
 
 case object SymbExLogger {
+  def ofConfig(config: Config): SymbExLogger[_ <: MemberSymbExLogger] =
+    ofConfig(config, viper.silver.reporter.NoopReporter)
+
   def ofConfig(config: Config, reporter: Reporter): SymbExLogger[_ <: MemberSymbExLogger] = {
     /* Non-positive values are rejected by the config's validation; they are filtered here since the config might
      * still be used if validation failed (e.g. by the test suite, which passes a dummy input file) */
