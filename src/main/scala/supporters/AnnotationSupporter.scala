@@ -43,8 +43,8 @@ object AnnotationSupporter {
   }
 
   /** The provers (among those in use, see Config.proverNames) that the member's prover annotation selects to
-    * answer queries while the member is verified, if it has such an annotation. Both @prover("Z3", "cvc5") and
-    * @prover("Z3,cvc5") are accepted.
+    * answer queries while the member is verified, if it has such an annotation. Both @prover("Z3-API", "cvc5-API")
+    * and @prover("Z3-API,cvc5-API") are accepted; the names are those accepted by the --prover option.
     */
   def getProvers(member: ast.Member, reporter: Reporter): Option[Seq[String]] = {
     member.info.getUniqueInfo[ast.AnnotationInfo] match {

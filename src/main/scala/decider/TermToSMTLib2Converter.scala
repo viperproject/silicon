@@ -6,6 +6,7 @@
 
 package viper.silicon.decider
 
+import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 import viper.silver.ast.pretty.FastPrettyPrinterBase
 import viper.silver.ast
@@ -488,7 +489,7 @@ class TermToSMTLib2Converter
 
   def start(): Unit = {
     /* A concurrent map, since the members of a portfolio of provers (see PortfolioProver) convert terms concurrently */
-    sanitizedNamesCache = scala.collection.concurrent.TrieMap.empty
+    sanitizedNamesCache = TrieMap.empty
   }
 
   def reset(): Unit = {

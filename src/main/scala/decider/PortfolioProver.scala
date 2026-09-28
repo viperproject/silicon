@@ -29,9 +29,8 @@ object PortfolioProver {
 
   def isPortfolio(proverName: String): Boolean = memberNames(proverName).size > 1
 
-  /* Threads that run queries convert terms, which recurses on deep terms; they therefore get a stack as large as
-   * Silicon's main thread (see build.sbt). */
-  private val threadStackSize: Long = 128L * 1024 * 1024
+  /* How long stop() waits for a query that is still running on the members */
+  private val stopWaitMillis = 3000
 
   /* Like Try, but also captures fatal errors (e.g. stack overflows), so that the thread waiting for the outcome of
    * a task that runs on another thread is guaranteed to be woken up. */
@@ -71,6 +70,10 @@ class PortfolioProver(val members: Seq[Prover], reporter: Reporter)
   /* The member whose answer to the most recent query was used; models and reasons for unknown results are its */
   private var lastAnswered: Prover = _
 
+  /* The outcomes of the query that is in flight, if any, see stop() */
+  private val queryLock = new Object
+  private var queryInFlight: Outcomes[_] = _
+
   /* Life cycle */
 
   def start(): Unit = {
@@ -100,13 +103,23 @@ class PortfolioProver(val members: Seq[Prover], reporter: Reporter)
 
   private def startExecutor(): Unit = {
     executor = Executors.newFixedThreadPool(members.size, (runnable: Runnable) => {
-      val thread = new Thread(null, runnable, "portfolio-prover", PortfolioProver.threadStackSize)
+      /* The default stack size suffices, as for Silicon's verifier threads, which do the same term conversions */
+      val thread = new Thread(runnable, "portfolio-prover")
       thread.setDaemon(true)
       thread
     })
   }
 
   def stop(): Unit = {
+    /* If a query is still running (e.g. on the thread of a verification that timed out), its tasks must not run
+     * into the members' being stopped: they are interrupted and waited for (but not indefinitely, since not every
+     * member reacts to interrupts, see the members' stop methods). */
+    val inFlight = queryLock.synchronized { queryInFlight }
+    if (inFlight != null) {
+      members foreach (_.interrupt())
+      inFlight.awaitAll(PortfolioProver.stopWaitMillis)
+    }
+
     members foreach (_.stop())
     activeMembers = members
     depth = 0
@@ -213,8 +226,12 @@ class PortfolioProver(val members: Seq[Prover], reporter: Reporter)
     }
   }
 
-  def saturate(timeout: Int, comment: String): Unit =
-    onActive(_.saturate(timeout, comment)).awaitAll() foreach { case (_, outcome) => outcome.get }
+  def saturate(timeout: Int, comment: String): Unit = {
+    val outcomes = onActive(_.saturate(timeout, comment))
+    val results = outcomes.awaitAll()
+    queryDone(outcomes)
+    results foreach { case (_, outcome) => outcome.get }
+  }
 
   def interrupt(): Unit = members foreach (_.interrupt())
 
@@ -249,16 +266,30 @@ class PortfolioProver(val members: Seq[Prover], reporter: Reporter)
       while (outcomes.size < expected) wait()
       outcomes
     }
+
+    /* Waits at most the given time; returns whether all outcomes are in */
+    def awaitAll(timeoutMillis: Long): Boolean = synchronized {
+      val deadline = System.currentTimeMillis() + timeoutMillis
+      while (outcomes.size < expected && System.currentTimeMillis() < deadline) wait(100)
+      outcomes.size == expected
+    }
   }
 
+  /* Runs the task on all active members at once. The caller must wait for all outcomes before calling anything
+   * else, since the members' state must not change while they are busy. */
   private def onActive[A](task: Prover => A): Outcomes[A] = {
     val outcomes = new Outcomes[A](activeMembers.size)
+    queryLock.synchronized { queryInFlight = outcomes }
 
     activeMembers foreach { member =>
       executor.execute(() => outcomes.add(member, PortfolioProver.attempt(task(member))))
     }
 
     outcomes
+  }
+
+  private def queryDone(outcomes: Outcomes[_]): Unit = queryLock.synchronized {
+    if (queryInFlight eq outcomes) queryInFlight = null
   }
 
   /* Runs the query on all active members at once, returns the answer of the first member to finish and interrupts
@@ -270,7 +301,10 @@ class PortfolioProver(val members: Seq[Prover], reporter: Reporter)
     lastAnswered = first
     activeMembers filterNot (_ eq first) foreach (_.interrupt())
 
-    outcomes.awaitAll() foreach { case (member, outcome) =>
+    val results = outcomes.awaitAll()
+    queryDone(outcomes)
+
+    results foreach { case (member, outcome) =>
       if (!(member eq first)) outcome.failed foreach { e =>
         val msg = s"Prover ${member.name} failed after being interrupted: ${e.getMessage}"
         reporter report InternalWarningMessage(msg)
