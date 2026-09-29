@@ -50,6 +50,16 @@ domain $Seq[E] {
         forall i: Int, j: Int :: { Seq_sub(i, j) } Seq_sub(i, j) == i - j
     }
 
+    // Round-trip normalisation: makes the index terms produced by Seq_drop_index1/2 and
+    // Seq_append_index2/3 congruent to the ones they came from, so e-matching saturates
+    // instead of wrapping another Seq_add/Seq_sub layer on every round.
+    axiom Seq_add_sub_id {
+        forall i: Int, j: Int :: { Seq_add(Seq_sub(i, j), j) } Seq_add(Seq_sub(i, j), j) == i
+    }
+    axiom Seq_sub_add_id {
+        forall i: Int, j: Int :: { Seq_sub(Seq_add(i, j), j) } Seq_sub(Seq_add(i, j), j) == i
+    }
+
     axiom Seq_append_index1 {
         forall s0: $Seq[E], s1: $Seq[E], n: Int :: { Seq_index(Seq_append(s0, s1), n) } { Seq_index(s0, n), Seq_append(s0, s1) }
             s0 != Seq_empty() && s1 != Seq_empty() && 0 <= n && n < Seq_length(s0) ==> Seq_index(Seq_append(s0, s1), n) == Seq_index(s0, n)
