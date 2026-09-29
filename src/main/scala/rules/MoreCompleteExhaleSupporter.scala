@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Success, VerificationResult}
-import viper.silicon.resources.{FieldID, NonQuantifiedPropertyInterpreter, Resources}
+import viper.silicon.resources.{BaseID, FieldID, NonQuantifiedPropertyInterpreter, PredicateID, Resources}
 import viper.silicon.rules.chunkSupporter.findChunksWithID
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -157,8 +157,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                         knownValue: Option[Option[Term]], // None if we have not yet checked for a definite alias,
                                                           // Some(v) if we have checked and the result was v
                         v: Verifier)
-                       (Q: (State, Term, Term, Option[ast.Exp], Verifier) => VerificationResult)
-                       : VerificationResult = {
+                       : (State, Term, Term, Option[ast.Exp]) = {
     // Don't use the shortcut if we want a counterexample; in that case, we need the decider to perform a single
     // query to check if the permission amount we have is sufficient to get the correct counterexample. If we perform
     // the query in two parts (one part here, one part in our caller to see if the permission amount is sufficient),
@@ -167,7 +166,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       val chunk = relevantChunks.head
       val argsEqual = And(chunk.args.zip(args).map { case (t1, t2) => t1 === t2 })
       if (v.decider.check(argsEqual, Verifier.config.checkTimeout())) {
-        return Q(s, chunk.snap, chunk.perm, chunk.permExp, v)
+        return (s, chunk.snap, chunk.perm, chunk.permExp)
       }
     }
 
@@ -186,7 +185,28 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           s1
       }
 
-    Q(s2, taggedSnap.snapshot, permSum, permSumExp, v)
+    (s2, taggedSnap.snapshot, permSum, permSumExp)
+  }
+
+  /** Creates a chunk that summarises a consumption: it holds the summarising snapshot and the consumed permission amount. */
+  private def createSummaryChunk(resource: ast.Resource,
+                                 args: Seq[Term],
+                                 argsExp: Option[Seq[ast.Exp]],
+                                 snap: Term,
+                                 perm: Term,
+                                 permExp: Option[ast.Exp],
+                                 program: ast.Program)
+                                : NonQuantifiedChunk = {
+    ChunkIdentifier(resource, program) match {
+      case id: MagicWandIdentifier =>
+        MagicWandChunk(id, Map.empty, args, argsExp, MagicWandSnapshot(snap), perm, permExp, None)
+      case id: BasicChunkIdentifier =>
+        val resourceID: BaseID = resource match {
+          case _: ast.Field => FieldID
+          case _ => PredicateID
+        }
+        BasicChunk(resourceID, id, args, argsExp, snap, None, perm, permExp, None)
+    }
   }
 
   def lookupComplete(s: State,
@@ -214,15 +234,21 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         createFailure(ve, v, s, False, "branch is dead")
       }
     } else {
-      summarise(s, relevantChunks, resource, args, argsExp, None, v)((s1, snap, permSum, permSumExp, v1) =>
-        v.decider.assert(IsPositive(permSum)) {
-          case true =>
-            Q(s1, snap, v1)
-          case false =>
-            createFailure(ve, v, s1, IsPositive(permSum), permSumExp.map(IsPositive(_)()))
-        })
+      val (s1, snap, permSum, permSumExp) = summarise(s, relevantChunks, resource, args, argsExp, None, v)
+      v.decider.assert(IsPositive(permSum)) {
+        case true =>
+          Q(s1, snap, v)
+        case false =>
+          createFailure(ve, v, s1, IsPositive(permSum), permSumExp.map(IsPositive(_)()))
+      }
     }
   }
+
+  /** Result of a consumption: whether it was complete, the resulting state and heap, a chunk summarising what was
+    * consumed (None if nothing was consumed or no snapshot was requested), and, if the consumption is incomplete,
+    * the assertion that failed (as a term and, if debugging is enabled, as an expression).
+    */
+  type ConsumeCompleteResult = (ConsumptionResult, State, Heap, Option[NonQuantifiedChunk], Option[(Term, Option[ast.Exp])])
 
   def consumeComplete(s: State,
                       h: Heap,
@@ -237,43 +263,71 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                      (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                      : VerificationResult = {
 
+    consumeCompleteNonCps(s, h, resource, args, argsExp, perms, permsExp, returnSnap, v) match {
+      case (Complete(), s1, h1, optChunk, _) =>
+        val optSnap = optChunk.map(chunk =>
+          if (v.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
+            chunk.snap
+          } else {
+            Ite(IsPositive(perms), chunk.snap.convert(sorts.Snap), Unit)
+          })
+        Q(s1, h1, optSnap, v)
+      case (Incomplete(permsNeeded, permsNeededExp), s1, _, _, failedAssertion) =>
+        val (failedTerm, failedExp) = failedAssertion.getOrElse(
+          (permsNeeded === NoPerm, permsNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT))))
+        createFailure(ve, v, s1, failedTerm, failedExp)
+    }
+  }
+
+  /** Non-CPS variant of [[consumeComplete]], which does not report failures but returns whether the consumption
+    * was complete. It is, e.g., used to consume from the stack of heaps while packaging a magic wand.
+    * If returnSnap is set, the returned chunk summarises the consumed permissions and their snapshot.
+    */
+  def consumeCompleteNonCps(s: State,
+                            h: Heap,
+                            resource: ast.Resource,
+                            args: Seq[Term],
+                            argsExp: Option[Seq[ast.Exp]],
+                            perms: Term,
+                            permsExp: Option[ast.Exp],
+                            returnSnap: Boolean,
+                            v: Verifier)
+                           : ConsumeCompleteResult = {
+
     if (!s.assertReadAccessOnly)
-      actualConsumeComplete(s, h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v)(Q)
+      actualConsumeComplete(s, h, resource, args, argsExp, perms, permsExp, returnSnap, v)
     else
-      summariseHeapAndAssertReadAccess(s, h, resource, perms, args, argsExp, returnSnap, ve, v)(Q)
+      summariseHeapAndAssertReadAccess(s, h, resource, perms, permsExp, args, argsExp, returnSnap, v)
   }
 
   private def summariseHeapAndAssertReadAccess(s: State,
                                                h: Heap,
                                                resource: ast.Resource,
                                                perm: Term,
+                                               permExp: Option[ast.Exp],
                                                args: Seq[Term],
                                                argsExp: Option[Seq[ast.Exp]],
                                                returnSnap: Boolean,
-                                               ve: VerificationError,
                                                v: Verifier)
-                                              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
-                                              : VerificationResult = {
+                                              : ConsumeCompleteResult = {
 
     val id = ChunkIdentifier(resource, s.program)
     val relevantChunks = findChunksWithID[NonQuantifiedChunk](h.values, id).toSeq
 
-    if (returnSnap) {
-      summarise(s, relevantChunks, resource, args, argsExp, None, v)((s1, snap, permSum, permSumExp, v1) =>
-        v.decider.assert(Implies(IsPositive(perm), IsPositive(permSum))) {
-          case true =>
-            Q(s1, h, Some(snap), v1)
-          case false =>
-            createFailure(ve, v, s1, IsPositive(permSum), permSumExp.map(IsPositive(_)()))
-        })
-    } else {
-      val (s1, permSum, permSumExp) = permSummariseOnly(s, relevantChunks, resource, args, argsExp)
-      v.decider.assert(Implies(IsPositive(perm), IsPositive(permSum))) {
-        case true =>
-          Q(s1, h, None, v)
-        case false =>
-          createFailure(ve, v, s1, IsPositive(permSum), permSumExp.map(IsPositive(_)()))
+    val (s1, optSnap, permSum, permSumExp) =
+      if (returnSnap) {
+        val (s1, snap, permSum, permSumExp) = summarise(s, relevantChunks, resource, args, argsExp, None, v)
+        (s1, Some(snap), permSum, permSumExp)
+      } else {
+        val (s1, permSum, permSumExp) = permSummariseOnly(s, relevantChunks, resource, args, argsExp)
+        (s1, None, permSum, permSumExp)
       }
+
+    if (v.decider.assertNonCps(Implies(IsPositive(perm), IsPositive(permSum)))) {
+      val optChunk = optSnap.map(snap => createSummaryChunk(resource, args, argsExp, snap, perm, permExp, s.program))
+      (Complete(), s1, h, optChunk, None)
+    } else {
+      (Incomplete(perm, permExp), s1, h, None, Some((IsPositive(permSum), permSumExp.map(IsPositive(_)()))))
     }
   }
 
@@ -285,10 +339,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                     perms: Term,
                                     permsExp: Option[ast.Exp],
                                     returnSnap: Boolean,
-                                    ve: VerificationError,
                                     v: Verifier)
-                                   (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
-                                   : VerificationResult = {
+                                   : ConsumeCompleteResult = {
 
     val id = ChunkIdentifier(resource, s.program)
     val relevantChunks = ListBuffer[NonQuantifiedChunk]()
@@ -300,15 +352,17 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     if (relevantChunks.isEmpty) {
       // if no permission is exhaled, return none
-      v.decider.assert(perms === NoPerm) {
-        case true => Q(s, h, None, v)
-        case false => createFailure(ve, v, s, perms === NoPerm, permsExp.map(pe => ast.EqCmp(pe, ast.NoPerm()())(pe.pos, pe.info, pe.errT)))
-      }
+      val permsNone = perms === NoPerm
+      val permsNoneExp = permsExp.map(pe => ast.EqCmp(pe, ast.NoPerm()())(pe.pos, pe.info, pe.errT))
+      if (v.decider.assertNonCps(permsNone))
+        (Complete(), s, h, None, None)
+      else
+        (Incomplete(perms, permsExp), s, h, None, Some((permsNone, permsNoneExp)))
     } else {
       if (!terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
-        actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, argsExp, perms, permsExp, returnSnap, ve, v)((s1, updatedChunks, optSnap, v2) => {
-          Q(s1, Heap(updatedChunks ++ otherChunks), optSnap, v2)
-        })
+        val (result, s1, updatedChunks, optChunk, failedAssertion) =
+          actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, argsExp, perms, permsExp, returnSnap, v)
+        (result, s1, Heap(updatedChunks ++ otherChunks), optChunk, failedAssertion)
       } else {
         var pNeeded = perms
         var pNeededExp = permsExp
@@ -367,7 +421,12 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             pNeeded = PermMinus(pNeeded, pTaken)
             pNeededExp = permsExp.map(pe => ast.PermSub(pNeededExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT))
 
-            if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout())) {
+            /* While packaging a wand (s.exhaleExt), the chunk is kept even if its remaining permission
+             * amount is provably non-positive: the proof may rely on assumptions made while packaging
+             * (in particular, on the wand's LHS), which do not necessarily hold after the package
+             * operation, where the chunk (with its conditional permission amount) is still used.
+             */
+            if (s.exhaleExt || !v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout())) {
               newChunks.append(newChunk)
             }
 
@@ -390,38 +449,22 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         val s0 = s.copy(functionRecorder = currentFunctionRecorder)
 
-
-
-        if (returnSnap) {
-          summarise(s0, relevantChunks.toSeq, resource, args, argsExp, Some(definiteAlias.map(_.snap)), v)((s1, snap, _, _, v1) => {
-            val condSnap = Some(if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
-              snap
-            } else {
-              Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit)
-            })
-          if (!moreNeeded) {
-            Q(s1, newHeap, condSnap, v1)
+        val (s1, optChunk) =
+          if (returnSnap) {
+            val (s1, snap, _, _) = summarise(s0, relevantChunks.toSeq, resource, args, argsExp, Some(definiteAlias.map(_.snap)), v)
+            val consumedPerm = PermMinus(perms, pNeeded)
+            val consumedPermExp = permsExp.map(pe => ast.PermSub(pe, pNeededExp.get)(pe.pos, pe.info, pe.errT))
+            (s1, Some(createSummaryChunk(resource, args, argsExp, snap, consumedPerm, consumedPermExp, s.program)))
           } else {
-            v1.decider.assert(pNeeded === NoPerm) {
-              case true =>
-                Q(s1, newHeap, condSnap, v1)
-              case false =>
-                createFailure(ve, v1, s1, pNeeded === NoPerm, pNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT)))
-            }
+            (s0, None)
           }
-        })
-        } else {
-          if (!moreNeeded) {
-            Q(s0, newHeap, None, v)
-          } else {
-            v.decider.assert(pNeeded === NoPerm) {
-              case true =>
-                Q(s0, newHeap, None, v)
-              case false =>
-                createFailure(ve, v, s0, pNeeded === NoPerm, pNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT)))
-            }
-          }
-        }
+
+        val pNeededNone = pNeeded === NoPerm
+        val pNeededNoneExp = pNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT))
+        if (!moreNeeded || v.decider.assertNonCps(pNeededNone))
+          (Complete(), s1, newHeap, optChunk, None)
+        else
+          (Incomplete(pNeeded, pNeededExp), s1, newHeap, optChunk, Some((pNeededNone, pNeededNoneExp)))
       }
     }
   }
@@ -434,10 +477,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                                  perms: Term, // Expected to be constrainable. Will be assumed to equal the consumed permission amount.
                                                  permsExp: Option[ast.Exp],
                                                  returnSnap: Boolean,
-                                                 ve: VerificationError,
                                                  v: Verifier)
-                                                (Q: (State, ListBuffer[NonQuantifiedChunk], Option[Term], Verifier) => VerificationResult)
-                                                : VerificationResult = {
+                                                : (ConsumptionResult, State, ListBuffer[NonQuantifiedChunk], Option[NonQuantifiedChunk], Option[(Term, Option[ast.Exp])]) = {
 
     v.decider.startDebugSubExp()
 
@@ -494,19 +535,20 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     val s1 = s.copy(functionRecorder = newFr)
 
-    v.decider.assert(Implies(PermLess(NoPerm, perms), totalPermTaken !== NoPerm)) {
-      case true =>
-        val constraintExp = permsExp.map(pe => ast.EqCmp(pe, totalPermTakenExp.get)())
-        v.decider.assume(perms === totalPermTaken, Option.when(debugOn)(DebugExp.createInstance(constraintExp, constraintExp)))
-        if (returnSnap) {
-          summarise(s1, relevantChunks.toSeq, resource, args, argsExp, None, v)((s2, snap, _, _, v1) =>
-            Q(s2, updatedChunks, Some(snap), v1))
-        } else {
-          Q(s1, updatedChunks, None, v)
-        }
-      case false =>
-        v.decider.finishDebugSubExp(s"consume permissions for ${resource.toString()}")
-        createFailure(ve, v, s, totalPermTaken !== NoPerm, totalPermTakenExp.map(tpt => ast.NeCmp(tpt, ast.NoPerm()())()))
+    if (v.decider.assertNonCps(Implies(PermLess(NoPerm, perms), totalPermTaken !== NoPerm))) {
+      val constraintExp = permsExp.map(pe => ast.EqCmp(pe, totalPermTakenExp.get)())
+      v.decider.assume(perms === totalPermTaken, Option.when(debugOn)(DebugExp.createInstance(constraintExp, constraintExp)))
+      if (returnSnap) {
+        val (s2, snap, _, _) = summarise(s1, relevantChunks.toSeq, resource, args, argsExp, None, v)
+        (Complete(), s2, updatedChunks, Some(createSummaryChunk(resource, args, argsExp, snap, totalPermTaken, totalPermTakenExp, s.program)), None)
+      } else {
+        (Complete(), s1, updatedChunks, None, None)
+      }
+    } else {
+      v.decider.finishDebugSubExp(s"consume permissions for ${resource.toString()}")
+      // Nothing was consumed: the original chunks are returned.
+      (Incomplete(perms, permsExp), s, relevantChunks, None,
+       Some((totalPermTaken !== NoPerm, totalPermTakenExp.map(tpt => ast.NeCmp(tpt, ast.NoPerm()())()))))
     }
   }
 
