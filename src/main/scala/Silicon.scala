@@ -118,7 +118,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     _config = new Config(args)
     if (!config.exit) {
-      _symbExLog = SymbExLogger.ofConfig(_config)
+      _symbExLog = SymbExLogger.ofConfig(_config, reporter)
     }
   }
 
@@ -152,6 +152,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
   def stop(): Unit = {
     if (verifier != null) verifier.stop()
+    if (symbExLog != null) symbExLog.close()
   }
 
   /** Verifies a given SIL program and returns a sequence of verification errors.
@@ -209,8 +210,8 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
         result = Some(condenseToViperResult(failures))
       } catch { /* Catch exceptions thrown during verification (errors are not caught) */
         case _: TimeoutException =>
+          symbExLog.close()
           if (config.ideModeAdvanced()) {
-            symbExLog.close()
             reporter report ExecutionTraceReport(symbExLog.logs.toSeq, List(), List())
           }
           result = Some(SilFailure(SilTimeoutOccurred(config.timeout(), "second(s)") :: Nil))
