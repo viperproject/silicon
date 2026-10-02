@@ -518,4 +518,8 @@ abstract class ProverStdIO(uniqueId: String,
   }
 
   def getAllDecls(): Seq[Decl] = allDecls
+
+  /* A prover process that is busy with a query cannot be interrupted via stdin, and killing the process would lose
+   * its state, so requests to interrupt are ignored. */
+  def interrupt(): Unit = {}
 }

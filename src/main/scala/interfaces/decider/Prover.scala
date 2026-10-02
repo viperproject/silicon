@@ -67,4 +67,11 @@ trait Prover extends ProverLike with StatefulComponent {
   def getAllDecls(): Seq[Decl]
 
   def getAllEmits(): Seq[String]
+
+  /** Interrupts the query (assert, check or saturate) currently running on this prover, if any, typically from
+    * another thread. The interrupted query returns as if the prover had given up on it (e.g. with an unknown
+    * result), after which the prover can be used as usual. Provers that cannot be interrupted, such as the
+    * StdIO provers, ignore the request, in which case the query simply runs to completion.
+    */
+  def interrupt(): Unit
 }

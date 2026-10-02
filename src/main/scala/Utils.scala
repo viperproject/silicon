@@ -62,7 +62,7 @@ package object utils {
 
     private var nextValue = firstValue
 
-    def next() = {
+    def next() = synchronized { /* The members of a portfolio of provers may request fresh identifiers concurrently */
       val n = nextValue
       nextValue = nextValue + 1
 

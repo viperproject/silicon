@@ -11,6 +11,7 @@ import viper.silicon.state.IdentifierFactory
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
 import viper.silver.reporter.Reporter
+import viper.silicon.Config
 import viper.silicon.common.config.Version
 
 object Cvc5ProverStdIO {
@@ -59,4 +60,11 @@ class Cvc5ProverStdIO(uniqueId: String,
   }
 
   override def emitSettings(contents: Iterable[String]): Unit = emit(contents)
+
+  /* State saturation (a check-sat with a short timeout, to have the prover derive consequences of the assumptions
+   * made so far) is a heuristic tailored to Z3; there is no evidence that it helps cvc5, and its cost is hard to
+   * bound, since cvc5's resource limits do not correspond well to time. It is therefore not performed. */
+  override def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {}
+
+  override def saturate(timeout: Int, comment: String): Unit = {}
 }
