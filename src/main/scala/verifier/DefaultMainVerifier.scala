@@ -142,9 +142,10 @@ class DefaultMainVerifier(config: Config,
       _verificationPoolManager.pooledVerifiers.declare(decl)
     }
 
-    def comment(content: String): Unit = {
-      decider.prover.comment(content)
-      _verificationPoolManager.pooledVerifiers.comment(content)
+    def comment(content: => String): Unit = {
+      lazy val c = content
+      decider.prover.comment(c)
+      _verificationPoolManager.pooledVerifiers.comment(c)
     }
 
     def saturate(timeout: Int, comment: String): Unit = {
