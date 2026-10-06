@@ -189,7 +189,6 @@ object BuiltinDomainsContributor {
     )._2
   }
 
-  // TODO: Check that Silver's parser doesn't already provide suitable functionality.
   private def parseProgramFromUrl(url: URL): ast.Program = {
     val fromPath = viper.silver.utility.Paths.pathFromResource(url)
     val source = scala.io.Source.fromURL(url)
