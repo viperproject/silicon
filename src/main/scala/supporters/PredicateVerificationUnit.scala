@@ -95,6 +95,8 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
       logger.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
 
+      v.decider.setActiveProvers(AnnotationSupporter.getProvers(predicate, reporter))
+
       openSymbExLogger(predicate)
 
       val ins = predicate.formalArgs.map(_.localVar)
@@ -142,6 +144,8 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
       this.predicateData(predicate.name).predContents = overallResult
       this.predicateData(predicate.name).params = Some(Seq(snap) ++ argVars.map(_._2._1))
       this.predicateData(predicate.name).addRecorders(Seq(funcRecorder), Seq())
+
+      v.decider.setActiveProvers(None)
 
       symbExLog.closeMemberScope()
       Seq(result)

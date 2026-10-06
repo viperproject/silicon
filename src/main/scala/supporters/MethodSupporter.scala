@@ -50,6 +50,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
       val proverOptions: Map[String, String] = AnnotationSupporter.getProverConfigArgs(method, reporter)
       v.decider.setProverOptions(proverOptions)
+      v.decider.setActiveProvers(AnnotationSupporter.getProvers(method, reporter))
 
       openSymbExLogger(method)
 
@@ -123,6 +124,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                       Success())})}) }  )})})
 
       v.decider.resetProverOptions()
+      v.decider.setActiveProvers(None)
 
       symbExLog.closeMemberScope()
       Seq(result)
