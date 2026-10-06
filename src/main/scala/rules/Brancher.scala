@@ -153,7 +153,7 @@ object brancher extends BranchingRules {
             var nMacrosOfElseBranchDeciderBefore: Int = 0
 
             if (v.uniqueId != v0.uniqueId) {
-              v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+              v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
               if (s.underJoin) {
                 nMacrosOfElseBranchDeciderBefore = v1.decider.freshMacros.size
                 functionsOfElseBranchdDeciderBefore = v1.decider.freshFunctions
@@ -228,7 +228,7 @@ object brancher extends BranchingRules {
             v.decider.prover.comment(s"Resetting path conditions after interruption")
             v.decider.setPcs(pcsAfterThenBranch)
             v.errorsReportedSoFar.set(noOfErrorsAfterThenBranch)
-            v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+            v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
             v.decider.resetProverOptions()
             v.decider.setProverOptions(proverConfigArgsOfCurrentDecider)
           }
