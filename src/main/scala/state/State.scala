@@ -606,7 +606,9 @@ object State {
   }
 
   def preserveAfterLocalEvaluation(pre: State, post: State): State = {
-    pre.copy(functionRecorder = post.functionRecorder,
+    pre.copy(debugOldHeaps = post.debugOldHeaps,
+             temporaryHeapRecord = post.temporaryHeapRecord,
+             functionRecorder = post.functionRecorder,
              possibleTriggers = post.possibleTriggers,
              smCache = post.smCache,
              constrainableARPs = post.constrainableARPs)
