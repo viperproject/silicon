@@ -106,6 +106,7 @@ object executionFlowController extends ExecutionFlowRules {
                                     : VerificationResult = {
 
     var localActionSuccess = false
+    val beforeTryMark = v.decider.pcs.mark()
 
     /* TODO: Consider how to handle situations where the action branches and the first branch
      *       succeeds, i.e. localActionSuccess has been set to true, but the second fails.
@@ -127,6 +128,7 @@ object executionFlowController extends ExecutionFlowRules {
                                           * current branch turned out to be infeasible) */
         firstActionResult
       else {
+        v.decider.pcs.popUntilMark(beforeTryMark)
         val s0 = v.stateConsolidator(s).consolidate(s, v)
 
         val comLog = new CommentRecord("Retry", s0, v.decider.pcs)
