@@ -310,7 +310,7 @@ object executor extends ExecutionRules {
                         v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
                         v2.decider.declareAndRecordAsFreshMacros(fm1.filter(!v2.decider.freshMacros.contains(_)))  /* [BRANCH-PARALLELISATION] */
                         v2.decider.assume(pcs.assumptions, Option.when(debugOn)(DebugExp.createInstance("Loop invariant", pcs.assumptionExps)), false)
-                        v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+                        v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
                         if (v2.decider.checkSmoke())
                           Success()
                         else {
@@ -627,7 +627,7 @@ object executor extends ExecutionRules {
             val s2a = s2.copy(g = s2.g + gOuts, oldHeaps = newOldHeaps)
             produces(s2a, freshSnap, meth.posts, _ => pveCallTransformed, v2)((s3, v3) => {
               v3.symbExLog.closeScope(postCondId)
-              v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+              v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
               val gLhs = Store(lhs.zip(outs)
                               .map(p => (p._1, s3.g.values(p._2))).toMap)
               val s3a = s3.copy(g = s1.g + gLhs,
