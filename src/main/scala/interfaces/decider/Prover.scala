@@ -35,7 +35,8 @@ trait ProverLike {
   def setOption(name: String, value: String): String
   def assume(term: Term): Unit
   def declare(decl: Decl): Unit
-  def comment(content: String): Unit
+  /* By-name, such that callers' (potentially expensive) comment strings are only built if they are needed */
+  def comment(content: => String): Unit
   def saturate(timeout: Int, comment: String): Unit
   def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit
 }

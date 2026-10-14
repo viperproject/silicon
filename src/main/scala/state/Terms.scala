@@ -34,12 +34,12 @@ sealed trait Symbol extends Node {
 sealed trait Sort extends Symbol
 
 object sorts {
-  object Snap extends Sort { val id = Identifier("Snap"); override lazy val toString = id.toString }
-  object Int  extends Sort { val id = Identifier("Int");  override lazy val toString = id.toString }
-  object Bool extends Sort { val id = Identifier("Bool"); override lazy val toString = id.toString }
-  object Ref  extends Sort { val id = Identifier("Ref");  override lazy val toString = id.toString }
-  object Perm extends Sort { val id = Identifier("Perm"); override lazy val toString = id.toString }
-  object Unit extends Sort { val id = Identifier("()");   override lazy val toString = id.toString }
+  case object Snap extends Sort { val id = Identifier("Snap"); override lazy val toString = id.toString }
+  case object Int  extends Sort { val id = Identifier("Int");  override lazy val toString = id.toString }
+  case object Bool extends Sort { val id = Identifier("Bool"); override lazy val toString = id.toString }
+  case object Ref  extends Sort { val id = Identifier("Ref");  override lazy val toString = id.toString }
+  case object Perm extends Sort { val id = Identifier("Perm"); override lazy val toString = id.toString }
+  case object Unit extends Sort { val id = Identifier("()");   override lazy val toString = id.toString }
   object MaskSort extends HeapSort(Perm)
 
   case class Seq(elementsSort: Sort) extends Sort {
@@ -80,7 +80,7 @@ object sorts {
     override lazy val toString = id.toString
   }
 
-  object MagicWandSnapFunction extends Sort {
+  case object MagicWandSnapFunction extends Sort {
     val id: Identifier = Identifier("MWSF")
     override lazy val toString: String = id.toString
   }
@@ -732,7 +732,7 @@ object SimplifyingForall {
   }
 }
 
-object Exists extends Quantifier {
+case object Exists extends Quantifier {
   def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger]) =
     Quantification(Exists, qvar :: Nil, tBody, triggers)
 
