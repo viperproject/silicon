@@ -20,7 +20,7 @@ jobs:
     steps:
       # Checkout Silicon (note: all checkouts delete the contents of their working directory)
       - name: Checkout Silicon
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
 
@@ -57,7 +57,7 @@ jobs:
         # Cache path is relative to the directory in which sbt is invoked
         run: echo "SBT_OPTS=-Dsbt.global.base=sbt-cache/.sbtboot -Dsbt.boot.directory=sbt-cache/.boot -Dsbt.ivy.home=sbt-cache/.ivy" >> $GITHUB_ENV
       - name: Cache sbt
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             sbt-cache/.sbtboot
@@ -97,7 +97,7 @@ jobs:
     steps:
       # Checkout Silicon (deletes content of working directory)
       - name: Checkout Silicon
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
 
@@ -150,7 +150,7 @@ jobs:
 
       - name: Create a snapshot release on GitHub (with source assets)
         id: create_snapshot_release
-        uses: viperproject/create-nightly-release@v1
+        uses: viperproject/create-nightly-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
