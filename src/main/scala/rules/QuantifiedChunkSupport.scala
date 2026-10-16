@@ -1212,7 +1212,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
                   val s1p = s1.copy(loopHeapStack = hs1.tail, h = newTopHeap2, functionRecorder = fr1, smCache = smCache2)
                   if (nonEmptyChunks.isEmpty) {
-                    assert(v1.decider.check(tPerm === NoPerm, 0))
+                    /* Nothing was consumed: no receiver satisfying the condition needs permission (e.g. the
+                     * receiver set is empty), or the path is infeasible. tPerm alone may well be positive. */
+                    assert(v1.decider.check(Forall(qvars, Implies(tCond, tPerm === NoPerm), Nil), 0) || v1.decider.checkSmoke())
                     Q(s1p, hs1.head, cHeap2, v1.decider.fresh(sorts.Snap), v1)
                   } else {
                     val snap = smDef2 match {
