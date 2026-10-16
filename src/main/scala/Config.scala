@@ -666,6 +666,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val kInductionExitIterations: ScallopOption[Int] = opt[Int]("kInductionExitIterations",
+    descr = "With k-induction: number of assumed iterations (1..k+1) after the havoc on the path that sets up the " +
+            "state after the loop (default: k; k+1 is as precise as exiting after the checking iteration).",
+    default = None,
+    noshort = true
+  )
+
   // DEPRECATED and replaced by exhaleMode.
   val moreCompleteExhale: ScallopOption[Boolean] = opt[Boolean]("enableMoreCompleteExhale",
     descr =  "Warning: This option is deprecated. "

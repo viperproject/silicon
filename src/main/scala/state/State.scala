@@ -25,7 +25,10 @@ import viper.silver.cfg.silver.SilverCfg.SilverLoopHeadBlock
 
 object LoopPhases extends Enumeration {
   type LoopPhase = Value
-  val Transferring, Assuming, Checking = Value
+  /* Replaying: like Assuming (all checks assumed, missing permissions conjured), but on the path that sets up the
+   * post-loop state; the loop is exited after the last replayed iteration. */
+  val Transferring, Assuming, Replaying, Checking = Value
+  def isAssuming(p: LoopPhase): Boolean = p == Assuming || p == Replaying
 }
 
 final case class State(g: Store = Store(),

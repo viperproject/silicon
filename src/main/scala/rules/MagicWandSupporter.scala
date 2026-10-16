@@ -274,7 +274,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                 Acc(Complete(), sOut, h +: acc.heaps, acc.cHeap + cHeap, cch +: acc.chunks, stopped = false)
               case (Incomplete(_), LoopPhases.Transferring) =>
                 Acc(success1, sOut, h +: acc.heaps, acc.cHeap + cHeap, cch +: acc.chunks, stopped = false)
-              case (Incomplete(remaining), LoopPhases.Assuming) =>
+              case (Incomplete(remaining), p) if LoopPhases.isAssuming(p) =>
                 val (sOut2, conjured) = conjure(sOut, remaining, v)
                 Acc(Complete(), sOut2, h +: acc.heaps, acc.cHeap + cHeap + conjured, cch.orElse(Some(conjured)) +: acc.chunks, stopped = false)
               case (Incomplete(_), _) => /* LoopPhases.Checking */

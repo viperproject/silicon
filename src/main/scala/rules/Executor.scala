@@ -98,17 +98,19 @@ object executor extends ExecutionRules {
             val s1 = s.copy(functionRecorder = fr1, h = h1,
               loopHeapStack = s.loopHeapStack.tail, loopReadVarStack = s.loopReadVarStack.tail, loopPhaseStack = s.loopPhaseStack.tail)
             s1
-          case LoopPhases.Assuming =>
-            /* Only reachable via out-edges that do not originate from the loop head (e.g. gotos).
-             * Exits during the assuming phase are not verified, see the loop head case in exec. */
-            v.decider.assume(False)
-            val s1 = s.copy(loopHeapStack = s.loopHeapStack.tail, loopReadVarStack = s.loopReadVarStack.tail, loopPhaseStack = s.loopPhaseStack.tail)
-            s1
-          case LoopPhases.Checking =>
-            // just merge back
+          case LoopPhases.Replaying if kRemaining == 1 =>
+            /* Generalised exit: from the loop head after the last replayed iteration, or via a goto out of the
+             * last replayed iteration (which over-approximates exits from any iteration after the k-th) */
             val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s.h, s.loopHeapStack.head, v)
             val s1 = s.copy(functionRecorder = fr1, h = h1,
               loopHeapStack = s.loopHeapStack.tail, loopReadVarStack = s.loopReadVarStack.tail, loopPhaseStack = s.loopPhaseStack.tail)
+            s1
+          case LoopPhases.Assuming | LoopPhases.Replaying | LoopPhases.Checking =>
+            /* Only reachable via out-edges that do not originate from the loop head (e.g. gotos).
+             * Exits during the assuming phase and the (earlier) replayed iterations are not verified, and the step
+             * case (assuming and checking phase) is cut off; see the loop head case in exec. */
+            v.decider.assume(False)
+            val s1 = s.copy(loopHeapStack = s.loopHeapStack.tail, loopReadVarStack = s.loopReadVarStack.tail, loopPhaseStack = s.loopPhaseStack.tail)
             s1
         }
         sNew
@@ -259,11 +261,33 @@ object executor extends ExecutionRules {
               loopReadVarStack = s.loopReadVarStack.prepended((readPerm, true)))
             val edges = s.methodCfg.outEdges(block)
 
+            /* Step case, checked on its own from the loop entry (independently of the transferring phase) and cut
+             * off afterwards: havoc, k iterations in the assuming phase, one in the checking phase. Its frame is
+             * empty: the assuming and checking phases do not take permissions from the frame, and the step case
+             * does not exit the loop. */
+            val stepCase = executionFlowController.locally(s, v)((s0, v0) => {
+              v0.decider.prover.comment(s"k-induction: loop ${block.id} step case (havoc, assuming phase)")
+              val stepReadPerm = v0.decider.fresh(sorts.Perm)
+              v0.decider.assume(PermLess(NoPerm, stepReadPerm))
+              val wvs = s0.methodCfg.writtenVars(block)
+              /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
+              val gStep = Store(wvs.foldLeft(s0.g.values)((map, x) => map.updated(x, v0.decider.fresh(x))))
+              val sStep = s0.copy(g = gStep, h = Heap(),
+                loopPhaseStack = s0.loopPhaseStack.prepended((LoopPhases.Assuming, Verifier.config.kinduction(), block)),
+                loopHeapStack = s0.loopHeapStack.prepended(Heap()),
+                loopReadVarStack = s0.loopReadVarStack.prepended((stepReadPerm, true)))
+              val inEdges = edges.filter(_.kind != cfg.Kind.Out)
+              /* The invariant holds at every loop head: assume it (conjuring its permissions) after the havoc */
+              consumes(sStep, invs, e => LoopInvariantNotPreserved(e), v0, true)((sStep1, _, v1) =>
+                execs(sStep1, stmts, v1)((s4, v4) => follows(s4, inEdges, WhileFailed, v4, None)((_, _) => Success())))
+            })
+
+            /* Transferring path first, so that errors of concrete executions are reported first */
             consumes(sFirstPhase, invs, LoopInvariantNotEstablished, v, true)((s2, _, v2) => {
               execs(s2, stmts, v2)((s3, v3) => {
                 follows(s3, edges, WhileFailed, v3, joinPoint)(Q)
               })
-            })
+            }) combine stepCase
           case cfg.Kind.In =>
             /* We've reached a loop head block via an in-edge. Steps to perform:
              *   - Check loop invariant for self-framingness
@@ -337,10 +361,11 @@ object executor extends ExecutionRules {
             /* We've reached the loop head via a back-edge while doing k-induction. The loop is exited
              *   - concretely, after each of the k unrolled iterations of the transferring phase
              *     (the exit after zero iterations is handled by the in-edge case above), and
-             *   - once more, generalised, after the checking iteration.
-             * During the assuming phase, and when switching from the assuming to the checking phase,
-             * the out-edges are not followed (exits after n+j iterations for j < k are covered by the
-             * concrete exits for n = 0 and by the generalised exit otherwise).
+             *   - once more, generalised, after the last iteration of the replaying phase, which follows the
+             *     transferring phase (havoc, then j iterations with all checks assumed).
+             * The step case (assuming phase, then checking phase) starts at the in-edge on its own path and
+             * never exits. During the assuming phase and before the last replayed iteration, the out-edges are
+             * not followed.
              */
             val (phase, kRemaining, loopHeap) = s.loopPhaseStack.head
             val edges = s.methodCfg.outEdges(block)
@@ -364,15 +389,22 @@ object executor extends ExecutionRules {
                   } else {
                     /* Concrete exit after the k-th unrolled iteration */
                     followOutEdges(sp, v) combine {
+                      /* Exit replay: havoc, then j iterations with all checks assumed (replaying phase), then the
+                       * generalised exit. The checks of the step case are done on its own path (see the in-edge
+                       * case); this path only sets up the post-loop state, with the frame left by the transferring
+                       * phase. j >= 1, so that gotos out of the loop after the k-th iteration are covered. */
+                      val k = Verifier.config.kinduction()
+                      val j = Verifier.config.kInductionExitIterations.toOption.getOrElse(k) max 1 min (k + 1)
                       /* Havoc local variables that are assigned to in the loop body */
                       val wvs = sp.methodCfg.writtenVars(block)
                       /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
 
                       val gBody = Store(wvs.foldLeft(sp.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
                       val sNew = sp.copy(g = gBody, h = Heap(),
-                        loopPhaseStack = (LoopPhases.Assuming, Verifier.config.kinduction(), loopHeap) +: sp.loopPhaseStack.tail)
-                      v.decider.prover.comment(s"k-induction: loop ${block.id} switching to assuming phase (havoc)")
-                      followInEdges(sNew, v)
+                        loopPhaseStack = (LoopPhases.Replaying, j, loopHeap) +: sp.loopPhaseStack.tail)
+                      v.decider.prover.comment(s"k-induction: loop ${block.id} switching to replaying phase (havoc), j = $j")
+                      /* The invariant holds at every loop head: assume it (conjuring its permissions) after the havoc */
+                      consumes(sNew, invs, e => LoopInvariantNotPreserved(e), v, true)((sNew1, _, v1) => followInEdges(sNew1, v1))
                     }
                   }
                 case LoopPhases.Assuming =>
@@ -384,9 +416,17 @@ object executor extends ExecutionRules {
                     v.decider.prover.comment(s"k-induction: loop ${block.id} switching to checking phase")
                     followInEdges(sNew, v)
                   }
+                case LoopPhases.Replaying =>
+                  if (kRemaining > 1) {
+                    val sNew = sp.copy(loopPhaseStack = (LoopPhases.Replaying, kRemaining - 1, loopHeap) +: sp.loopPhaseStack.tail)
+                    followInEdges(sNew, v)
+                  } else {
+                    /* Generalised exit after the last replayed iteration */
+                    followOutEdges(sp, v)
+                  }
                 case LoopPhases.Checking =>
-                  /* Generalised exit after the checking iteration */
-                  followOutEdges(sp, v)
+                  /* End of the step case (see the in-edge case): the loop is not exited */
+                  Success()
               }}
             )
 

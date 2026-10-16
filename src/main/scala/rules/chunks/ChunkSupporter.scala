@@ -202,7 +202,7 @@ object chunkSupporter extends ChunkSupportRules {
 
     executionFlowController.tryOrFail2[Heap, Term](s, v)((s1, v1, QS) => {
       {
-        if (s1.loopPhaseStack.nonEmpty && (s1.loopPhaseStack.head._1 == LoopPhases.Transferring || s1.loopPhaseStack.head._1 == LoopPhases.Assuming)) {
+        if (s1.loopPhaseStack.nonEmpty && (s1.loopPhaseStack.head._1 == LoopPhases.Transferring || LoopPhases.isAssuming(s1.loopPhaseStack.head._1))) {
           assert(s1.moreCompleteExhale)
 
           val identifier = resource match {

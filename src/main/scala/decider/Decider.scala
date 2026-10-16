@@ -288,7 +288,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
               : VerificationResult = {
       /* k-induction: inside an assuming-phase iteration of *any* enclosing loop, everything that would
        * be checked is assumed instead (the iteration, including any nested loops, is assumed to verify). */
-      if (s.loopPhaseStack.exists(_._1 == LoopPhases.Assuming)) {
+      if (s.loopPhaseStack.exists(p => LoopPhases.isAssuming(p._1))) {
         assume(t)
         return Q(true)
       }
