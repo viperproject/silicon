@@ -1,0 +1,348 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2026 ETH Zurich.
+
+package viper.silicon.decider
+
+import com.typesafe.scalalogging.LazyLogging
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.common.config.Version
+import viper.silicon.debugger.DebugAxiom
+import viper.silicon.interfaces.decider.{Prover, Result}
+import viper.silicon.state.terms.{Decl, Function, FunctionDecl, Sort, Term}
+import viper.silicon.verifier.Verifier
+import viper.silicon.{Config, Map, toMap}
+import viper.silver.reporter.{InternalWarningMessage, Reporter}
+import viper.silver.verifier.Model
+
+import java.util.concurrent.{ExecutorService, Executors}
+import scala.util.{Failure, Random, Success, Try}
+
+object PortfolioProver {
+  /** A portfolio is configured as a list of prover names separated by this string, e.g. "Z3-API,cvc5-API". */
+  val separator = ","
+
+  def memberNames(proverName: String): Seq[String] =
+    proverName.split(separator).map(_.trim).filter(_.nonEmpty).toSeq
+
+  def isPortfolio(proverName: String): Boolean = memberNames(proverName).size > 1
+
+  /* How long stop() waits for a query that is still running on the members */
+  private val stopWaitMillis = 3000
+
+  /* Like Try, but also captures fatal errors (e.g. stack overflows), so that the thread waiting for the outcome of
+   * a task that runs on another thread is guaranteed to be woken up. */
+  private def attempt[A](body: => A): Try[A] =
+    try { Success(body) } catch { case t: Throwable => Failure(t) }
+}
+
+/** A prover that runs a portfolio of provers side by side.
+  *
+  * Queries (assert, check) are started on all active members at once: the answer of the first member to finish is
+  * returned, and the queries still running on the other members are interrupted (see [[Prover.interrupt]]). Members
+  * that cannot be interrupted, such as the StdIO provers, delay the answer until they finish or time out.
+  *
+  * By default, all members are active and receive all assumptions, so that they always know the same facts. Members
+  * can be deactivated for a while (see [[setActiveMembers]]), during which they cost nothing: they receive neither
+  * assumptions nor pushes and pops, and are merely brought to the current scope depth when they are activated again
+  * (which is expected to happen at the scope depth at which they were deactivated). Declarations and axioms, on the
+  * other hand, are always forwarded to every member, since symbols and axioms are global: they may be referenced by
+  * later declarations or path conditions (e.g. those transferred to another verifier when branches are verified in
+  * parallel), and the cost of declaring them is negligible.
+  */
+class PortfolioProver(val members: Seq[Prover], reporter: Reporter)
+    extends Prover
+       with LazyLogging {
+
+  require(members.nonEmpty, "A portfolio must consist of at least one prover")
+
+  private val preambleReader = new SMTLib2PreambleReader
+  private var executor: ExecutorService = _
+
+  /* The members that answer queries and receive assumptions, see setActiveMembers */
+  private var activeMembers: Seq[Prover] = members
+
+  /* The scope depth of the portfolio, which is the depth of its active members */
+  private var depth = 0
+
+  /* The member whose answer to the most recent query was used; models and reasons for unknown results are its */
+  private var lastAnswered: Prover = _
+
+  /* The outcomes of the query that is in flight, if any, see stop() */
+  private val queryLock = new Object
+  private var queryInFlight: Outcomes[_] = _
+
+  /* Life cycle */
+
+  def start(): Unit = {
+    start(Verifier.config.proverArgs)
+  }
+
+  def start(userArgsString: Option[String]): Unit = {
+    startExecutor()
+    members foreach (_.start(userArgsString))
+    emitMemberPreambles()
+  }
+
+  /* Members are reset through their own reset methods (which may do more than stopping and starting, e.g. reset
+   * a term converter). Silicon may reset a prover that has been stopped, in which case the executor is recreated. */
+  def reset(): Unit = {
+    members foreach (_.reset())
+    activeMembers = members
+    depth = 0
+    lastAnswered = null
+
+    if (executor == null) {
+      startExecutor()
+    }
+
+    emitMemberPreambles()
+  }
+
+  private def startExecutor(): Unit = {
+    executor = Executors.newFixedThreadPool(members.size, (runnable: Runnable) => {
+      /* The default stack size suffices, as for Silicon's verifier threads, which do the same term conversions */
+      val thread = new Thread(runnable, "portfolio-prover")
+      thread.setDaemon(true)
+      thread
+    })
+  }
+
+  def stop(): Unit = {
+    /* If a query is still running (e.g. on the thread of a verification that timed out), its tasks must not run
+     * into the members' being stopped: they are interrupted and waited for (but not indefinitely, since not every
+     * member reacts to interrupts, see the members' stop methods). */
+    val inFlight = queryLock.synchronized { queryInFlight }
+    if (inFlight != null) {
+      members foreach (_.interrupt())
+      inFlight.awaitAll(PortfolioProver.stopWaitMillis)
+    }
+
+    members foreach (_.stop())
+    activeMembers = members
+    depth = 0
+    lastAnswered = null
+
+    if (executor != null) {
+      executor.shutdownNow()
+      executor = null
+    }
+  }
+
+  /* The static preamble of a prover consists of options specific to that prover, so a portfolio has none of its
+   * own (see also DefaultMainVerifier.emitStaticPreamble). Instead, every member receives its own preamble as soon
+   * as it has been (re)started. */
+  private def emitMemberPreambles(): Unit = members foreach { member =>
+    member.comment(s"\n; ${member.staticPreamble}")
+    preambleReader.emitPreamble(member.staticPreamble, member, true)
+
+    if (Verifier.config.proverRandomizeSeeds()) {
+      val options = member.randomizeSeedsOptions.map(key => s"(set-option :$key ${Random.nextInt(10000)})")
+      preambleReader.emitPreamble(options, member, true)
+    }
+  }
+
+  lazy val staticPreamble: String = "" /* See emitMemberPreambles */
+
+  /** Restricts the members that answer queries and receive assumptions to those whose names are given (None lifts
+    * the restriction). Must not be called while a query is running.
+    *
+    * Members that are activated by the call are brought to the current scope depth: while they were inactive, they
+    * missed all pushes and pops (and the assumptions made in the scopes concerned, so they are less complete until
+    * these scopes are popped, which is harmless).
+    */
+  def setActiveMembers(names: Option[Seq[String]]): Unit = {
+    val selected = names match {
+      case Some(selectedNames) => members.filter(member => selectedNames.contains(member.name))
+      case None => members
+    }
+
+    require(selected.nonEmpty, s"None of the provers ${names.get.mkString(", ")} is a member of portfolio $name")
+
+    selected filterNot activeMembers.contains foreach { member =>
+      while (member.pushPopScopeDepth > depth) member.pop()
+      while (member.pushPopScopeDepth < depth) member.push()
+    }
+
+    activeMembers = selected
+  }
+
+  /** The names of the members that answer queries, or None if all of them do. */
+  def activeMemberNames: Option[Seq[String]] =
+    if (activeMembers.size == members.size) None else Some(activeMembers.map(_.name))
+
+  lazy val randomizeSeedsOptions: Seq[String] = Seq() /* See emitMemberPreambles */
+
+  /* Operations that are forwarded to all members (see the class documentation) */
+
+  def emit(content: String): Unit = members foreach (_.emit(content))
+
+  override def emit(contents: Iterable[String]): Unit = members foreach (_.emit(contents))
+
+  def emitSettings(contents: Iterable[String]): Unit = members foreach (_.emitSettings(contents))
+
+  def setOption(name: String, value: String): String = (members map (_.setOption(name, value))).head
+
+  def declare(decl: Decl): Unit = members foreach (_.declare(decl))
+
+  override def assumeAxioms(terms: InsertionOrderedSet[Term], description: String): Unit = {
+    if (debugMode)
+      preambleAssumptions :+= new DebugAxiom(description, terms)
+    members foreach (member => terms foreach member.assume)
+  }
+
+  def comment(content: String): Unit = members foreach (_.comment(content))
+
+  /* Operations that only concern the active members */
+
+  def assume(term: Term): Unit = activeMembers foreach (_.assume(term))
+
+  def push(n: Int = 1, timeout: Option[Int] = None): Unit = {
+    activeMembers foreach (_.push(n, timeout))
+    depth += n
+  }
+
+  def pop(n: Int = 1): Unit = {
+    activeMembers foreach (_.pop(n))
+    depth -= n
+  }
+
+  def pushPopScopeDepth: Int = depth
+
+  def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function = {
+    /* The first member creates the fresh symbol; the others merely declare it, so that all use the same name */
+    val fun = members.head.fresh(id, argSorts, resultSort)
+    members.tail foreach (_.declare(FunctionDecl(fun)))
+
+    fun
+  }
+
+  def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {
+    data match {
+      case Some(Config.ProverStateSaturationTimeout(timeout, comment)) => saturate(timeout, comment)
+      case None => /* Don't do anything */
+    }
+  }
+
+  def saturate(timeout: Int, comment: String): Unit = {
+    val outcomes = onActive(_.saturate(timeout, comment))
+    val results = outcomes.awaitAll()
+    queryDone(outcomes)
+    results foreach { case (_, outcome) => outcome.get }
+  }
+
+  def interrupt(): Unit = members foreach (_.interrupt())
+
+  def clearLastAssert(): Unit = {
+    members foreach (_.clearLastAssert())
+    lastAnswered = null
+  }
+
+  /* Queries */
+
+  def assert(goal: Term, timeout: Option[Int] = None): Boolean = race(_.assert(goal, timeout))
+
+  def check(timeout: Option[Int] = None): Result = race(_.check(timeout))
+
+  /* Collects the outcomes of a task that runs on several members and lets the caller wait for the first and for all
+   * of them. Waiting uses plain monitors rather than java.util.concurrent, since blocking on the latter inside a
+   * ForkJoinPool worker thread (on which Silicon's verifiers run) makes the pool spawn compensation threads. */
+  private class Outcomes[A](expected: Int) {
+    private var outcomes = Vector.empty[(Prover, Try[A])]
+
+    def add(member: Prover, outcome: Try[A]): Unit = synchronized {
+      outcomes :+= ((member, outcome))
+      notifyAll()
+    }
+
+    def awaitFirst(): (Prover, Try[A]) = synchronized {
+      while (outcomes.isEmpty) wait()
+      outcomes.head
+    }
+
+    def awaitAll(): Seq[(Prover, Try[A])] = synchronized {
+      while (outcomes.size < expected) wait()
+      outcomes
+    }
+
+    /* Waits at most the given time; returns whether all outcomes are in */
+    def awaitAll(timeoutMillis: Long): Boolean = synchronized {
+      val deadline = System.currentTimeMillis() + timeoutMillis
+      while (outcomes.size < expected && System.currentTimeMillis() < deadline) wait(100)
+      outcomes.size == expected
+    }
+  }
+
+  /* Runs the task on all active members at once. The caller must wait for all outcomes before calling anything
+   * else, since the members' state must not change while they are busy. */
+  private def onActive[A](task: Prover => A): Outcomes[A] = {
+    val outcomes = new Outcomes[A](activeMembers.size)
+    queryLock.synchronized { queryInFlight = outcomes }
+
+    activeMembers foreach { member =>
+      executor.execute(() => outcomes.add(member, PortfolioProver.attempt(task(member))))
+    }
+
+    outcomes
+  }
+
+  private def queryDone(outcomes: Outcomes[_]): Unit = queryLock.synchronized {
+    if (queryInFlight eq outcomes) queryInFlight = null
+  }
+
+  /* Runs the query on all active members at once, returns the answer of the first member to finish and interrupts
+   * the others. Returns only once all of them are idle again, since their state must not change while they are busy. */
+  private def race[A](query: Prover => A): A = {
+    val outcomes = onActive(query)
+
+    val (first, answer) = outcomes.awaitFirst()
+    lastAnswered = first
+    activeMembers filterNot (_ eq first) foreach (_.interrupt())
+
+    val results = outcomes.awaitAll()
+    queryDone(outcomes)
+
+    results foreach { case (member, outcome) =>
+      if (!(member eq first)) outcome.failed foreach { e =>
+        val msg = s"Prover ${member.name} failed after being interrupted: ${e.getMessage}"
+        reporter report InternalWarningMessage(msg)
+        logger warn msg
+      }
+    }
+
+    answer.get
+  }
+
+  /* Results of the most recent query */
+
+  def hasModel(): Boolean = lastAnswered != null && lastAnswered.hasModel()
+
+  def isModelValid(): Boolean = lastAnswered != null && lastAnswered.isModelValid()
+
+  def getModel(): Model = lastAnswered.getModel()
+
+  def getReasonUnknown(): String = if (lastAnswered == null) null else lastAnswered.getReasonUnknown()
+
+  def statistics(): Map[String, String] = toMap(
+    members.zipWithIndex flatMap { case (member, index) =>
+      member.statistics() map { case (key, value) => (s"${member.name}_$index.$key", value) }
+    })
+
+  /* Miscellaneous */
+
+  lazy val name: String = s"Portfolio(${members.map(_.name).mkString(PortfolioProver.separator)})"
+
+  /* Versions are checked per member, see DefaultDeciderProvider.createProver */
+
+  lazy val minVersion: Version = members.head.minVersion
+
+  lazy val maxVersion: Option[Version] = members.head.maxVersion
+
+  def version(): Version = members.head.version()
+
+  def getAllDecls(): Seq[Decl] = members.head.getAllDecls()
+
+  def getAllEmits(): Seq[String] = members.head.getAllEmits()
+}
