@@ -372,7 +372,8 @@ object executor extends ExecutionRules {
                       val sNew = sp.copy(g = gBody, h = Heap(),
                         loopPhaseStack = (LoopPhases.Assuming, Verifier.config.kinduction(), loopHeap) +: sp.loopPhaseStack.tail)
                       v.decider.prover.comment(s"k-induction: loop ${block.id} switching to assuming phase (havoc)")
-                      followInEdges(sNew, v)
+                      /* The invariant holds at every loop head: assume it (conjuring its permissions) after the havoc */
+                      consumes(sNew, invs, e => LoopInvariantNotPreserved(e), v, true)((sNew1, _, v1) => followInEdges(sNew1, v1))
                     }
                   }
                 case LoopPhases.Assuming =>

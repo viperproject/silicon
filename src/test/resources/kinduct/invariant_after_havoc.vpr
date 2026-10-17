@@ -1,0 +1,30 @@
+// The step case assumes the invariant right after the havoc: without it, the first
+// assumed iteration may start in a state violating the invariant (here i == -1), and
+// the checking iteration then sees a state that no execution reaches.
+
+method invariantAfterHavoc()
+{
+  var i: Int := 0
+  var z: Int := 0
+  while (i < 10)
+    invariant 0 <= i
+  {
+    assert z == 0
+    if (i < 0) { z := 1 } else { z := 0 }
+    i := i + 1
+  }
+}
+
+method invariantAfterHavocWrong()
+{
+  var i: Int := 0
+  var z: Int := 0
+  while (i < 10)
+    invariant 0 <= i
+  {
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert z == 0
+    if (i < 5) { z := 0 } else { z := 1 }
+    i := i + 1
+  }
+}
