@@ -929,8 +929,9 @@ object evaluator extends EvaluationRules {
             })(join(v1.symbolConverter.toSort(func.typ), s"joined_${func.name}", joinFunctionArgs, v1))(Q)})
 
       case ast.Unfolding(
-              acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm),
+              acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), _),
               eIn) =>
+        val ePerm = acc.perm
 
         val predicate = s.program.findPredicate(predicateName)
         if (s.cycles(predicate) < Verifier.config.recursivePredicateUnfoldings()) {
@@ -1001,6 +1002,11 @@ object evaluator extends EvaluationRules {
           magicWandSupporter.applyWand(s1, wand, pve, v1)((s2, v2) => {
             eval(s2, eIn, pve, v2)(QB)
         }))(join(v.symbolConverter.toSort(eIn.typ), "joined_applying", s.relevantQuantifiedVariables, v))(Q)
+
+      case ast.Asserting(eAss, eIn) =>
+        consume(s, eAss, pve, v)((_, _, _) => {
+          eval(s, eIn, pve, v)(Q)
+        })
 
       /* Sequences */
 

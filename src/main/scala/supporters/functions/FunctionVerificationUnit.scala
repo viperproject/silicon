@@ -82,10 +82,14 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     def analyze(program: ast.Program): Unit = {
       this.program = program
 
-      val heights = Functions.heights(program, Verifier.config.alternativeFunctionVerificationOrder()).toSeq.sortBy(_._2).reverse
+      /* Silver now reports heights by function name; ties are ordered by declaration order (as on Silicon master) */
+      val functionOrderInProgram = program.functions.zipWithIndex.map(fi => (fi._1.name, fi._2)).toMap
+      val heightMap = Functions.heights(program, Verifier.config.alternativeFunctionVerificationOrder()).toSeq
+      val heights = heightMap.sortBy(fh => (fh._2, -functionOrderInProgram(fh._1))).reverse
 
       functionData = toMap(
-        heights.map { case (func, height) =>
+        heights.map { case (funcName, height) =>
+          val func = program.findFunction(funcName)
           val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(func, program))
           val data = new FunctionData(func, height, quantifiedFields, program)(symbolConverter, expressionTranslator,
                                       identifierFactory, pred => predicateData(pred), Verifier.config,
