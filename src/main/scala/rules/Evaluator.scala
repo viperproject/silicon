@@ -1017,7 +1017,7 @@ object evaluator extends EvaluationRules {
     val indexGeZeroTerm = AtLeast(tIndex, IntLiteral(0))
     val indexGeZeroExp = Option.when(debugOn)(ast.GeCmp(eIndex, ast.IntLit(0)())(eIndex.pos, eIndex.info, eIndex.errT))
     val indexGeZeroExpNew = Option.when(debugOn)(ast.GeCmp(expNew.get(1), ast.IntLit(0)())(eIndex.pos, eIndex.info, eIndex.errT))
-    val failureIdxNeg = createFailure(pve dueTo SeqIndexNegative(eSeq, eIndex), v, s, indexGeZeroTerm, indexGeZeroExpNew)
+    lazy val failureIdxNeg = createFailure(pve dueTo SeqIndexNegative(eSeq, eIndex), v, s, indexGeZeroTerm, indexGeZeroExpNew)
     v.decider.assert(indexGeZeroTerm) {
       case true => assertLtSeqLength()
       case false if s.retryLevel == 0 && v.reportFurtherErrors() =>
