@@ -317,7 +317,8 @@ object producer extends ProductionRules {
         letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) =>
           produceR(s1.copy(g = s1.g + g1), sf, body, pve, v1)(Q))
 
-      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), perm) =>
+      case accPred @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), _) =>
+        val perm = accPred.perm
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) =>
             permissionSupporter.assertNotNegative(s2, tPerm, perm, pve, v2)((s3, v3) => {
@@ -337,7 +338,8 @@ object producer extends ProductionRules {
                   Q(s4.copy(h = h4), v4))
               }})))
 
-      case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), perm) =>
+      case accPred @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), _) =>
+        val perm = accPred.perm
         val predicate = s.program.findPredicate(predicateName)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, perm, pve, v1)((s1a, tPerm, v1a) =>

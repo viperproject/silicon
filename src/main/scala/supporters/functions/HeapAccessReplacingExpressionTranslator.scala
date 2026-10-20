@@ -125,6 +125,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
       case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ))
       case ast.Unfolding(_, eIn) => translate(toSort)(eIn)
       case ast.Applying(_, eIn) => translate(toSort)(eIn)
+      case ast.Asserting(_, eIn) => translate(toSort)(eIn)
 
       case eFApp: ast.FuncApp =>
         val silverFunc = program.findFunction(eFApp.funcname)

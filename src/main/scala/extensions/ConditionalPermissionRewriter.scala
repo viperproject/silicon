@@ -125,15 +125,15 @@ class ConditionalPermissionRewriter {
     acc match {
       case FieldAccessPredicate(loc, perm) =>
         if (Expressions.proofObligations(loc.rcv)(p).isEmpty) {
-          FieldAccessPredicate(loc, makeCondExp(cond.exp, perm))(acc.pos, acc.info, acc.errT)
+          FieldAccessPredicate(loc, Some(makeCondExp(cond.exp, acc.perm)))(acc.pos, acc.info, acc.errT)
         } else {
           // Hack: use a conditional null as the receiver, that's always well-defined.
           val fieldAccess = loc.copy(rcv = makeCondExp(cond.exp, loc.rcv, NullLit()()))(loc.pos, loc.info, loc.errT)
-          FieldAccessPredicate(fieldAccess, makeCondExp(cond.exp, perm))(acc.pos, acc.info, acc.errT)
+          FieldAccessPredicate(fieldAccess, Some(makeCondExp(cond.exp, acc.perm)))(acc.pos, acc.info, acc.errT)
         }
       case PredicateAccessPredicate(loc, perm) =>
         if (!loc.args.exists(a => Expressions.proofObligations(a)(p).nonEmpty))
-          PredicateAccessPredicate(loc, makeCondExp(cond.exp, perm))(acc.pos, acc.info, acc.errT)
+          PredicateAccessPredicate(loc, Some(makeCondExp(cond.exp, acc.perm)))(acc.pos, acc.info, acc.errT)
         else
           Implies(cond.exp, acc)(acc.pos, acc.info, acc.errT)
       case wand: MagicWand =>
