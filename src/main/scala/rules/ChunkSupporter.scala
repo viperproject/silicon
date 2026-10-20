@@ -112,11 +112,30 @@ object chunkSupporter extends ChunkSupportRules {
                       : VerificationResult = {
 
     val id = ChunkIdentifier(resource, s.program)
+
+    // The snapshot of a consumed chunk is only meaningful if the consumed permission amount is positive.
+    def snapshotOf(chunk: NonQuantifiedChunk, v1: Verifier): Term =
+      if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout()))
+        chunk.snap
+      else
+        Ite(IsPositive(perms), chunk.snap.convert(sorts.Snap), Unit)
+
     if (s.exhaleExt) {
       val failure = createFailure(ve, v, s, "chunk consume in package")
-      magicWandSupporter.transfer(s, perms, permsExp, failure, Seq(), v)(consumeGreedy(_, _, id, args, _, _, _))((s1, chs, v1) =>
+      /* Note that the state passed to the consume function may differ from s, e.g. when retrying
+       * with more complete exhale enabled on demand.
+       */
+      val consumeFunction = (s0: State, h0: Heap, perms0: Term, permsExp0: Option[ast.Exp], v0: Verifier) =>
+        if (s0.moreCompleteExhale) {
+          val (result, s1, h1, optCh, _) =
+            moreCompleteExhaleSupporter.consumeCompleteNonCps(s0, h0, resource, args, argsExp, perms0, permsExp0, returnSnap = true, v0)
+          (result, s1, h1, optCh)
+        } else {
+          consumeGreedy(s0, h0, id, args, perms0, permsExp0, v0)
+        }
+      magicWandSupporter.transfer(s, perms, permsExp, failure, Seq(), v)(consumeFunction)((s1, chs, v1) =>
         if (returnSnap){
-          Q(s1, h, chs.lastOption.map(_.snap), v1)
+          Q(s1, h, chs.lastOption.map(snapshotOf(_, v1)), v1)
         } else {
           Q(s1, h, None, v1)
         })
@@ -130,12 +149,7 @@ object chunkSupporter extends ChunkSupportRules {
           consumeGreedy(s1, s1.h, id, args, perms, permsExp, v1) match {
             case (Complete(), s2, h2, optCh2) =>
               val snap = optCh2 match {
-                case Some(ch) if returnSnap =>
-                  if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
-                    Some(ch.snap)
-                  } else {
-                    Some(Ite(IsPositive(perms), ch.snap.convert(sorts.Snap), Unit))
-                  }
+                case Some(ch) if returnSnap => Some(snapshotOf(ch, v1))
                 case _ => None
               }
               QS(s2.copy(h = s.h), h2, snap, v1)

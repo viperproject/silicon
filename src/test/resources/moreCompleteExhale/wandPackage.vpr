@@ -1,0 +1,53 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Permissions transferred to the footprint of a wand while packaging it are consumed with the more
+// complete exhale strategy, i.e. from all chunks that may provide them, also if the aliasing is
+// only known due to the wand's LHS.
+
+field f: Int
+
+method aliasingFromLhs(x: Ref, y: Ref)
+  requires acc(x.f, 1/2) && acc(y.f, 1/2)
+{
+  package x == y --* acc(x.f)
+
+  // The footprint took x's half, and y's half in case y == x
+  assert x != y ==> acc(y.f, 1/2)
+
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert acc(y.f, 1/2)
+}
+
+method conditionalAliasing(x: Ref, y: Ref, b: Bool)
+  requires acc(x.f, 1/2) && acc(y.f, 1/2)
+{
+  package (b ? x == y : x != y) --* (b ? acc(x.f) : acc(x.f, 1/2))
+
+  assert !b ==> acc(y.f, 1/2)
+
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert b ==> acc(y.f, 1/2)
+}
+
+method packageAndApply(x: Ref, y: Ref)
+  requires acc(x.f, 1/2) && acc(y.f, 1/2)
+{
+  package x == y --* acc(x.f)
+
+  assume x == y
+  apply x == y --* acc(x.f)
+
+  assert acc(x.f) && x.f == old(x.f)
+}
+
+method nestedPackages(x: Ref, y: Ref)
+  requires acc(x.f, 1/2) && acc(y.f, 1/2) && x.f == y.f
+{
+  package x == y --* (true --* acc(x.f)) {
+    package true --* acc(x.f)
+  }
+
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert acc(x.f, 1/2)
+}
