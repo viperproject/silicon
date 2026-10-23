@@ -162,6 +162,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       val proverOptions: Map[String, String] = AnnotationSupporter.getProverConfigArgs(function, reporter)
       v.decider.setProverOptions(proverOptions)
+      v.decider.setActiveProvers(AnnotationSupporter.getProvers(function, reporter))
 
       openSymbExLogger(function)
 
@@ -172,6 +173,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val res = Seq(handleFunction(sInit, function))
 
       v.decider.resetProverOptions()
+      v.decider.setActiveProvers(None)
       symbExLog.closeMemberScope()
       res
     }
