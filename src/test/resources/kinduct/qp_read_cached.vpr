@@ -1,0 +1,31 @@
+// k-induction: reading a location of a quantified field in the assuming phase conjures the permission if the heap
+// does not have it. In the second assumed iteration (k = 2), the heap has the chunk conjured for loc(a, i) in the
+// first one, and the cached snapshot map for it must not be used to read loc(a, i + 1): that would assume the
+// permission for loc(a, i + 1) instead of conjuring it, which is false, making the step case vacuous.
+// Without a framing invariant, the read fails in the checking phase.
+
+field f: Int
+
+domain Arr {
+  function loc(a: Arr, i: Int): Ref
+  function len(a: Arr): Int
+  function first(r: Ref): Arr
+  function second(r: Ref): Int
+
+  axiom {
+    forall a: Arr, i: Int :: { loc(a, i) } first(loc(a, i)) == a && second(loc(a, i)) == i
+  }
+}
+
+method m(a: Arr)
+  requires forall j: Int :: { loc(a, j) } 0 <= j && j < len(a) ==> acc(loc(a, j).f, 1/2)
+{
+  var i: Int := 0
+  while (i < len(a))
+    invariant 0 <= i
+  {
+    //:: ExpectedOutput(assignment.failed:insufficient.permission)
+    var y: Int := loc(a, i).f
+    i := i + 1
+  }
+}
