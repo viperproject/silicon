@@ -195,7 +195,13 @@ object evaluator extends EvaluationRules {
           val (relevantChunks, _) =
             quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s1.h, BasicChunkIdentifier(fa.field.name))
           s1.smCache.get((fa.field, relevantChunks)) match {
-            case Some((fvfDef: SnapshotMapDefinition, totalPermissions)) if !s1.mustNotUseValueMapCache =>
+            /* Not in the k-induction phases other than checking, which take missing permissions from the frame or
+             * conjure them (see the case below): in the conjuring phases, the
+             * permission check below would be assumed instead of conjuring the permission, e.g. for a receiver
+             * not covered by the chunks conjured in an earlier assumed iteration, making the path vacuous. */
+            case Some((fvfDef: SnapshotMapDefinition, totalPermissions))
+                if !s1.mustNotUseValueMapCache &&
+                   !(s1.loopPhaseStack.nonEmpty && s1.loopPhaseStack.head._1 != LoopPhases.Checking) =>
               /* The next assertion must be made if the FVF definition is taken from the cache;
                * in the other case it is part of quantifiedChunkSupporter.withValue.
                */
