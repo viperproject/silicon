@@ -57,13 +57,19 @@ object executor extends ExecutionRules {
     joinPoint match {
       case Some(jp) if jp == edge.target =>
         // Join point reached, stop following edges.
+        val cut = outEdgeEndsPath(s, edge)
         val s1 = handleOutEdge(s, edge, v)
+        if (cut) v.decider.assume(False) /* in the scope of the branch that leads here */
         Q(s1, v)
 
       case _ => edge match {
         case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
           val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
           val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
+          /* The path along an out-edge that ends it (see outEdgeEndsPath) ends only under the edge condition: the
+           * other edges leaving the same block (e.g. the back-edge, for an exit from the middle of the loop body)
+           * are followed in the same context. */
+          val cut = outEdgeEndsPath(s, edge)
           val s1 = handleOutEdge(s, edge, v)
           eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, v1) =>
             /* Using branch(...) here ensures that the edge condition is recorded
@@ -71,6 +77,10 @@ object executor extends ExecutionRules {
              */
             brancher.branch(s2.copy(parallelizeBranches = false), tCond, Some(ce.condition), v1)(
               (s3, v3) =>
+                if (cut) {
+                  v3.symbExLog.closeScope(sepIdentifier)
+                  Success()
+                } else
                 exec(s3.copy(parallelizeBranches = s2.parallelizeBranches), ce.target, ce.kind, v3, joinPoint)((s4, v4) => {
                   v4.symbExLog.closeScope(sepIdentifier)
                   Q(s4, v4)
@@ -81,11 +91,23 @@ object executor extends ExecutionRules {
               }))
 
         case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
+          val cut = outEdgeEndsPath(s, edge)
           val s1 = handleOutEdge(s, edge, v)
-          exec(s1, ue.target, ue.kind, v, joinPoint)(Q)
+          if (cut) Success() else exec(s1, ue.target, ue.kind, v, joinPoint)(Q)
       }
     }
   }
+
+  /** Whether the path along `edge` ends there: an out-edge of a k-inducted loop that does not originate from the
+    * loop head (e.g. a goto), taken in the assuming phase, the checking phase or a replayed iteration other than the
+    * last one (exits from these are not verified, see the loop head case in exec). The caller ends the path without
+    * assuming false in the current context, which the other edges leaving the same block share. */
+  private def outEdgeEndsPath(s: State, edge: SilverEdge): Boolean =
+    edge.kind == cfg.Kind.Out && Verifier.config.kinduction.isSupplied && (s.loopPhaseStack.head match {
+      case (LoopPhases.Transferring, _, _) => false
+      case (LoopPhases.Replaying, 1, _) => false
+      case _ => true
+    })
 
   def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
     edge.kind match {
@@ -108,8 +130,8 @@ object executor extends ExecutionRules {
           case LoopPhases.Assuming | LoopPhases.Replaying | LoopPhases.Checking =>
             /* Only reachable via out-edges that do not originate from the loop head (e.g. gotos).
              * Exits during the assuming phase and the (earlier) replayed iterations are not verified, and the step
-             * case (assuming and checking phase) is cut off; see the loop head case in exec. */
-            v.decider.assume(False)
+             * case (assuming and checking phase) is cut off; see the loop head case in exec. The caller ends the
+             * path (see outEdgeEndsPath). */
             val s1 = s.copy(loopHeapStack = s.loopHeapStack.tail, loopReadVarStack = s.loopReadVarStack.tail, loopPhaseStack = s.loopPhaseStack.tail)
             s1
         }

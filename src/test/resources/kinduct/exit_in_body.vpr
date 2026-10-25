@@ -1,0 +1,18 @@
+// k-induction: an exit from the middle of the loop body (a goto out of the loop) ends the path along it in the step
+// case, but not the path along the other edge from the same block (the rest of the iteration). The invariant holds
+// at the loop head for the first k + 1 iterations only, so the step case must fail.
+
+method m()
+{
+  var i: Int := 10
+  while (true)
+    //:: ExpectedOutput(invariant.not.preserved:assertion.false)
+    invariant i >= 8
+  {
+    if (i <= 0) {
+      goto out
+    }
+    i := i - 1
+  }
+  label out
+}
