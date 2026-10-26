@@ -577,7 +577,9 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     // Stop the prover of the previous obligation; otherwise every command would leak a prover process.
     stopCurrentWorker()
 
-    val v = new WorkerVerifier(this.mainVerifier, obl.v.uniqueId, NoopReporter, false)
+    // In debug mode, like the verifiers of the verification: only then does the decider record the expressions of
+    // what it assumes, which the obligation needs after a command adds assumptions (e.g. an unfold).
+    val v = new WorkerVerifier(this.mainVerifier, obl.v.uniqueId, NoopReporter, config.enableDebugging())
     v.debugHookEnabled = false
     currentWorker = Some(v)
     v.start()
