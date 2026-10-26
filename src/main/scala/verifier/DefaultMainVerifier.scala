@@ -6,7 +6,7 @@
 
 package viper.silicon.verifier
 
-import viper.silicon.debugger.SiliconDebugSession
+import viper.silicon.debugger.{DebugHook, SiliconDebugSession}
 import viper.silicon.Config.{ExhaleMode, JoinMode}
 
 import java.text.SimpleDateFormat
@@ -63,6 +63,10 @@ class DefaultMainVerifier(config: Config,
   Verifier.config = config
 
   override val debugMode = config.enableDebugging()
+
+  /** Set by [[viper.silicon.Silicon.debugHook_=]]; the workers of this verifier use it, too. */
+  @volatile var debugHookOpt: Option[DebugHook] = None
+  override def debugHook: Option[DebugHook] = debugHookOpt
 
   private val uniqueIdCounter = new Counter(1)
   def nextUniqueVerifierId(): String = f"${uniqueIdCounter.next()}%02d"
@@ -213,6 +217,9 @@ class DefaultMainVerifier(config: Config,
     }
 
     predSnapGenerator.setup(program) // TODO: Why did Nadja put this here?
+
+    // A debugger resolves its breakpoints against the program as it is actually executed.
+    debugHook.foreach(_.verificationStarted(program, this))
 
 
     allProvers.comment("Started: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(System.currentTimeMillis()) /*bookkeeper.formattedStartTime*/)

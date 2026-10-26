@@ -26,6 +26,8 @@ class WorkerVerifier(mainVerifier: MainVerifier,
 
   def verificationPoolManager: VerificationPoolManager = mainVerifier.verificationPoolManager
 
+  override def debugHook: Option[viper.silicon.debugger.DebugHook] = mainVerifier.debugHook
+
   override def openSymbExLogger(member: ast.Member): Unit = {
     symbExLog = mainVerifier.rootSymbExLogger.openMemberScope(member, decider.pcs)
   }

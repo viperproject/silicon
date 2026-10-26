@@ -120,7 +120,10 @@ trait SymbolicExecutionRules {
       res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown))
     }
 
-    Failure(res, v.reportFurtherErrors())
+    val failure = Failure(res, v.reportFurtherErrors())
+    // A debugger may pause at the failure. A first attempt that fails is retried, so its failure is not final.
+    if (s.isLastRetry) v.debugHook.foreach(_.failed(s, v, failure))
+    failure
 
   }
 }

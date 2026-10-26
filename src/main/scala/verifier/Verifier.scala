@@ -15,6 +15,7 @@ import viper.silicon.state.{Heap, IdentifierFactory, State, SymbolConverter}
 import viper.silicon.supporters.{QuantifierSupporter, SnapshotSupporter}
 import viper.silicon.utils.Counter
 import viper.silicon.Config
+import viper.silicon.debugger.DebugHook
 import viper.silicon.logger.MemberSymbExLogger
 import viper.silver.ast
 import viper.silver.reporter.Reporter
@@ -43,6 +44,9 @@ trait Verifier {
   val heapSupporter: HeapSupportRules = defaultHeapSupporter
 
   def verificationPoolManager: VerificationPoolManager
+
+  /** Lets a debugger observe and pause the symbolic execution; see [[DebugHook]]. */
+  def debugHook: Option[DebugHook] = None
 
   val errorsReportedSoFar = new AtomicInteger(0);
 

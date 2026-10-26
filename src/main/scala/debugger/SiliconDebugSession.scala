@@ -12,7 +12,7 @@ import viper.silicon.decider.{Cvc5ProverStdIO, RecordedPathConditions, Z3ProverS
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, SiliconMappedCounterexample, Success, VerificationResult}
 import viper.silicon.rules.evaluator
 import viper.silicon.state.State
-import viper.silicon.state.terms.Term
+import viper.silicon.state.terms.{Term, True}
 import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.verifier.{MainVerifier, Verifier, WorkerVerifier}
 import viper.silver.ast
@@ -159,6 +159,34 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     }
   }
 
+  /**
+    * Makes the state that verifier `v` is in before executing `stmt` the current proof obligation; used when the
+    * verification is paused at a breakpoint (see [[DebugRunController]]).
+    *
+    * This has to be called on the thread of `v` while it is paused, since the path conditions are read from its
+    * decider. Like for a failure, the obligation gets a prover of its own, so the paused verification is not
+    * affected by anything the user does with it. There is no assertion to prove, though: the user checks
+    * expressions with [[assertText]] instead.
+    */
+  def openPausedState(s: State, v: Verifier, stmt: ast.Stmt): DebugCommandResult = guarded { msgs =>
+    val pcs = v.decider.pcs
+    val newObl = ProofObligation(s, v, v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions,
+      pcs.branchConditions, pcs.branchConditionExps.map(bce => bce._1 -> bce._2.get), pcs.assumptionExps,
+      True, DebugExp.createInstance(SiliconDebugSession.noAssertionDescription), None, new DebugExpPrintConfiguration,
+      PausedAtStatement(stmt), newDebugResolver(), newDebugTranslator())
+    currentIndex = None
+    counterexample = None
+    initTypechecker(newObl, Some(stmt), msgs)
+    lastSolverOptions = config.proverArgs
+    val initialized = initVerifier(newObl, Z3ProverStdIO.name, lastSolverOptions, msgs)
+    obl = Some(initialized)
+    originalObl = Some(initialized)
+    result(msgs)
+  }
+
+  /** Whether the current obligation is a paused verification rather than a failure; see [[openPausedState]]. */
+  def isPaused: Boolean = obl.exists(_.originalErrorReason.isInstanceOf[PausedAtStatement])
+
   /** Discards all changes made to the current obligation. */
   def reset(): DebugCommandResult = withObligation { (_, msgs) =>
     lastSolverOptions = None
@@ -222,6 +250,15 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     * non-null, say); use [[reset]] to get rid of those.
     */
   def assertExp(e: ast.Exp): DebugCommandResult = withObligation { (o, msgs) =>
+    assertExp(e, o, msgs)
+  }
+
+  /** Like [[assertExp]], for an expression entered as Viper source text. */
+  def assertText(text: String): DebugCommandResult = withObligation { (o, msgs) =>
+    assertExp(translateStringToExp(text, o), o, msgs)
+  }
+
+  private def assertExp(e: ast.Exp, o: ProofObligation, msgs: mutable.ListBuffer[DebugMessage]): DebugCommandResult = {
     evalExp(e, o, o.v, msgs) match {
       case Some((_, resT, _, resV, _)) =>
         val proved = resV.decider.prover.assert(resT, o.timeout)
@@ -254,17 +291,19 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     * model is turned into a counterexample of the state as it is now, including any assumptions the user has
     * added or removed. If the obligation holds, there can be no counterexample and the previous one is dropped.
     */
-  def prove(): DebugCommandResult = withObligation { (o, msgs) =>
-    val proved = o.v.decider.prover.assert(o.assertion, o.timeout)
-    if (proved) {
-      msgs += DebugMessage.info("PASS: Proving obligation was successful.\n")
-      counterexample = None
-    } else {
-      msgs += DebugMessage.info("FAIL: Proving obligation failed.\n")
-      updateCounterexampleFromProver(o, msgs)
+  def prove(): DebugCommandResult =
+    if (isPaused) DebugCommandResult.error(SiliconDebugSession.noAssertionDescription)
+    else withObligation { (o, msgs) =>
+      val proved = o.v.decider.prover.assert(o.assertion, o.timeout)
+      if (proved) {
+        msgs += DebugMessage.info("PASS: Proving obligation was successful.\n")
+        counterexample = None
+      } else {
+        msgs += DebugMessage.info("FAIL: Proving obligation failed.\n")
+        updateCounterexampleFromProver(o, msgs)
+      }
+      result(msgs).copy(proved = Some(proved))
     }
-    result(msgs).copy(proved = Some(proved))
-  }
 
   /**
     * Extracts a counterexample from the model the prover produced for the last failed proof attempt.
@@ -363,13 +402,14 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
   private def newDebugTranslator(): Option[DebugTranslator] =
     for (t <- translator; pp <- pprogram) yield new DebugTranslator(pp, t.getMembers())
 
-  private def initTypechecker(obl: ProofObligation, failedAssertion: Option[ast.Exp],
+  /** Sets up the typechecker for user input in the scope of `node`, i.e. of the member that contains it. */
+  private def initTypechecker(obl: ProofObligation, node: Option[ast.Infoed],
                               msgs: mutable.ListBuffer[DebugMessage]): Unit = {
     // Without a resolver there is nothing to typecheck against; the user cannot enter expressions as text in that
     // case anyway (see `acceptsTextualExpressions`), so this is not worth a warning.
     val resolver = obl.resolver.getOrElse(return)
     var failedPExp: Option[PNode] =
-      failedAssertion.flatMap(_.info.getUniqueInfo[SourcePNodeInfo] match {
+      node.flatMap(_.info.getUniqueInfo[SourcePNodeInfo] match {
         case Some(info) => Some(info.sourcePNode)
         case _ => None
       })
@@ -505,4 +545,7 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
 
 object SiliconDebugSession {
   val proverNames: Seq[String] = Seq(Z3ProverStdIO.name, Cvc5ProverStdIO.name)
+
+  val noAssertionDescription: String =
+    "There is no assertion to prove at a breakpoint; use :assert <expression> to check whether an expression holds."
 }

@@ -138,7 +138,18 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
     setLogLevelsFromConfig()
 
     verifier = new DefaultMainVerifier(config, reporter, symbExLog)
+    verifier.debugHookOpt = _debugHook
     verifier.start()
+  }
+
+  @volatile private var _debugHook: Option[viper.silicon.debugger.DebugHook] = None
+
+  /** The debugger that observes (and may pause) the symbolic execution of this instance, if any. */
+  def debugHook: Option[viper.silicon.debugger.DebugHook] = _debugHook
+
+  def debugHook_=(hook: Option[viper.silicon.debugger.DebugHook]): Unit = {
+    _debugHook = hook
+    if (verifier != null) verifier.debugHookOpt = hook
   }
 
   private def reset(): Unit = {
