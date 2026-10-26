@@ -547,11 +547,14 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     // Without a resolver there is nothing to typecheck against; the user cannot enter expressions as text in that
     // case anyway (see `acceptsTextualExpressions`), so this is not worth a warning.
     val resolver = obl.resolver.getOrElse(return)
+    def sourceOf(n: ast.Infoed): Option[PNode] = n.info.getUniqueInfo[SourcePNodeInfo].map(_.sourcePNode)
+    // A failure that is not about an assertion that might not hold (e.g. missing permission) has no expression for the
+    // failed assertion; the node the error points to, or else the member being verified, gives the scope then.
+    val offendingNode = Some(obl.originalErrorReason.offendingNode).collect { case n: ast.Infoed => n }
     var failedPExp: Option[PNode] =
-      node.flatMap(_.info.getUniqueInfo[SourcePNodeInfo] match {
-        case Some(info) => Some(info.sourcePNode)
-        case _ => None
-      })
+      node.flatMap(sourceOf)
+        .orElse(offendingNode.flatMap(sourceOf))
+        .orElse(obl.s.currentMember.flatMap(sourceOf))
     while (failedPExp.isDefined && !failedPExp.get.isInstanceOf[PScope]) {
       failedPExp = failedPExp.get.getParent
     }
