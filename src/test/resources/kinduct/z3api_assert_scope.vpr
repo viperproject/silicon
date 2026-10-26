@@ -1,0 +1,28 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// With Z3-API, asserting the quantifier in the then-branch fails on its trigger (loc(a, x + i)) and is retried with
+// cleaned triggers. The scope pushed for the failed attempt used to stay open, so the branch condition b leaked into
+// the else-branch and the assertion there verified.
+
+domain Array {
+  function loc(a: Array, i: Int): Ref
+  function loc_arr(r: Ref): Array
+  function loc_idx(r: Ref): Int
+  axiom loc_inj { forall a: Array, i: Int :: { loc(a, i) } loc_arr(loc(a, i)) == a && loc_idx(loc(a, i)) == i }
+}
+
+field val: Int
+
+method t(a: Array, N: Int, x: Int, y: Int, res: Int, b: Bool)
+  requires forall k: Int :: 0 <= k && k < N ==> acc(loc(a, k).val, 1/2)
+  requires 0 <= x && 0 <= y && 0 <= res && x + res <= N && y + res <= N
+  requires forall i: Int :: 0 <= i && i < res ==> loc(a, x + i).val == loc(a, y + i).val
+{
+  if (b) {
+    assert forall i: Int :: 0 <= i && i < res ==> loc(a, x + i).val == loc(a, y + i).val
+  } else {
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert b
+  }
+}
