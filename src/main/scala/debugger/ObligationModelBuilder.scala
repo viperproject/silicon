@@ -44,7 +44,8 @@ object ObligationModelBuilder {
       proverName = proverName(obl),
       proverArgs = proverArgs,
       timeoutMs = obl.timeout,
-      printConfig = obl.printConfig.toModel)
+      printConfig = obl.printConfig.toModel,
+      assertionOutdated = obl.assertionOutdated)
   }
 
   private def proverName(obl: ProofObligation): String =
@@ -71,8 +72,14 @@ object ObligationModelBuilder {
     var counter = 0
     def chunkNodes(h: Heap): Seq[DebugNode] = h.values.toSeq.map { c =>
       counter += 1
+      // The predicate instance of a predicate chunk, e.g. `list(x)`, lets a client offer to fold or unfold it.
+      val predicateInstance = c match {
+        case bc: BasicChunk if bc.resourceID == PredicateID =>
+          bc.argsExp.map(args => s"${bc.id}(${args.mkString(", ")})")
+        case _ => None
+      }
       DebugNode(syntheticId(HeapSection, counter), DebugNodeKind.Chunk, chunkString(c, obl),
-        termString = Some(c.toString))
+        expString = predicateInstance, termString = Some(c.toString))
     }
 
     if (obl.printConfig.printOldHeaps)
@@ -137,7 +144,7 @@ object ObligationModelBuilder {
         }
         bc.resourceID match {
           case FieldID => s"acc(${bc.argsExp.get.head}.${bc.id}, ${Simplifier.simplify(bc.permExp.get, true)})$snapExpString"
-          case PredicateID => s"acc(${bc.id}(${bc.argsExp.mkString(", ")}), ${Simplifier.simplify(bc.permExp.get, true)})"
+          case PredicateID => s"acc(${bc.id}(${bc.argsExp.map(_.mkString(", ")).getOrElse("")}), ${Simplifier.simplify(bc.permExp.get, true)})"
         }
       case mwc: MagicWandChunk =>
         val shape = mwc.id.ghostFreeWand

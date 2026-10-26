@@ -136,7 +136,9 @@ case class ObligationModel(failureIndex: Int,
                            timeoutMs: Option[Int],
                            printConfig: PrintConfigModel,
                            /** A model refuting this obligation, if one has been computed; see [[CounterexampleModel]]. */
-                           counterexample: Option[CounterexampleModel] = None)
+                           counterexample: Option[CounterexampleModel] = None,
+                           /** See [[ProofObligation.assertionOutdated]]. */
+                           assertionOutdated: Boolean = false)
 
 /** A verification failure that the debugger may be able to open a proof obligation for. */
 case class DebugFailureInfo(index: Int,

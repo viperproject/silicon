@@ -35,7 +35,11 @@ case class ProofObligation(s: State,
                            originalErrorReason: ErrorReason,
                            /** Absent unless the program was parsed from Viper source; see [[SiliconDebugSession]]. */
                            resolver: Option[DebugResolver],
-                           translator: Option[DebugTranslator]
+                           translator: Option[DebugTranslator],
+                           /** Whether the state changed (by a fold or unfold) after `assertion` was evaluated in it, so
+                             * that `assertion` may no longer describe the failed check; see
+                             * [[SiliconDebugSession.recheck]]. */
+                           assertionOutdated: Boolean = false
                           ){
 
   def removeAssumptions(ids: Seq[Int]): ProofObligation = {

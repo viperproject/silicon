@@ -10,7 +10,7 @@ import viper.silicon.Config
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.{Cvc5ProverStdIO, RecordedPathConditions, Z3ProverStdIO}
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, SiliconMappedCounterexample, Success, VerificationResult}
-import viper.silicon.rules.evaluator
+import viper.silicon.rules.{consumer, evaluator, executor}
 import viper.silicon.state.State
 import viper.silicon.state.terms.{Term, True}
 import viper.silicon.utils.ast.simplifyVariableName
@@ -20,7 +20,7 @@ import viper.silver.ast.{NoPosition, SourcePNodeInfo}
 import viper.silver.parser._
 import viper.silver.reporter.NoopReporter
 import viper.silver.verifier.{ErrorReason, PartialVerificationError}
-import viper.silver.verifier.errors.ContractNotWellformed
+import viper.silver.verifier.errors.{AssertFailed, ContractNotWellformed}
 
 import java.nio.file.Paths
 import scala.collection.mutable
@@ -52,6 +52,9 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
   private var currentWorker: Option[WorkerVerifier] = None
   private var lastSolverOptions: Option[String] = None
   private var closed: Boolean = false
+
+  /** The cases the last fold or unfold produced, if it branched: what distinguishes each, and its obligation. */
+  private var cases: Seq[(String, ProofObligation)] = Seq.empty
 
   /** The model of the last failed proof attempt, if one is available; see [[CounterexampleModel]]. */
   private var counterexample: Option[CounterexampleModel] = None
@@ -187,8 +190,144 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
   /** Whether the current obligation is a paused verification rather than a failure; see [[openPausedState]]. */
   def isPaused: Boolean = obl.exists(_.originalErrorReason.isInstanceOf[PausedAtStatement])
 
+  /**
+    * Folds (`unfold = false`) or unfolds the predicate instance `text`, e.g. `list(x)` or `acc(list(x), 1/2)`, in the
+    * current state, as if the statement `fold`/`unfold` was executed there. This is done on the obligation's own
+    * prover, so the verification is not affected.
+    *
+    * Unfolding a predicate with a conditional body may produce several cases, one for each feasible branch of the
+    * body; the first one becomes the current obligation and [[selectCase]] switches to the others. A failed fold
+    * (or unfold) leaves the obligation unchanged and reports why it failed.
+    *
+    * Since the heap changes, the failed assertion the obligation was opened for may no longer describe the failed
+    * check; [[recheck]] checks it again in the current state.
+    */
+  def foldText(text: String, unfold: Boolean): DebugCommandResult = withObligation { (o, msgs) =>
+    // Typechecked like the argument of a fold or unfold statement, rather than as an assertion.
+    translateStringToExp(text, o, predicateAccess = Some(if (unfold) "unfolded" else "folded")) match {
+      case pap: ast.PredicateAccessPredicate => execPredicateStatement(pap, unfold, o, msgs)
+      case pa: ast.PredicateAccess => execPredicateStatement(ast.PredicateAccessPredicate(pa, None)(pa.pos), unfold, o, msgs)
+      case other => DebugCommandResult.error(s"`$other` is not a predicate instance such as list(x).")
+    }
+  }
+
+  private def execPredicateStatement(pap: ast.PredicateAccessPredicate, unfold: Boolean, o: ProofObligation,
+                                     msgs: mutable.ListBuffer[DebugMessage]): DebugCommandResult = {
+    // The user's input is typechecked against the whole program, but the verified one may only have been part of it,
+    // in which predicates whose bodies its members do not need are abstract (see Silver's chopper).
+    val name = pap.loc.predicateName
+    if (o.s.program.predicates.find(_.name == name).forall(_.body.isEmpty)) {
+      return DebugCommandResult.error(s"The predicate $name has no body in the program that was verified, which " +
+        "was probably restricted to the member that failed. Debug the whole file to fold or unfold it (in the Viper " +
+        "IDE: disable the setting viper.debugger.restrictToFailingMember, or start the debugger with F5).")
+    }
+    val stmt = if (unfold) ast.Unfold(pap)(pap.pos) else ast.Fold(pap)(pap.pos)
+    val v = o.v
+    val emitsBefore = v.decider.prover.getAllEmits().size
+    val mark = v.decider.setPathConditionMark()
+    val outcomes = mutable.ListBuffer.empty[(State, RecordedPathConditions)]
+    // exec2 rather than exec, which would also call the debug hook.
+    val res = executor.exec2(o.s, stmt, v)((s1, v1) => {
+      // The path conditions of each case are popped again once the case is done, so they are recorded here.
+      outcomes += ((s1, v1.decider.pcs.after(mark)))
+      Success()
+    })
+    // Everything the fold or unfold declared, e.g. the snapshots of the new chunks.
+    val newEmits = v.decider.prover.getAllEmits().drop(emitsBefore)
+
+    res match {
+      case f: Failure =>
+        msgs += DebugMessage.error(s"${if (unfold) "Unfolding" else "Folding"} ${pap.loc} failed: ${f.message.reason.readableMessage}")
+        // The attempt may have left assumptions in the prover; start from the obligation again.
+        obl = Some(initVerifier(o, v.decider.prover.name, lastSolverOptions, msgs))
+        result(msgs, ok = false)
+      case _ if outcomes.isEmpty =>
+        msgs += DebugMessage.warning(
+          s"No case of ${pap.loc} is feasible: the assumptions are contradictory after this statement.")
+        obl = Some(initVerifier(o, v.decider.prover.name, lastSolverOptions, msgs))
+        result(msgs)
+      case _ =>
+        val newCases = outcomes.toSeq.map { case (s1, pcs) =>
+          val conditions = pcs.branchConditionExps.toSeq.map(bce => bce._1 -> bce._2.getOrElse(bce._1))
+          val description = conditions.map(_._2.toString).filterNot(_ == "true").mkString(" && ")
+          (if (description.isEmpty) "no conditions" else description) -> o.copy(
+            s = s1,
+            proverEmits = o.proverEmits ++ newEmits,
+            branchConditions = o.branchConditions ++ pcs.branchConditions.toSeq,
+            branchConditionExps = o.branchConditionExps ++ conditions,
+            assumptionsExp = o.assumptionsExp ++ pcs.assumptionExps,
+            assertionOutdated = o.assertionOutdated || !isPaused)
+        }
+        cases = newCases
+        invalidateCounterexample()
+        msgs += DebugMessage.info(s"${if (unfold) "Unfolded" else "Folded"} ${pap.loc}.")
+        if (newCases.size > 1) {
+          msgs += DebugMessage.info(s"This produced ${newCases.size} cases; showing case 1. Use :case <n> to switch:\n" +
+            newCases.zipWithIndex.map { case ((d, _), i) => s"  [${i + 1}] $d" }.mkString("\n"))
+        }
+        obl = Some(initVerifier(newCases.head._2, v.decider.prover.name, lastSolverOptions, msgs))
+        result(msgs)
+    }
+  }
+
+  /** Makes case `n` (1-based) of the last fold or unfold the current obligation; see [[foldText]]. */
+  def selectCase(n: Int): DebugCommandResult = withObligation { (o, msgs) =>
+    if (n < 1 || n > cases.size) {
+      DebugCommandResult.error(
+        if (cases.isEmpty) "The last fold or unfold did not produce several cases."
+        else s"There are only ${cases.size} cases.")
+    } else {
+      msgs += DebugMessage.info(s"Showing case $n: ${cases(n - 1)._1}. Changes to the previous case were discarded.")
+      invalidateCounterexample()
+      obl = Some(initVerifier(cases(n - 1)._2, o.v.decider.prover.name, lastSolverOptions, msgs))
+      result(msgs)
+    }
+  }
+
+  /**
+    * Checks the assertion that failed again, in the current state: the expression is evaluated (for a location that
+    * could not be accessed) or consumed (for an assertion that might not hold) on the obligation's own prover, like
+    * the verification does. This is useful after a fold or unfold, which changes the state but not the failed
+    * check the obligation was opened for (see [[ProofObligation.assertionOutdated]]).
+    *
+    * The check is best effort: it is the node the verification error points to that is checked, which may be part
+    * of a larger assertion.
+    */
+  def recheck(): DebugCommandResult = withObligation { (o, msgs) =>
+    if (isPaused) {
+      DebugCommandResult.error(SiliconDebugSession.noAssertionDescription)
+    } else {
+      val checked: Either[String, VerificationResult] = o.originalErrorReason.offendingNode match {
+        case loc: ast.LocationAccess =>
+          val pve = PartialVerificationError(r => ContractNotWellformed(loc, r))
+          Right(evaluator.eval3(o.s, loc, pve, o.v)((_, _, _, _) => Success()))
+        case e: ast.Exp =>
+          val pve = PartialVerificationError(r => AssertFailed(ast.Assert(e)(e.pos), r))
+          Right(consumer.consume(o.s, e, returnSnap = false, pve, o.v)((_, _, _) => Success()))
+        case other =>
+          Left(s"The failure points to `$other`, which cannot be checked again.")
+      }
+      checked match {
+        case Left(err) => DebugCommandResult.error(err)
+        case Right(res) =>
+          val passed = !res.isInstanceOf[Failure]
+          val what = o.originalErrorReason.offendingNode
+          res match {
+            case f: Failure =>
+              msgs += DebugMessage.info(s"FAIL: `$what` still fails: ${f.message.reason.readableMessage}\n")
+            case _ =>
+              msgs += DebugMessage.info(s"PASS: `$what` holds in this state.\n")
+          }
+          // The check may have left assumptions in the prover; start from the obligation again.
+          obl = Some(initVerifier(o, o.v.decider.prover.name, lastSolverOptions, msgs))
+          result(msgs).copy(proved = Some(passed))
+      }
+    }
+  }
+
   /** Discards all changes made to the current obligation. */
   def reset(): DebugCommandResult = withObligation { (_, msgs) =>
+    cases = Seq.empty
     lastSolverOptions = None
     invalidateCounterexample()
     val base = originalObl.get
@@ -436,6 +575,7 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     stopCurrentWorker()
 
     val v = new WorkerVerifier(this.mainVerifier, obl.v.uniqueId, NoopReporter, false)
+    v.debugHookEnabled = false
     currentWorker = Some(v)
     v.start()
     v.decider.createProver(proverName, userArgsString)
@@ -448,8 +588,14 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     obl.copy(v = v)
   }
 
-  /** Parses, typechecks and translates an expression entered by the user. */
-  private def translateStringToExp(str: String, obl: ProofObligation): ast.Exp = {
+  /**
+    * Parses, typechecks and translates an expression entered by the user.
+    *
+    * @param predicateAccess if given, the expression has to be a predicate access, like the argument of a fold or
+    *                        unfold statement (the value says which, for the message about abstract predicates);
+    *                        otherwise, it has to be a boolean expression.
+    */
+  private def translateStringToExp(str: String, obl: ProofObligation, predicateAccess: Option[String] = None): ast.Exp = {
     val resolver = obl.resolver.getOrElse(throw new RuntimeException(
       "This program was not parsed from Viper source, so expressions cannot be entered as Viper text. " +
         "The frontend has to translate the expression itself and use addAssumptionExp/assertExp."))
@@ -471,7 +617,13 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     def typecheckPExp(pexp: PExp): Unit = {
       try {
         resolver.typechecker.names.check(pexp, None, resolver.typechecker.curMember)
-        resolver.typechecker.check(pexp, PPrimitiv(PReserved(PKw.Bool)((NoPosition, NoPosition)))())
+        predicateAccess match {
+          case Some(how) =>
+            resolver.typechecker.acceptNonAbstractPredicateAccess(pexp, s"abstract predicates cannot be $how")
+            resolver.typechecker.check(pexp, TypeHelper.Predicate)
+          case None =>
+            resolver.typechecker.check(pexp, PPrimitiv(PReserved(PKw.Bool)((NoPosition, NoPosition)))())
+        }
       } catch {
         case e: Throwable => throw new RuntimeException(s"Error while typechecking $str: ${e.getMessage}", e)
       }

@@ -26,7 +26,12 @@ class WorkerVerifier(mainVerifier: MainVerifier,
 
   def verificationPoolManager: VerificationPoolManager = mainVerifier.verificationPoolManager
 
-  override def debugHook: Option[viper.silicon.debugger.DebugHook] = mainVerifier.debugHook
+  /** False for the verifiers a debug session uses to work with a proof obligation: what they execute must not be
+    * paused or reported as a failure of the verification, which would block the session's own thread. */
+  @volatile var debugHookEnabled: Boolean = true
+
+  override def debugHook: Option[viper.silicon.debugger.DebugHook] =
+    if (debugHookEnabled) mainVerifier.debugHook else None
 
   override def openSymbExLogger(member: ast.Member): Unit = {
     symbExLog = mainVerifier.rootSymbExLogger.openMemberScope(member, decider.pcs)
