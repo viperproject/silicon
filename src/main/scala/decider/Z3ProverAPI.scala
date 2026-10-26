@@ -298,15 +298,21 @@ class Z3ProverAPI(uniqueId: String,
   protected def assertUsingPushPop(goal: Term, timeout: Option[Int]): (Boolean, Long) = {
     endPreamblePhase()
     push()
-    setTimeout(timeout)
+    val (res, startTime, endTime) = try {
+      setTimeout(timeout)
 
-    val negatedGoal = ctx.mkNot(termConverter.convert(goal).asInstanceOf[BoolExpr])
-    prover.add(negatedGoal)
-    val startTime = System.currentTimeMillis()
-    val res = prover.check()
-    val endTime = System.currentTimeMillis()
+      val negatedGoal = ctx.mkNot(termConverter.convert(goal).asInstanceOf[BoolExpr])
+      prover.add(negatedGoal)
+      val startTime = System.currentTimeMillis()
+      val res = prover.check()
+      (res, startTime, System.currentTimeMillis())
+    } finally {
+      /* Also if converting or adding the goal throws (e.g. a Z3Exception for an invalid trigger, after which
+       * assert retries with cleaned triggers): otherwise the scope stays open, later pops remove the wrong
+       * scopes, and assumptions leak from one branch into the next. */
+      pop()
+    }
     val result = res == Status.UNSATISFIABLE
-    pop()
 
     if (!result) {
       retrieveAndSaveModel()
