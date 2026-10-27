@@ -10,7 +10,7 @@ import viper.silicon.interfaces.Failure
 import viper.silicon.state.State
 import viper.silicon.verifier.{MainVerifier, Verifier}
 import viper.silver.ast
-import viper.silver.verifier.ExtensionAbstractErrorReason
+import viper.silver.verifier.{ExtensionAbstractErrorReason, PartialVerificationError}
 import viper.silver.verifier.errors.ErrorNode
 
 /**
@@ -33,6 +33,13 @@ trait DebugHook {
     * first attempt that Silicon retries (see [[viper.silicon.rules.executionFlowController]]).
     */
   def failed(s: State, v: Verifier, failure: Failure): Unit = ()
+
+  /**
+    * Called before verifier `v` checks `assertion` in state `s`: `assertion` is a top-level conjunct of an assertion
+    * that is consumed, e.g. of a precondition at a call, of a postcondition at the end of a method, or of a loop
+    * invariant before and after the loop body. `pve` is the error that is reported if the check fails.
+    */
+  def beforeCheck(s: State, assertion: ast.Exp, pve: PartialVerificationError, v: Verifier): Unit = ()
 }
 
 /** Thrown by a [[DebugHook]] to end the verification, e.g. because the debug session was stopped. */
@@ -42,9 +49,23 @@ class DebugRunAborted(val reason: String) extends RuntimeException(s"The debug r
   * The "reason" of a proof obligation that was opened at a breakpoint rather than at a failure. It lets the
   * debugger's model (see [[ObligationModelBuilder.errorInfo]]) say where the verification is paused.
   */
-case class PausedAtStatement(offendingNode: ast.Stmt) extends ExtensionAbstractErrorReason {
+sealed trait PausedReason extends ExtensionAbstractErrorReason
+
+/** The verification is paused before executing a statement. */
+case class PausedAtStatement(offendingNode: ast.Stmt) extends PausedReason {
   val id = "debugger.paused"
   def readableMessage: String = s"Paused before ${offendingNode.toString().linesIterator.nextOption().getOrElse("")}"
   def withNode(offendingNode: ErrorNode = this.offendingNode): PausedAtStatement =
     PausedAtStatement(offendingNode.asInstanceOf[ast.Stmt])
+}
+
+/**
+  * The verification is paused before checking `offendingNode`, a conjunct of a specification; `description` says
+  * which one, e.g. "the postcondition of `m`".
+  */
+case class PausedAtCheck(offendingNode: ast.Exp, description: String) extends PausedReason {
+  val id = "debugger.paused"
+  def readableMessage: String = s"Paused before checking $description: $offendingNode"
+  def withNode(offendingNode: ErrorNode = this.offendingNode): PausedAtCheck =
+    PausedAtCheck(offendingNode.asInstanceOf[ast.Exp], description)
 }

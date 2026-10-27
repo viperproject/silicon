@@ -12,14 +12,17 @@ import viper.silicon.state.State
 import viper.silicon.verifier.{BaseVerifier, MainVerifier, Verifier}
 import viper.silver.ast
 import viper.silver.frontend.FrontendStateCache
+import viper.silver.verifier.{DummyReason, PartialVerificationError}
 
 import scala.collection.mutable
+import scala.util.Try
 
 /**
   * A breakpoint as set by the user.
   *
-  * @param location the statement the breakpoint stops at, or None if it could not be resolved (yet): breakpoints
-  *                 are resolved once the verification has started, since only then is the program known.
+  * @param location the statement (or specification conjunct) the breakpoint stops at, or None if it could not be
+  *                 resolved (yet): breakpoints are resolved once the verification has started, since only then is
+  *                 the program known.
   */
 case class BreakpointStatus(id: Int, file: String, requestedLine: Int, location: Option[StatementLocation]) {
   def verified: Boolean = location.isDefined
@@ -38,9 +41,9 @@ case class BreakpointRequest(line: Int, condition: Option[String] = None)
 sealed trait PauseReason
 
 object PauseReason {
-  /** Before a statement that the given breakpoints resolved to. */
+  /** Before a statement or specification check that the given breakpoints resolved to. */
   case class Breakpoint(ids: Seq[Int]) extends PauseReason
-  /** Before a statement, at the end of a step (see [[DebugRunController.step]]). */
+  /** Before a statement or specification check, at the end of a step (see [[DebugRunController.step]]). */
   case object Step extends PauseReason
   /** Before a statement, because the user asked to pause (see [[DebugRunController.requestPause]]). */
   case object Pause extends PauseReason
@@ -60,20 +63,24 @@ object StepKind {
 /**
   * The verification is paused.
   *
-  * @param stmt     the statement the verification is paused before, unless it is paused at a failure.
-  * @param position where the verification is paused: at `stmt`, or at the assertion that failed.
+  * @param stmt     the statement the verification is paused before, if it is paused before a statement.
+  * @param position where the verification is paused: at `stmt`, at the specification conjunct about to be
+  *                 checked, or at the assertion that failed.
   * @param session  a debug session whose current proof obligation is the state the verification is paused in:
   *                 its assumptions, store and heap, and for a failure the assertion that failed. Changes made in
   *                 it never affect the paused verification; they are made on a copy with a prover of its own. The
   *                 session is closed when the verification continues.
   * @param messages what opening the paused state in `session` reported, e.g. why it failed.
+  * @param check    if the verification is paused before checking a specification, which one, e.g. "the
+  *                 postcondition of `m`"; the session's obligation then is to prove the conjunct at `position`.
   */
 class DebugPause(val reason: PauseReason,
                  val stmt: Option[ast.Stmt],
                  val position: Option[DebugSourcePos],
                  val memberName: Option[String],
                  val session: SiliconDebugSession,
-                 val messages: Seq[DebugMessage]) {
+                 val messages: Seq[DebugMessage],
+                 val check: Option[String] = None) {
 
   def hitBreakpointIds: Seq[Int] = reason match {
     case PauseReason.Breakpoint(ids) => ids
@@ -93,9 +100,9 @@ trait DebugRunListener {
 /**
   * Pauses the symbolic execution at breakpoints, after steps, on request, and at verification failures.
   *
-  * When a verifier is about to execute a statement a breakpoint resolved to, it builds a [[DebugPause]] with a
-  * debug session for the current state, tells the listener, and blocks until [[resume]], [[step]] or [[abort]]
-  * is called. Since Silicon explores the paths of a method one after another, a breakpoint is hit once for every
+  * When a verifier is about to execute a statement a breakpoint resolved to, or to check a conjunct of a
+  * specification one resolved to (see [[BreakpointResolver]]), it builds a [[DebugPause]] with a debug session for
+  * the current state, tells the listener, and blocks until [[resume]], [[step]] or [[abort]] is called. Since Silicon explores the paths of a method one after another, a breakpoint is hit once for every
   * feasible path that reaches it (and a loop body is executed once per path, not once per iteration).
   *
   * Debugging should run with a single verifier (`--numberOfParallelVerifiers 1`): with several, several paths
@@ -114,8 +121,11 @@ class DebugRunController(listener: DebugRunListener) extends DebugHook {
   /** The statement locations to stop at, and the breakpoints stopping there. Read without a lock in [[beforeExec]]. */
   @volatile private var stops: Map[StatementLocation, Seq[Int]] = Map.empty
 
-  /** A step that is in progress: it ends at the next statement that `verifierId` executes and that `ends` accepts. */
-  private case class StepRequest(verifierId: String, ends: Int => Boolean)
+  /**
+    * A step that is in progress: it ends at the next statement that `verifierId` executes and that `ends` accepts,
+    * or at the next specification it checks (a precondition only if `intoCalls`).
+    */
+  private case class StepRequest(verifierId: String, ends: Int => Boolean, intoCalls: Boolean)
   @volatile private var stepRequest: Option[StepRequest] = None
   @volatile private var pauseRequested = false
   @volatile private var _pauseOnFailures = false
@@ -165,10 +175,11 @@ class DebugRunController(listener: DebugRunListener) extends DebugHook {
 
   /**
     * Lets the paused verification continue up to the next statement that the same verifier executes, i.e. on the
-    * same path or, once that path has been explored, on the next one:
+    * same path or, once that path has been explored, on the next one, or up to the next specification it checks:
     *
-    *  - [[StepKind.In]] stops at the next statement;
-    *  - [[StepKind.Over]] skips the statements of `package` proof scripts that start after the current statement;
+    *  - [[StepKind.In]] stops at the next statement, and at the precondition of a call;
+    *  - [[StepKind.Over]] skips the statements of `package` proof scripts that start after the current statement, and
+    *    the preconditions of calls;
     *  - [[StepKind.Out]] also skips the remainder of the proof script the verification is paused in; outside of a
     *    proof script, it continues like [[resume]].
     *
@@ -183,7 +194,7 @@ class DebugRunController(listener: DebugRunListener) extends DebugHook {
         case StepKind.Over => Some(_ <= depth)
         case StepKind.Out => Option.when(depth > 0)(_ < depth)
       }
-      ends.map(StepRequest(verifierId, _))
+      ends.map(StepRequest(verifierId, _, intoCalls = kind == StepKind.In))
     }
     resume()
   }
@@ -223,41 +234,24 @@ class DebugRunController(listener: DebugRunListener) extends DebugHook {
     val previous = synchronized(lastExecuted.put(v.uniqueId, (stmt, location)))
     if (previous.exists { case (prevStmt, prevLocation) => prevLocation == location && !(prevStmt eq stmt) }) return
 
-    val ids = stops.getOrElse(location, Seq.empty)
-    val stepEnds = stepRequest.exists(r => r.verifierId == v.uniqueId && r.ends(depthOf(location)))
-    if (ids.isEmpty && !stepEnds && !pauseRequested) return
-    val (mv, cfg) = synchronized((mainVerifier, config)) match {
-      case (Some(m), Some(c)) => (m, c)
-      case _ => return
-    }
+    val depth = depthOf(location)
+    val stepEnds = stepRequest.exists(r => r.verifierId == v.uniqueId && r.ends(depth))
+    pauseIfRequested(s, v, location, stepEnds, depth, Some(stmt), DebugSourcePos.from(stmt), None)(
+      _.openPausedState(s, v, stmt))
+  }
 
-    // The state has to be captured here, on the verifier's thread: the path conditions are mutable and change as
-    // soon as the verifier continues. The session is only opened if it is needed, since that starts a prover.
-    val messages = mutable.ListBuffer.empty[DebugMessage]
-    var session: Option[SiliconDebugSession] = None
-    def openSession(): SiliconDebugSession = session.getOrElse {
-      val opened = newSession(Nil, mv, cfg)
-      messages ++= opened.openPausedState(s, v, stmt).messages
-      session = Some(opened)
-      opened
-    }
-
-    val currentConditions = conditions
-    val hitIds = ids.filter(id => currentConditions.get(id).forall(c => mayHold(openSession(), c, messages)))
-    val reason: Option[PauseReason] =
-      if (hitIds.nonEmpty) Some(PauseReason.Breakpoint(hitIds))
-      else if (stepEnds) Some(PauseReason.Step)
-      else if (pauseRequested) Some(PauseReason.Pause)
-      else None
-    reason match {
-      case Some(r) =>
-        // Even if the state cannot be opened, the user asked to stop here; the messages say what went wrong.
-        val opened = openSession()
-        pauseAt(new DebugPause(r, Some(stmt), DebugSourcePos.from(stmt), s.currentMember.map(_.name), opened,
-          messages.toSeq), v.uniqueId, depthOf(location))
-      case None =>
-        session.foreach(_.close())
-    }
+  override def beforeCheck(s: State, assertion: ast.Exp, pve: PartialVerificationError, v: Verifier): Unit = {
+    aborted.foreach(r => throw new DebugRunAborted(r))
+    // Most consumed conjuncts are not specifications; avoid looking up their location if nothing could stop anyway.
+    if (stops.isEmpty && stepRequest.isEmpty && !pauseRequested) return
+    val location = StatementLocation.of(assertion).getOrElse(return)
+    val kind = synchronized(resolver).flatMap(_.specification(location)).getOrElse(return)
+    val isCall = kind.isInstanceOf[SpecificationKind.Precondition]
+    // Specifications are not part of proof scripts, so they are at depth 0.
+    val stepEnds = stepRequest.exists(r => r.verifierId == v.uniqueId && r.ends(0) && (r.intoCalls || !isCall))
+    val description = describe(kind, pve, v)
+    pauseIfRequested(s, v, location, stepEnds, 0, None, DebugSourcePos.from(assertion), Some(description))(
+      _.openPausedCheck(s, v, assertion, description))
   }
 
   override def failed(s: State, v: Verifier, failure: Failure): Unit = {
@@ -276,6 +270,64 @@ class DebugRunController(listener: DebugRunListener) extends DebugHook {
   }
 
   // --- Internals ---------------------------------------------------------------------------------------------
+
+  /**
+    * Pauses verifier `v` in state `s` at `location` if a breakpoint there stops (and its condition may hold), if a
+    * step ends there, or if the user asked to pause; `open` makes the state the obligation of a session.
+    */
+  private def pauseIfRequested(s: State, v: Verifier, location: StatementLocation, stepEnds: Boolean, depth: Int,
+                               stmt: Option[ast.Stmt], position: Option[DebugSourcePos], check: Option[String])
+                              (open: SiliconDebugSession => DebugCommandResult): Unit = {
+    val ids = stops.getOrElse(location, Seq.empty)
+    if (ids.isEmpty && !stepEnds && !pauseRequested) return
+    val (mv, cfg) = synchronized((mainVerifier, config)) match {
+      case (Some(m), Some(c)) => (m, c)
+      case _ => return
+    }
+
+    // The state has to be captured here, on the verifier's thread: the path conditions are mutable and change as
+    // soon as the verifier continues. The session is only opened if it is needed, since that starts a prover.
+    val messages = mutable.ListBuffer.empty[DebugMessage]
+    var session: Option[SiliconDebugSession] = None
+    def openSession(): SiliconDebugSession = session.getOrElse {
+      val opened = newSession(Nil, mv, cfg)
+      messages ++= open(opened).messages
+      session = Some(opened)
+      opened
+    }
+
+    val currentConditions = conditions
+    val hitIds = ids.filter(id => currentConditions.get(id).forall(c => mayHold(openSession(), c, messages)))
+    val reason: Option[PauseReason] =
+      if (hitIds.nonEmpty) Some(PauseReason.Breakpoint(hitIds))
+      else if (stepEnds) Some(PauseReason.Step)
+      else if (pauseRequested) Some(PauseReason.Pause)
+      else None
+    reason match {
+      case Some(r) =>
+        // Even if the state cannot be opened, the user asked to stop here; the messages say what went wrong.
+        val opened = openSession()
+        pauseAt(new DebugPause(r, stmt, position, s.currentMember.map(_.name), opened, messages.toSeq, check),
+          v.uniqueId, depth)
+      case None =>
+        session.foreach(_.close())
+    }
+  }
+
+  /** Which specification is about to be checked, e.g. "the precondition of `m` (call on line 12)". */
+  private def describe(kind: SpecificationKind, pve: PartialVerificationError, v: Verifier): String = kind match {
+    case SpecificationKind.Precondition(m) =>
+      // The call being executed is the last statement the verifier started.
+      val callLine = synchronized(lastExecuted.get(v.uniqueId)).collect { case (_: ast.MethodCall, l) => l.line }
+      s"the precondition of `$m`" + callLine.map(l => s" (call on line $l)").getOrElse("")
+    case SpecificationKind.Postcondition(m) => s"the postcondition of `$m`"
+    case SpecificationKind.LoopInvariant =>
+      Try(pve.dueTo(DummyReason).id).toOption match {
+        case Some("invariant.not.established") => "the loop invariant, on entry to the loop"
+        case Some("invariant.not.preserved") => "the loop invariant, after the loop body"
+        case _ => "the loop invariant"
+      }
+  }
 
   private def status(file: String, id: Int, line: Int): BreakpointStatus =
     BreakpointStatus(id, file, line, resolver.flatMap(_.resolve(file, line)))

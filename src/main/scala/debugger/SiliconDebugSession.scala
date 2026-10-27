@@ -171,15 +171,28 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     * affected by anything the user does with it. There is no assertion to prove, though: the user checks
     * expressions with [[assertText]] instead.
     */
-  def openPausedState(s: State, v: Verifier, stmt: ast.Stmt): DebugCommandResult = guarded { msgs =>
+  def openPausedState(s: State, v: Verifier, stmt: ast.Stmt): DebugCommandResult =
+    openPaused(s, v, PausedAtStatement(stmt), stmt,
+      DebugExp.createInstance(SiliconDebugSession.noAssertionDescription))
+
+  /**
+    * Like [[openPausedState]], but for a verification that is paused before checking `assertion`, a conjunct of the
+    * specification that `description` names. The assertion to prove is `assertion`, in the scope of the
+    * specification: at a call, the store maps the parameters of the called method. [[prove]] checks it the way the
+    * verification is about to.
+    */
+  def openPausedCheck(s: State, v: Verifier, assertion: ast.Exp, description: String): DebugCommandResult =
+    openPaused(s, v, PausedAtCheck(assertion, description), assertion, DebugExp.createInstance(assertion, assertion))
+
+  private def openPaused(s: State, v: Verifier, reason: PausedReason, scope: ast.Infoed,
+                         eAssertion: DebugExp): DebugCommandResult = guarded { msgs =>
     val pcs = v.decider.pcs
     val newObl = ProofObligation(s, v, v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions,
       pcs.branchConditions, pcs.branchConditionExps.map(bce => bce._1 -> bce._2.get), pcs.assumptionExps,
-      True, DebugExp.createInstance(SiliconDebugSession.noAssertionDescription), None, new DebugExpPrintConfiguration,
-      PausedAtStatement(stmt), newDebugResolver(), newDebugTranslator())
+      True, eAssertion, None, new DebugExpPrintConfiguration, reason, newDebugResolver(), newDebugTranslator())
     currentIndex = None
     counterexample = None
-    initTypechecker(newObl, Some(stmt), msgs)
+    initTypechecker(newObl, Some(scope), msgs)
     lastSolverOptions = config.proverArgs
     val initialized = initVerifier(newObl, Z3ProverStdIO.name, lastSolverOptions, msgs)
     obl = Some(initialized)
@@ -187,8 +200,14 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     result(msgs)
   }
 
-  /** Whether the current obligation is a paused verification rather than a failure; see [[openPausedState]]. */
-  def isPaused: Boolean = obl.exists(_.originalErrorReason.isInstanceOf[PausedAtStatement])
+  /**
+    * Whether the current obligation is a paused verification rather than a failure; see [[openPausedState]] and
+    * [[openPausedCheck]].
+    */
+  def isPaused: Boolean = obl.exists(_.originalErrorReason.isInstanceOf[PausedReason])
+
+  /** Whether the current obligation is a verification paused before a statement, so there is nothing to prove. */
+  private def isPausedAtStatement: Boolean = obl.exists(_.originalErrorReason.isInstanceOf[PausedAtStatement])
 
   /**
     * Folds (`unfold = false`) or unfolds the predicate instance `text`, e.g. `list(x)` or `acc(list(x), 1/2)`, in the
@@ -395,9 +414,12 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     * If the node cannot be checked on its own, e.g. because it refers to variables that are bound in a surrounding
     * quantifier, the recorded term of the failed check is proved instead, and the prover's model of its negation
     * becomes the counterexample.
+    *
+    * If the verification is paused before checking a specification (see [[openPausedCheck]]), the specification's
+    * conjunct is checked, which tells whether the check the verification is about to make succeeds.
     */
   def prove(): DebugCommandResult =
-    if (isPaused) DebugCommandResult.error(SiliconDebugSession.noAssertionDescription)
+    if (isPausedAtStatement) DebugCommandResult.error(SiliconDebugSession.noAssertionDescription)
     else withObligation { (o, msgs) =>
       checkAgain(o) match {
         case Some(res) =>
@@ -420,6 +442,11 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
           // The check may have left assumptions (and a model) in the prover; start from the obligation again.
           obl = Some(initVerifier(o, o.v.decider.prover.name, lastSolverOptions, msgs))
           result(msgs).copy(proved = Some(proved))
+
+        case None if isPaused =>
+          // There is no recorded check to fall back to before the specification is checked.
+          msgs += DebugMessage.error(s"`${o.originalErrorReason.offendingNode}` cannot be checked on its own here.")
+          result(msgs, ok = false)
 
         case None =>
           val proved = o.v.decider.prover.assert(o.assertion, o.timeout)
@@ -729,5 +756,5 @@ object SiliconDebugSession {
   val proverNames: Seq[String] = Seq(Z3ProverStdIO.name, Cvc5ProverStdIO.name)
 
   val noAssertionDescription: String =
-    "There is no assertion to prove at a breakpoint; use :assert <expression> to check whether an expression holds."
+    "There is no assertion to prove before a statement; use :assert <expression> to check whether an expression holds."
 }

@@ -125,6 +125,9 @@ object consumer extends ConsumptionRules {
       val a = tlcs.head
       val pve = pves.head
 
+      // May pause the verification at a breakpoint on a specification, or abort it if the debug session ended.
+      v.debugHook.foreach(_.beforeCheck(s.copy(h = h), a, pve, v))
+
       if (tlcs.tail.isEmpty)
         wrappedConsumeTlc(s, h, a, returnSnap, pve, v)(Q)
       else
