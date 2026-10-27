@@ -38,7 +38,7 @@ case class ProofObligation(s: State,
                            translator: Option[DebugTranslator],
                            /** Whether the state changed (by a fold or unfold) after `assertion` was evaluated in it, so
                              * that `assertion` may no longer describe the failed check; see
-                             * [[SiliconDebugSession.recheck]]. */
+                             * [[SiliconDebugSession.prove]]. */
                            assertionOutdated: Boolean = false
                           ){
 

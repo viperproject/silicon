@@ -9,7 +9,7 @@ package viper.silicon.debugger
 import viper.silicon.Config
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.{Cvc5ProverStdIO, RecordedPathConditions, Z3ProverStdIO}
-import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, SiliconMappedCounterexample, Success, VerificationResult}
+import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, SiliconFailureContext, SiliconMappedCounterexample, Success, VerificationResult}
 import viper.silicon.rules.{consumer, evaluator, executor}
 import viper.silicon.state.State
 import viper.silicon.state.terms.{Term, True}
@@ -200,7 +200,7 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     * (or unfold) leaves the obligation unchanged and reports why it failed.
     *
     * Since the heap changes, the failed assertion the obligation was opened for may no longer describe the failed
-    * check; [[recheck]] checks it again in the current state.
+    * check; [[prove]] checks it again in the current state.
     */
   def foldText(text: String, unfold: Boolean): DebugCommandResult = withObligation { (o, msgs) =>
     // Typechecked like the argument of a fold or unfold statement, rather than as an assertion.
@@ -281,47 +281,6 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
       invalidateCounterexample()
       obl = Some(initVerifier(cases(n - 1)._2, o.v.decider.prover.name, lastSolverOptions, msgs))
       result(msgs)
-    }
-  }
-
-  /**
-    * Checks the assertion that failed again, in the current state: the expression is evaluated (for a location that
-    * could not be accessed) or consumed (for an assertion that might not hold) on the obligation's own prover, like
-    * the verification does. This is useful after a fold or unfold, which changes the state but not the failed
-    * check the obligation was opened for (see [[ProofObligation.assertionOutdated]]).
-    *
-    * The check is best effort: it is the node the verification error points to that is checked, which may be part
-    * of a larger assertion.
-    */
-  def recheck(): DebugCommandResult = withObligation { (o, msgs) =>
-    if (isPaused) {
-      DebugCommandResult.error(SiliconDebugSession.noAssertionDescription)
-    } else {
-      val checked: Either[String, VerificationResult] = o.originalErrorReason.offendingNode match {
-        case loc: ast.LocationAccess =>
-          val pve = PartialVerificationError(r => ContractNotWellformed(loc, r))
-          Right(evaluator.eval3(o.s, loc, pve, o.v)((_, _, _, _) => Success()))
-        case e: ast.Exp =>
-          val pve = PartialVerificationError(r => AssertFailed(ast.Assert(e)(e.pos), r))
-          Right(consumer.consume(o.s, e, returnSnap = false, pve, o.v)((_, _, _) => Success()))
-        case other =>
-          Left(s"The failure points to `$other`, which cannot be checked again.")
-      }
-      checked match {
-        case Left(err) => DebugCommandResult.error(err)
-        case Right(res) =>
-          val passed = !res.isInstanceOf[Failure]
-          val what = o.originalErrorReason.offendingNode
-          res match {
-            case f: Failure =>
-              msgs += DebugMessage.info(s"FAIL: `$what` still fails: ${f.message.reason.readableMessage}\n")
-            case _ =>
-              msgs += DebugMessage.info(s"PASS: `$what` holds in this state.\n")
-          }
-          // The check may have left assumptions in the prover; start from the obligation again.
-          obl = Some(initVerifier(o, o.v.decider.prover.name, lastSolverOptions, msgs))
-          result(msgs).copy(proved = Some(passed))
-      }
     }
   }
 
@@ -424,25 +383,91 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
   }
 
   /**
-    * Asks the prover whether the proof obligation holds.
+    * Checks whether the proof obligation holds in its current state.
     *
-    * If it does not, the prover has just produced a model of the assumptions and the negated assertion; that
-    * model is turned into a counterexample of the state as it is now, including any assumptions the user has
-    * added or removed. If the obligation holds, there can be no counterexample and the previous one is dropped.
+    * The assertion that failed (the node the error points to) is checked again, the way the verification checks it:
+    * a location that could not be accessed is evaluated, an assertion that might not hold is consumed. This accounts
+    * for everything that was done to the obligation, including folds and unfolds, which change the heap but not the
+    * term of the failed check that the verification recorded. If the check fails, the failure comes with a
+    * counterexample of the current state (if counterexamples are enabled); if it succeeds, there can be no
+    * counterexample and the previous one is dropped.
+    *
+    * If the node cannot be checked on its own, e.g. because it refers to variables that are bound in a surrounding
+    * quantifier, the recorded term of the failed check is proved instead, and the prover's model of its negation
+    * becomes the counterexample.
     */
   def prove(): DebugCommandResult =
     if (isPaused) DebugCommandResult.error(SiliconDebugSession.noAssertionDescription)
     else withObligation { (o, msgs) =>
-      val proved = o.v.decider.prover.assert(o.assertion, o.timeout)
-      if (proved) {
-        msgs += DebugMessage.info("PASS: Proving obligation was successful.\n")
-        counterexample = None
-      } else {
-        msgs += DebugMessage.info("FAIL: Proving obligation failed.\n")
-        updateCounterexampleFromProver(o, msgs)
+      checkAgain(o) match {
+        case Some(res) =>
+          val what = o.originalErrorReason.offendingNode
+          val proved = res match {
+            case f: Failure =>
+              msgs += DebugMessage.info(s"FAIL: `$what` might not hold: ${f.message.reason.readableMessage}\n")
+              counterexample = counterexampleOf(f)
+              if (counterexample.isEmpty) {
+                msgs += DebugMessage.info(
+                  if (counterexamplesAvailable) "The prover did not provide a counterexample."
+                  else "No counterexample was computed; run the verification with --counterexample=mapped to get one.")
+              }
+              false
+            case _ =>
+              msgs += DebugMessage.info(s"PASS: `$what` holds in this state.\n")
+              counterexample = None
+              true
+          }
+          // The check may have left assumptions (and a model) in the prover; start from the obligation again.
+          obl = Some(initVerifier(o, o.v.decider.prover.name, lastSolverOptions, msgs))
+          result(msgs).copy(proved = Some(proved))
+
+        case None =>
+          val proved = o.v.decider.prover.assert(o.assertion, o.timeout)
+          if (proved) {
+            msgs += DebugMessage.info("PASS: Proving obligation was successful.\n")
+            counterexample = None
+          } else {
+            msgs += DebugMessage.info("FAIL: Proving obligation failed.\n")
+            updateCounterexampleFromProver(o, msgs)
+          }
+          if (o.assertionOutdated) {
+            msgs += DebugMessage.warning("The failed assertion could not be checked again in the current state, so " +
+              "the check recorded before the last fold or unfold was proved instead.")
+          }
+          result(msgs).copy(proved = Some(proved))
       }
-      result(msgs).copy(proved = Some(proved))
     }
+
+  /**
+    * Checks the node a failure points to again in the obligation's current state, on its own prover; see [[prove]].
+    * None if the node cannot be checked on its own: if it is not an expression, if it refers to variables that are
+    * neither in the store nor bound in it, or if checking it fails with an exception.
+    */
+  private def checkAgain(o: ProofObligation): Option[VerificationResult] = {
+    o.originalErrorReason.offendingNode match {
+      case e: ast.Exp =>
+        val storeVariables = o.s.g.values.keySet.map(_.name)
+        val boundVariables = e.deepCollect { case d: ast.LocalVarDecl => d.name }.toSet
+        val variables = e.deepCollect { case v: ast.AbstractLocalVar => v.name }
+        if (!variables.forall(n => storeVariables.contains(n) || boundVariables.contains(n))) None
+        else scala.util.Try(e match {
+          case loc: ast.LocationAccess =>
+            val pve = PartialVerificationError(r => ContractNotWellformed(loc, r))
+            evaluator.eval3(o.s, loc, pve, o.v)((_, _, _, _) => Success())
+          case _ =>
+            val pve = PartialVerificationError(r => AssertFailed(ast.Assert(e)(e.pos), r))
+            consumer.consume(o.s, e, returnSnap = false, pve, o.v)((_, _, _) => Success())
+        }).toOption
+      case _ => None
+    }
+  }
+
+  /** The counterexample Silicon attached to a failure, as a model of the debugger. */
+  private def counterexampleOf(f: Failure): Option[CounterexampleModel] =
+    f.message.failureContexts.collectFirst {
+      case c: SiliconDebuggingFailureContext => c.counterExample
+      case c: SiliconFailureContext => c.counterExample
+    }.flatten.map(CounterexampleModelBuilder.build(_))
 
   /**
     * Extracts a counterexample from the model the prover produced for the last failed proof attempt.
