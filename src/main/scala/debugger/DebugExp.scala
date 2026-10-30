@@ -84,6 +84,11 @@ object DebugExp {
     val debugExp = new QuantifiedDebugExp(idCounter.getAndIncrement(), description, isInternal_, children, quantifier, qvars, tQvars, triggers, tTriggers)
     debugExp
   }
+
+  def createInstantiationInstance(sourceId: Int, description: String, finalExp: Option[ast.Exp], term: Term)
+                                 : InstantiationDebugExp =
+    new InstantiationDebugExp(idCounter.getAndIncrement(), sourceId, description,
+      finalExp.map(Simplifier.simplify(_, true)), term)
 }
 class DebugExp(val id: Int,
                val description : Option[String],
@@ -179,7 +184,8 @@ class DebugExp(val id: Int,
     }
     val (cs, count, elided) = childNodes(currDepth, filter.depthFor(id), filter)
     Some(DebugNode(id, DebugNodeKind.Assumption, topLevelLabel(filter), description,
-      finalExp.map(_.toString), term.map(_.toString), isInternal_, count, elided, "", sourcePos, cs))
+      finalExp.map(_.toString), term.map(_.toString), isInternal_, count, elided, "", sourcePos, cs,
+      InstantiableForall.isForall(this)))
   }
 
   def toNode(filter: DebugNodeFilter): Option[DebugNode] = toNode(0, filter.maxDepth, filter)
@@ -302,13 +308,28 @@ class QuantifiedDebugExp(id: Int,
       val (cs, count, elided) = childNodes(currDepth, filter.depthFor(id), filter)
       val label = (if (quantifier == "QA") "forall" else "exists") + " " + qvars.mkString(", ")
       Some(DebugNode(id, DebugNodeKind.Quantified, label, description, None, None, isInternal_,
-        count, elided, " :: ", qvars.headOption.flatMap(DebugSourcePos.from), cs))
+        count, elided, " :: ", qvars.headOption.flatMap(DebugSourcePos.from), cs, InstantiableForall.isForall(this)))
     } else {
       // Matches `toString`, which does not print the children in this case.
       Some(DebugNode(id, DebugNodeKind.Quantified, topLevelLabel(filter), description,
         None, None, isInternal_, 0, childrenElided = false, "", None, Seq.empty))
     }
   }
+}
+
+
+/**
+  * An instance of the universally quantified assumption with id `sourceId`, which the user added; see
+  * [[SiliconDebugSession.instantiate]]. It only holds because the quantifier does, so it is removed with it.
+  */
+class InstantiationDebugExp(id: Int,
+                            val sourceId: Int,
+                            description: String,
+                            finalExp: Option[ast.Exp],
+                            term: Term) extends DebugExp(id, Some(description), finalExp, finalExp, Some(term), false,
+                                                         InsertionOrderedSet.empty) {
+
+  override protected def withChildren(newChildren: InsertionOrderedSet[DebugExp]): DebugExp = this
 }
 
 

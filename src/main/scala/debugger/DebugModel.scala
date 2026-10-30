@@ -72,6 +72,8 @@ object DebugNodeKind {
   * @param childrenElided true iff the children were dropped because the maximal depth was reached (as
   *                       opposed to being truncated because there were too many of them).
   * @param childSeparator the string printed between this node's label and its children by [[DebugRenderer]].
+  * @param instantiable   true iff this node is a universally quantified assumption, which
+  *                       [[SiliconDebugSession.instantiate]] can instantiate (unless it is nested in a quantifier).
   */
 case class DebugNode(id: Int,
                      kind: String,
@@ -84,7 +86,8 @@ case class DebugNode(id: Int,
                      childrenElided: Boolean = false,
                      childSeparator: String = "",
                      pos: Option[DebugSourcePos] = None,
-                     children: Seq[DebugNode] = Seq.empty) {
+                     children: Seq[DebugNode] = Seq.empty,
+                     instantiable: Boolean = false) {
 
   /** True iff a client should offer to expand this node to obtain children it has not received yet. */
   def hasHiddenChildren: Boolean = children.size < childCount

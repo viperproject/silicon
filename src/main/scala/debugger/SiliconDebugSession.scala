@@ -388,6 +388,81 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     }
   }
 
+  /**
+    * Instantiates the universally quantified assumption with id `id` and adds the instance to the assumptions. This is
+    * what the prover does when a trigger of the quantifier matches; it helps when none does.
+    *
+    * `arguments` are Viper expressions separated by commas, which are evaluated in the current state and replace the
+    * first bound variables of the quantifier; with fewer arguments than bound variables, the instance is still
+    * quantified over the remaining ones. The instance follows from the quantifier, so adding it is sound. It is
+    * removed together with the quantifier, see [[ProofObligation.removeAssumptions]].
+    *
+    * The quantifier may be nested in another assumption, e.g. among the path conditions of a join: under an
+    * implication, the instance only holds under the implication's condition, too. It cannot be nested in another
+    * quantifier, whose variables it may refer to.
+    */
+  def instantiate(id: Int, arguments: String): DebugCommandResult = withObligation { (o, msgs) =>
+    val args = SiliconDebugSession.splitArguments(arguments)
+    if (args.isEmpty) DebugCommandResult.error("Give the values to instantiate the quantifier with, e.g. :instantiate 12 3, x.")
+    else instantiate(id, args.map(translateStringToExp(_, o, anyType = true)), o, msgs)
+  }
+
+  /** Like [[instantiate]], for arguments that have already been translated to Viper; see [[addAssumptionExp]]. */
+  def instantiateExps(id: Int, arguments: Seq[ast.Exp]): DebugCommandResult = withObligation { (o, msgs) =>
+    instantiate(id, arguments, o, msgs)
+  }
+
+  private def instantiate(id: Int, args: Seq[ast.Exp], o: ProofObligation,
+                          msgs: mutable.ListBuffer[DebugMessage]): DebugCommandResult = {
+    InstantiableForall.find(o.assumptionsExp, id) match {
+      case Left(error) => DebugCommandResult.error(error)
+      case Right(forall) if args.isEmpty || args.size > forall.vars.size =>
+        DebugCommandResult.error(s"[$id] binds ${forall.vars.size} variable(s), ${forall.varNames.mkString(", ")}; " +
+          s"give between 1 and ${forall.vars.size} values, not ${args.size}.")
+      case Right(forall) =>
+        val v = o.v
+        val emitsBefore = v.decider.prover.getAllEmits().size
+        val mark = v.decider.setPathConditionMark()
+        val outcomes = mutable.ListBuffer.empty[(State, Seq[Term], RecordedPathConditions)]
+        val pvef = (e: ast.Exp) => PartialVerificationError(r => ContractNotWellformed(e, r))
+        val res = evaluator.evals(o.s, args, pvef, v)((s1, ts, _, v1) => {
+          outcomes += ((s1, ts, v1.decider.pcs.after(mark)))
+          Success()
+        })
+        val newEmits = v.decider.prover.getAllEmits().drop(emitsBefore)
+        val mismatch = outcomes.headOption.flatMap { case (_, ts, _) =>
+          forall.varNames.zip(forall.vars).zip(args.zip(ts)).collectFirst {
+            case ((name, x), (e, t)) if t.sort != x.sort => s"`$e` is of sort ${t.sort}, but $name is of sort ${x.sort}."
+          }
+        }
+        val failure = res match {
+          case f: Failure => Some(s"Evaluating the values failed: ${f.message.reason.readableMessage}")
+          case _ if outcomes.isEmpty => Some("Evaluating the values is not feasible: the assumptions are contradictory.")
+          case _ if outcomes.size > 1 || outcomes.head._3.branchConditions.nonEmpty =>
+            Some("Evaluating the values branches, e.g. on a conditional expression; give values that do not.")
+          case _ => mismatch
+        }
+        failure match {
+          case Some(message) =>
+            msgs += DebugMessage.error(message)
+            // The evaluation may have left assumptions in the prover; start from the obligation again.
+            obl = Some(initVerifier(o, v.decider.prover.name, lastSolverOptions, msgs))
+            result(msgs, ok = false)
+          case None =>
+            val (s1, ts, pcs) = outcomes.head
+            val bindings = forall.varNames.zip(args).map { case (x, e) => s"$x := $e" }.mkString(", ")
+            val instance = DebugExp.createInstantiationInstance(id, s"instance of [$id] with $bindings",
+              forall.instantiateExp(args), forall.instantiate(ts))
+            v.asInstanceOf[WorkerVerifier].decider.debuggerAssume(instance.term.toSeq, instance)
+            invalidateCounterexample()
+            obl = Some(o.copy(s = s1, proverEmits = o.proverEmits ++ newEmits,
+              assumptionsExp = o.assumptionsExp ++ pcs.assumptionExps + instance))
+            msgs += DebugMessage.info(s"Added [${instance.id}], the instance of [$id] with $bindings.")
+            result(msgs)
+        }
+    }
+  }
+
   private def addAssumption(assumptionE: ast.Exp, free: Boolean, o: ProofObligation,
                             msgs: mutable.ListBuffer[DebugMessage]): DebugCommandResult = {
     evalAssumption(assumptionE, o, free, o.v, msgs) match {
@@ -650,9 +725,11 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     *
     * @param predicateAccess if given, the expression has to be a predicate access, like the argument of a fold or
     *                        unfold statement (the value says which, for the message about abstract predicates);
-    *                        otherwise, it has to be a boolean expression.
+    *                        otherwise, it has to be a boolean expression, unless `anyType`.
+    * @param anyType         whether the expression may be of any type, like the value of a variable.
     */
-  private def translateStringToExp(str: String, obl: ProofObligation, predicateAccess: Option[String] = None): ast.Exp = {
+  private def translateStringToExp(str: String, obl: ProofObligation, predicateAccess: Option[String] = None,
+                                   anyType: Boolean = false): ast.Exp = {
     val resolver = obl.resolver.getOrElse(throw new RuntimeException(
       "This program was not parsed from Viper source, so expressions cannot be entered as Viper text. " +
         "The frontend has to translate the expression itself and use addAssumptionExp/assertExp."))
@@ -678,6 +755,8 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
           case Some(how) =>
             resolver.typechecker.acceptNonAbstractPredicateAccess(pexp, s"abstract predicates cannot be $how")
             resolver.typechecker.check(pexp, TypeHelper.Predicate)
+          case None if anyType =>
+            resolver.typechecker.checkTopTyped(pexp, None)
           case None =>
             resolver.typechecker.check(pexp, PPrimitiv(PReserved(PKw.Bool)((NoPosition, NoPosition)))())
         }
@@ -754,6 +833,24 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
 
 object SiliconDebugSession {
   val proverNames: Seq[String] = Seq(Z3ProverStdIO.name, Cvc5ProverStdIO.name)
+
+  /** Splits `text` at the commas that are not nested in parentheses, brackets or braces, e.g. `f(x, y), 3`. */
+  def splitArguments(text: String): Seq[String] = {
+    val parts = mutable.ListBuffer.empty[String]
+    val current = new StringBuilder
+    var depth = 0
+    text.foreach {
+      case ',' if depth == 0 =>
+        parts += current.toString
+        current.clear()
+      case c =>
+        if ("([{".contains(c)) depth += 1
+        else if (")]}".contains(c)) depth = math.max(0, depth - 1)
+        current += c
+    }
+    parts += current.toString
+    parts.toSeq.map(_.trim).filter(_.nonEmpty)
+  }
 
   val noAssertionDescription: String =
     "There is no assertion to prove before a statement; use :assert <expression> to check whether an expression holds."

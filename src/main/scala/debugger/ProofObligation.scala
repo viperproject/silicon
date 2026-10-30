@@ -13,6 +13,8 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.ErrorReason
 
+import scala.collection.mutable
+
 /**
   * All state of a single proof obligation the debugger is working on: the symbolic state and verifier at the
   * point of failure, everything needed to re-create a prover for it, the path conditions in both term and
@@ -42,8 +44,27 @@ case class ProofObligation(s: State,
                            assertionOutdated: Boolean = false
                           ){
 
+  /**
+    * Removes the assumptions with the given ids, with everything nested in them, and the instances of removed
+    * quantifiers (see [[SiliconDebugSession.instantiate]]), which only hold because of them.
+    */
   def removeAssumptions(ids: Seq[Int]): ProofObligation = {
-    val newAssumptionsExp = assumptionsExp.filter(a => !ids.contains(a.id)).map(c => c.removeChildrenById(ids))
+    val removed = mutable.Set.empty[Int]
+    def removeAll(de: DebugExp): Unit = if (removed.add(de.id)) de.children.foreach(removeAll)
+    val visited = mutable.HashSet.empty[DebugExp]
+    def visit(de: DebugExp): Unit =
+      if (visited.add(de)) { if (ids.contains(de.id)) removeAll(de) else de.children.foreach(visit) }
+    assumptionsExp.foreach(visit)
+
+    val instances = assumptionsExp.toSeq.collect { case i: InstantiationDebugExp => i }
+    var orphans = instances.filter(i => removed.contains(i.sourceId) && !removed.contains(i.id))
+    while (orphans.nonEmpty) {
+      orphans.foreach(removeAll)
+      orphans = instances.filter(i => removed.contains(i.sourceId) && !removed.contains(i.id))
+    }
+
+    val toRemove = removed.toSeq
+    val newAssumptionsExp = assumptionsExp.filter(a => !removed.contains(a.id)).map(c => c.removeChildrenById(toRemove))
     this.copy(assumptionsExp = newAssumptionsExp)
   }
 
