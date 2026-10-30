@@ -116,8 +116,15 @@ class DebugExp(val id: Int,
 
   def removeChildrenById(ids: Seq[Int]): DebugExp ={
     val newChildren = children.filter(i => !ids.contains(i.id)).map(c => c.removeChildrenById(ids))
-    new DebugExp(id, description, originalExp, finalExp, term, isInternal_, newChildren)
+    withChildren(newChildren)
   }
+
+  /**
+    * This expression with other children. Subclasses must keep their class, which determines what the children mean
+    * (see `getAllTerms`): the children of an implication, say, only hold under its condition.
+    */
+  protected def withChildren(newChildren: InsertionOrderedSet[DebugExp]): DebugExp =
+    new DebugExp(id, description, originalExp, finalExp, term, isInternal_, newChildren)
 
   override def toString: String = {
     toString(0, 6, new DebugExpPrintConfiguration)
@@ -225,6 +232,9 @@ class ImplicationDebugExp(id: Int,
     Seq(Implies(term.get, And(children.toSeq.flatMap(_.getAllTerms(visited)))))
   }
 
+  override protected def withChildren(newChildren: InsertionOrderedSet[DebugExp]): DebugExp =
+    new ImplicationDebugExp(id, description, originalExp, finalExp, term, isInternal_, newChildren)
+
   override def toString(currDepth: Int, maxDepth: Int, config: DebugExpPrintConfiguration): String = {
     if (isInternal_ && !config.isPrintInternalEnabled) {
       return ""
@@ -268,6 +278,9 @@ class QuantifiedDebugExp(id: Int,
     val q = if (quantifier == "QA") Forall else Exists
     Seq(Quantification(q, tQvars, And(children.toSeq.flatMap(_.getAllTerms(visited))), tTriggers))
   }
+
+  override protected def withChildren(newChildren: InsertionOrderedSet[DebugExp]): DebugExp =
+    new QuantifiedDebugExp(id, description, isInternal_, newChildren, quantifier, qvars, tQvars, triggers, tTriggers)
 
   override def toString(currDepth: Int, maxDepth: Int, config: DebugExpPrintConfiguration): String = {
     if (isInternal_ && !config.isPrintInternalEnabled) {
