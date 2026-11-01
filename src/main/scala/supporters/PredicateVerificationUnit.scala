@@ -110,6 +110,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
                          h = v.heapSupporter.getEmptyHeap(sInit.program, v),
                          oldHeaps = OldHeaps(),
                          functionRecorder = funcRecorder)
+      val s0 = if (debugOn) v.startKeyHeap(s, "nil", InhalePre) else s
 
       val err = PredicateNotWellformed(predicate)
 
@@ -122,7 +123,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
         case Some(body) =>
           /*    locallyXXX {
                 magicWandSupporter.checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
-          &&*/  executionFlowController.locally(s, v)((s1, _) => {
+          &&*/  executionFlowController.locally(s0, v)((s1, _) => {
                   produce(s1, toSf(snap), body, err, v)((s2, v2) => {
                     val branchConds = v2.decider.pcs.branchConditions.reverse
                     val branchCondExps = v2.decider.pcs.branchConditionExps.reverse

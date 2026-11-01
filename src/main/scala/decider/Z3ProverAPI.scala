@@ -429,7 +429,7 @@ class Z3ProverAPI(uniqueId: String,
     Map.from(result)
   }
 
-  def comment(str: String): Unit = {
+  def comment(str: => String): Unit = {
     // ignore
   }
 

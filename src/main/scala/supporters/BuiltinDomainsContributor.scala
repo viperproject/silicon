@@ -8,6 +8,7 @@ package viper.silicon.supporters
 
 import java.io.File
 import java.net.URL
+import java.util.concurrent.ConcurrentHashMap
 import scala.annotation.unused
 import scala.reflect.ClassTag
 import viper.silver.ast
@@ -56,6 +57,10 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
 
   def analyze(program: ast.Program): Unit = {
     val builtinDomainTypeInstances = computeGroundTypeInstances(program)
+
+    /* Nothing to collect if the program doesn't use the builtin domain; avoids loading its source program */
+    if (builtinDomainTypeInstances.isEmpty) return
+
     val sourceProgram = loadProgramFromUrl(sourceUrl)
     val sourceDomain = transformSourceDomain(sourceProgram.findDomain(sourceDomainName))
 
@@ -158,10 +163,33 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
 
   /* Utility */
 
-  // TODO: Check that Silver's parser doesn't already provide suitable functionality.
-  private def loadProgramFromUrl(url: URL): ast.Program = {
+  private def loadProgramFromUrl(url: URL): ast.Program =
+    BuiltinDomainsContributor.loadProgramFromUrl(url)
+}
+
+object BuiltinDomainsContributor {
+  /* Parsed source programs, keyed by URL. Parsing and type-checking them is expensive and the resulting
+   * (immutable) programs are identical for each verification run, so they are shared across runs and verifiers.
+   * Each entry also records the source's modification time (if it is a file), such that changes to
+   * user-provided axiomatisation files are picked up.
+   */
+  private val programCache = new ConcurrentHashMap[String, (Long, ast.Program)]()
+
+  private def lastModified(url: URL): Long =
+    if (url.getProtocol == "file") new File(url.toURI).lastModified() else 0L
+
+  def loadProgramFromUrl(url: URL): ast.Program = {
     assert(url != null, s"Unexpectedly found sourceUrl == null")
 
+    val modified = lastModified(url)
+
+    programCache.compute(url.toString, (_, cached) =>
+      if (cached != null && cached._1 == modified) cached
+      else (modified, parseProgramFromUrl(url))
+    )._2
+  }
+
+  private def parseProgramFromUrl(url: URL): ast.Program = {
     val fromPath = viper.silver.utility.Paths.pathFromResource(url)
     val source = scala.io.Source.fromURL(url)
 

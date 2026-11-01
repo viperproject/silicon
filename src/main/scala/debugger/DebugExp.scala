@@ -85,6 +85,7 @@ object DebugExp {
     debugExp
   }
 }
+
 class DebugExp(val id: Int,
                val description : Option[String],
                val originalExp : Option[ast.Exp],
@@ -173,7 +174,6 @@ class DebugExp(val id: Int,
 
 }
 
-
 class ImplicationDebugExp(id: Int,
                           description : Option[String],
                           originalExp : Option[ast.Exp],
@@ -202,7 +202,6 @@ class ImplicationDebugExp(id: Int,
     }
   }
 }
-
 
 class QuantifiedDebugExp(id: Int,
                          description : Option[String],
@@ -233,7 +232,6 @@ class QuantifiedDebugExp(id: Int,
     }
   }
 }
-
 
 class DebugExpPrintConfiguration {
   var isPrintInternalEnabled: Boolean = false
@@ -284,7 +282,6 @@ class DebugExpPrintConfiguration {
 }
 
 class DebugAxiom(val description: String, val terms: InsertionOrderedSet[Term]){
-
   override def toString: String = {
     s"$description:\n\t\t${terms.mkString("\n\t\t")}\n"
   }

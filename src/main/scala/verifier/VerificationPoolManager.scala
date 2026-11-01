@@ -29,7 +29,10 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
     def assume(term: Term): Unit = workerVerifiers foreach (_.decider.prover.assume(term))
     override def assumeAxioms(terms: InsertionOrderedSet[Term], description: String): Unit = workerVerifiers foreach (_.decider.prover.assumeAxioms(terms, description))
     def declare(decl: Decl): Unit =  workerVerifiers foreach (_.decider.prover.declare(decl))
-    def comment(content: String): Unit = workerVerifiers foreach (_.decider.prover.comment(content))
+    def comment(content: => String): Unit = {
+      lazy val c = content
+      workerVerifiers foreach (_.decider.prover.comment(c))
+    }
 
     def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit =
       workerVerifiers foreach (_.decider.prover.saturate(data))
