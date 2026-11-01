@@ -7,8 +7,22 @@
 // Import general settings from Silver
 lazy val silver = project in file("silver")
 
+/* Compiler options that apply to Silicon's own sources (i.e. to projects `silicon` and `common`),
+ * but not to Silver, which is built as part of this build but maintained separately.
+ *
+ * Warnings are treated as errors to prevent new ones from being introduced. Note that the
+ * warnings that are to be reported are configured in Silver's build.sbt (via
+ * `ThisBuild / scalacOptions`). To temporarily compile despite warnings, e.g. while refactoring,
+ * run Sbt with `set silicon/scalacOptions -= "-Xfatal-warnings"` (analogously for `common`).
+ */
+lazy val siliconScalacOptions = Seq(
+  "-Xfatal-warnings"
+)
+
 lazy val common = (project in file("common"))
   .dependsOn(silver)
+  .settings(
+    scalacOptions ++= siliconScalacOptions)
 
 // Silicon specific project settings
 lazy val silicon = (project in file("."))
@@ -22,6 +36,7 @@ lazy val silicon = (project in file("."))
     version := "1.1-SNAPSHOT",
 
     // Compilation settings
+    scalacOptions ++= siliconScalacOptions,
     // Remove elidable method calls such as in SymbExLogger during compilation
     // scalacOptions ++= Seq("-Xelide-below", "1000"),
     // scalacOptions ++= Seq("-Ypatmat-exhaust-depth", "640"),

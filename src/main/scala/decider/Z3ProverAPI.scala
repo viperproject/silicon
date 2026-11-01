@@ -451,9 +451,12 @@ class Z3ProverAPI(uniqueId: String,
     if (debugMode)
       allDecls = allDecls :+ decl
     decl match {
-      case SortDecl(s) =>
-        val convertedSort = termConverter.convertSort(s)
-        val convertedSortSymbol = termConverter.convertSortSymbol(s)
+      /* Matching on the type (instead of using SortDecl's extractor) allows the compiler to
+       * verify that this match is exhaustive.
+       */
+      case sd: SortDecl =>
+        val convertedSort = termConverter.convertSort(sd.sort)
+        val convertedSortSymbol = termConverter.convertSortSymbol(sd.sort)
         if (convertedSortSymbol.isDefined) {
           emittedSortSymbols.add(convertedSortSymbol.get)
           emittedSorts.add(convertedSort)

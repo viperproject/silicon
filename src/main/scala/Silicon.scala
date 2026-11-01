@@ -26,8 +26,6 @@ import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
 import viper.silver.utility.{FileProgramSubmitter}
 
-import scala.util.chaining._
-
 object Silicon {
   val name = BuildInfo.projectName
 

@@ -712,7 +712,8 @@ object Converter {
     val nullRefName: String = model.entries.getOrElse("$Ref.null","Ref!val!0").toString
     for ((variable: ast.AbstractLocalVar, term: Term) <- store.termValues) {
       var localSort: Option[Sort] = None
-      val name = variable match {
+      /* A store only maps local variables and result variables to values. */
+      val name = (variable: @unchecked) match {
         case ast.LocalVar(n, typ) =>
           localSort = typeToSort(typ)
           n
@@ -807,6 +808,11 @@ object Converter {
       case t: ast.Function => symbolConverter.toFunction(t, program).id
       case t@ast.BackendFunc(_, _, _, _) => symbolConverter.toFunction(t, program).id
       case t: ast.DomainFunc => symbolConverter.toFunction(t, argSort :+ resSort, program).id
+      case other =>
+        /* Only user-declared functions are translated; the built-in operations that also are
+         * ast.FuncLikes never reach this point.
+         */
+        sys.error(s"Unexpected function $other cannot be translated")
     }
     val kek = smtfunc.toString
       .replace("[", "<")
@@ -981,7 +987,8 @@ case class ExtractedFunction(fname: String,
   }
 
   def typecheck(is: ExtractedModelEntry, should: Sort): Boolean = {
-    is match {
+    /* Set, multiset and predicate heap entries are currently not type-checked. */
+    (is: @unchecked) match {
       case LitIntEntry(_) => should == sorts.Int
       case LitBoolEntry(_) => should == sorts.Bool
       case LitPermEntry(_) => should == sorts.Perm

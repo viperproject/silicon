@@ -15,7 +15,7 @@ import viper.silicon.resources.{FieldID, MagicWandID, PredicateID}
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.sorts.{HeapSort, MaskSort, PredHeapSort, PredMaskSort, WandHeapSort}
 import viper.silicon.state.terms.utils.consumeExactRead
-import viper.silicon.state.terms.{And, App, AtLeast, AtMost, DummyHeap, First, HeapDepFun, HeapMapTerm, HeapSingleton, MagicWandSnapshot, MaskMapTerm, MWSFLookup, Forall, FullPerm, GoodFieldMask, GoodMask, Greater, HeapLookup, HeapToSnap, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Not, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, Second, SnapToHeap, Sort, SortWrapper, Term, Trigger, True, Var, ZeroMask, fromSnapTree, perms, sorts, toSnapTree}
+import viper.silicon.state.terms.{And, App, AtLeast, AtMost, DummyHeap, HeapDepFun, HeapMapTerm, HeapSingleton, MagicWandSnapshot, MaskMapTerm, MWSFLookup, Forall, FullPerm, GoodFieldMask, GoodMask, Greater, HeapLookup, HeapToSnap, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Not, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, SnapToHeap, Sort, SortWrapper, Term, Trigger, True, Var, ZeroMask, fromSnapTree, perms, sorts, toSnapTree}
 import viper.silicon.state.{BasicMaskHeapChunk, FunctionPreconditionTransformer, Heap, Identifier, MagicWandIdentifier, State, Store, SuffixedIdentifier, terms}
 import viper.silicon.supporters.functions.{MaskHeapFunctionEncoding, NoopFunctionRecorder}
 import viper.silicon.verifier.Verifier
@@ -28,6 +28,7 @@ import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotF
 
 import scala.collection.mutable.ListBuffer
 import scala.collection.{immutable, mutable}
+import scala.annotation.unused
 
 object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent with HeapSupportRules {
 
@@ -93,8 +94,8 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
 
   def findMaskHeapChunkOptionally(h: Heap, r: Any) = h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == r).asInstanceOf[Option[BasicMaskHeapChunk]]
 
-  def findOrCreateMaskHeapChunk(h: Heap, res: Any, s: State, v: Verifier) = {
-    h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == res) match {
+  def findOrCreateMaskHeapChunk(h: Heap, res: Any, @unused s: State, v: Verifier) = {
+    (h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == res): @unchecked) match {
       case Some(c: BasicMaskHeapChunk) => (h, c)
       case None =>
         res match {
@@ -114,7 +115,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
     val mergedChunks = resources.map(r => {
       val oldChunk = findMaskHeapChunkOptionally(h, r)
       val newChunk = findMaskHeapChunkOptionally(newH, r)
-      (oldChunk, newChunk) match {
+      ((oldChunk, newChunk): @unchecked) match {
         case (Some(c1), Some(c2)) =>
           val newMask = MaskSum(c1.mask, c2.mask)
           val newHeap = v.decider.createAlias(MergeHeaps(c1.heap, c1.mask, c2.heap, c2.mask), s.get)
@@ -137,7 +138,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
     convertFromSnapshot(snap, resources, s, v)
   }
 
-  def convertFromSnapshot(snap: Term, resources: Seq[Any], s: State, v: Verifier): immutable.ListMap[Any, Term] = {
+  def convertFromSnapshot(snap: Term, resources: Seq[Any], @unused s: State, @unused v: Verifier): immutable.ListMap[Any, Term] = {
     val snapParts = fromSnapTree(snap, resources.size)
     val heapParts = snapParts.zip(resources).map(tpl => (tpl._2,
       tpl._1 match {
@@ -167,7 +168,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
     val masks = mutable.LinkedHashSet[Term]()
 
     def traverse(mask: Term): Unit = mask match {
-      case MaskAdd(m, r, v) => receivers.add(r); traverse(m)
+      case MaskAdd(m, r, _) => receivers.add(r); traverse(m)
       case MaskSum(m1, m2) => traverse(m1); traverse(m2)
       case MaskDiff(m1, m2) => masks.add(m2); traverse(m1)
       case ZeroMask =>
@@ -333,9 +334,9 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
 
   def consumeSingleLocation(s: State,
                             h: Heap,
-                            codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
+                            @unused codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
                             arguments: Seq[Term], // es := e_1, ..., e_n
-                            argumentsExp: Option[Seq[ast.Exp]],
+                            @unused argumentsExp: Option[Seq[ast.Exp]],
                             resourceAccess: ast.ResourceAccess,
                             permissions: Term, /* p */
                             permissionsExp: Option[ast.Exp],
@@ -363,7 +364,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
         case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s, "single QP consume inside package")
         case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
       }
-      magicWandSupporter.transfer(s, permissions, permissionsExp, failure, Seq(), v)((s1, h1a, rPerm, rPermExp, v1) => {
+      magicWandSupporter.transfer(s, permissions, permissionsExp, failure, Seq(), v)((s1, h1a, rPerm, _, v1) => {
         val (h1, resChunk) = resourceToFind match {
           case mwi: MagicWandIdentifier => findOrCreateMaskHeapChunk(h1a, mwi, s1, v1)
           case r: ast.Resource => (h1a, findMaskHeapChunk(h1a, r))
@@ -609,7 +610,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
 
             if (s.exhaleExt) {
               val failure = createFailure(pve dueTo insufficientPermissionReason, v, s, "consuming QP")
-              magicWandSupporter.transfer(s, lossOfInvOfLoc, lossExp, failure, formalQVars, v)((s1, h1a, rPerm, rPermExp, v1) => {
+              magicWandSupporter.transfer(s, lossOfInvOfLoc, lossExp, failure, formalQVars, v)((s1, h1a, rPerm, _, _) => {
 
                 val (hp, currentChunk) = resourceToFind match {
                   case mwi: MagicWandIdentifier => findOrCreateMaskHeapChunk(h1a, mwi, s1, v)

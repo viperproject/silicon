@@ -37,6 +37,6 @@ case class RecordConfig(kind: String, value: Option[String])
 object LogConfigProtocol extends DefaultJsonProtocol {
 
   // recordConfigFormat has to appear before logConfigFormat!
-  implicit val recordConfigFormat = jsonFormat2(RecordConfig.apply)
-  implicit val logConfigFormat = jsonFormat6(LogConfig.apply)
+  implicit val recordConfigFormat: RootJsonFormat[RecordConfig] = jsonFormat2(RecordConfig.apply)
+  implicit val logConfigFormat: RootJsonFormat[LogConfig] = jsonFormat6(LogConfig.apply)
 }

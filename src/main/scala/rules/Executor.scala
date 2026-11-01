@@ -179,7 +179,7 @@ object executor extends ExecutionRules {
       case (Seq(thenEdge@ConditionalEdge(cond1, _, _, _), elseEdge@ConditionalEdge(cond2, _, _, _)), _)
         if Verifier.config.parallelizeBranches() && cond2 == ast.Not(cond1)() =>
         val condEdgeRecord = new ConditionalEdgeRecord(thenEdge.condition, s, v.decider.pcs)
-        val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
+        v.symbExLog.openScope(condEdgeRecord)
         val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v)((s2, tCond, eCondNew, v1) =>
           brancher.branch(s2, tCond, (thenEdge.condition, eCondNew), v1)(
             (s3, v3) => {
@@ -421,7 +421,7 @@ object executor extends ExecutionRules {
       case ass @ ast.LocalVarAssign(x, rhs) =>
         val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(ass)) else s
         eval(s0, rhs, AssignmentFailed(ass), v)((s1, tRhs, rhsNew, v1) => {
-          val (t, e) = ssaifyRhs(tRhs, rhs, rhsNew, x.name, x.typ, v, s1)
+          val (t, e) = ssaifyRhs(tRhs, rhs, rhsNew, x.name, x.typ, v)
           val s1a = if (debugOn) v.finishKeyHeap(s1) else s1
           Q(s1a.copy(g = s1a.g + (x, (t, e))), v1)})
 
@@ -437,7 +437,7 @@ object executor extends ExecutionRules {
         eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) => {
           val s1a = if (debugOn) v1.startKeyHeap(s1, oldLabel, ExecStmt(ass)) else s1
           eval(s1a, rhs, pve, v1)((s2, tRhs, eRhsNew, v2) => {
-            val (tSnap, _) = ssaifyRhs(tRhs, rhs, eRhsNew, field.name, field.typ, v2, s2)
+            val (tSnap, _) = ssaifyRhs(tRhs, rhs, eRhsNew, field.name, field.typ, v2)
             v2.heapSupporter.execFieldAssign(s2, ass, tRcvr, eRcvrNew, tSnap, eRhsNew, pve, v2)((s3, v3) => {
               val s3a = if (debugOn) v3.finishKeyHeap(s3) else s3
               Q(s3a, v3)})
@@ -752,7 +752,7 @@ object executor extends ExecutionRules {
     executed
   }
 
-   private def ssaifyRhs(rhs: Term, rhsExp: ast.Exp, rhsExpNew: Option[ast.Exp], name: String, typ: ast.Type, v: Verifier, s : State): (Term, Option[ast.Exp]) = {
+   private def ssaifyRhs(rhs: Term, rhsExp: ast.Exp, rhsExpNew: Option[ast.Exp], name: String, typ: ast.Type, v: Verifier): (Term, Option[ast.Exp]) = {
      rhs match {
        case _: Var | _: Literal =>
          (rhs, rhsExpNew)

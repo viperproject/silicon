@@ -31,7 +31,6 @@ import viper.silicon.supporters.{AnnotationSupporter, DefaultDomainsContributor,
 import viper.silicon.supporters.qps._
 import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
 import viper.silicon.utils.Counter
-import viper.silver.ast.utility.QuantifiedPermissions.collectInDependencies
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.{BackendType, Member}
 import viper.silver.cfg.silver.SilverCfg
