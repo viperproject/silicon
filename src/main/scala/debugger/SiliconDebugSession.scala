@@ -269,16 +269,17 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
         obl = Some(initVerifier(o, v.decider.prover.name, lastSolverOptions, msgs))
         result(msgs)
       case _ =>
+        val command = s"${if (unfold) "unfold" else "fold"} ${if (pap.perm.isInstanceOf[ast.FullPerm]) pap.loc else pap}"
         val newCases = outcomes.toSeq.map { case (s1, pcs) =>
           val conditions = pcs.branchConditionExps.toSeq.map(bce => bce._1 -> bce._2.getOrElse(bce._1))
           val description = conditions.map(_._2.toString).filterNot(_ == "true").mkString(" && ")
-          (if (description.isEmpty) "no conditions" else description) -> o.copy(
+          (if (description.isEmpty) "no conditions" else description) -> o.changedBy(command, o.copy(
             s = s1,
             proverEmits = o.proverEmits ++ newEmits,
             branchConditions = o.branchConditions ++ pcs.branchConditions.toSeq,
             branchConditionExps = o.branchConditionExps ++ conditions,
             assumptionsExp = o.assumptionsExp ++ pcs.assumptionExps,
-            assertionOutdated = o.assertionOutdated || !isPaused)
+            assertionOutdated = o.assertionOutdated || !isPaused))
         }
         cases = newCases
         invalidateCounterexample()
@@ -322,7 +323,8 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
       case None => Left("There is no proof obligation to inspect.")
       case Some(o) =>
         val filter = DebugNodeFilter.fromPrintConfig(o.printConfig)
-        val found = o.assumptionsExp.toSeq.view
+        // Removed assumptions are still shown, see UserChanges.removedAssumptions.
+        val found = (o.assumptionsExp.toSeq ++ o.userChanges.removedAssumptions.map(_._1)).view
           .map(_.getExpWithId(nodeId, new mutable.HashSet()))
           .collectFirst { case Some(de) => de }
         found match {
@@ -461,8 +463,8 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
               forall.instantiateExp(args), forall.instantiate(ts))
             v.asInstanceOf[WorkerVerifier].decider.debuggerAssume(instance.term.toSeq, instance)
             invalidateCounterexample()
-            obl = Some(o.copy(s = s1, proverEmits = o.proverEmits ++ newEmits,
-              assumptionsExp = o.assumptionsExp ++ pcs.assumptionExps + instance))
+            obl = Some(o.changedBy(s"instantiate [$id] with $bindings", o.copy(s = s1,
+              proverEmits = o.proverEmits ++ newEmits, assumptionsExp = o.assumptionsExp ++ pcs.assumptionExps + instance)))
             msgs += DebugMessage.info(s"Added [${instance.id}], the instance of [$id] with $bindings.")
             result(msgs)
         }
@@ -511,8 +513,8 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
           r.typechecker.debugVariableTypes.get(d.name).foreach(t => r.typechecker.debugVariableTypes += (n -> t))
         }
         invalidateCounterexample()
-        obl = Some(o.copy(s = o.s.copy(g = store), proverEmits = o.proverEmits ++ newEmits,
-          assumptionsExp = o.assumptionsExp + witness))
+        obl = Some(o.changedBy(s"witness of [$id]", o.copy(s = o.s.copy(g = store),
+          proverEmits = o.proverEmits ++ newEmits, assumptionsExp = o.assumptionsExp + witness)))
         msgs += DebugMessage.info(s"Added [${witness.id}], the witness $names of [$id]: ${witness.finalExp.getOrElse(witness.term.get)}")
         result(msgs)
     }
@@ -524,7 +526,8 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
       case Some((resS, resT, resE, evalAssumptions)) =>
         val allAssumptions = o.assumptionsExp ++ evalAssumptions + DebugExp.createInstance(assumptionE, resE).withTerm(resT)
         invalidateCounterexample()
-        obl = Some(o.copy(s = resS, assumptionsExp = allAssumptions))
+        obl = Some(o.changedBy(s"${if (free) "assume" else "assert"} $assumptionE",
+          o.copy(s = resS, assumptionsExp = allAssumptions)))
         result(msgs)
       case None =>
         result(msgs, ok = false)

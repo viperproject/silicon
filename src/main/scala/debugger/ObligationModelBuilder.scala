@@ -28,6 +28,7 @@ object ObligationModelBuilder {
   private val BranchSection = 3
   private val AxiomSection = 4
   private val DeclSection = 5
+  private val RemovedSection = 6
 
   def build(obl: ProofObligation, failureIndex: Int = 0, proverArgs: Option[String] = None): ObligationModel = {
     val filter = DebugNodeFilter.fromPrintConfig(obl.printConfig)
@@ -45,7 +46,8 @@ object ObligationModelBuilder {
       proverArgs = proverArgs,
       timeoutMs = obl.timeout,
       printConfig = obl.printConfig.toModel,
-      assertionOutdated = obl.assertionOutdated)
+      assertionOutdated = obl.assertionOutdated,
+      removed = removedNodes(obl, filter))
   }
 
   private def proverName(obl: ProofObligation): String =
@@ -64,13 +66,14 @@ object ObligationModelBuilder {
       val value = if (printTerms) term.toString else exp.map(_.toString).getOrElse(term.toString)
       DebugNode(syntheticId(StoreSection, idx), DebugNodeKind.StoreEntry, s"$variable -> $value",
         expString = exp.map(_.toString), termString = Some(term.toString),
-        pos = DebugSourcePos.from(variable))
+        pos = DebugSourcePos.from(variable), origin = obl.userChanges.store.get(variable))
     }
   }
 
   private def heapModels(obl: ProofObligation): Seq[DebugHeapModel] = {
     var counter = 0
-    def chunkNodes(h: Heap): Seq[DebugNode] = h.values.toSeq.map { c =>
+    // Only the current heap can have been changed by the user.
+    def chunkNodes(h: Heap, origins: Map[Chunk, String] = Map.empty): Seq[DebugNode] = h.values.toSeq.map { c =>
       counter += 1
       // The predicate instance of a predicate chunk, e.g. `list(x)`, lets a client offer to fold or unfold it.
       val predicateInstance = c match {
@@ -79,25 +82,28 @@ object ObligationModelBuilder {
         case _ => None
       }
       DebugNode(syntheticId(HeapSection, counter), DebugNodeKind.Chunk, chunkString(c, obl),
-        expString = predicateInstance, termString = Some(c.toString))
+        expString = predicateInstance, termString = Some(c.toString), origin = origins.get(c))
     }
 
+    val current = chunkNodes(obl.s.h, obl.userChanges.chunks)
     if (obl.printConfig.printOldHeaps)
-      DebugHeapModel("Current Heap", "current", chunkNodes(obl.s.h)) +:
+      DebugHeapModel("Current Heap", "current", current) +:
         obl.s.oldHeaps.toSeq.map { case (k, v) => DebugHeapModel(s"Heap $k", k, chunkNodes(v)) }
     else
-      Seq(DebugHeapModel("Heap", "current", chunkNodes(obl.s.h)))
+      Seq(DebugHeapModel("Heap", "current", current))
   }
 
   private def branchConditionNodes(obl: ProofObligation): Seq[DebugNode] = {
+    // Paired with their indices before filtering, which is what UserChanges.branchConditions refers to.
     val labels =
       if (obl.printConfig.printInternalTermRepresentation)
-        obl.branchConditions.filter(bc => bc != True).map(_.toString)
+        obl.branchConditions.zipWithIndex.filter(bc => bc._1 != True).map(bc => bc._1.toString -> bc._2)
       else
-        obl.branchConditionExps.map(bc => Simplifier.simplify(bc._2, true))
-          .filter(bc => bc != ast.TrueLit()()).map(_.toString)
-    labels.zipWithIndex.map { case (l, idx) =>
-      DebugNode(syntheticId(BranchSection, idx), DebugNodeKind.BranchCondition, l)
+        obl.branchConditionExps.map(bc => Simplifier.simplify(bc._2, true)).zipWithIndex
+          .filter(bc => bc._1 != ast.TrueLit()()).map(bc => bc._1.toString -> bc._2)
+    labels.zipWithIndex.map { case ((l, bcIdx), idx) =>
+      DebugNode(syntheticId(BranchSection, idx), DebugNodeKind.BranchCondition, l,
+        origin = obl.userChanges.branchConditions.get(bcIdx))
     }
   }
 
@@ -119,6 +125,18 @@ object ObligationModelBuilder {
     obl.assumptionsExp.toSeq
       .filter(d => !d.isInternal || filter.includeInternal)
       .flatMap(_.toNode(filter))
+      .map(n => n.copy(origin = obl.userChanges.assumptions.get(n.id)))
+
+  private def removedNodes(obl: ProofObligation, filter: DebugNodeFilter): Seq[DebugNode] = {
+    val assumptions = obl.userChanges.removedAssumptions.flatMap { case (de, command) =>
+      de.toNode(filter.copy(includeInternal = true)).map(_.copy(origin = Some(command)))
+    }
+    val chunks = obl.userChanges.removedChunks.zipWithIndex.map { case ((c, command), idx) =>
+      DebugNode(syntheticId(RemovedSection, idx), DebugNodeKind.Chunk, chunkString(c, obl),
+        termString = Some(c.toString), origin = Some(command))
+    }
+    assumptions ++ chunks
+  }
 
   private def assertionNode(obl: ProofObligation): DebugNode = {
     if (obl.eAssertion.finalExp.isDefined) {

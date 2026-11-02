@@ -21,6 +21,7 @@ object DebugRenderer {
       renderAxioms(m.axioms) +
       renderDeclarations(m.declarations) +
       renderAssumptions(m.assumptions) +
+      renderRemoved(m.removed) +
       renderAssertion(m.assertion)
 
   def renderErrorInfo(e: ErrorInfoModel): String =
@@ -31,7 +32,17 @@ object DebugRenderer {
 
   /** A flat section, whose entries are printed one per line: branch conditions, the store, a heap. */
   private def renderSection(title: String, nodes: Seq[DebugNode]): String =
-    s"$title:\n\t\t${nodes.map(_.label).mkString("\n\t\t")}\n\n"
+    s"$title:\n\t\t${nodes.map(n => n.label + renderOrigin(n)).mkString("\n\t\t")}\n\n"
+
+  /** Marks what the user changed with debugger commands, so that it can be told apart from what comes from the program. */
+  private def renderOrigin(n: DebugNode, verb: String = "added"): String =
+    n.origin.map(c => s"    ($verb by: $c)").getOrElse("")
+
+  private def renderRemoved(removed: Seq[DebugNode]): String =
+    if (removed.isEmpty) ""
+    else s"Removed in the debugger: ${removed.map(n =>
+      if (n.kind == DebugNodeKind.Chunk) s"\n\t${n.label}${renderOrigin(n, "removed")}"
+      else renderNode(n, 0, originVerb = "removed")).mkString}\n\n"
 
   private def renderAxioms(axioms: Seq[DebugNode]): String =
     if (axioms.isEmpty) ""
@@ -52,12 +63,13 @@ object DebugRenderer {
   def renderNodes(nodes: Seq[DebugNode], depth: Int, showIds: Boolean = true): String =
     nodes.map(renderNode(_, depth, showIds)).mkString
 
-  def renderNode(n: DebugNode, depth: Int, showIds: Boolean = true): String =
+  def renderNode(n: DebugNode, depth: Int, showIds: Boolean = true, originVerb: String = "added"): String =
     if (n.kind == DebugNodeKind.Literal) n.label
     else {
       // Only assumptions have ids the user can refer to; for other nodes they would just be noise.
       val id = if (showIds) "[" + n.id + "] " else ""
-      "\n\t" + ("\t" * depth) + id + n.label + n.childSeparator + renderChildren(n, depth, showIds)
+      "\n\t" + ("\t" * depth) + id + n.label + renderOrigin(n, originVerb) + n.childSeparator +
+        renderChildren(n, depth, showIds)
     }
 
   private def renderChildren(n: DebugNode, depth: Int, showIds: Boolean): String = {

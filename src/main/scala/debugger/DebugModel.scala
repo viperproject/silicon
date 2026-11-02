@@ -79,6 +79,8 @@ object DebugNodeKind {
   * @param quantifier     `forall` or `exists` if this node is a quantified assumption, which
   *                       [[SiliconDebugSession.instantiate]] or [[SiliconDebugSession.obtainWitness]] can use (unless it
   *                       is nested in a quantifier).
+  * @param origin         the debugger command that added this node, e.g. `unfold list(x)`, if the user added it rather
+  *                       than the program; for a node in [[ObligationModel.removed]], the command that removed it.
   */
 case class DebugNode(id: Int,
                      kind: String,
@@ -92,7 +94,8 @@ case class DebugNode(id: Int,
                      childSeparator: String = "",
                      pos: Option[DebugSourcePos] = None,
                      children: Seq[DebugNode] = Seq.empty,
-                     quantifier: Option[String] = None) {
+                     quantifier: Option[String] = None,
+                     origin: Option[String] = None) {
 
   /** True iff a client should offer to expand this node to obtain children it has not received yet. */
   def hasHiddenChildren: Boolean = children.size < childCount
@@ -146,7 +149,10 @@ case class ObligationModel(failureIndex: Int,
                            /** A model refuting this obligation, if one has been computed; see [[CounterexampleModel]]. */
                            counterexample: Option[CounterexampleModel] = None,
                            /** See [[ProofObligation.assertionOutdated]]. */
-                           assertionOutdated: Boolean = false)
+                           assertionOutdated: Boolean = false,
+                           /** The assumptions and chunks from the program the user removed, with the command that
+                             * removed each as its [[DebugNode.origin]]; see [[UserChanges]]. */
+                           removed: Seq[DebugNode] = Seq.empty)
 
 /** A verification failure that the debugger may be able to open a proof obligation for. */
 case class DebugFailureInfo(index: Int,
