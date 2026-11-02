@@ -134,7 +134,7 @@ object chunkSupporter extends ChunkSupportRules {
                   if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
                     Some(ch.snap)
                   } else {
-                    Some(Ite(IsPositive(perms), ch.snap.convert(sorts.Snap), Unit))
+                    Some(SnapDefault.conditionalSnap(IsPositive(perms), ch.snap))
                   }
                 case _ => None
               }

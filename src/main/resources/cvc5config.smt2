@@ -18,3 +18,6 @@
 ; Translated from z3config
 (set-option :global-declarations true)
 (set-option :type-checking true)
+; Do not eliminate quantified variables x by equalities x = t in the body: this replaces x by t in the
+; user-provided triggers, too, which leads to triggering problems.
+(set-option :var-elim-quant false)

@@ -145,7 +145,7 @@ case class UnresolvedHeapEntry(chunk: Chunk, reason: String) extends HeapEntry {
 }
 
 object Converter {
-  lazy val termconverter: TermConverter[String, String, String] = {
+  lazy val termconverter: TermToSMTLib2Converter = {
     val conv = new TermToSMTLib2Converter()
     conv.start()
     conv
@@ -326,15 +326,29 @@ object Converter {
           case _                => OtherEntry(s"Second($sub)", "unapplicable")
         }
 
+      /* Sort wrappers are the constructors ($SortWrappers.XTo$Snap) and selectors
+       * ($SortWrappers.$SnapToX) of the $Snap datatype, so (like First, Second and Combine) they are
+       * evaluated structurally: models contain $Snap values as constructor terms, e.g.
+       * ($SortWrappers.IntTo$Snap 5), but no interpretation of the constructors or selectors.
+       */
+      case SortWrapper(t, sorts.Snap) =>
+        val sub = evaluateTerm(t, model, env)
+        sub match {
+          case _: OtherEntry => OtherEntry(s"SortWrapper($t)", "unapplicable")
+          case _ =>
+            UnprocessedModelEntry(ApplicationEntry(termconverter.render(SortWrapperId(t.sort, sorts.Snap)), Seq(sub.asValueEntry)))
+        }
+
       case SortWrapper(t, to) =>
         val sub = evaluateTerm(t, model, env)
-        val fromSortName: String = termconverter.convert(t.sort)
-        val toSortName: String = termconverter.convert(to)
-        val fname = s"$$SortWrappers.${fromSortName}To$toSortName"
-
+        val constructorName = termconverter.render(SortWrapperId(to, sorts.Snap))
         sub match {
+          case UnprocessedModelEntry(ApplicationEntry(`constructorName`, Seq(value))) =>
+            getConstantEntry(to, value)
           case UnprocessedModelEntry(entry) =>
-            getFunctionValue(model, fname, Seq(entry), to)
+            // The snapshot is not built by the expected constructor (e.g. it is $Snap.unit), so the
+            // selector's value is unspecified; use its interpretation in case the model has one.
+            getFunctionValue(model, termconverter.render(SortWrapperId(sorts.Snap, to)), Seq(entry), to)
           case OtherEntry(t, _) =>
             OtherEntry(s"SortWrapper($t)", "unapplicable")
           case _ => OtherEntry(s"SortWrapper($t)", "unapplicable")

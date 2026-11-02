@@ -116,6 +116,7 @@ package object utils {
     case ss: SingletonSet => List(ss.p)
     case ss: SingletonMultiset => List(ss.p)
     case sw: SortWrapper => List(sw.t)
+    case isw: IsSortWrapper => List(isw.t)
     case _: Distinct => Seq.empty // d.ts.toList
     case q: Quantification => q.vars ++ List(q.body) ++ q.triggers.flatMap(_.p)
     case l: Let =>
@@ -258,6 +259,7 @@ package object utils {
       case First(t) => First(go(t))
       case Second(t) => Second(go(t))
       case SortWrapper(t, s) => SortWrapper(go(t), s)
+      case IsSortWrapper(t, s) => IsSortWrapper(go(t), s)
 //      case Distinct(ts) => Distinct(ts map go)
       case Let(bindings, body) => Let(bindings map (p => go(p._1) -> go(p._2)), go(body))
       case Domain(f, fvf) => Domain(f, go(fvf))

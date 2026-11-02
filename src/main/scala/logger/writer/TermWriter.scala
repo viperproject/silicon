@@ -120,6 +120,12 @@ object TermWriter {
         "term" -> toJSON(t),
         "sort" -> toJSON(sort)
       )
+    case IsSortWrapper(t, sort) =>
+      JsObject(
+        "type" -> JsString("isSortWrapper"),
+        "term" -> toJSON(t),
+        "sort" -> toJSON(sort)
+      )
 
     case Let(bindings, body) =>
       val bs = bindings map { case (v, t) => JsObject("var" -> toJSON(v), "value" -> toJSON(t)) }

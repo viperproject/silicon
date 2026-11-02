@@ -819,9 +819,9 @@ object SiliconRawCounterexample {
     * Silicon builds a predicate's snapshot from the body's top-level conjuncts, folded right-
     * associatively into a tree of [[Combine]]s (see `Consumer.consumeTlcs`): conjunct `i` of `n`
     * sits at `First(Second^i(snap))`, or at `Second^(n-1)(snap)` for the last one. A field access
-    * `e.field` contributes its value wrapped into the snapshot sort, so the value is recovered by
-    * evaluating `SortWrapper(subSnapshot, sortOf(field))`. A `$Snap.unit` leaf does not mean the
-    * value is missing: `$SnapToT($Snap.unit)` still denotes the field's value.
+    * `e.field` contributes its value wrapped into the snapshot sort, i.e. the snapshot is
+    * `$SortWrappers.TTo$Snap(value)`, so the value is recovered by evaluating
+    * `SortWrapper(subSnapshot, sortOf(field))` (selector `$SortWrappers.$SnapToT`).
     */
   def evalInsidePredicate(snap: Term, astPred: Option[Predicate], model: Model): scala.collection.immutable.Map[Exp, ModelEntry] = {
     astPred.filterNot(_.isAbstract).flatMap(_.body) match {
@@ -844,8 +844,8 @@ object SiliconRawCounterexample {
     } else assertion match {
       case FieldAccessPredicate(fa: ast.FieldAccess, _) =>
         // The field's value is the snapshot at this point read back at the field's sort. If the
-        // snapshot collapsed to an atomic value the surrounding tree cannot be navigated (there is
-        // no model function for $Snap.first/second), so the value is genuinely not recoverable.
+        // model does not determine the snapshot's constructor here (e.g. the snapshot is not a
+        // $Snap.combine tree where one is expected), the value is genuinely not recoverable.
         val value = evaluateTerm(SortWrapper(snap, symbolConverter.toSort(fa.field.typ)), model) match {
           case _: OtherEntry => ConstantEntry("#undefined")
           case entry => entry.asValueEntry

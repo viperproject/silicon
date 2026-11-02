@@ -397,7 +397,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             val condSnap = Some(if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
               snap
             } else {
-              Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit)
+              SnapDefault.conditionalSnap(IsPositive(perms), snap)
             })
           if (!moreNeeded) {
             Q(s1, newHeap, condSnap, v1)

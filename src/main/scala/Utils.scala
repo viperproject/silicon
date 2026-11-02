@@ -23,7 +23,10 @@ import scala.collection.immutable.ArraySeq
 
 package object utils {
   def freshSnap: (Sort, Verifier) => Var = (sort, v) => v.decider.fresh(sort, Option.when(Verifier.config.enableDebugging())(PUnknown()))
-  def toSf(t: Term): (Sort, Verifier) => Term = (sort, _) => t.convert(sort)
+  /* Note: assumeSortWrapper assumes that t has the shape required by sort, i.e., toSf(t) must
+   * only be used if t is the snapshot of the assertion that is being produced.
+   */
+  def toSf(t: Term): (Sort, Verifier) => Term = (sort, v) => v.decider.assumeSortWrapper(t.convert(sort))
 
   def mapReduceLeft[E](it: Iterable[E], f: E => E, op: (E, E) => E, unit: E): E =
     if (it.isEmpty)

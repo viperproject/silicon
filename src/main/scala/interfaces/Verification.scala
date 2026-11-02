@@ -259,6 +259,9 @@ case class SiliconMappedCounterexample(internalStore: Store,
         unproEntry match {
           case ApplicationEntry("$Snap.combine", Seq(_, _)) =>  renameSnap(unproEntry)
           case ConstantEntry("$Snap.unit")  => renameSnap(unproEntry)
+          // Sort wrappers $SortWrappers.XTo$Snap are constructors of the $Snap datatype, too
+          case ApplicationEntry(name, Seq(_)) if name.startsWith("$SortWrappers.") && name.endsWith("To$Snap") =>
+            renameSnap(unproEntry)
           case _ => entry
         }
       }

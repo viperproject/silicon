@@ -88,6 +88,23 @@ class TermToSMTLib2Converter
       else
         parens(text("declare-fun") <+> idDoc <+> parens(ssep(argSortsDoc.to(collection.immutable.Seq), space)) <+> resultSortDoc)
 
+    case SnapDatatypeDecl(wrappedSorts) =>
+      /* (declare-datatypes (($Snap 0)) ((
+       *   ($Snap.unit)
+       *   ($Snap.combine ($Snap.first $Snap) ($Snap.second $Snap))
+       *   ($SortWrappers.IntTo$Snap ($SortWrappers.$SnapToInt Int))
+       *   ...)))
+       */
+      val wrapperConstructors = wrappedSorts.map(s =>
+        parens(text(render(SortWrapperId(s, sorts.Snap))) <+>
+          parens(text(render(SortWrapperId(sorts.Snap, s))) <+> render(s))))
+      val constructors =
+        parens(text("$Snap.unit")) +:
+        parens(text("$Snap.combine") <+> parens(text("$Snap.first $Snap")) <+> parens(text("$Snap.second $Snap"))) +:
+        wrapperConstructors
+      parens(text("declare-datatypes") <+> parens(parens(text("$Snap 0"))) <+>
+        parens(parens(nest(defaultIndent, line <> ssep(constructors.to(collection.immutable.Seq), line)))))
+
     case swd @ SortWrapperDecl(from, to) =>
 //      val id = Identifier(sortWrapperName(from, to))
       val id = swd.id
@@ -383,6 +400,9 @@ class TermToSMTLib2Converter
 
     case SortWrapper(t, to) =>
       parens(text(render(SortWrapperId(t.sort, to))) <+> render(t))
+
+    case IsSortWrapper(t, from) =>
+      parens(parens(text("_ is") <+> text(render(SortWrapperId(from, sorts.Snap)))) <+> render(t))
 
     case Distinct(symbols) =>
       parens(text("distinct") <+> ssep((symbols.toSeq map (s => render(s.id): Cont)).to(collection.immutable.Seq), space))

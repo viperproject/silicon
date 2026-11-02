@@ -41,48 +41,58 @@ class TermToZ3APIConverter
     smtlibConverter.render(id, sanitizeIdentifier)
   }
 
-  def getSnapSort = {
-    if (snapSort == null) {
-      /*
-      (declare-datatypes (($Snap 0)) ((
-      ($Snap.unit)
-      ($Snap.combine ($Snap.first $Snap) ($Snap.second $Snap)))))
-     */
-      val unit = ctx.mkConstructor[SnapMarker]("$Snap.unit", "is_$Snap.unit", null, null, null)
+  /** Creates the $Snap datatype, including one sort wrapper constructor (with selector and tester)
+    * per sort in `wrappedSorts`; see [[SnapDatatypeDecl]]. Must happen before any term or
+    * declaration that mentions sort $Snap is converted.
+    */
+  def declareSnapDatatype(decl: SnapDatatypeDecl): DatatypeSort[SnapMarker] = {
+    if (snapSort != null)
+      sys.error("The $Snap datatype has already been declared")
 
-      val sortArray: Array[Z3Sort] = Array(null, null)
-      val combine = ctx.mkConstructor[SnapMarker]("$Snap.combine", "is_$Snap.combine", Array("$Snap.first", "$Snap.second"), sortArray, Array(0, 0))
-      snapSort = ctx.mkDatatypeSort[SnapMarker]("$Snap", Array[Constructor[SnapMarker]](unit, combine))
-      unitConstructor = unit.ConstructorDecl()
-      combineConstructor = combine.ConstructorDecl()
-      val accessors = combine.getAccessorDecls
-      firstFunc = asFuncDecl(accessors(0))
-      secondFunc = asFuncDecl(accessors(1))
+    val wrappedSorts = decl.wrappedSorts
+    val unit = ctx.mkConstructor[SnapMarker]("$Snap.unit", "is_$Snap.unit", null, null, null)
+    val combine = ctx.mkConstructor[SnapMarker]("$Snap.combine", "is_$Snap.combine",
+      Array("$Snap.first", "$Snap.second"), Array[Z3Sort](null, null), Array(0, 0))
+    val wrappers = wrappedSorts.map(s =>
+      ctx.mkConstructor[SnapMarker](
+        convertId(SortWrapperId(s, sorts.Snap)),
+        "is_" + convertId(SortWrapperId(s, sorts.Snap)),
+        Array(convertId(SortWrapperId(sorts.Snap, s))),
+        Array(convertSort(s)),
+        Array(0)))
+
+    snapSort = ctx.mkDatatypeSort[SnapMarker]("$Snap", (Seq(unit, combine) ++ wrappers).toArray)
+    sortCache.update(sorts.Snap, snapSort)
+
+    unitConstructor = unit.ConstructorDecl()
+    combineConstructor = combine.ConstructorDecl()
+    val combineAccessors = combine.getAccessorDecls
+    firstFunc = asFuncDecl(combineAccessors(0))
+    secondFunc = asFuncDecl(combineAccessors(1))
+
+    wrappedSorts.zip(wrappers).foreach { case (s, wrapper) =>
+      wrapperConstructors.update(s, asFuncDecl(wrapper.ConstructorDecl()))
+      wrapperSelectors.update(s, asFuncDecl(wrapper.getAccessorDecls()(0)))
+      wrapperTesters.update(s, asFuncDecl(wrapper.getTesterDecl))
     }
+
     snapSort
   }
-  def getUnitConstructor = {
-    if (unitConstructor == null)
-      getSnapSort
-    unitConstructor
+
+  private def getSnapSort: DatatypeSort[SnapMarker] = {
+    if (snapSort == null)
+      sys.error("Sort $Snap used before the $Snap datatype has been declared")
+    snapSort
   }
 
-  def getCombineConstructor = {
-    if (combineConstructor == null)
-      getSnapSort
-    combineConstructor
-  }
+  def getUnitConstructor = { getSnapSort; unitConstructor }
+  def getCombineConstructor = { getSnapSort; combineConstructor }
+  def getFirstFunc = { getSnapSort; firstFunc }
+  def getSecondFunc = { getSnapSort; secondFunc }
 
-  def getFirstFunc = {
-    if (firstFunc == null)
-      getSnapSort
-    firstFunc
-  }
-
-  def getSecondFunc = {
-    if (secondFunc == null)
-      getSnapSort
-    secondFunc
+  private def wrapperFunc(funcs: mutable.Map[Sort, Z3FuncDecl[Z3Sort]], sort: Sort): Z3FuncDecl[Z3Sort] = {
+    getSnapSort
+    funcs.getOrElse(sort, sys.error(s"Sort $sort is not wrapped by the $$Snap datatype"))
   }
 
   var snapSort : DatatypeSort[SnapMarker] = _
@@ -90,6 +100,10 @@ class TermToZ3APIConverter
   var combineConstructor: Z3FuncDecl[DatatypeSort[SnapMarker]] = _
   var firstFunc: Z3FuncDecl[Z3Sort] = _
   var secondFunc: Z3FuncDecl[Z3Sort] = _
+  /* Keyed by the wrapped sort X: constructor XTo$Snap, selector $SnapToX, tester is-XTo$Snap */
+  val wrapperConstructors = mutable.HashMap[Sort, Z3FuncDecl[Z3Sort]]()
+  val wrapperSelectors = mutable.HashMap[Sort, Z3FuncDecl[Z3Sort]]()
+  val wrapperTesters = mutable.HashMap[Sort, Z3FuncDecl[Z3Sort]]()
 
   def convertSort(s: Sort): Z3Sort = {
     val existingEntry = sortCache.get(s)
@@ -445,7 +459,13 @@ class TermToZ3APIConverter
         ctx.mkApp(combineConstructor, convertTerm(bop.p0), convertTerm(bop.p1))
 
       case SortWrapper(t, to) =>
-        createApp(convertId(SortWrapperId(t.sort, to)), Seq(t), to)
+        val func =
+          if (to == sorts.Snap) wrapperFunc(wrapperConstructors, t.sort)
+          else wrapperFunc(wrapperSelectors, to)
+        ctx.mkApp(func, convertTerm(t))
+
+      case IsSortWrapper(t, from) =>
+        ctx.mkApp(wrapperFunc(wrapperTesters, from), convertTerm(t))
 
       case Distinct(symbols) =>
         ctx.mkDistinct(symbols.map(s => ctx.mkConst(convertId(s.id), convertSort(s.resultSort))).toSeq: _*)
@@ -561,6 +581,9 @@ class TermToZ3APIConverter
     firstFunc = null
     secondFunc = null
     snapSort = null
+    wrapperConstructors.clear()
+    wrapperSelectors.clear()
+    wrapperTesters.clear()
   }
 
   def stop(): Unit = {
