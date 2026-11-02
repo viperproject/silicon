@@ -11,8 +11,8 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.{Cvc5ProverStdIO, RecordedPathConditions, Z3ProverStdIO}
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, SiliconFailureContext, SiliconMappedCounterexample, Success, VerificationResult}
 import viper.silicon.rules.{consumer, evaluator, executor}
-import viper.silicon.state.State
-import viper.silicon.state.terms.{Term, True}
+import viper.silicon.state.{Identifier, State}
+import viper.silicon.state.terms.{ConstDecl, Exists, Forall, Term, True, Var}
 import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.verifier.{MainVerifier, Verifier, WorkerVerifier}
 import viper.silver.ast
@@ -58,6 +58,9 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
 
   /** The model of the last failed proof attempt, if one is available; see [[CounterexampleModel]]. */
   private var counterexample: Option[CounterexampleModel] = None
+
+  /** How many witnesses [[obtainWitness]] has declared, which makes their names unique. */
+  private var witnessCount: Int = 0
 
   /** The parser used for expressions entered by the user; kept around since creating one is not cheap. */
   private lazy val debugParser: DebugParser = new DebugParser()
@@ -414,8 +417,11 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
 
   private def instantiate(id: Int, args: Seq[ast.Exp], o: ProofObligation,
                           msgs: mutable.ListBuffer[DebugMessage]): DebugCommandResult = {
-    InstantiableForall.find(o.assumptionsExp, id) match {
+    QuantifiedAssumption.find(o.assumptionsExp, id) match {
       case Left(error) => DebugCommandResult.error(error)
+      case Right(q) if q.quantifier != Forall =>
+        DebugCommandResult.error(s"[$id] is not a forall, so it cannot be instantiated with any values; " +
+          s"use :witness $id to obtain a witness of it.")
       case Right(forall) if args.isEmpty || args.size > forall.vars.size =>
         DebugCommandResult.error(s"[$id] binds ${forall.vars.size} variable(s), ${forall.varNames.mkString(", ")}; " +
           s"give between 1 and ${forall.vars.size} values, not ${args.size}.")
@@ -460,6 +466,55 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
             msgs += DebugMessage.info(s"Added [${instance.id}], the instance of [$id] with $bindings.")
             result(msgs)
         }
+    }
+  }
+
+  /**
+    * Obtains a witness of the existentially quantified assumption with id `id`: declares a fresh constant for each of
+    * its bound variables and assumes the body for these constants. This is sound, since nothing else is known about
+    * the constants, and lets the user refer to the value whose existence the assumption states, e.g. to instantiate a
+    * forall with it.
+    *
+    * The constants are added to the store, named after the bound variables, e.g. `i_witness@1` for `i`; that is
+    * also how the user refers to them in expressions. Like an instance (see [[instantiate]]), the witness is removed
+    * together with the quantifier, and the quantifier may be nested in an implication, whose condition then guards
+    * the witness.
+    */
+  def obtainWitness(id: Int): DebugCommandResult = withObligation { (o, msgs) =>
+    QuantifiedAssumption.find(o.assumptionsExp, id) match {
+      case Left(error) => DebugCommandResult.error(error)
+      case Right(q) if q.quantifier != Exists =>
+        DebugCommandResult.error(s"[$id] is not an exists; use :instantiate $id <values> to instantiate a forall.")
+      case Right(exists) =>
+        val v = o.v
+        val emitsBefore = v.decider.prover.getAllEmits().size
+        val witnesses = exists.varNames.zip(exists.vars).map { case (name, x) =>
+          witnessCount += 1
+          val base = if (name.contains("@")) name.substring(0, name.indexOf("@")) else name
+          // The name the user types, which the evaluator turns into this constant, see Evaluator (LocalVarWithVersion).
+          val userName = s"${base}_witness@$witnessCount"
+          val constant = Var(Identifier(s"$userName@${v.uniqueId}"), x.sort, false)
+          v.decider.prover.declare(ConstDecl(constant))
+          (userName, constant)
+        }
+        val newEmits = v.decider.prover.getAllEmits().drop(emitsBefore)
+        val eWitnesses = exists.eVars.map(_.zip(witnesses).map { case (d, (n, _)) => ast.LocalVarWithVersion(n, d.typ)() })
+
+        val names = witnesses.map(_._1).mkString(", ")
+        val witness = DebugExp.createInstantiationInstance(id, s"witness of [$id]: $names",
+          eWitnesses.flatMap(exists.instantiateExp), exists.instantiate(witnesses.map(_._2)))
+        v.asInstanceOf[WorkerVerifier].decider.debuggerAssume(witness.term.toSeq, witness)
+
+        // Without the types of the bound variables, the witnesses can only be used by the prover, not in expressions.
+        val store = eWitnesses.toSeq.flatMap(_.zip(witnesses)).foldLeft(o.s.g) { case (g, (w, (_, t))) => g + (w -> (t, Some(w))) }
+        for (r <- o.resolver; vs <- exists.eVars; (d, (n, _)) <- vs.zip(witnesses)) {
+          r.typechecker.debugVariableTypes.get(d.name).foreach(t => r.typechecker.debugVariableTypes += (n -> t))
+        }
+        invalidateCounterexample()
+        obl = Some(o.copy(s = o.s.copy(g = store), proverEmits = o.proverEmits ++ newEmits,
+          assumptionsExp = o.assumptionsExp + witness))
+        msgs += DebugMessage.info(s"Added [${witness.id}], the witness $names of [$id]: ${witness.finalExp.getOrElse(witness.term.get)}")
+        result(msgs)
     }
   }
 

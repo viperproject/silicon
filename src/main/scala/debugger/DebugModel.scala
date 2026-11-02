@@ -59,6 +59,10 @@ object DebugNodeKind {
   val Domain = "domain"
   val Function = "function"
   val FunctionCase = "functionCase"
+
+  /** How [[DebugNode.quantifier]] names a quantifier. */
+  def quantifierName(q: viper.silicon.state.terms.Quantifier): String =
+    if (q == viper.silicon.state.terms.Exists) "exists" else "forall"
 }
 
 /**
@@ -72,8 +76,9 @@ object DebugNodeKind {
   * @param childrenElided true iff the children were dropped because the maximal depth was reached (as
   *                       opposed to being truncated because there were too many of them).
   * @param childSeparator the string printed between this node's label and its children by [[DebugRenderer]].
-  * @param instantiable   true iff this node is a universally quantified assumption, which
-  *                       [[SiliconDebugSession.instantiate]] can instantiate (unless it is nested in a quantifier).
+  * @param quantifier     `forall` or `exists` if this node is a quantified assumption, which
+  *                       [[SiliconDebugSession.instantiate]] or [[SiliconDebugSession.obtainWitness]] can use (unless it
+  *                       is nested in a quantifier).
   */
 case class DebugNode(id: Int,
                      kind: String,
@@ -87,7 +92,7 @@ case class DebugNode(id: Int,
                      childSeparator: String = "",
                      pos: Option[DebugSourcePos] = None,
                      children: Seq[DebugNode] = Seq.empty,
-                     instantiable: Boolean = false) {
+                     quantifier: Option[String] = None) {
 
   /** True iff a client should offer to expand this node to obtain children it has not received yet. */
   def hasHiddenChildren: Boolean = children.size < childCount

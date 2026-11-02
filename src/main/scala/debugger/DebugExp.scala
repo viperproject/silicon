@@ -185,7 +185,7 @@ class DebugExp(val id: Int,
     val (cs, count, elided) = childNodes(currDepth, filter.depthFor(id), filter)
     Some(DebugNode(id, DebugNodeKind.Assumption, topLevelLabel(filter), description,
       finalExp.map(_.toString), term.map(_.toString), isInternal_, count, elided, "", sourcePos, cs,
-      InstantiableForall.isForall(this)))
+      QuantifiedAssumption.quantifierOf(this).map(DebugNodeKind.quantifierName)))
   }
 
   def toNode(filter: DebugNodeFilter): Option[DebugNode] = toNode(0, filter.maxDepth, filter)
@@ -308,7 +308,7 @@ class QuantifiedDebugExp(id: Int,
       val (cs, count, elided) = childNodes(currDepth, filter.depthFor(id), filter)
       val label = (if (quantifier == "QA") "forall" else "exists") + " " + qvars.mkString(", ")
       Some(DebugNode(id, DebugNodeKind.Quantified, label, description, None, None, isInternal_,
-        count, elided, " :: ", qvars.headOption.flatMap(DebugSourcePos.from), cs, InstantiableForall.isForall(this)))
+        count, elided, " :: ", qvars.headOption.flatMap(DebugSourcePos.from), cs, QuantifiedAssumption.quantifierOf(this).map(DebugNodeKind.quantifierName)))
     } else {
       // Matches `toString`, which does not print the children in this case.
       Some(DebugNode(id, DebugNodeKind.Quantified, topLevelLabel(filter), description,
@@ -319,8 +319,9 @@ class QuantifiedDebugExp(id: Int,
 
 
 /**
-  * An instance of the universally quantified assumption with id `sourceId`, which the user added; see
-  * [[SiliconDebugSession.instantiate]]. It only holds because the quantifier does, so it is removed with it.
+  * An instance of the quantified assumption with id `sourceId`, which the user added: of a forall (see
+  * [[SiliconDebugSession.instantiate]]) or the witness of an exists (see [[SiliconDebugSession.obtainWitness]]). It
+  * only holds because the quantifier does, so it is removed with it.
   */
 class InstantiationDebugExp(id: Int,
                             val sourceId: Int,
