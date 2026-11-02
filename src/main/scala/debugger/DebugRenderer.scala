@@ -20,7 +20,7 @@ object DebugRenderer {
       m.heaps.map(h => renderSection(h.title, h.chunks)).mkString +
       renderAxioms(m.axioms) +
       renderDeclarations(m.declarations) +
-      renderAssumptions(m.assumptions) +
+      renderAssumptions(m) +
       renderRemoved(m.removed) +
       renderAssertion(m.assertion)
 
@@ -53,8 +53,15 @@ object DebugRenderer {
   private def renderDeclarations(decls: Seq[DebugNode]): String =
     if (decls.isEmpty) "" else s"Declarations: ${decls.map(d => s"\n\t${d.label}").mkString}\n\n"
 
-  private def renderAssumptions(assumptions: Seq[DebugNode]): String =
-    if (assumptions.isEmpty) "" else s"Assumptions: ${renderNodes(assumptions, 0)}\n\n"
+  /** The assumptions from the program, then a section for each debugger command that added assumptions. */
+  private def renderAssumptions(m: ObligationModel): String = {
+    val program = m.programAssumptions
+    (if (program.isEmpty) "" else s"Assumptions: ${renderNodes(program, 0)}\n\n") +
+      m.userAssumptionsByCommand.map { case (command, nodes) =>
+        // The title names the command, so the assumptions need not.
+        s"Assumptions added by $command: ${renderNodes(nodes.map(_.copy(origin = None)), 0)}\n\n"
+      }.mkString
+  }
 
   private def renderAssertion(assertion: DebugNode): String =
     if (assertion.kind == DebugNodeKind.Literal) assertion.label

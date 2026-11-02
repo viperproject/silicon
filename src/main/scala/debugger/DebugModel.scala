@@ -152,7 +152,18 @@ case class ObligationModel(failureIndex: Int,
                            assertionOutdated: Boolean = false,
                            /** The assumptions and chunks from the program the user removed, with the command that
                              * removed each as its [[DebugNode.origin]]; see [[UserChanges]]. */
-                           removed: Seq[DebugNode] = Seq.empty)
+                           removed: Seq[DebugNode] = Seq.empty) {
+
+  /** The assumptions from the program, i.e. those without an [[DebugNode.origin]]. */
+  def programAssumptions: Seq[DebugNode] = assumptions.filter(_.origin.isEmpty)
+
+  /**
+    * The assumptions the user added, grouped by the debugger command that added them, in the order in which the
+    * commands were run. Commands with the same text, e.g. two `unfold cell(x)`, form a single group.
+    */
+  def userAssumptionsByCommand: Seq[(String, Seq[DebugNode])] =
+    assumptions.flatMap(_.origin).distinct.map(c => c -> assumptions.filter(_.origin.contains(c)))
+}
 
 /** A verification failure that the debugger may be able to open a proof obligation for. */
 case class DebugFailureInfo(index: Int,
