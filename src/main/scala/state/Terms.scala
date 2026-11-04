@@ -147,6 +147,19 @@ class SortWrapperDecl private[terms] (val from: Sort, val to: Sort) extends Decl
   override val equalityDefiningMembers: (Sort, Sort) = (from, to)
 }
 
+/** Declaration of the $Snap datatype. Besides $Snap.unit and $Snap.combine, it has one constructor
+  * $SortWrappers.XTo$Snap (with selector $SortWrappers.$SnapToX) for each sort X in `wrappedSorts`.
+  * See [[SortWrapper]] and [[IsSortWrapper]].
+  */
+class SnapDatatypeDecl private[terms] (val wrappedSorts: Seq[Sort]) extends Decl with ConditionalFlyweight[Seq[Sort], SnapDatatypeDecl] {
+  val id: Identifier = sorts.Snap.id
+  override val equalityDefiningMembers: Seq[Sort] = wrappedSorts
+}
+
+object SnapDatatypeDecl extends CondFlyweightFactory[Seq[Sort], SnapDatatypeDecl, SnapDatatypeDecl] {
+  override def actualCreate(args: Seq[Sort]): SnapDatatypeDecl = new SnapDatatypeDecl(args)
+}
+
 object SortWrapperDecl extends CondFlyweightFactory[(Sort, Sort), SortWrapperDecl, SortWrapperDecl] {
   override def actualCreate(args: (Sort, Sort)): SortWrapperDecl = new SortWrapperDecl(args._1, args._2)
 }
@@ -2891,11 +2904,55 @@ class SortWrapper(val t: Term, val to: Sort)
 object SortWrapper extends CondFlyweightTermFactory[(Term, Sort), SortWrapper] {
   override def apply(v0: (Term, Sort)) = v0 match {
     case (t, to) if t.sort == to => t
+    /* Note: For XToSnap(SnapToX(s)) ~> s, this is only valid if s is of the form XToSnap(_)
+     * (see Decider.assumeSortWrapper), which holds for snapshots that are converted to the sort
+     * of the resource they are the snapshot of.
+     */
     case (sw: SortWrapper, to) if sw.t.sort == to => sw.t
     case _ => createIfNonExistent(v0)
   }
 
   override def actualCreate(args: (Term, Sort)): SortWrapper = new SortWrapper(args._1, args._2)
+}
+
+/** Datatype tester for the sort wrapper constructor $SortWrappers.XTo$Snap, where X is `from`:
+  * holds iff snapshot `t` is of the form XToSnap(x) for some x of sort X.
+  */
+class IsSortWrapper(val t: Term, val from: Sort)
+    extends BooleanTerm
+       with ConditionalFlyweight[(Term, Sort), IsSortWrapper] {
+
+  assert(t.sort == sorts.Snap && from != sorts.Snap,
+         s"Unexpected sort wrapper test of $t for sort $from")
+
+  val equalityDefiningMembers = (t, from)
+  override lazy val toString = s"is-${from}To$$Snap($t)"
+}
+
+object IsSortWrapper extends CondFlyweightTermFactory[(Term, Sort), IsSortWrapper] {
+  override def apply(v0: (Term, Sort)) = v0 match {
+    case (SortWrapper(u, _), from) => BooleanLiteral(u.sort == from)
+    case (Unit, _) | (_: Combine, _) => False
+    case _ => createIfNonExistent(v0)
+  }
+
+  override def actualCreate(args: (Term, Sort)): IsSortWrapper = new IsSortWrapper(args._1, args._2)
+}
+
+/** A fixed but otherwise unconstrained value $SnapDefault.X per wrapped sort X (declared in
+  * DefaultMainVerifier). Used as the irrelevant value of a resource that is consumed with
+  * possibly-zero permission, such that the resulting snapshot still has the shape XToSnap(_)
+  * that producing the resource expects, and all such snapshots are equal if the permission is zero.
+  */
+object SnapDefault {
+  def apply(sort: Sort): Var = Var(SortBasedIdentifier("$SnapDefault.%s", Seq(sort)), sort, false)
+
+  /** The snapshot of a resource with value `snap`, which is only relevant if `cond` holds:
+    * `XToSnap(ite(cond, snap, $SnapDefault.X))`, or `ite(cond, snap, unit)` for predicate snapshots.
+    */
+  def conditionalSnap(cond: Term, snap: Term): Term =
+    if (snap.sort == sorts.Snap) Ite(cond, snap, Unit)
+    else SortWrapper(Ite(cond, snap, SnapDefault(snap.sort)), sorts.Snap)
 }
 
 /* Other terms */

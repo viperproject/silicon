@@ -61,6 +61,11 @@ trait Decider {
   def assume(t: Term, e: ast.Exp, finalExp: ast.Exp): Unit
   def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp]): Unit
   def assume(t: Term, debugExp: Option[DebugExp]): Unit
+
+  /** If `t` is of the form SnapToX(s), assumes that snapshot `s` is of the form XToSnap(_),
+    * i.e. that it is a value of sort X wrapped into the $Snap datatype. Returns `t`.
+    */
+  def assumeSortWrapper(t: Term): Term
   def assume(terms: Seq[Term], debugExps: Option[Seq[DebugExp]]): Unit
   def assumeDefinition(t: Term, debugExp: Option[DebugExp]): Unit
   def assumeDefinition(terms: Iterable[Term], debugExp: Option[DebugExp]): Unit
@@ -289,6 +294,19 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       } else {
         assume(assumptions=InsertionOrderedSet((t, None)), false, false)
       }
+    }
+
+    def assumeSortWrapper(t: Term): Term = {
+      t match {
+        case SortWrapper(s, to) if s.sort == sorts.Snap =>
+          IsSortWrapper(s, to) match {
+            case True =>
+            case isWrapper => assume(isWrapper, None)
+          }
+        case _ =>
+      }
+
+      t
     }
 
     def assume(t: Term, debugExp: Option[DebugExp]): Unit = {

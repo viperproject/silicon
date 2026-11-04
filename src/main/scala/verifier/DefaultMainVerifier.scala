@@ -569,17 +569,16 @@ class DefaultMainVerifier(config: Config,
     sortDeclarationOrder foreach (component =>
       component.declareSortsAfterAnalysis(sink))
 
-    sink.comment("/" * 10 + " Sort wrappers")
-    emitSortWrappers(Seq(sorts.Int, sorts.Bool, sorts.Ref, sorts.Perm), sink)
-
-    sortWrapperDeclarationOrder foreach (component =>
-      emitSortWrappers(component.sortsAfterAnalysis, sink))
-
+    sink.comment("/" * 10 + " Snapshots and sort wrappers")
     val backendTypes = new mutable.LinkedHashSet[BackendType]
     program.visit{
       case t: BackendType => backendTypes.add(t)
     }
-    emitSortWrappers(backendTypes map symbolConverter.toSort, sink)
+    val wrappedSorts =
+      (Seq(sorts.Int, sorts.Bool, sorts.Ref, sorts.Perm) ++
+        sortWrapperDeclarationOrder.flatMap(component => component.sortsAfterAnalysis) ++
+        backendTypes.map(symbolConverter.toSort)).distinct
+    emitSnapshotDatatype(wrappedSorts, sink)
 
     sink.comment("/" * 10 + " Symbols")
     symbolDeclarationOrder foreach (component =>
@@ -600,42 +599,22 @@ class DefaultMainVerifier(config: Config,
     (functionData, predicateData)
   }
 
-  private def emitSortWrappers(ss: Iterable[Sort], sink: ProverLike): Unit = {
-    if (ss.nonEmpty) {
-      sink.comment("Declaring additional sort wrappers")
+  /** Declares the $Snap datatype. The sort wrappers are its constructors ($SortWrappers.XTo$Snap)
+    * and selectors ($SortWrappers.$SnapToX). Compared to declaring them as uninterpreted functions
+    * with inverse axioms, this gives injectivity and SnapToX(XToSnap(x)) == x for free, and avoids
+    * the axiom forall s: $Snap :: s == XToSnap(SnapToX(s)), which is unsound under MBQI
+    * (see Silicon issue #600). Instead, Decider.assumeSortWrapper assumes the constructor
+    * (is-XToSnap(s)) where a snapshot is converted to sort X during production.
+    *
+    * Also declares, for each wrapped sort X, a constant $SnapDefault.X (see [[terms.SnapDefault]]).
+    */
+  private def emitSnapshotDatatype(wrappedSorts: Seq[Sort], sink: ProverLike): Unit = {
+    sink.declare(terms.SnapDatatypeDecl(wrappedSorts))
 
-      ss.foreach(sort => {
-        val toSnapWrapper = terms.SortWrapperDecl(sort, sorts.Snap)
-        val fromSnapWrapper = terms.SortWrapperDecl(sorts.Snap, sort)
+    sink.comment("/snapshots.smt2")
+    preambleReader.emitPreamble("/snapshots.smt2", sink, false)
 
-        sink.declare(toSnapWrapper)
-        sink.declare(fromSnapWrapper)
-
-        val sanitizedSortString = termConverter.convertSanitized(sort)
-        val sortString = termConverter.convert(sort)
-
-        if (sanitizedSortString.contains("$T$")) {
-          // Ensure that sanitizedSortString does not contain the key which we substitute with sortString,
-          // because otherwise, we can have $T$ -> ....$S$.... -> ....<sortString>...., which is not what we want.
-          var i = 0
-          while (sanitizedSortString.contains(s"$$T$i$$")) {
-            i += 1
-          }
-
-          preambleReader.emitParametricPreamble("/sortwrappers.smt2",
-            Map("$T$" -> s"$$T$i$$",
-                "$S$" -> sanitizedSortString,
-                s"$$T$i$$" -> sortString),
-            sink)
-        } else {
-          preambleReader.emitParametricPreamble("/sortwrappers.smt2",
-            Map("$S$" -> sanitizedSortString,
-                "$T$" -> sortString),
-            sink)
-        }
-
-      })
-    }
+    wrappedSorts.foreach(sort => sink.declare(terms.ConstDecl(terms.SnapDefault(sort))))
   }
 
   private def setErrorScope(results: Seq[VerificationResult], scope: Member): Seq[VerificationResult] = {

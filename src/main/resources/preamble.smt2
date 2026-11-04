@@ -8,22 +8,10 @@
 ;            one tab or two spaces. All other lines must not start with tabs
 ;            or more than one space.
 
-; --- Snapshots ---
-
-(declare-datatypes (($Snap 0)) ((
-    ($Snap.unit)
-    ($Snap.combine ($Snap.first $Snap) ($Snap.second $Snap)))))
-
 ; --- References ---
 
 (declare-sort $Ref 0)
 (declare-const $Ref.null $Ref)
-(declare-const $Snap.null $Snap) ; hack
-
-(declare-fun internalCondFrame (Bool $Snap $Snap) $Snap)
-(assert (forall ((cnd Bool) (frst $Snap) (scnd $Snap)) (!
-    (= (internalCondFrame cnd frst scnd) (ite cnd frst scnd))
-    :pattern ((internalCondFrame cnd frst scnd)))))
 
 ; --- Permissions ---
 
@@ -47,11 +35,6 @@
 (assert (forall ((p1 $Perm) (p2 $Perm)) (!
     (= ($Perm.min p1 p2) (ite (<= p1 p2) p1 p2))
     :pattern (($Perm.min p1 p2)))))
-
-; --- Sort wrappers ---
-
-; Sort wrappers are no longer part of the static preamble. Instead, they are
-; emitted as part of the program-specific preamble.
 
 ; --- Math ---
 

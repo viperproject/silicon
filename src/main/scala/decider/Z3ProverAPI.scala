@@ -10,7 +10,7 @@ import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
 import viper.silicon.state.IdentifierFactory
-import viper.silicon.state.terms.{App, Decl, Fun, FunctionDecl, Implies, MacroDecl, Not, Quantification, Sort, SortDecl, SortWrapperDecl, Term, TriggerGenerator, Var, sorts}
+import viper.silicon.state.terms.{App, Decl, Fun, FunctionDecl, Implies, MacroDecl, Not, Quantification, SnapDatatypeDecl, Sort, SortDecl, SortWrapperDecl, Term, TriggerGenerator, Var, sorts}
 import viper.silicon.{Config, Map}
 import viper.silicon.verifier.Verifier
 import viper.silver.reporter.{InternalWarningMessage, Reporter}
@@ -476,6 +476,13 @@ class Z3ProverAPI(uniqueId: String,
         } else {
           preambleAssumes.add(axiom)
         }
+      case sdd: SnapDatatypeDecl =>
+        // Declare the datatype on the Z3 level and make it available to the SMT-LIB parser, since
+        // the string preamble refers to it. Passing the sort also makes its constructors and
+        // selectors available (passing them as functions in addition is rejected by the parser).
+        val snapSort = termConverter.declareSnapDatatype(sdd)
+        emittedSortSymbols.add(snapSort.getName)
+        emittedSorts.add(snapSort)
       case swd: SortWrapperDecl =>
         val converted = termConverter.convert(swd)
         if (!emittedFuncs.contains(converted)){
