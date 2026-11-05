@@ -1,0 +1,11 @@
+field f: Int
+
+predicate cond(x: Ref, b: Bool) {
+  b ==> acc(x.f)
+}
+
+method readCond(x: Ref, b: Bool)
+  requires cond(x, b)
+{
+  assert false
+}

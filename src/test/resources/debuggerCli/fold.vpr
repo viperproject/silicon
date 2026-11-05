@@ -1,0 +1,11 @@
+field f: Int
+
+predicate cell(x: Ref) {
+  acc(x.f)
+}
+
+method readCell(x: Ref)
+  requires cell(x)
+{
+  assert x.f > 0
+}

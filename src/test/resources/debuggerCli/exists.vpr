@@ -1,0 +1,10 @@
+function trig(i: Int): Bool
+function g(i: Int): Int
+function p(i: Int): Bool
+
+method witness()
+  requires exists i: Int :: {trig(i)} g(i) == 0
+  requires forall i: Int :: {trig(i)} g(i) == 0 ==> p(i)
+{
+  assert exists j: Int :: {p(j)} p(j)
+}

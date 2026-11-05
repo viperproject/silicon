@@ -54,11 +54,14 @@ class SiliconDebuggerCli(session: SiliconDebugSession,
       out(s"\nEnter 'q' to quit, 'z' to zoom in on (i.e., show all children of) an assumption, " +
         s"'r' to reset the proof obligation, 'ra' to remove assumptions, 'af' to add free assumptions, " +
         s"'ap' prove additional assumptions, 'p' to execute proof, 'x' to show a counterexample, " +
+        s"'u' to unfold or 'f' to fold a predicate, 'cs' to switch to a case of the last fold or unfold, " +
+        s"'i' to instantiate a forall assumption, 'w' to obtain a witness of an exists assumption, " +
         s"'c' to change print configuration, 's' to change the SMT solver, 't' to change the timeout")
       try {
         val command = readLine()
         if (command == null) return
-        command.toLowerCase match {
+        // The debugger's messages suggest commands in the form `:case 2`.
+        command.trim.stripPrefix(":").toLowerCase match {
           case "q" | "quit" => return
           case "z" | "zoom" => zoom()
           case "r" | "reset" => report(session.reset())
@@ -70,12 +73,61 @@ class SiliconDebuggerCli(session: SiliconDebugSession,
           case "c" | "config" => changePrintConfiguration()
           case "s" | "solver" | "choose different SMT solver" => changeSolver()
           case "t" | "timeout" => setTimeout()
-          case _ => out("Invalid input!")
+          case _ => if (!stateCommand(command)) out("Invalid input!")
         }
       } catch {
         case e: Throwable => out(s"Unexpected error: ${e.getMessage}. \nTry again")
       }
     }
+  }
+
+  /**
+    * Runs a command that takes arguments, which may follow it on the same line, e.g. `u list(x)` or `:case 2`, and are
+    * asked for otherwise.
+    *
+    * @return false if `command` is not such a command.
+    */
+  private def stateCommand(command: String): Boolean = {
+    val parts = command.trim.stripPrefix(":").split("\\s+", 2)
+
+    def argument(prompt: String): String =
+      parts.lift(1).getOrElse { out(prompt); readLineOr("") }.trim
+
+    def withId(prompt: String)(run: (Int, String) => Unit): Unit = {
+      val idAndRest = argument(prompt).split("\\s+", 2)
+      idAndRest(0).toIntOption match {
+        case Some(id) => run(id, idAndRest.lift(1).getOrElse("").trim)
+        case None => out("Invalid input")
+      }
+    }
+
+    def foldOrUnfold(unfold: Boolean): Unit = {
+      val predicate = argument(s"Enter the predicate instance you want to ${if (unfold) "unfold" else "fold"}, e.g. list(x):")
+      if (predicate.isEmpty) out("Invalid input") else report(session.foldText(predicate, unfold))
+    }
+
+    parts(0).toLowerCase match {
+      case "u" | "unfold" => foldOrUnfold(unfold = true)
+      case "f" | "fold" => foldOrUnfold(unfold = false)
+      case "cs" | "case" =>
+        argument("Enter the number of the case you want to switch to:").toIntOption match {
+          case Some(n) => report(session.selectCase(n))
+          case None => out("Invalid input")
+        }
+      case "i" | "inst" | "instantiate" =>
+        withId("Enter the forall assumption you want to instantiate:") { (id, inlineValues) =>
+          val values =
+            if (inlineValues.nonEmpty) inlineValues
+            else { out("Enter the values to instantiate it with, separated by commas:"); readLineOr("").trim }
+          report(session.instantiate(id, values))
+        }
+      case "w" | "witness" =>
+        withId("Enter the exists assumption you want to obtain a witness of:") { (id, _) =>
+          report(session.obtainWitness(id))
+        }
+      case _ => return false
+    }
+    true
   }
 
   /** Shows the model of the last failed proof attempt, running the prover first if necessary. */

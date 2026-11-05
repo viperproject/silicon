@@ -1,0 +1,8 @@
+function trig(i: Int): Bool
+function g(i: Int): Int
+
+method one()
+  requires forall i: Int :: {trig(i)} g(i) > 0
+{
+  assert g(3) > 0
+}
