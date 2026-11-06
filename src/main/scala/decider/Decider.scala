@@ -21,7 +21,6 @@ import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silver.ast
 import viper.silver.ast.{LocalVarWithVersion, NoPosition}
 import viper.silver.components.StatefulComponent
-import viper.silver.dependencyAnalysis._
 import viper.silver.parser.{PKw, PPrimitiv, PReserved, PType}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
 import viper.silver.verifier.{DependencyNotFoundError, Model}
@@ -133,10 +132,24 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
   def decider: AbstractDecider = DefaultDecider
 
-  object DefaultDecider extends AbstractDecider
+  object DefaultDecider extends AbstractDecider {
+    type P = Prover
+
+    override protected def getProver(prover: String): Prover = prover match {
+      case Z3ProverStdIO.name => new Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
+      case Cvc5ProverStdIO.name => new Cvc5ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
+      case Z3ProverAPI.name => new Z3ProverAPI(uniqueId, new TermToZ3APIConverter(), identifierFactory, reporter, triggerGenerator)
+      case prover =>
+        val msg1 = s"Unknown prover '$prover' provided. Defaulting to ${Z3ProverStdIO.name}."
+        logger warn msg1
+        getProver(Z3ProverStdIO.name)
+    }
+  }
 
   trait AbstractDecider extends Decider with StatefulComponent {
-    protected var _prover: Prover = _
+    type P <: Prover
+
+    protected var _prover: P = _
     protected var pathConditions: PathConditionStack = _
 
     private var _declaredFreshFunctions: Set[FunctionDecl] = _ /* [BRANCH-PARALLELISATION] */
@@ -150,7 +163,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def functionDecls: Set[FunctionDecl] = _declaredFreshFunctions
     def macroDecls: Vector[MacroDecl] = _declaredFreshMacros
 
-    def prover: Prover = _prover
+    def prover: P = _prover
 
     def pcs: PathConditionStack = pathConditions
 
@@ -172,22 +185,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       })
     }
 
-    protected def getProver(prover: String): Prover = prover match {
-      case Z3ProverStdIO.name => new Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
-      case Cvc5ProverStdIO.name => new Cvc5ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
-      case Z3ProverAPI.name => new Z3ProverAPI(uniqueId, new TermToZ3APIConverter(), identifierFactory, reporter, triggerGenerator)
-      case prover =>
-        val msg1 = s"Unknown prover '$prover' provided. Defaulting to ${Z3ProverStdIO.name}."
-        logger warn msg1
-        getProver(Z3ProverStdIO.name)
-    }
-
-    protected def initProver(proverName: String): Unit = {
-      _prover = getProver(proverName)
-    }
+    protected def getProver(prover: String): P
 
     def createProver(proverName: String, userArgsString: Option[String]): Option[DependencyNotFoundError] = {
-      initProver(proverName)
+      _prover = getProver(proverName)
 
       _prover.start(userArgsString) /* Cannot query prover version otherwise */
 
@@ -416,25 +417,28 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     /* Asserting facts */
 
     def checkSmoke(analysisInfos: DependencyAnalysisInfos, isAssert: Boolean=false): Boolean = {
-      checkSmokeInternal(isAssert)
+      checkSmokeInternal(isAssert)(timeout => prover.check(timeout))
     }
 
-    protected def checkSmokeInternal(isAssert: Boolean=false, label: String=""): Boolean = {
+    protected def checkSmokeInternal(isAssert: Boolean)(proverCheck: Option[Int] => Result): Boolean = {
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
-      val result = prover.check(timeout, label) == Unsat
+      val result = proverCheck(timeout) == Unsat
       if(result) pcs.markPathInfeasible(true)
       result
     }
 
     override def handleFailedAssertion(failedAssertion: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit = {
       if (assumeFailedAssertion) {
-        assume(failedAssertion, e, finalExp, analysisInfos.overrideDependencyType(AssumptionType.Explicit))
+        assume(failedAssertion, e, finalExp, failedAssertionInfos(analysisInfos))
         failedAssertion match {
           case False => checkSmoke(analysisInfos)
           case _ =>
         }
       }
     }
+
+    /* The infos to use when a failed assertion is subsequently assumed. */
+    protected def failedAssertionInfos(analysisInfos: DependencyAnalysisInfos): DependencyAnalysisInfos = analysisInfos
 
     def check(t: Term, timeout: Int, analysisInfos: DependencyAnalysisInfos): Boolean = {
       deciderAssert(t, analysisInfos, Some(timeout), isCheck=true)
@@ -461,17 +465,14 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val assertRecord = new DeciderAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
-      val asserted = isKnownToBeTrue(t)
-
-      val result = deciderAssertInternal(asserted, t, timeout, analysisInfos, isCheck)
+      val result = isKnownToBeTrue(t) || deciderAssertInternal(t, timeout, analysisInfos, isCheck)
 
       symbExLog.closeScope(sepIdentifier)
       result
     }
 
-    protected def deciderAssertInternal(asserted: Boolean, t: Term, timeout: Option[Int], analysisInfos: DependencyAnalysisInfos, isCheck: Boolean, label: String="") = {
-      asserted || proverAssert(t, timeout, label)
-    }
+    protected def deciderAssertInternal(t: Term, timeout: Option[Int], analysisInfos: DependencyAnalysisInfos, isCheck: Boolean): Boolean =
+      proverAssert(t, timeout)(prover.assert(t, timeout))
 
     protected def isKnownToBeTrue(t: Term) = t match {
       case True => true
@@ -481,11 +482,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       case _ => false
     }
 
-    protected def proverAssert(t: Term, timeout: Option[Int], label: String) = {
+    protected def proverAssert(t: Term, timeout: Option[Int])(queryProver: => Boolean): Boolean = {
       val assertRecord = new ProverAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
-      val result = isPathMarkedInfeasible || prover.assert(t, timeout, label)
+      val result = isPathMarkedInfeasible || queryProver
 
       symbExLog.whenEnabled {
         assertRecord.statistics = Some(symbExLog.deltaStatistics(prover.statistics()))
@@ -618,7 +619,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def statistics(): Map[String, String] = prover.statistics()
 
-    override def generateModel(): Unit = proverAssert(False, Verifier.config.assertTimeout.toOption, "")
+    override def generateModel(): Unit = {
+      val timeout = Verifier.config.assertTimeout.toOption
+      proverAssert(False, timeout)(prover.assert(False, timeout))
+    }
 
     override def getModel(): Model = prover.getModel()
 

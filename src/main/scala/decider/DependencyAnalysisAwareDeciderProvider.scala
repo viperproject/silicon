@@ -14,6 +14,7 @@ import viper.silicon.state.terms.{False, Term, True}
 import viper.silicon.verifier.{DependencyAnalysisAwareVerifier, Verifier}
 import viper.silver.ast
 import viper.silver.ast.Member
+import viper.silver.dependencyAnalysis.AssumptionType
 
 trait DependencyAnalysisHandler {
 
@@ -40,13 +41,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
 
     override def defaultAnalysisInfos: DependencyAnalysisInfos = DependencyAnalysisInfos.DefaultInfos.withEnabled(isDependencyAnalysisEnabled)
 
-    protected var _daProver: DependencyAnalysisAwareZ3ProverStdIO = _
-    override def prover: DependencyAnalysisAwareZ3ProverStdIO = _daProver
-
-    override protected def initProver(proverName: String): Unit = {
-      _daProver = getProver(proverName)
-      _prover = _daProver
-    }
+    type P = DependencyAnalysisAwareZ3ProverStdIO
 
     override protected def getProver(prover: String): DependencyAnalysisAwareZ3ProverStdIO = prover match {
       case Z3ProverStdIO.name => new DependencyAnalysisAwareZ3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
@@ -93,13 +88,16 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
 
     override protected def isKnownToBeTrue(t: Term): Boolean = t.equals(True)
 
-    override protected def deciderAssertInternal(asserted: Boolean, t: Term, timeout: Option[Int], analysisInfos: DependencyAnalysisInfos, isCheck: Boolean, label: String = ""): Boolean = {
-
-      val assertNode = if (!asserted) dependencyAnalyzer.createAssertOrCheckNode(t, analysisInfos, isCheck) else None
-
+    override protected def deciderAssertInternal(t: Term, timeout: Option[Int], analysisInfos: DependencyAnalysisInfos, isCheck: Boolean): Boolean = {
+      val assertNode = dependencyAnalyzer.createAssertOrCheckNode(t, analysisInfos, isCheck)
       val label = DependencyAnalyzer.createAssertionLabel(assertNode map (_.id))
 
-      val result: Boolean = super.deciderAssertInternal(asserted, t, timeout, analysisInfos, isCheck, label)
+      val result = proverAssert(t, timeout)(prover.assert(t, timeout, label))
+
+      if (isPathMarkedInfeasible)
+        dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, assertNode map (_.id))
+      else if (result)
+        dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
 
       if (result) {
         assertNode foreach dependencyAnalyzer.addAssertionNode
@@ -108,14 +106,8 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       result
     }
 
-    override protected def proverAssert(t: Term, timeout: Option[Mark], label: String): Boolean = {
-      val result = super.proverAssert(t, timeout, label)
-      if (isPathMarkedInfeasible)
-        dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, DependencyAnalyzer.getIdFromLabel(label))
-      else if (result)
-        dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
-      result
-    }
+    override protected def failedAssertionInfos(analysisInfos: DependencyAnalysisInfos): DependencyAnalysisInfos =
+      analysisInfos.overrideDependencyType(AssumptionType.Explicit)
 
     override def checkSmoke(analysisInfos: DependencyAnalysisInfos, isAssert: Boolean = false): Boolean = {
       val checkNode = dependencyAnalyzer.createAssertOrCheckNode(False, analysisInfos, !isAssert)
@@ -126,7 +118,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
         dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, checkNode.map(_.id))
         true
       } else {
-        val result = super.checkSmokeInternal(isAssert, label)
+        val result = checkSmokeInternal(isAssert)(timeout => prover.check(timeout, label))
 
         if (result) {
           checkNode foreach dependencyAnalyzer.addAssertionNode
