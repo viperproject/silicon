@@ -303,7 +303,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                       exhaleExt = false,
                       parallelizeBranches = false)
 
-    def defineSnapshotAndRecordBranch(s5: State, snapRhs: Term, packageMark: Mark, v5: Verifier): VerificationResult = { // XXX ake: analysisInfos
+    def defineSnapshotAndRecordBranch(s5: State, snapRhs: Term, packageMark: Mark, v5: Verifier): VerificationResult = {
       v5.decider.prover.comment(s"Define MagicWandSnapFunction for wand $wand on the current branch")
       v5.decider.assumeDefinition(wandSnapshot.applyToMWSF(freshSnapRoot) === snapRhs,
                                   Option.when(debugOn)(DebugExp.createInstance("Magic wand snapshot definition", true)), analysisInfos)
@@ -372,7 +372,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       })
     })
 
-    val sJoined = // XXX ake: review the following
+    val sJoined =
       if (recordedBranches.isEmpty) {
         // No results mean that packaging the wand resulted in inconsistent states on all paths,
         // and thus, that no wand chunk was created. In order to continue, we create one now, whose

@@ -324,7 +324,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
        * enclosing retry point, so without this wrapper the greedy modes would report spurious
        * failures here. In the standard mode, the wrapper is skipped. */
       if (Verifier.config.exhaleModeQP == ExhaleMode.MoreComplete)
-        exhaleFieldPerm(s, v, analysisInfos)(Q) // XXX ake: analysisInfO?
+        exhaleFieldPerm(s, v, analysisInfos)(Q)
       else
         executionFlowController.tryOrFail0(s, v)((s1, v1, QS) => exhaleFieldPerm(s1, v1, analysisInfos)(QS))(Q)
     } else {
@@ -1056,7 +1056,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
 
   def resourceTriggerVariants(ra: ast.ResourceAccess, s: State, pve: PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
                              : (Seq[Term], Seq[Seq[Term]], Seq[SnapshotMapDefinition], State) = {
-    val (axioms, trigs, _, smDefs) = generateResourceTrigger(ra, s, pve, v)
+    val (axioms, trigs, _, smDefs) = generateResourceTrigger(ra, s, pve, v, analysisInfos)
     (axioms, Seq(trigs), smDefs, s)
   }
 
@@ -1077,7 +1077,8 @@ class DefaultHeapSupportRules extends HeapSupportRules {
   private def generateResourceTrigger(ra: ast.ResourceAccess,
                                       s: State,
                                       pve: PartialVerificationError,
-                                      v: Verifier)
+                                      v: Verifier,
+                                      analysisInfos: DependencyAnalysisInfos)
   : (Seq[Term], Seq[Term], Term, Seq[SnapshotMapDefinition]) = {
     var axioms = Seq.empty[Term]
     var triggers = Seq.empty[Term]
@@ -1098,7 +1099,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
         s, resource, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition)
     val s1 = s.copy(smCache = smCache1)
 
-    evaluator.evals(s1.copy(triggerExp = true), eArgs, _ => pve, v, DependencyAnalysisInfos.DefaultInfos /* XXX ake */)((_, tArgs, _, _) => {
+    evaluator.evals(s1.copy(triggerExp = true), eArgs, _ => pve, v, analysisInfos)((_, tArgs, _, _) => {
       axioms = axioms ++ smDef1.valueDefinitions
       mostRecentTrig = ResourceTriggerFunction(resource, smDef1.sm, tArgs, s.program)
       triggers = triggers :+ mostRecentTrig

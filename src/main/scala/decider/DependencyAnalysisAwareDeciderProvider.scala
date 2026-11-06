@@ -73,8 +73,10 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       dependencyAnalyzer = new NoDependencyAnalyzer
     }
 
-    override protected def assumeWithoutSmokeChecks(termsWithLabel: InsertionOrderedSet[(Term, String)], analysisInfos: DependencyAnalysisInfos, isDefinition: Boolean = false): Unit = {
-      super.assumeWithoutSmokeChecks(addAssumptionLabels(termsWithLabel.map(_._1), analysisInfos), analysisInfos, isDefinition)
+    override protected def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], analysisInfos: DependencyAnalysisInfos, isDefinition: Boolean = false): Unit = {
+      /* Registered up front since assumptions on infeasible paths must be recorded too, even though they never reach the prover. */
+      val labels = registerAssumptions(terms, analysisInfos)
+      assumeWithoutSmokeChecksInternal(terms, isDefinition)(t => prover.assume(t, labels(t)))
     }
 
     def assumeLabel(term: Term, assumptionLabel: String): Unit = {
@@ -82,11 +84,11 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       prover.assume(term, assumptionLabel)
     }
 
-    private def addAssumptionLabels(filteredTerms: Iterable[Term], analysisInfos: DependencyAnalysisInfos) = {
-      InsertionOrderedSet(filteredTerms map (t => {
+    private def registerAssumptions(terms: InsertionOrderedSet[Term], analysisInfos: DependencyAnalysisInfos): Map[Term, String] = {
+      terms.toSeq.map(t => {
         val assumptionIds = dependencyAnalyzer.addAssumption(t, analysisInfos)
         (t, DependencyAnalyzer.createAssumptionLabel(assumptionIds))
-      }))
+      }).toMap
     }
 
     override protected def isKnownToBeTrue(t: Term): Boolean = t.equals(True)

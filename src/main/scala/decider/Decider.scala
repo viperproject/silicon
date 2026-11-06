@@ -327,7 +327,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
       }
 
-      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms.map(t => (t, ""))), analysisInfos, isDefinition = true)
+      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms), analysisInfos, isDefinition = true)
     }
 
     def assume(assumptions: InsertionOrderedSet[(Term, Option[DebugExp])], enforceAssumption: Boolean, isDefinition: Boolean, analysisInfos: DependencyAnalysisInfos): Unit = {
@@ -340,11 +340,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         filteredAssumptions foreach (a => addDebugExp(a._2.get.withTerm(a._1)))
       }
 
-      if (filteredAssumptions.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredAssumptions.map(t => (t._1, ""))), analysisInfos, isDefinition=isDefinition)
+      if (filteredAssumptions.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredAssumptions.map(_._1)), analysisInfos, isDefinition=isDefinition)
     }
 
     def assume(assumptions: Seq[Term], debugExps: Option[Seq[DebugExp]], analysisInfos: DependencyAnalysisInfos): Unit = {
-      assumeWithoutSmokeChecks(InsertionOrderedSet(assumptions.map(t => (t, ""))), analysisInfos)
+      assumeWithoutSmokeChecks(InsertionOrderedSet(assumptions), analysisInfos)
       if (debugMode) {
         debugExps.get foreach (e => addDebugExp(e))
       }
@@ -358,7 +358,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         else assumptions filterNot isKnownToBeTrue
 
       if (filteredTerms.nonEmpty) {
-        assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms.map(t => (t, ""))), analysisInfos)
+        assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms), analysisInfos)
 
         if (debugMode && debugExp.isDefined) {
           addDebugExp(debugExp.get)
@@ -377,7 +377,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
           addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
         }
 
-        assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms.map(t => (t, ""))), analysisInfos)
+        assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms), analysisInfos)
       }
     }
 
@@ -391,9 +391,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       })
     }
 
-    protected def assumeWithoutSmokeChecks(termsWithLabel: InsertionOrderedSet[(Term, String)], analysisInfos: DependencyAnalysisInfos, isDefinition: Boolean = false): Unit =
+    protected def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], analysisInfos: DependencyAnalysisInfos, isDefinition: Boolean = false): Unit =
+      assumeWithoutSmokeChecksInternal(terms, isDefinition)(t => prover.assume(t))
+
+    /* `proverAssume` determines how each term is passed to the prover; it is not invoked on infeasible paths. */
+    protected def assumeWithoutSmokeChecksInternal(terms: InsertionOrderedSet[Term], isDefinition: Boolean)(proverAssume: Term => Unit): Unit =
       if (!isPathMarkedInfeasible) {
-        val terms = termsWithLabel map (_._1)
         val assumeRecord = new DeciderAssumeRecord(terms)
         val sepIdentifier = symbExLog.openScope(assumeRecord)
 
@@ -405,7 +408,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         }
 
         /* Add terms to the prover's assumptions */
-        termsWithLabel foreach { case (t, label) => prover.assume(t, label) }
+        terms foreach proverAssume
 
         symbExLog.closeScope(sepIdentifier)
       }
