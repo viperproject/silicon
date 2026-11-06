@@ -97,7 +97,7 @@ class DefaultPredicateAndWandSnapFunctionsContributor(preambleReader: PreambleRe
     // WARNING: DefaultSetsContributor contributes a sort that is due to QPs over predicates and wands
 
     collectedSorts = collectedPredicates.map(predicate =>
-        sorts.PredicateSnapFunction(predicateSnapGenerator.getSnap(predicate)._1, predicate.name)) ++ collectedWandIdentifiers.map(identifier => sorts.PredicateSnapFunction(sorts.Snap, identifier.toString))
+        sorts.PredicateSnapFunction(predicateSnapGenerator.getSnap(predicate)._1, predicate.name)) ++ collectedWandIdentifiers.map(identifier => sorts.PredicateSnapFunction(sorts.MagicWandSnapFunction, identifier.toString))
     
 
     collectedFunctionDecls = generateFunctionDecls
@@ -129,7 +129,7 @@ class DefaultPredicateAndWandSnapFunctionsContributor(preambleReader: PreambleRe
 
     val wandsPreamble =
       collectedWandIdentifiers map (wandIdentifier => {
-        val snapSort = sorts.Snap
+        val snapSort = sorts.MagicWandSnapFunction
         val id = wandIdentifier.toString
         val substitutions = Map("$PRD$" -> id, "$S$" -> termConverter.convert(snapSort))
         val declarations = preambleReader.readParametricPreamble(snapsTemplateFile, substitutions)
@@ -157,7 +157,7 @@ class DefaultPredicateAndWandSnapFunctionsContributor(preambleReader: PreambleRe
 
     val wandsPreamble =
       collectedWandIdentifiers map (wandIdentifier => {
-        val sort = sorts.Snap // predicateSnapGenerator.getSnap(wandIdentifier)._1
+        val sort = sorts.MagicWandSnapFunction // predicateSnapGenerator.getSnap(wandIdentifier)._1
         val id = wandIdentifier.toString
         val substitutions = Map("$PRD$" -> id, "$S$" -> termConverter.convert(sort))
         val declarations = preambleReader.readParametricPreamble(templateFile, substitutions)

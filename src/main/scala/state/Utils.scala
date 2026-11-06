@@ -86,9 +86,7 @@ package object utils {
       case bc: BasicChunk =>
         bc.argsExp.get foreach collect
       case qch: QuantifiedFieldChunk =>
-        qch.singletonRcvrExp.foreach(rcvr => {
-          collect(rcvr)
-        })
+        qch.singletonRcvrExp.foreach(collect)
       case _ =>
     }
 
@@ -135,7 +133,22 @@ package object utils {
     case PredicatePermLookup(_, pm, args) => Seq(pm) ++ args
     case FieldTrigger(_, fvf, at) => fvf :: at :: Nil
     case PredicateTrigger(_, psf, args) => psf +: args
-
+    case MagicWandSnapshot(s) => s :: Nil
+    case HeapLookup(h, at) => h :: at :: Nil
+    case HeapUpdate(h, at, v) => h :: at :: v :: Nil
+    case IdenticalOnKnownLocations(oh, nh, m) => oh :: nh :: m :: Nil
+    case GoodMask(m) => m :: Nil
+    case GoodFieldMask(m, _) => m :: Nil
+    case SnapToHeap(sn, _, _) => sn :: Nil
+    case HeapToSnap(hp, msk, _) => hp :: msk :: Nil
+    case HeapSingleton(at, vl, _) => at :: vl :: Nil
+    case MergeSingle(heap, mask, _, value) => heap :: mask :: value :: Nil
+    case DummyHeap(_) => Nil
+    case MaskSum(m1, m2) => m1 :: m2 :: Nil
+    case MaskDiff(m1, m2) => m1 :: m2 :: Nil
+    case MaskAdd(mask, at, addition) => mask :: at :: addition :: Nil
+    case MergeHeaps(h1, m1, h2, m2) => h1 :: m1 :: h2 :: m2 :: Nil
+    case HeapsOverlap(h1, m1, h2, m2) => h1 :: m1 :: h2 :: m2 :: Nil
   }
 
   /** @see [[viper.silver.ast.utility.Simplifier.simplify]] */
@@ -242,6 +255,7 @@ package object utils {
       case MapRange(t) => MapRange(go(t))
       case MagicWandSnapshot(t) => MagicWandSnapshot(go(t))
       case MWSFLookup(t0, t1) => MWSFLookup(go(t0), go(t1))
+      case MagicWandToken(t0, t1) => MagicWandToken(go(t0), go(t1))
       case Combine(t0, t1) => Combine(go(t0), go(t1))
       case First(t) => First(go(t))
       case Second(t) => Second(go(t))
@@ -259,7 +273,23 @@ package object utils {
       case PredicateLookup(p, psf, args) => PredicateLookup(p, go(psf), args map go)
       case PredicatePermLookup(predname, pm, args) => PredicatePermLookup(predname, go(pm), args map go)
       case PredicateTrigger(p, psf, args) => PredicateTrigger(p, go(psf), args map go)
-
+      case HeapLookup(hp, at) => HeapLookup(go(hp), go(at))
+      case HeapUpdate(hp, at, vl) => HeapUpdate(go(hp), go(at), go(vl))
+      case ZeroMask => ZeroMask
+      case PredZeroMask => PredZeroMask
+      case MaskSum(m1, m2) => MaskSum(go(m1), go(m2))
+      case MaskAdd(m, at, add) => MaskAdd(go(m), go(at), go(add))
+      case MaskDiff(m1, m2) => MaskDiff(go(m1), go(m2))
+      case SnapToHeap(snp, r, s) => SnapToHeap(go(snp), r, s)
+      case HeapSingleton(at, vl, s) => HeapSingleton(go(at), go(vl), s)
+      case HeapToSnap(hp, msk, r) => HeapToSnap(go(hp), go(msk), r)
+      case MergeHeaps(h1, m1, h2, m2) => MergeHeaps(go(h1), go(m1), go(h2), go(m2))
+      case MergeSingle(hp, msk, at, vl) => MergeSingle(go(hp), go(msk), go(at), go(vl))
+      case IdenticalOnKnownLocations(oh, nh, msk) => IdenticalOnKnownLocations(go(oh), go(nh), go(msk))
+      case GoodMask(m) => GoodMask(go(m))
+      case GoodFieldMask(m, u) => GoodFieldMask(go(m), u)
+      case DummyHeap(_) => term
+      case PermNegation(p) => PermNegation(go(p))
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])

@@ -8,6 +8,7 @@ package viper.silicon.state.chunks
 
 import viper.silicon
 import viper.silicon.resources.ResourceID
+import viper.silicon.rules.InverseFunctions
 import viper.silicon.state.terms.{Term, Var}
 import viper.silver.ast
 
@@ -19,6 +20,13 @@ trait Chunk {
 }
 
 trait ChunkIdentifer
+
+trait MaskHeapChunk extends Chunk {
+  val resourceID: ResourceID
+  val resource: Any
+  val mask: Term
+  val heap: Term
+}
 
 trait GeneralChunk extends Chunk {
   val resourceID: ResourceID
@@ -34,6 +42,7 @@ trait GeneralChunk extends Chunk {
   protected[chunks] def substitute(terms: silicon.Map[Term, Term]): GeneralChunk
 
   val permExp: Option[ast.Exp]
+  val tag: Option[Int]
 }
 
 trait NonQuantifiedChunk extends GeneralChunk {
@@ -50,6 +59,9 @@ trait NonQuantifiedChunk extends GeneralChunk {
 trait QuantifiedChunk extends GeneralChunk {
   val quantifiedVars: Seq[Var]
   val quantifiedVarExps: Option[Seq[ast.LocalVarDecl]]
+  val invs: Seq[InverseFunctions]
+  val orgCondition: Term
+  
   def snapshotMap: Term
   def valueAt(arguments: Seq[Term]): Term
   override protected[chunks] def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]): QuantifiedChunk

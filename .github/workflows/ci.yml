@@ -14,19 +14,31 @@ env:
 jobs:
   test-and-assemble:
     runs-on: ubuntu-latest
-    container: gobraverifier/gobra-base:v5_z3_4.8.7 # Thank you, Gobra team
+    env:
+      Z3_EXE: "${{ github.workspace }}/z3/bin/z3"
+      LINUX_Z3_URL: "https://github.com/Z3Prover/z3/releases/download/z3-4.16.0/z3-4.16.0-x64-glibc-2.39.zip"
     steps:
-      # Install JDK
-#       - uses: actions/setup-java@v2
-#         with:
-#           distribution: 'adopt' # See https://github.com/marketplace/actions/setup-java-jdk
-#           java-version: '11'
-
       # Checkout Silicon (note: all checkouts delete the contents of their working directory)
       - name: Checkout Silicon
         uses: actions/checkout@v6
         with:
           submodules: true
+
+      # Install JDK, sbt and Z3
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '11'
+      - name: Set up sbt
+        uses: sbt/setup-sbt@v1
+      - name: Download Z3
+        run: |
+          curl --fail --silent --show-error -L ${{ env.LINUX_Z3_URL }} --output z3-linux.zip
+          unzip -q z3-linux.zip
+          rm -rf z3-linux.zip
+          mv z3-4.16.0-x64-glibc-2.39 z3
+          chmod +x ${{ env.Z3_EXE }}
 
       # Query versions, and other details that may help with reconstructing a built. 
       # Results are displayed on stdio, and written to buildinfo.log
@@ -35,7 +47,7 @@ jobs:
       - name: Query Java version
         run: printf -- "------- Java version --------\n%s\n\n" "$(java --version)" | tee -a buildinfo.log
       - name: Query Z3 version
-        run: printf -- "------- Z3 version --------\n%s\n\n" "$(z3 -version)" | tee -a buildinfo.log
+        run: printf -- "------- Z3 version --------\n%s\n\n" "$(${{ env.Z3_EXE }} -version)" | tee -a buildinfo.log
       - name: Query Silicon commit
         run: printf -- "------- Silicon commit --------\n%s\n\n" "$(git -C . log --format=reference -n 1 HEAD)" | tee -a buildinfo.log
       - name: Query Silver commit

@@ -43,7 +43,7 @@ trait DefaultCfgVerificationUnitProvider extends VerifierComponent { v: Verifier
       val g = Store()
 
       val s = sInit.copy(g = g,
-        h = v.heapSupporter.getEmptyHeap(sInit.program),
+        h = v.heapSupporter.getEmptyHeap(sInit.program, v),
         oldHeaps = OldHeaps(),
         methodCfg = cfg)  // TODO: ???
 

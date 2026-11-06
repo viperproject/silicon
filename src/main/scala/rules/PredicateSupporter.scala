@@ -72,29 +72,32 @@ object predicateSupporter extends PredicateSupportRules {
 
     val predicate = pa.loc(s.program)
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
-    val tArgsWithE = if (withExp)
+    val tArgsWithE = if (debugOn)
       tArgs zip eArgs.get.map(Some(_))
     else
       tArgs zip Seq.fill(tArgs.length)(None)
     val gIns = s.g + Store(predicate.formalArgs map (_.localVar) zip tArgsWithE)
-    val s1 = s.copy(g = gIns,
+    val s0 = s.copy(g = gIns,
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm, ePerm)
-    consume(s1, body, true, pve, v, analysisInfos)((s1a, snap, v1) => {
-      if (!Verifier.config.disableFunctionUnfoldTrigger()) {
-        val predTrigger = App(s1a.predicateData(predicate.name).triggerFunction,
-          snap.get.convert(terms.sorts.Snap) +: tArgs)
-        val eArgsString = eArgs.mkString(", ")
-        v1.decider.assume(predTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")), analysisInfos)
-      }
-      val s2 = s1a.copy(g = s.g,
+    consume(s0, body, true, pve, v, analysisInfos)((s1, snap, v1) => {
+      val s1a = s1.copy(g = s.g,
                         smDomainNeeded = s.smDomainNeeded,
                         permissionScalingFactor = s.permissionScalingFactor,
                         permissionScalingFactorExp = s.permissionScalingFactorExp).setConstrainable(constrainableWildcards, false)
 
-      v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snap.get.convert(s2.predicateSnapMap(predicate.name)), None, tPerm, ePerm, pve, true, v1, analysisInfos)((s3, v3) => {
-        val s4 = v3.heapSupporter.triggerResourceIfNeeded(s3, pa, tArgs, eArgs, v3, analysisInfos)
-        Q(s4, v3)
+      val foldedSnap = v1.heapSupporter.foldedPredicateSnapshot(s1a, predicate, tArgs, snap.get)
+      v1.heapSupporter.produceSingle(s1a, predicate, tArgs, eArgs, foldedSnap, None, tPerm, ePerm, pve, true, v1)((s2, v2) => {
+        /* The trigger is assumed once the predicate chunk exists, so that heap encodings
+         * whose triggers refer to the chunk's heap can look it up in s3.h. */
+        if (!Verifier.config.disableFunctionUnfoldTrigger()) {
+          val predTrigger = App(s2.predicateData(predicate.name).triggerFunction,
+            v2.heapSupporter.predicateTriggerSnapArg(s2, predicate, snap.get, s2.h) +: tArgs)
+          val eArgsString = eArgs.mkString(", ")
+          v2.decider.assume(predTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
+        }
+        val s2a = v2.heapSupporter.triggerResourceIfNeeded(s2, pa, tArgs, eArgs, v2, analysisInfos)
+        Q(s2a, v2)
       })
     })
   }
@@ -104,7 +107,7 @@ object predicateSupporter extends PredicateSupportRules {
             : VerificationResult = {
     tree match {
       case PredicateLeafNode(h, assumptions) =>
-        val debugExp = Option.when(withExp)(DebugExp.createInstance("Assumption from unfolded predicate body"))
+        val debugExp = Option.when(debugOn)(DebugExp.createInstance("Assumption from unfolded predicate body"))
         assumptions.foreach(a => v.decider.assume(a.replace(toReplace), debugExp, analysisInfos))
         val substChunks = h.values.map(chunk => v.chunkFactory.permScale(v.chunkFactory.substitute(chunk.asInstanceOf[GeneralChunk], toReplace, analysisInfos), s.permissionScalingFactor, s.permissionScalingFactorExp, analysisInfos))
 
@@ -126,7 +129,7 @@ object predicateSupporter extends PredicateSupportRules {
                   case _ => s.predicateFormalVarMap(resource.asInstanceOf[ast.Predicate].name)
                 }
                 newFr = newFr.recordFvfAndDomain(SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq()))
-                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, resource, bc.args, None, bc.perm, None, sm, s.program, v, analysisInfos, isExhale=false)
+                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, resource, bc.args, None, bc.perm, None, sm, bc.tag, s.program, v, analysisInfos, isExhale=false)
               case mwc: MagicWandChunk =>
                 val wand = mwc.id.ghostFreeWand
                 val bodyVars = wand.subexpressionsToEvaluate(s.program)
@@ -134,7 +137,7 @@ object predicateSupporter extends PredicateSupportRules {
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, wand, mwc.args, mwc.snap, v)
                 v.decider.assumeDefinition(smValueDef, None, analysisInfos)
                 newFr = newFr.recordFvfAndDomain(SnapshotMapDefinition(wand, sm, Seq(smValueDef), Seq()))
-                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, wand, mwc.args, None, mwc.perm, None, sm, s.program, v, analysisInfos, isExhale=false)
+                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, wand, mwc.args, None, mwc.perm, None, sm, mwc.tag, s.program, v, analysisInfos, isExhale=false)
             }
           } else {
             c
@@ -196,44 +199,45 @@ object predicateSupporter extends PredicateSupportRules {
             (Q: (State, Verifier) => VerificationResult)
             : VerificationResult = {
 
-    val tArgsWithE = if (withExp)
+    val tArgsWithE = if (debugOn)
       tArgs zip eArgs.get.map(Some(_))
     else
       tArgs zip Seq.fill(tArgs.length)(None)
     val gIns = s.g + Store(predicate.formalArgs map (_.localVar) zip tArgsWithE)
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
-    val s1 = s.scalePermissionFactor(tPerm, ePerm)
+    val s0 = s.scalePermissionFactor(tPerm, ePerm)
 
-    v.heapSupporter.consumeSingle(s1, s1.h, pa, tArgs, eArgs, tPerm, ePerm, true, pve, v, analysisInfos)((s2, h2, snap, v1) => {
-      val s3 = s2.copy(g = gIns, h = h2)
+    val hPreUnfold = s0.h
+    v.heapSupporter.consumeSingle(s0, s0.h, pa, tArgs, eArgs, tPerm, ePerm, true, pve, v, analysisInfos)((s1, h1, snap, v1) => {
+      val s1a = s1.copy(g = gIns, h = h1)
         .setConstrainable(constrainableWildcards, false)
-      if (s3.predicateData(predicate.name).predContents.isDefined) {
-        val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s3.predicateData(predicate.name).params.get.zip(Seq(snap.get) ++ tArgs))
-        producePredicateContents(s3, s3.predicateData(predicate.name).predContents.get, toReplace, v1, analysisInfos, false)((s4, v4) => {
-          v4.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
-          if (!Verifier.config.disableFunctionUnfoldTrigger()) {
-            val predicateTrigger =
-              App(s4.predicateData(predicate.name).triggerFunction,
-                snap.get.convert(terms.sorts.Snap) +: tArgs)
-            val eargs = eArgs.mkString(", ")
-            v4.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), analysisInfos.overrideDependencyType(AssumptionType.Trigger))
-          }
-          Q(s4.copy(g = s.g,
-            permissionScalingFactor = s.permissionScalingFactor,
-            permissionScalingFactorExp = s.permissionScalingFactorExp),
-            v4)
-        })
-      } else {
-        produce(s3, toSf(snap.get), body, pve, v1, analysisInfos)((s4, v2) => {
+      if (s1a.predicateData(predicate.name).predContents.isDefined) {
+        val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s1a.predicateData(predicate.name).params.get.zip(Seq(snap.get) ++ tArgs))
+        producePredicateContents(s1a, s1a.predicateData(predicate.name).predContents.get, toReplace, v1, analysisInfos)((s2, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =
-              App(s4.predicateData(predicate.name).triggerFunction,
-                snap.get.convert(terms.sorts.Snap) +: tArgs)
+              App(s2.predicateData(predicate.name).triggerFunction,
+                v2.heapSupporter.predicateTriggerSnapArg(s2, predicate, snap.get, hPreUnfold) +: tArgs)
             val eargs = eArgs.mkString(", ")
-            v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), analysisInfos.overrideDependencyType(AssumptionType.Trigger))
+            v2.decider.assume(predicateTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), analysisInfos.overrideDependencyType(AssumptionType.Trigger))
           }
-          Q(s4.copy(g = s.g,
+          Q(s2.copy(g = s.g,
+            permissionScalingFactor = s.permissionScalingFactor,
+            permissionScalingFactorExp = s.permissionScalingFactorExp),
+            v2)
+        })
+      } else {
+        produce(s1a, v1.heapSupporter.unfoldedBodySnapshotFunction(s1a, predicate, tArgs, snap.get, hPreUnfold, v1), body, pve, v1, analysisInfos)((s2, v2) => {
+          v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
+          if (!Verifier.config.disableFunctionUnfoldTrigger()) {
+            val predicateTrigger =
+              App(s2.predicateData(predicate.name).triggerFunction,
+                v2.heapSupporter.predicateTriggerSnapArg(s2, predicate, snap.get, hPreUnfold) +: tArgs)
+            val eargs = eArgs.mkString(", ")
+            v2.decider.assume(predicateTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), analysisInfos.overrideDependencyType(AssumptionType.Trigger))
+          }
+          Q(s2.copy(g = s.g,
             permissionScalingFactor = s.permissionScalingFactor,
             permissionScalingFactorExp = s.permissionScalingFactorExp),
             v2)

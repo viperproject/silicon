@@ -1,0 +1,86 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+predicate pred1(a:Ref) {
+	acc(a.f)
+}
+
+predicate pred2(a:Ref, p:Perm) {
+	p >= none && acc(a.f, p)
+}
+
+method test01(x: Ref)
+  requires acc(pred1(x))
+{
+  unfold pred1(x)
+  assert x != null
+}
+
+method test01_client(x: Ref) {
+  //:: ExpectedOutput(call.precondition:insufficient.permission)
+  test01(x)
+}
+
+ method test01_qp(xs: Seq[Ref], y: Ref)
+   requires y in xs
+   requires forall x: Ref :: x in xs ==> acc(pred1(x))
+ {
+   unfold pred1(y)
+   assert y != null
+ }
+
+method test01_qp_client(xs: Seq[Ref], y: Ref)
+  requires y in xs
+{
+  //:: ExpectedOutput(call.precondition:insufficient.permission)
+  test01_qp(xs, y)
+}
+
+method test02(x: Ref, p: Perm)
+  requires acc(pred2(x, p))
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert x != null
+}
+
+ method test02_2(xs: Seq[Ref], y: Ref, p: Perm)
+   requires y in xs
+   requires p >= none
+   requires acc(pred2(y, p))
+ {
+   unfold pred2(y, p)
+   //:: ExpectedOutput(assert.failed:assertion.false)
+   assert y != null
+ }
+
+
+method test02_client(x: Ref, p: Perm)
+  requires p == none
+  requires acc(pred2(x, p))
+{
+  test02(x, p)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+ method test02_qp(xs: Seq[Ref], y: Ref, p: Perm)
+   requires y in xs
+   requires p >= none
+   requires forall x: Ref :: x in xs ==> acc(pred2(x, p))
+ {
+   unfold pred2(y, p)
+   //:: ExpectedOutput(assert.failed:assertion.false)
+   assert y != null
+ }
+
+method test02_qp_client(xs: Seq[Ref], y: Ref, p: Perm)
+  requires p == none
+  requires y in xs
+  requires forall x: Ref :: x in xs ==> acc(pred2(x, p))
+{
+  test02_qp(xs, y, p)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}

@@ -16,6 +16,7 @@ import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
+import viper.silicon.rules.maskHeapSupporter
 import viper.silicon.state._
 import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
@@ -23,6 +24,7 @@ import viper.silicon.supporters._
 import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
+import viper.silver.ast.utility.QuantifiedPermissions.collectInDependencies
 import viper.silver.ast
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.{BackendType, Member}
@@ -80,6 +82,7 @@ class DefaultMainVerifier(config: Config,
   protected val domainsContributor = new DefaultDomainsContributor(symbolConverter, domainTranslator)
   protected val fieldValueFunctionsContributor = new DefaultFieldValueFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
   protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter, snapshotSupporter)
+  protected val heapFunctionsContributor = new MaskHeapFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
   protected val predicateAndWandSnapFunctionsContributor = new DefaultPredicateAndWandSnapFunctionsContributor(preambleReader, termConverter, predSnapGenerator, config)
   protected val magicWandSnapFunctionsContributor = new MagicWandSnapFunctionsContributor(preambleReader)
 
@@ -91,6 +94,8 @@ class DefaultMainVerifier(config: Config,
     sequencesContributor, setsContributor, multisetsContributor, mapsContributor, domainsContributor,
     fieldValueFunctionsContributor,
     predSnapGenerator, predicateAndWandSnapFunctionsContributor,
+    heapFunctionsContributor,
+    maskHeapSupporter,
     magicWandSnapFunctionsContributor,
     functionsSupporter, predicateSupporter,
     verificationPoolManager,
@@ -150,9 +155,10 @@ class DefaultMainVerifier(config: Config,
       _verificationPoolManager.pooledVerifiers.declare(decl)
     }
 
-    def comment(content: String): Unit = {
-      decider.prover.comment(content)
-      _verificationPoolManager.pooledVerifiers.comment(content)
+    def comment(content: => String): Unit = {
+      lazy val c = content
+      decider.prover.comment(c)
+      _verificationPoolManager.pooledVerifiers.comment(c)
     }
 
     def saturate(timeout: Int, comment: String): Unit = {
@@ -377,6 +383,11 @@ class DefaultMainVerifier(config: Config,
         false
       case None => Verifier.config.exhaleMode == ExhaleMode.MoreComplete
     }
+    val mceQP = AnnotationSupporter.getExhaleModeQP(member, reporter) match {
+      case Some(ExhaleMode.MoreComplete) => true
+      case Some(ExhaleMode.Greedy) | Some(ExhaleMode.MoreCompleteOnDemand) => false
+      case None => Verifier.config.exhaleModeQP == ExhaleMode.MoreComplete
+    }
     val moreJoinsAnnotated = AnnotationSupporter.getJoinMode(member, reporter)
     val moreJoins = if (member.isInstanceOf[ast.Method]) {
       moreJoinsAnnotated.getOrElse(Verifier.config.moreJoins.getOrElse(JoinMode.Off))
@@ -416,6 +427,7 @@ class DefaultMainVerifier(config: Config,
     } else InsertionOrderedSet.empty
 
     State(program = program,
+          currentBlock = None,
           functionData = functionData,
           predicateData = predicateData,
           qpFields = quantifiedFields,
@@ -427,6 +439,7 @@ class DefaultMainVerifier(config: Config,
           currentMember = Some(member),
           heapDependentTriggers = resourceTriggers,
           moreCompleteExhale = mce,
+          moreCompleteExhaleQP = mceQP,
           moreJoins = moreJoins)
   }
 
@@ -441,6 +454,7 @@ class DefaultMainVerifier(config: Config,
     State(
       program = program,
       currentMember = None,
+      currentBlock = None,
       functionData = functionData,
       predicateData = predicateData,
       qpFields = quantifiedFields,
@@ -449,6 +463,7 @@ class DefaultMainVerifier(config: Config,
       predicateSnapMap = predSnapGenerator.snapMap,
       predicateFormalVarMap = predSnapGenerator.formalVarMap,
       moreCompleteExhale = Verifier.config.exhaleMode == ExhaleMode.MoreComplete,
+      moreCompleteExhaleQP = Verifier.config.exhaleModeQP == ExhaleMode.MoreComplete,
       moreJoins = Verifier.config.moreJoins())
   }
 
@@ -494,6 +509,7 @@ class DefaultMainVerifier(config: Config,
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,
@@ -507,6 +523,7 @@ class DefaultMainVerifier(config: Config,
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,
@@ -520,6 +537,7 @@ class DefaultMainVerifier(config: Config,
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,
@@ -538,6 +556,7 @@ class DefaultMainVerifier(config: Config,
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,
@@ -551,6 +570,7 @@ class DefaultMainVerifier(config: Config,
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,

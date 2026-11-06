@@ -1,0 +1,41 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+/* Examples used to investigate how to optimise the terms created by Silicon */
+
+field f: Int
+
+method test01(xs: Seq[Ref])
+  requires |xs| > 3
+  requires forall i: Int, j: Int :: i in [0..|xs|) && j in [0..|xs|) && i != j ==> xs[i] != xs[j]
+  requires forall i: Int :: i in [0..|xs|) ==> acc(xs[i].f)
+{
+  var a: Int
+
+  a := xs[1].f
+  a := xs[1].f
+  a := xs[1].f
+}
+
+method test02(xs: Seq[Ref]) {
+  inhale |xs| > 3
+  inhale forall i: Int, j: Int :: i in [0..|xs|) && j in [0..|xs|) && i != j ==> xs[i] != xs[j]
+  inhale forall i: Int :: i in [0..|xs|) ==> acc(xs[i].f)
+
+  inhale forall i: Int :: i in [0..|xs|) ==> xs[i].f > 0
+  assert forall i: Int :: i in [0..|xs|) ==> xs[i].f >= 1
+
+  inhale forall i: Int :: i in [0..|xs|) ==> xs[i].f == 2
+  assert forall i: Int :: i in [0..|xs|) ==> xs[i].f > 1
+}
+
+method test03(xs: Set[Ref]) {
+  inhale |xs| > 3
+  inhale forall x: Ref :: x in xs ==> acc(x.f)
+
+  inhale forall x: Ref :: x in xs ==> x.f > 0
+  assert forall x: Ref :: x in xs ==> x.f >= 1
+
+  inhale forall x: Ref :: x in xs ==> x.f == 2
+  assert forall x: Ref :: x in xs ==> x.f > 1
+}

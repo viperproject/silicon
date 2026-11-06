@@ -1,0 +1,29 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+field g: Set[Ref]
+
+method m(this:Ref, b:Ref) returns (i:Int)
+  requires acc(this.g, write)
+  requires forall x: Ref :: x in (this.g) ==> acc(x.f, write)
+  requires forall y: Ref :: y in (this.g) ==> y.f >= 0
+  requires b in (this.g)
+{
+  assert b.f >= 0
+}
+
+method m2(this:Ref, b:Ref) returns (i:Int)
+  requires acc(this.g, write)
+  requires forall x: Ref :: x in (this.g) ==> acc(x.f, write)
+  requires forall y: Ref :: y in (this.g) ==> y.f >= 0
+  requires b in (this.g)
+{
+  exhale acc(this.g, write)
+
+  // This works because we work on a earlier snapshot of this.g
+  assert b.f >= 0
+
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+  exhale forall z: Ref :: z in (this.g) ==> acc(z.f, write)
+}

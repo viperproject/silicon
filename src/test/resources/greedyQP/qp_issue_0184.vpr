@@ -1,0 +1,61 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field ArrayTest__x: Seq[Ref]
+
+field ArrayTest__twin: Ref
+
+field Ref__Integer_value: Int
+
+method ArrayTest__ArrayTest(current_thread_id: Int) returns (sys__result: Ref)
+  requires current_thread_id >= 0
+  ensures sys__result != null
+{
+  var diz__1: Ref
+  diz__1 := new(ArrayTest__x, ArrayTest__twin)
+  inhale false
+  sys__result := diz__1
+  assert sys__result != null
+  inhale false
+}
+
+domain D {
+  function TRG(x: Ref): Bool
+}
+
+method ArrayTest__m(diz: Ref, current_thread_id: Int)
+  requires diz != null
+  requires current_thread_id >= 0
+  requires acc(diz.ArrayTest__twin, wildcard)
+  requires diz.ArrayTest__twin != null
+  requires acc(diz.ArrayTest__x, wildcard)
+  requires acc(diz.ArrayTest__twin.ArrayTest__x, wildcard)
+  requires |diz.ArrayTest__x| > 10
+  requires forall i1: Int, i2: Int :: i1 in [0..|diz.ArrayTest__x|) && i2 in [0..|diz.ArrayTest__x|) && i1 != i2 ==> diz.ArrayTest__x[i1] != diz.ArrayTest__x[i2]
+  requires (forall i: Int :: (0 <= i) && (i < |diz.ArrayTest__x|) ==> acc(diz.ArrayTest__x[i].Ref__Integer_value, 1 / 2))
+  requires |diz.ArrayTest__twin.ArrayTest__x| > 10
+  requires forall i: Int, j: Int :: i >= 0 && i < |diz.ArrayTest__twin.ArrayTest__x| && j >= 0 && j < |diz.ArrayTest__twin.ArrayTest__x| && i != j ==> diz.ArrayTest__twin.ArrayTest__x[i] != diz.ArrayTest__twin.ArrayTest__x[j]
+  requires (forall i: Int :: (0 <= i) && (i < |diz.ArrayTest__twin.ArrayTest__x|) ==> acc(diz.ArrayTest__twin.ArrayTest__x[i].Ref__Integer_value, 1 / 2))
+{
+  var tmp__2: Int
+  var __flatten_1__3: Ref
+  var __flatten_2__4: Ref
+  var __flatten_3__5: Ref
+  var __flatten_4__6: Ref
+  var __flatten_5__7: Int
+  __flatten_1__3 := diz.ArrayTest__twin
+  __flatten_2__4 := diz.ArrayTest__x[4]
+  __flatten_3__5 := __flatten_1__3.ArrayTest__x[4]
+  tmp__2 := __flatten_2__4.Ref__Integer_value + __flatten_3__5.Ref__Integer_value
+  if (diz == diz.ArrayTest__twin) {
+    __flatten_4__6 := diz.ArrayTest__x[4]
+    __flatten_5__7 := tmp__2
+    /* In the standard QP mode, this assignment fails unless an 'assert true' triggers a heap
+     * compression that makes Silicon/Z3 learn that from diz == diz.ArrayTest__twin it follows
+     * that diz.ArrayTest__x == diz.ArrayTest__twin.ArrayTest__x (Silicon issue 184). The greedy
+     * QP modes merge the quantified chunks during state consolidation, which resolves this
+     * incompleteness without the manual assert.
+     */
+    __flatten_4__6.Ref__Integer_value := __flatten_5__7
+  }
+}

@@ -105,7 +105,7 @@ case class ActualFunctionRecorder(private val _data: Either[FunctionData, (ast.P
    */
 
   override def arguments: Option[Stack[(Var, Option[AbstractLocalVar])]] = _data match {
-    case Left(fd) => Some(fd.arguments.zip(fd.argumentExps))
+    case Left(fd) => Some(fd.argumentsDuringFunctionVerification.zip(fd.argumentExpsDuringFunctionVerification))
     case Right((_, args)) => Some(args.map((_, None)))
   }
 

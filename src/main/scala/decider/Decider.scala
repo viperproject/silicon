@@ -67,8 +67,9 @@ trait Decider {
 
   def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos): Unit
   def assume(t: Term, debugExp: Option[DebugExp], analysisInfos: DependencyAnalysisInfos): Unit
-  def assume(assumptions: Iterable[Term], debugExps: Option[Iterable[DebugExp]], description: String, enforceAssumption: Boolean, analysisInfos: DependencyAnalysisInfos): Unit
   def assume(terms: Seq[Term], debugExps: Option[Seq[DebugExp]], analysisInfos: DependencyAnalysisInfos): Unit
+  def assume(assumptions: Iterable[Term], debugExps: Option[Iterable[DebugExp]], description: String, enforceAssumption: Boolean, analysisInfos: DependencyAnalysisInfos): Unit
+  def assumeDefinition(terms: Iterable[Term], debugExp: Option[DebugExp], analysisInfos: DependencyAnalysisInfos): Unit
   def assumeDefinition(t: Term, debugExp: Option[DebugExp], analysisInfos: DependencyAnalysisInfos): Unit
   def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean, analysisInfos: DependencyAnalysisInfos): Unit
 
@@ -89,6 +90,8 @@ trait Decider {
   def fresh(v: ast.AbstractLocalVar): (Var, Option[ast.LocalVarWithVersion])
   def freshARP(id: String = "$k"): (Var, Term, Option[ast.LocalVarWithVersion])
   def appliedFresh(id: String, sort: Sort, appliedArgs: Seq[Term]): App
+
+  def createAlias(t: Term, s: State): Term
 
   def generateModel(): Unit
   def getModel(): Model
@@ -315,6 +318,16 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def assumeDefinition(t: Term, debugExp: Option[DebugExp], analysisInfos: DependencyAnalysisInfos): Unit = {
       assume(InsertionOrderedSet(Seq((t, debugExp))), enforceAssumption=false, isDefinition=true, analysisInfos)
+    }
+
+    def assumeDefinition(terms: Iterable[Term], debugExp: Option[DebugExp], analysisInfos: DependencyAnalysisInfos): Unit = {
+      val filteredTerms = terms filterNot isKnownToBeTrue
+
+      if (debugMode && filteredTerms.nonEmpty) {
+        addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
+      }
+
+      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms), analysisInfos, isDefinition = true)
     }
 
     def assume(assumptions: InsertionOrderedSet[(Term, Option[DebugExp])], enforceAssumption: Boolean, isDefinition: Boolean, analysisInfos: DependencyAnalysisInfos): Unit = {
@@ -557,6 +570,21 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       _declaredFreshFunctions = _declaredFreshFunctions + decl /* [BRANCH-PARALLELISATION] */
 
       fun
+    }
+
+    def createAlias(t: Term, s: State): Term = {
+      t match {
+        /* No aliases are introduced while a wand is being packaged (packagingWandSnapshots
+         * is non-empty): terms may then contain the wand's snapshot root, which ends up as a
+         * quantified variable in the MWSF definition. A macro whose body mentions the root
+         * would refer to the global constant rather than the bound variable. */
+        case hvr: HasVarRepr if hvr.varRepr.isEmpty && s.quantifiedVariables.isEmpty && s.packagingWandSnapshots.isEmpty && s.isMethodVerification =>
+          val md = freshMacro("tmpTerm", Seq(), t)
+          val mcr = Macro(md.id, Seq(), md.body.sort)
+          hvr.varRepr = Some(App(mcr, Seq()))
+          t
+        case _ => t
+      }
     }
 
 

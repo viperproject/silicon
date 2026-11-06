@@ -1,0 +1,57 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f:Int
+field g:Int
+
+predicate pred(x:Ref) {
+    acc(x.f)
+}
+
+method m1(xs:Seq[Ref])
+requires forall x:Ref :: x in xs ==> acc(x.f)
+ensures forall x:Ref :: x in xs ==> acc(x.f)
+{}
+
+method m2(xs:Seq[Ref])
+requires forall x:Ref :: x in xs ==> acc(pred(x))
+ensures forall x:Ref :: x in xs ==> acc(pred(x))
+{}
+
+method m3(xs:Seq[Ref])
+requires forall x:Ref :: x in xs ==> acc(x.f) && acc(x.g)
+ensures forall x:Ref :: x in xs ==> acc(x.f) && acc(x.g)
+{}
+
+method m4(xs:Seq[Ref])
+requires forall x:Ref :: x in xs ==> acc(pred(x)) && acc(x.g)
+ensures forall x:Ref :: x in xs ==> acc(pred(x)) && acc(x.g)
+{}
+
+method m5(xs:Seq[Ref])
+requires forall x:Ref :: x in xs ==> acc(x.g) &&  acc(pred(x))
+ensures forall x:Ref :: x in xs ==> acc(x.g) &&  acc(pred(x))
+{}
+
+method m6(xs:Seq[Ref])
+requires forall x:Ref :: x in xs ==> acc(pred(x)) &&  acc(pred(x))
+ensures forall x:Ref :: x in xs ==> acc(pred(x)) &&  acc(pred(x))
+{}
+
+method m7(xs:Seq[Ref])
+requires forall x:Ref :: x in xs ==> acc(x.f) && acc(x.g) &&  acc(pred(x))
+requires forall x:Ref :: x in xs ==> x.f > 0
+ensures forall x:Ref :: x in xs ==> acc(x.f) && acc(x.g) &&  acc(pred(x))
+ ensures forall x:Ref :: x in xs ==> x.f > 0
+{}
+
+method m8(xs:Seq[Ref], ys:Seq[Ref])
+requires forall x:Ref :: x in xs ==> (x in ys ==> acc(x.f)) && (x in ys ==> acc(x.g))
+//ensures requires forall x:Ref :: x in xs ==> (x in ys ==> acc(x.f)) && (x in ys ==> acc(x.g))
+{}
+
+
+method m9(xs:Seq[Ref])
+requires forall x:Ref :: x in xs ==> acc(x.f) && acc(x.g) &&  acc(pred(x)) && x.f > 0
+ensures forall x:Ref :: x in xs ==> acc(x.f) && acc(x.g) &&  acc(pred(x)) && x.f > 0
+{}

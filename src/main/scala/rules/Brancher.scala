@@ -59,11 +59,15 @@ object brancher extends BranchingRules {
     /* Skip path feasibility check if one of the following holds:
      *   (1) the branching is due to the short-circuiting evaluation of a conjunction
      *   (2) the branch condition contains a quantified variable
+     * Note that the snapshot of the LHS of a wand that is being packaged (s.packagingWandSnapshots) is
+     * not considered a quantified variable here: a branch that is infeasible for the (symbolic) LHS
+     * cannot be taken when the wand is applied either, see MagicWandSupporter.packageWand.
      */
+    val allQuantifiedVariables = s.quantifiedVariables
     val skipPathFeasibilityCheck = (
          fromShortCircuitingAnd
-      || (   s.quantifiedVariables.nonEmpty
-          && s.quantifiedVariables.map(_._1).exists(condition.freeVariables.contains))
+      || (   allQuantifiedVariables.nonEmpty
+          && allQuantifiedVariables.map(_._1).exists(condition.freeVariables.contains))
     )
 
     val analysisInfos1 = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, analysisInfos, conditionExp._1.info, conditionExp._1)
@@ -162,7 +166,7 @@ object brancher extends BranchingRules {
             var nMacrosOfElseBranchDeciderBefore: Int = 0
 
             if (v.uniqueId != v0.uniqueId) {
-              v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+              v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
               if (s.underJoin) {
                 nMacrosOfElseBranchDeciderBefore = v1.decider.freshMacros.size
                 functionsOfElseBranchdDeciderBefore = v1.decider.freshFunctions
@@ -238,7 +242,7 @@ object brancher extends BranchingRules {
             v.decider.prover.comment(s"Resetting path conditions after interruption")
             v.decider.setPcs(pcsAfterThenBranch)
             v.errorsReportedSoFar.set(noOfErrorsAfterThenBranch)
-            v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+            v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
             v.decider.resetProverOptions()
             v.decider.setProverOptions(proverConfigArgsOfCurrentDecider)
           }
