@@ -22,6 +22,12 @@ class DependencyAnalysisAwareVerificationPoolManager(mainVerifier: MainVerifier)
   override def pooledVerifiers: DefaultPooledVerifiers with DependencyAnalysisProverHandler = DependencyAnalysisAwarePooledVerifiers
 
   private object DependencyAnalysisAwarePooledVerifiers extends DefaultPooledVerifiers with DependencyAnalysisProverHandler {
+    def assume(term: Term, label: Option[String]): Unit =
+      workerVerifiers foreach {
+        case daV: DependencyAnalysisAwareWorkerVerifier => daV.decider.prover.assume(term, label)
+        case v => v.decider.prover.assume(term)
+      }
+
     override def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, DependencyAnalysisAxiomInfo)], description: String): Unit =
       workerVerifiers foreach {
         case daV: DependencyAnalysisAwareWorkerVerifier => daV.decider.prover.assumeAxiomsWithAnalysisInfo(axioms, description)

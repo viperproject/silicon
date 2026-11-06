@@ -44,7 +44,6 @@ abstract class ProverStdIO(uniqueId: String,
   var proverPath: Path = _
   var lastReasonUnknown : String = _
   var lastModel : String = _
-  protected var lastUnsatCore_ : String = _
 
   def exeEnvironmentalVariable: String
   def dependencies: Seq[SilDefaultDependency]
@@ -222,10 +221,6 @@ abstract class ProverStdIO(uniqueId: String,
 //  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
 
   def assume(term: Term): Unit = {
-    assume(term, nextProverLabel())
-  }
-
-  def assume(term: Term, label: String): Unit = {
 //    /* Detect certain simple problems with quantifiers.
 //     * Note that the current checks don't take in account whether or not a
 //     * quantification occurs in positive or negative position.
@@ -239,8 +234,7 @@ abstract class ProverStdIO(uniqueId: String,
 //        problems.foreach(p => quantificationLogger.println(s"  $p"))
 //      }
 //    })
-    val finalLabel = if (label.isEmpty) nextProverLabel() else label
-    assume(termConverter.convert(term), finalLabel)
+    assumeInternal(termConverter.convert(term), None)
   }
 
   def nextProverLabel(): String = {
@@ -248,22 +242,28 @@ abstract class ProverStdIO(uniqueId: String,
     label
   }
 
-  def assume(term: String, label: String): Unit = {
+  /* Whether assumptions without an explicit label are named as well. */
+  protected def namesAllAssumptions: Boolean = Verifier.config.enableUnsatCores()
+
+  protected def assumeInternal(term: String, label: Option[String]): Unit = {
 //    bookkeeper.assumptionCounter += 1
 
-    if ((Verifier.config.dependencyAnalysis.isDefined && label.nonEmpty) ||  Verifier.config.enableUnsatCores()) {
-      writeLine("(assert (! " + term + " :named " + (if (label.nonEmpty) label else nextProverLabel()) + "))")
-    } else {
-      writeLine("(assert " + term + ")")
+    writeAssert(term, label.orElse(Option.when(namesAllAssumptions)(nextProverLabel())))
+  }
+
+  private def writeAssert(term: String, name: Option[String]): Unit = {
+    name match {
+      case Some(n) => writeLine("(assert (! " + term + " :named " + n + "))")
+      case None => writeLine("(assert " + term + ")")
     }
 
     readSuccess()
   }
 
-  def assert(goal: Term, timeout: Option[Int] = None, label: String = ""): Boolean =
-    assert(termConverter.convert(goal), timeout, label)
+  def assert(goal: Term, timeout: Option[Int] = None): Boolean =
+    assertInternal(termConverter.convert(goal), timeout, None)
 
-  def assert(goal: String, timeout: Option[Int], label: String): Boolean = {
+  protected def assertInternal(goal: String, timeout: Option[Int], label: Option[String]): Boolean = {
 //    bookkeeper.assertionCounter += 1
 
     val (result, duration) = Verifier.config.assertionMode() match {
@@ -277,17 +277,11 @@ abstract class ProverStdIO(uniqueId: String,
     result
   }
 
-  protected def assertUsingPushPop(goal: String, timeout: Option[Int], label: String): (Boolean, Long) = {
+  protected def assertUsingPushPop(goal: String, timeout: Option[Int], label: Option[String]): (Boolean, Long) = {
     push()
     setTimeout(timeout)
 
-    if ((Verifier.config.dependencyAnalysis.isDefined && label.nonEmpty) || Verifier.config.enableUnsatCores()) {
-      writeLine("(assert (! (not " + goal + ") :named " + (if (label.nonEmpty) label else nextProverLabel()) + "))")
-    } else {
-      writeLine("(assert (not " + goal + "))")
-    }
-
-    readSuccess()
+    writeAssert("(not " + goal + ")", label.orElse(Option.when(Verifier.config.enableUnsatCores())(nextProverLabel())))
 
     val startTime = System.currentTimeMillis()
     writeLine("(check-sat)")
@@ -297,8 +291,8 @@ abstract class ProverStdIO(uniqueId: String,
     if (!result) {
       retrieveAndSaveModel()
       retrieveReasonUnknown()
-    } else if (Verifier.config.dependencyAnalysis.isDefined) {
-      lastUnsatCore_ = extractUnsatCore()
+    } else {
+      onUnsat()
     }
 
     pop()
@@ -306,14 +300,8 @@ abstract class ProverStdIO(uniqueId: String,
     (result, endTime - startTime)
   }
 
-  def extractUnsatCore(): String = {
-    writeLine("(get-unsat-core)")
-    val unsatCore = input.readLine()
-    comment("unsat core: " + unsatCore)
-    unsatCore
-  }
-
-  def getLastUnsatCore: String = lastUnsatCore_
+  /* Invoked right after the prover reported unsat for an assertion checked via push/pop or for a check. */
+  protected def onUnsat(): Unit = {}
 
   def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {
     data match {
@@ -380,7 +368,7 @@ abstract class ProverStdIO(uniqueId: String,
     (result, endTime - startTime)
   }
 
-  def check(timeout: Option[Int] = None, label: String = ""): Result = {
+  def check(timeout: Option[Int] = None): Result = {
     setTimeout(timeout)
 
     writeLine("(check-sat)")
@@ -391,8 +379,8 @@ abstract class ProverStdIO(uniqueId: String,
       case "unknown" => Unknown
     }
 
-    if (result == Unsat && Verifier.config.dependencyAnalysis.isDefined)
-      lastUnsatCore_ = extractUnsatCore()
+    if (result == Unsat)
+      onUnsat()
 
     result
   }

@@ -417,12 +417,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     /* Asserting facts */
 
     def checkSmoke(analysisInfos: DependencyAnalysisInfos, isAssert: Boolean=false): Boolean = {
-      checkSmokeInternal(isAssert)(timeout => prover.check(timeout))
+      checkSmokeInternal(isAssert)
     }
 
-    protected def checkSmokeInternal(isAssert: Boolean)(proverCheck: Option[Int] => Result): Boolean = {
+    protected def checkSmokeInternal(isAssert: Boolean): Boolean = {
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
-      val result = proverCheck(timeout) == Unsat
+      val result = prover.check(timeout) == Unsat
       if(result) pcs.markPathInfeasible(true)
       result
     }

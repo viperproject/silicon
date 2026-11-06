@@ -45,12 +45,12 @@ trait DependencyAnalyzer {
   def addDependency(source: Option[Int], dest: Option[Int]): Unit
 
   /**
-   * @param dep The UNSAT core as reported by Z3.
-   * @param assertionLabel the label of the assertion that was proven using the UNSAT core
+   * @param unsatCore The labels in the UNSAT core as reported by Z3.
+   * @param assertionId the id of the assertion that was proven using the UNSAT core
    *
-   *  Parses the UNSAT core and adds all its components as dependencies of the provided assertion.
+   *  Adds all components of the UNSAT core as dependencies of the provided assertion.
    */
-  def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit
+  def processUnsatCoreAndAddDependencies(unsatCore: Seq[String], assertionId: Int): Unit
 
   /**
    * Adds dependencies between all pairs of sourceExps and targetExps, where sourceExps should be preconditions and
@@ -94,21 +94,20 @@ object DependencyAnalyzer {
     if (annotation.isDefined && annotation.get.nonEmpty) annotation.get.head.toBooleanOption else None
   }
 
-  def createAssumptionLabel(id: Option[Int]): String = {
+  def createAssumptionLabel(id: Option[Int]): Option[String] = {
     createLabel(assumptionLabelPrefix, id)
   }
 
-  def createAssertionLabel(id: Option[Int]): String = {
+  def createAssertionLabel(id: Option[Int]): Option[String] = {
     createLabel(assertionLabelPrefix, id)
   }
 
-  def createAxiomLabel(id: Option[Int]): String = {
+  def createAxiomLabel(id: Option[Int]): Option[String] = {
     createLabel(axiomLabelPrefix, id)
   }
 
-  private def createLabel(description: String, id: Option[Int]): String = {
-    if (id.isDefined) description + "_" + id.get
-    else ""
+  private def createLabel(description: String, id: Option[Int]): Option[String] = {
+    id.map(description + "_" + _)
   }
 
   private lazy val labelPrefixes = Seq(assumptionLabelPrefix, assertionLabelPrefix, axiomLabelPrefix)
@@ -269,10 +268,8 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
       dependencyGraph.addEdges(source.get, Set(dest.get))
   }
 
-  override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {
-    val assumptionLabels = dep.replace("(", "").replace(")", "").split(" ")
-    val assertionId = DependencyAnalyzer.getIdFromLabel(assertionLabel).get
-    val assumptionIds = assumptionLabels.flatMap(DependencyAnalyzer.getIdFromLabel).toSet
+  override def processUnsatCoreAndAddDependencies(unsatCore: Seq[String], assertionId: Int): Unit = {
+    val assumptionIds = unsatCore.flatMap(DependencyAnalyzer.getIdFromLabel).toSet
     if (!assumptionIds.contains(assertionId))
       dependencyGraph.addVacuousProof(assertionId)
     dependencyGraph.addEdges(assumptionIds.diff(Set(assertionId)), assertionId)
@@ -412,7 +409,7 @@ class NoDependencyAnalyzer extends DependencyAnalyzer {
   override def addAssertionFailedNode(failedAssertion: Term, analysisInfos: DependencyAnalysisInfos): Option[Int] = None
 
   override def addDependency(source: Option[Int], dest: Option[Int]): Unit = {}
-  override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {}
+  override def processUnsatCoreAndAddDependencies(unsatCore: Seq[String], assertionId: Int): Unit = {}
   override def addDependenciesForAbstractMembers(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], analysisInfos: DependencyAnalysisInfos): Unit = {}
 
   override def buildFinalGraph(): Option[DependencyGraph[IntraProcedural]] = None

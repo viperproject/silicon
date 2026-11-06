@@ -261,10 +261,6 @@ class Z3ProverAPI(uniqueId: String,
     throw new ProverInteractionFailed(uniqueId, "Dynamically setting prover options via Z3 API is currently not supported.")
   }
 
-  def assume(term: Term, label: String): Unit = {
-    assume(term)
-  }
-
   def assume(term: Term): Unit = {
     try {
       if (preamblePhaseOver)
@@ -296,7 +292,7 @@ class Z3ProverAPI(uniqueId: String,
     cleanTerm
   }
 
-  def assert(goal: Term, timeout: Option[Int], label: String = ""): Boolean = {
+  def assert(goal: Term, timeout: Option[Int]): Boolean = {
     endPreamblePhase()
 
     try {
@@ -391,7 +387,7 @@ class Z3ProverAPI(uniqueId: String,
     (result, endTime - startTime)
   }
 
-  def check(timeout: Option[Int] = None, label: String = ""): Result = {
+  def check(timeout: Option[Int] = None): Result = {
     endPreamblePhase()
     setTimeout(timeout)
 
@@ -403,8 +399,6 @@ class Z3ProverAPI(uniqueId: String,
       case Status.UNKNOWN=> Unknown
     }
   }
-
-  def getLastUnsatCore: String = ""
 
   def endPreamblePhase(): Unit =  {
     if (!preamblePhaseOver) {

@@ -74,12 +74,12 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       assumeWithoutSmokeChecksInternal(terms, isDefinition)(t => prover.assume(t, labels(t)))
     }
 
-    def assumeLabel(term: Term, assumptionLabel: String): Unit = {
+    def assumeLabel(term: Term, assumptionLabel: Option[String]): Unit = {
       pathConditions.addAnalysisLabel(term)
       prover.assume(term, assumptionLabel)
     }
 
-    private def registerAssumptions(terms: InsertionOrderedSet[Term], analysisInfos: DependencyAnalysisInfos): Map[Term, String] = {
+    private def registerAssumptions(terms: InsertionOrderedSet[Term], analysisInfos: DependencyAnalysisInfos): Map[Term, Option[String]] = {
       terms.toSeq.map(t => {
         val assumptionIds = dependencyAnalyzer.addAssumption(t, analysisInfos)
         (t, DependencyAnalyzer.createAssumptionLabel(assumptionIds))
@@ -97,7 +97,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       if (isPathMarkedInfeasible)
         dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, assertNode map (_.id))
       else if (result)
-        dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
+        assertNode foreach (node => dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, node.id))
 
       if (result) {
         assertNode foreach dependencyAnalyzer.addAssertionNode
@@ -111,18 +111,17 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
 
     override def checkSmoke(analysisInfos: DependencyAnalysisInfos, isAssert: Boolean = false): Boolean = {
       val checkNode = dependencyAnalyzer.createAssertOrCheckNode(False, analysisInfos, !isAssert)
-      val label = DependencyAnalyzer.createAssertionLabel(checkNode.map(_.id))
 
       if (isPathMarkedInfeasible) {
         checkNode foreach dependencyAnalyzer.addAssertionNode
         dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, checkNode.map(_.id))
         true
       } else {
-        val result = checkSmokeInternal(isAssert)(timeout => prover.check(timeout, label))
+        val result = checkSmokeInternal(isAssert)
 
         if (result) {
           checkNode foreach dependencyAnalyzer.addAssertionNode
-          dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
+          checkNode foreach (node => dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, node.id))
           val infeasibleNodeId = dependencyAnalyzer.addInfeasibilityNode(!isAssert, analysisInfos)
           dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibleNodeId)
           pcs.setCurrentInfeasibilityNode(infeasibleNodeId)

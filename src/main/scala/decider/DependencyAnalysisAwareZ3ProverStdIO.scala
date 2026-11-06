@@ -16,12 +16,35 @@ import viper.silicon.state.terms.Term
 import viper.silver.reporter.Reporter
 
 class DependencyAnalysisAwareZ3ProverStdIO(uniqueId: String, termConverter: TermToSMTLib2Converter, identifierFactory: IdentifierFactory, reporter: Reporter)
-  extends Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter) with DependencyAnalysisProverHandler
+  extends Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter) with DependencyAnalysisProverHandler {
+
+  private var lastUnsatCore: Seq[String] = _
+
+  /* The labels in the UNSAT core of the most recent assertion or check that was proven. */
+  def getLastUnsatCore: Seq[String] = lastUnsatCore
+
+  override protected def namesAllAssumptions: Boolean = true
+
+  def assume(term: Term, label: Option[String]): Unit =
+    assumeInternal(termConverter.convert(term), label)
+
+  def assert(goal: Term, timeout: Option[Int], label: Option[String]): Boolean =
+    assertInternal(termConverter.convert(goal), timeout, label)
+
+  override protected def onUnsat(): Unit = {
+    writeLine("(get-unsat-core)")
+    val unsatCore = input.readLine()
+    comment("unsat core: " + unsatCore)
+    lastUnsatCore = unsatCore.replace("(", "").replace(")", "").split(" ").toSeq
+  }
+}
 
 trait DependencyAnalysisProverHandler extends ProverLike {
   protected val preambleDependencyAnalyzer: DependencyAnalyzer = new DefaultDependencyAnalyzer(None)
 
   def getPreambleAnalysisNodes: Iterable[DependencyAnalysisNode] = preambleDependencyAnalyzer.getNodes
+
+  def assume(term: Term, label: Option[String]): Unit
 
   def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, DependencyAnalysisAxiomInfo)], description: String): Unit = {
     if (debugMode)
@@ -33,7 +56,7 @@ trait DependencyAnalysisProverHandler extends ProverLike {
         val id = preambleDependencyAnalyzer.addAxiom(axiom._1, analysisAxiomInfo)
         assume(axiom._1, DependencyAnalyzer.createAxiomLabel(id))
       } else {
-        assume(axiom._1, "")
+        assume(axiom._1)
       }
     })
   }

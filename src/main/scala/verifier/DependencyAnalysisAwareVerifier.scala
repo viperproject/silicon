@@ -13,6 +13,7 @@ import viper.silicon.dependencyAnalysis.cliTool.DependencyAnalysisTool
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.state.chunks._
+import viper.silicon.state.terms.Term
 import viper.silicon.supporters.DependencyAnalysisAwareMethodVerificationUnitProvider
 import viper.silicon.supporters.functions.DependencyAnalysisAwareFunctionVerificationUnitProvider
 import viper.silver.ast
@@ -39,7 +40,12 @@ class DependencyAnalysisAwareMainVerifier(config: Config,
 
   override def allProvers: AllProvers with DependencyAnalysisProverHandler = DependencyAnalysisAwareAllProvers
 
-  private object DependencyAnalysisAwareAllProvers extends AllProvers with DependencyAnalysisProverHandler
+  private object DependencyAnalysisAwareAllProvers extends AllProvers with DependencyAnalysisProverHandler {
+    def assume(term: Term, label: Option[String]): Unit = {
+      decider.prover.assume(term, label)
+      _verificationPoolManager.pooledVerifiers.assume(term, label)
+    }
+  }
 
   override def verifyMember(doVerify: Unit => Seq[VerificationResult], v: Verifier, member: ast.Member): Seq[VerificationResult] = {
     v match {
