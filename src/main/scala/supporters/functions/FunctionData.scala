@@ -371,7 +371,7 @@ class FunctionData(val programFunction: ast.Function,
     val pre = preconditionFunctionApplication
     val postPreconditions = if (programFunction.posts.nonEmpty) {
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
-      val bodies = translatedPostsWithInfo.map(tPost => (Let(bodyBindings, Implies(pre, FunctionPreconditionTransformer.transform(tPost._1, program)))tPost._1))
+      val bodies = translatedPostsWithInfo.map(tPost => (Let(bodyBindings, Implies(pre, FunctionPreconditionTransformer.transform(tPost._1, program))), tPost._2))
       bodies.map(b => (functionEncoding.adaptAxiom(Forall(arguments, b._1, Seq(Trigger(limitedFunctionApplication))), this), b._2))
     } else Seq()
     postPreconditions

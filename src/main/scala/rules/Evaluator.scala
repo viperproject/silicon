@@ -239,7 +239,7 @@ object evaluator extends EvaluationRules {
         s.oldHeaps.get(heapName) match {
           case None =>
             val failure = createFailure(pve dueTo LabelledStateNotReached(ast.LabelledOld(e0, heapName)(old.pos, old.info, old.errT)), v, s, "labelled state reached")
-            if (s.retryLevel == 0) v.decider.handleFailedAssertion(False, Option.when(withExp)(FalseLit()()), Option.when(withExp)(FalseLit()()), analysisInfos, v.reportFurtherErrors())
+            if (s.retryLevel == 0) v.decider.handleFailedAssertion(False, Option.when(debugOn)(FalseLit()()), Option.when(debugOn)(FalseLit()()), analysisInfos, v.reportFurtherErrors())
             val freshVar = v.decider.fresh(v.symbolConverter.toSort(old.typ), None)
             if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, freshVar, None, v) else failure
           case _ =>
@@ -251,7 +251,7 @@ object evaluator extends EvaluationRules {
         s.oldHeaps.get(lbl) match {
           case None =>
             val failure = createFailure(pve dueTo LabelledStateNotReached(old), v, s, "labelled state reached")
-            if (s.retryLevel == 0) v.decider.handleFailedAssertion(False, Option.when(withExp)(FalseLit()()), Option.when(withExp)(FalseLit()()), analysisInfos, v.reportFurtherErrors())
+            if (s.retryLevel == 0) v.decider.handleFailedAssertion(False, Option.when(debugOn)(FalseLit()()), Option.when(debugOn)(FalseLit()()), analysisInfos, v.reportFurtherErrors())
             val freshVar = v.decider.fresh(v.symbolConverter.toSort(old.typ), None)
             if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, freshVar, None, v) else failure
           case _ =>
@@ -578,7 +578,7 @@ object evaluator extends EvaluationRules {
               } else Unreachable()
             } else {
               val failure = createFailure(pve.dueTo(InternalReason(sourceQuant, "Quantifier evaluation failed.")), v1, s1, "quantifier could be evaluated")
-              if (s1.retryLevel == 0) v1.decider.handleFailedAssertion(False, Option.when(withExp)(FalseLit()()), Option.when(withExp)(FalseLit()()), analysisInfos, v1.reportFurtherErrors())
+              if (s1.retryLevel == 0) v1.decider.handleFailedAssertion(False, Option.when(debugOn)(FalseLit()()), Option.when(debugOn)(FalseLit()()), analysisInfos, v1.reportFurtherErrors())
               val freshVar = v1.decider.fresh(v1.symbolConverter.toSort(sourceQuant.typ), None)
               if (s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine Q(s1, freshVar, None, v1) else failure
             }
@@ -691,7 +691,7 @@ object evaluator extends EvaluationRules {
                                moreJoins = s2.moreJoins,
                                assertReadAccessOnly = s2.assertReadAccessOnly)
               val funcAppNewOld = Option.when(debugOn)({
-                if (s3a.isEvalInOld || pres.forall(_.isPure)) funcAppNew.get
+                if (s3a.isEvalInOld || func.pres.forall(_.isPure)) funcAppNew.get
                 else ast.DebugLabelledOld(funcAppNew.get, debugLabel)(fapp.pos, fapp.info, fapp.errT)
               })
               QB(s3a, (tFApp, funcAppNewOld), v3)})
@@ -794,7 +794,7 @@ object evaluator extends EvaluationRules {
                 case false =>
                   v2.decider.finishDebugSubExp(s"unfolding of ${predicate.name}(${eArgs.mkString(", ")}) in heap $s2Label")
                   val failure = createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))
-                  if (s2a.retryLevel == 0) v2.decider.handleFailedAssertion(False, Option.when(withExp)(FalseLit()()), Option.when(withExp)(FalseLit()()), analysisInfos, v2.reportFurtherErrors())
+                  if (s2a.retryLevel == 0) v2.decider.handleFailedAssertion(False, Option.when(debugOn)(FalseLit()()), Option.when(debugOn)(FalseLit()()), analysisInfos, v2.reportFurtherErrors())
                   val freshVar = v2.decider.fresh(v2.symbolConverter.toSort(e.typ), None)
                   if (s2a.retryLevel == 0 && v2.reportFurtherErrors() && Verifier.config.analyzeInfeasiblePaths) failure combine Q(s2a, freshVar, None, v2) else failure
               }}))

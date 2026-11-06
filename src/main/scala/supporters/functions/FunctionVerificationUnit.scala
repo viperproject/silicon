@@ -51,10 +51,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       extends FunctionVerificationUnit[Sort, Decl, Term]
          with StatefulComponent {
 
-    import producer.{debugOn => _, _}
     import consumer.{debugOn => _, _}
+    import producer.{debugOn => _, _}
     import evaluator._
-    import producer._
 
     @unused private var program: ast.Program = _
     /*private*/ var functionData: Map[String, FunctionData] = Map.empty
@@ -200,7 +199,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           emitAndRecordFunctionAxioms(data.limitedAxiomWithInfo)
           emitAndRecordFunctionAxioms(data.triggerAxiomWithInfo)
           functionEncoding.declsAfterWellDefinedness(data) map decider.prover.declare
-          emitAndRecordFunctionAxioms(functionEncoding.auxiliaryAxioms(data): _*) // XXX ake: withInfo?
+          emitAndRecordFunctionAxioms(functionEncoding.auxiliaryAxioms(data).map(a => (a, DependencyAnalysisAxiomInfo(DependencyAnalysisInfos.DefaultInfos, ""))): _*) // XXX ake: withInfo?
           emitAndRecordFunctionAxioms(data.postAxiomWithInfo: _*)
           emitAndRecordFunctionAxioms(data.postPreconditionPropagationAxiomWithInfo: _*)
           this.postConditionAxiomsWithInfo = this.postConditionAxiomsWithInfo ++ data.postAxiomWithInfo

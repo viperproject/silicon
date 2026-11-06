@@ -6,23 +6,20 @@
 
 package viper.silicon.reporting
 
-import viper.silver.verifier.{ApplicationEntry, ConstantEntry, MapEntry, Model, ValueEntry}
-import viper.silver.ast.{CondExp, Exp, FieldAccessPredicate, LocalVar, Member, NeCmp, Predicate, Program, Resource, Type}
+import viper.silicon.decider.TermToSMTLib2Converter
+import viper.silicon.interfaces.SiliconCounterexample
+import viper.silicon.interfaces.decider.TermConverter
+import viper.silicon.reporting.Converter.evaluateTerm
+import viper.silicon.resources.{FieldID, PredicateID}
+import viper.silicon.state.chunks._
+import viper.silicon.state.terms._
+import viper.silicon.state.{DefaultSymbolConverter, State, Store, SymbolConverter}
+import viper.silicon.{Map, state => st}
 import viper.silver.ast
+import viper.silver.ast._
+import viper.silver.verifier._
 
 import scala.util.Try
-import viper.silicon.{Map, state => st}
-import viper.silicon.interfaces.state.Chunk
-import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.state.{BasicChunk, DefaultSymbolConverter, SimpleIdentifier, State, Store, SymbolConverter}
-import viper.silicon.state.terms._
-import viper.silicon.state._
-import viper.silicon.decider.TermToSMTLib2Converter
-import viper.silicon.interfaces.decider.TermConverter
-import viper.silicon.interfaces.SiliconCounterexample
-import viper.silicon.reporting.Converter.evaluateTerm
-import viper.silver.verifier._
-import viper.silver.verifier.Rational
 
 /**
   * Transforms the model returned by the SMT solver into a Viper counterexample. One can choose
@@ -685,7 +682,7 @@ object SiliconRawCounterexample {
         heap += detPredicate(model, c, predByName)
       case c@BasicChunk(id, _, _, _, _, _, _, _, _) =>
         println("This Basic Chunk couldn't be matched as a CE heap entry!")
-      case c: st.QuantifiedFieldChunk =>
+      case c: QuantifiedFieldChunk =>
         for ((recv, value, perm) <- detQPFieldEntries(c, model)) {
           val key = (recv, c.id.name)
           val prev = qpFields.get(key)
@@ -693,14 +690,14 @@ object SiliconRawCounterexample {
           val knownValue = prev.map(_._2).filter(_ != "#undefined").getOrElse(value)
           qpFields(key) = (summedPerm, knownValue)
         }
-      case c: st.QuantifiedPredicateChunk =>
+      case c: QuantifiedPredicateChunk =>
         for ((args, perm) <- detQPArgEntries(c.quantifiedVars, c.invs, c.singletonArguments, c.perm, model)) {
           val key = (c.id.name, args)
           qpPreds(key) = qpPreds.get(key).getOrElse(Rational.zero) + perm
         }
       case c@MagicWandChunk(_, _, _, _, _, _, _, _) =>
         heap += detMagicWand(model, c)
-      case c: st.QuantifiedMagicWandChunk =>
+      case c: QuantifiedMagicWandChunk =>
         for ((args, perm) <- detQPArgEntries(c.quantifiedVars, c.invs, c.singletonArguments, c.perm, model)) {
           val key = (c.id.toString, args)
           qpWands(key) = qpWands.get(key).getOrElse(Rational.zero) + perm
@@ -724,7 +721,7 @@ object SiliconRawCounterexample {
     * which the SMT model instantiated the chunk's inverse/image functions; for each such receiver
     * `r` the chunk's permission term is evaluated with the quantified variable bound to `r`.
     */
-  def detQPFieldEntries(c: st.QuantifiedFieldChunk, model: Model): Seq[(String, String, Rational)] = {
+  def detQPFieldEntries(c: QuantifiedFieldChunk, model: Model): Seq[(String, String, Rational)] = {
     val qvar = c.quantifiedVars.head
     // Candidate receivers are the argument values for which the model instantiated the chunk's
     // inverse/image functions (the receiver is the last argument of each such application).

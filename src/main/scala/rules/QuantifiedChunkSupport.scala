@@ -1411,7 +1411,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                     }
                   case (Incomplete(_, _), s2, _, _) =>
                     val failure = createFailure(pve dueTo insufficientPermissionReason, v, s2, "QP consume")
-                    if (s2.retryLevel == 0) v.decider.handleFailedAssertion(False, Option.when(withExp)(FalseLit()()), Option.when(withExp)(FalseLit()()), analysisInfos, v.reportFurtherErrors())
+                    if (s2.retryLevel == 0) v.decider.handleFailedAssertion(False, Option.when(debugOn)(FalseLit()()), Option.when(debugOn)(FalseLit()()), analysisInfos, v.reportFurtherErrors())
                     if (s2.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.analyzeInfeasiblePaths)
                       failure combine Q(s2, s2.h, Option.when(returnSnap)(Unit), v) else failure
                 }
@@ -1439,7 +1439,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             val failure = createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver injective")
             if (s.retryLevel == 0) v.decider.handleFailedAssertion(receiverInjectivityCheck, None, None, analysisInfos, v.reportFurtherErrors())
             if (s.retryLevel == 0 && v.reportFurtherErrors()) {
-              val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
+              val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(debugOn)(PUnknown()))
               failure combine Q(s, s.h, if (returnSnap) Some(snap) else None, v)
             } else {
               failure
@@ -1449,7 +1449,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           val failure = createFailure(pve dueTo negativePermissionReason, v, s, nonNegTerm, nonNegExp)
           if (s.retryLevel == 0) v.decider.handleFailedAssertion(nonNegTerm, nonNegExp, nonNegExp, analysisInfos, v.reportFurtherErrors())
           if (s.retryLevel == 0 && v.reportFurtherErrors()) {
-            val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
+            val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(debugOn)(PUnknown()))
             failure combine Q(s, s.h, if (returnSnap) Some(snap) else None, v)
           } else {
             failure
@@ -1596,9 +1596,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s, "single QP consume")
               case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
             }
-            if (s.retryLevel == 0) v.decider.handleFailedAssertion(False, Option.when(withExp)(FalseLit()()), Option.when(withExp)(FalseLit()()), analysisInfos, v.reportFurtherErrors())
+            if (s.retryLevel == 0) v.decider.handleFailedAssertion(False, Option.when(debugOn)(FalseLit()()), Option.when(debugOn)(FalseLit()()), analysisInfos, v.reportFurtherErrors())
             if (s.retryLevel == 0 && v.reportFurtherErrors()) {
-              val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
+              val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(debugOn)(PUnknown()))
               failure combine Q(s, s.h, Some(snap), v)
             } else failure
         }
@@ -1728,8 +1728,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val chunkRelevant = s.moreCompleteExhaleQP || {
           val superSetCheck = Forall(codomainQVars, Implies(And(condition, IsPositive(permsNeeded)), IsPositive(permsProvided)), Nil)
           val subSetCheck = Forall(codomainQVars, Implies(IsPositive(permsProvided), And(condition, IsPositive(permsNeeded))), Nil)
-          v.decider.check(subSetCheck, 10*Verifier.config.checkTimeout()) ||
-            v.decider.check(superSetCheck, 10*Verifier.config.checkTimeout())
+          v.decider.check(subSetCheck, 10*Verifier.config.checkTimeout(), analysisInfos) ||
+            v.decider.check(superSetCheck, 10*Verifier.config.checkTimeout(), analysisInfos)
         }
 
         if (chunkRelevant) {
@@ -2119,16 +2119,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
   override def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier, analysisInfos: DependencyAnalysisInfos): Option[QuantifiedChunk] = {
     if (Verifier.config.exhaleModeQP == ExhaleMode.MoreComplete)
-      findChunkWithProvenAliases(chunks, chunk, v)
+      findChunkWithProvenAliases(chunks, chunk, v, analysisInfos)
     else
-      findChunkGreedy(chunks, chunk, v)
+      findChunkGreedy(chunks, chunk, v, analysisInfos)
   }
 
   /* Chunk matching used with the greedy QP exhale algorithm: merge chunks that stem from the
    * same original QP assertion, identified cheaply via syntactically equal original conditions
    * or equal tags, and otherwise via prover-checked subset relations between one chunk's
    * permission footprint and the other chunk's original condition. */
-  private def findChunkGreedy(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier): Option[QuantifiedChunk] = {
+  private def findChunkGreedy(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier, analysisInfos: DependencyAnalysisInfos): Option[QuantifiedChunk] = {
     val relevantChunks: Iterable[QuantifiedBasicChunk] = chunks.flatMap {
       case ch: QuantifiedBasicChunk if ch.id == chunk.id => Some(ch)
       case _ => None
@@ -2153,8 +2153,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       val replacedOrgCond = ch.orgCondition.replace(ch.quantifiedVars, codomainQVars)
       val supersetCheck = Forall(codomainQVars, Implies(IsPositive(replacedPerm), chunk.orgCondition), Nil)
       val subsetCheck = Forall(codomainQVars, Implies(IsPositive(chunk.perm), replacedOrgCond), Nil)
-      if (v.decider.check(supersetCheck, 10*Verifier.config.checkTimeout())  ||
-        v.decider.check(subsetCheck, 10 * Verifier.config.checkTimeout())) {
+      if (v.decider.check(supersetCheck, 10*Verifier.config.checkTimeout(), analysisInfos)  ||
+        v.decider.check(subsetCheck, 10 * Verifier.config.checkTimeout(), analysisInfos)) {
         return Some(ch)
       }
     }
@@ -2173,7 +2173,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
   /* Chunk matching used with the standard QP exhale algorithm: merge only chunks that provably
    * denote the same location(s), i.e. singleton chunks with provably equal receivers, or
    * quantified chunks with provably equal receiver expressions and conditions. */
-  private def findChunkWithProvenAliases(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier): Option[QuantifiedChunk] = {
+  private def findChunkWithProvenAliases(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier, analysisInfos: DependencyAnalysisInfos): Option[QuantifiedChunk] = {
     val lr = chunk match {
       case qfc: QuantifiedFieldChunk if qfc.invs.nonEmpty =>
         Left(invertiblesWithInversesApplied(qfc.invs, qfc.quantifiedVars), qfc.quantifiedVars, qfc.condition)

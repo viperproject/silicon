@@ -717,7 +717,6 @@ object executor extends ExecutionRules {
         assert(s.constrainableARPs.isEmpty)
         v.decider.startDebugSubExp()
         val ePerm = pap.perm
-        val predicate = s.program.findPredicate(predicateName)
         val pve = FoldFailed(fold)
         val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(fold)) else s
         evals(s0, eArgs, _ => pve, v, analysisInfos)((s1, tArgs, eArgsNew, v1) =>

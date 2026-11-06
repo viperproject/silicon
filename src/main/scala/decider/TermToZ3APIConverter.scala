@@ -6,12 +6,11 @@
 
 package viper.silicon.decider
 
-import viper.silicon.decider.SmtlibNameSanitizer
+import com.microsoft.z3.{ArithSort, BoolExpr, BoolSort, Constructor, Context, DatatypeSort, IntSort, RealSort, Expr => Z3Expr, FuncDecl => Z3FuncDecl, Sort => Z3Sort, Symbol => Z3Symbol}
 import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.terms._
 import viper.silicon.state.{Identifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
 import viper.silver.components.StatefulComponent
-import com.microsoft.z3.{ArithSort, BoolExpr, BoolSort, Constructor, Context, DatatypeSort, IntSort, RealSort, Expr => Z3Expr, FuncDecl => Z3FuncDecl, Sort => Z3Sort, Symbol => Z3Symbol}
 
 import scala.collection.mutable
 

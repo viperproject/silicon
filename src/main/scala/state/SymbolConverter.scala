@@ -7,10 +7,11 @@
 package viper.silicon.state
 
 import viper.silicon.rules.maskHeapSupporter
+import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort, WandHeapSort}
-import viper.silver.ast
 import viper.silicon.state.terms.{Sort, sorts}
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
 
 trait SymbolConverter {
   def toSort(typ: ast.Type): Sort

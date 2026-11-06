@@ -6,7 +6,7 @@
 
 package viper.silicon.state
 
-import viper.silicon.state.chunks.{Chunk, GeneralChunk, MagicWandIdentifier}
+import viper.silicon.state.chunks.{BasicMaskHeapChunk, Chunk, GeneralChunk, MagicWandIdentifier}
 import viper.silicon.Config.JoinMode
 import viper.silicon.Config.JoinMode.JoinMode
 import viper.silicon.common.Mergeable
@@ -432,13 +432,13 @@ object State {
     val conditions2 = And(pc2.branchConditions)
     val conditions2Exp = if (withExp) Some(BigAnd(pc2.branchConditionExps.map(_._2.get))) else None
 
-    merge(s1, conditions1, conditions1Exp, s2, conditions2, conditions2Exp)
+    merge(s1, conditions1, conditions1Exp, s2, conditions2, conditions2Exp, v, analysisInfos)
   }
 
   // Merges two states, by putting s1 under condition conditions1 and s2 under conditions2.
   // Assumes that conditions1 and conditions2 are mutually exclusive.
   def merge(s1: State, conditions1: Term, conditions1Exp: Option[ast.Exp],
-            s2: State, conditions2: Term, conditions2Exp: Option[ast.Exp]): State = {
+            s2: State, conditions2: Term, conditions2Exp: Option[ast.Exp], v: Verifier, analysisInfos: DependencyAnalysisInfos): State = {
     s1 match {
       /* Decompose state s1 */
       case State(g1, h1, program, member,
@@ -567,7 +567,7 @@ object State {
             assert(reserveHeaps1.length == reserveHeaps2.length)
             val reserveHeaps3 = reserveHeaps1
               .zip(reserveHeaps2)
-              .map({case (h1, h2) => mergeHeap(h1, conditions1, conditions1Exp, h2, conditions2, conditions2Exp)})
+              .map({case (h1, h2) => mergeHeap(h1, conditions1, conditions1Exp, h2, conditions2, conditions2Exp, v, analysisInfos)})
 
             val ssCache3 = ssCache1 ++ ssCache2
             val smCache3 = smCache1.union(smCache2)

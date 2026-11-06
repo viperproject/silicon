@@ -7,16 +7,15 @@
 package viper.silicon.rules
 
 import viper.silicon._
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.{Mark, RecordedPathConditions}
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
 import viper.silicon.interfaces._
-import viper.silicon.resources.MagicWandID
 import viper.silicon.state._
 import viper.silicon.state.chunks._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsPositive
-import viper.silicon.state.terms.sorts.{PredHeapSort, WandHeapSort}
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
@@ -98,11 +97,11 @@ object magicWandSupporter extends SymbolicExecutionRules {
                   analysisInfos: DependencyAnalysisInfos)
                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
                  : VerificationResult = {
-    evaluateWandArguments(s, wand, pve, v)((s1, ts, esNew, v1, analysisInfos) =>
+    evaluateWandArguments(s, wand, pve, v, analysisInfos)((s1, ts, esNew, v1) => {
       val newChunk = v1.chunkFactory.createMagicWandChunk(MagicWandIdentifier(wand, s.program), s1.g.values, ts, esNew, snap, FullPerm,
-        Option.when(debugOn)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), analysisInfos)
-      Q(s1, newChunk, None), v1)
-    )
+        Option.when(debugOn)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), None, analysisInfos)
+      Q(s1, newChunk, v1)
+    })
   }
 
   /**
@@ -200,7 +199,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         assert(consumedChunks.length == hs.length)
         Q(s1, heaps.reverse, consumedChunks.reverse, v)
       case Incomplete(_, _) =>
-        if (s1.retryLevel == 0) v.decider.handleFailedAssertion(False, Option.when(withExp)(FalseLit()()), Option.when(withExp)(FalseLit()()), analysisInfos, v.reportFurtherErrors())
+        if (s1.retryLevel == 0) v.decider.handleFailedAssertion(False, Option.when(debugOn)(FalseLit()()), Option.when(debugOn)(FalseLit()()), analysisInfos, v.reportFurtherErrors())
         if (s1.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s1, heaps.reverse, consumedChunks.reverse, v) else failure
     }
   }
@@ -261,8 +260,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
      * and thus not on the wand's LHS. They are evaluated upfront, in the current state, such that the
      * path conditions resulting from their evaluation are not scoped to the package operation.
      */
-    evals(s, wand.subexpressionsToEvaluate(s.program), _ => pve, v)((s1, tArgs, eArgs, v1) =>
-      packageWandWithArguments(s1, wand, tArgs, eArgs, proofScript, pve, v1)(Q))
+    evals(s, wand.subexpressionsToEvaluate(s.program), _ => pve, v, analysisInfos)((s1, tArgs, eArgs, v1) =>
+      packageWandWithArguments(s1, wand, tArgs, eArgs, proofScript, pve, v1, analysisInfos)(Q))
   }
 
   private def packageWandWithArguments(s: State,
@@ -271,7 +270,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
                                        eArgs: Option[Seq[ast.Exp]],
                                        proofScript: ast.Seqn,
                                        pve: PartialVerificationError,
-                                       v: Verifier)
+                                       v: Verifier,
+                                       analysisInfos: DependencyAnalysisInfos)
                                       (Q: (State, Chunk, Verifier) => VerificationResult)
                                       : VerificationResult = {
 
@@ -306,7 +306,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
     def defineSnapshotAndRecordBranch(s5: State, snapRhs: Term, packageMark: Mark, v5: Verifier): VerificationResult = { // XXX ake: analysisInfos
       v5.decider.prover.comment(s"Define MagicWandSnapFunction for wand $wand on the current branch")
       v5.decider.assumeDefinition(wandSnapshot.applyToMWSF(freshSnapRoot) === snapRhs,
-                                  Option.when(debugOn)(DebugExp.createInstance("Magic wand snapshot definition", true)))
+                                  Option.when(debugOn)(DebugExp.createInstance("Magic wand snapshot definition", true)), analysisInfos)
 
       val s6 = s5.copy(packagingWandSnapshots = s5.packagingWandSnapshots.filterNot(_._1 == freshSnapRoot),
                        parallelizeBranches = s.parallelizeBranches /* See comment above */)
@@ -366,7 +366,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
             wand.right, true, pve, proofScriptVerifier, analysisInfos
           )((s3, snapRhs, v3) => {
             analysisLabels = v.decider.pcs.after(packageMark).analysisLabels
-            defineSnapshotAndRecordBranch(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), snapRhs.get, packageMark, v3, analysisInfos)
+            defineSnapshotAndRecordBranch(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), snapRhs.get, packageMark, v3)
           })
         })
       })
@@ -402,7 +402,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         val branchesToMerge = recordedBranches.map({ case (sBranch, pcs) =>
           val unknownLhs = freshSnap(sorts.Snap, v)
           val replaceLhs = (t: Term) => t.replace(freshSnapRoot, unknownLhs)
-          val replaceLhsInHeap = (h: Heap) => Heap(h.values.map(_.substitute(Map(freshSnapRoot -> unknownLhs))))
+          val replaceLhsInHeap = (h: Heap) => Heap(h.values.map(hv => v.chunkFactory.substitute(hv, Map(freshSnapRoot -> unknownLhs), analysisInfos, isExhale=false)))
           val sBranchWithUnknownLhs = sBranch.copy(h = replaceLhsInHeap(sBranch.h),
                                                    reserveHeaps = sBranch.reserveHeaps.map(replaceLhsInHeap))
           val condition = replaceLhs(And(pcs.branchConditions))
@@ -412,7 +412,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
         val (sMerged, _, _) =
           branchesToMerge.tail.foldLeft(branchesToMerge.head)({ case ((sAcc, condAcc, condAccExp), (sBranch, cond, condExp)) =>
-            (State.merge(sAcc, condAcc, condAccExp, sBranch, cond, condExp),
+            (State.merge(sAcc, condAcc, condAccExp, sBranch, cond, condExp, v, analysisInfos),
              Or(condAcc, cond),
              condAccExp.map(cae => ast.Or(cae, condExp.get)()))
           })
@@ -426,7 +426,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         val token = wandSnapshot.yieldToken(freshSnapRoot)
         val tokenAxiom = Forall(freshSnapRoot, Implies(token, Or(branchConditions)), Trigger(token))
         v.decider.prover.comment(s"Path conditions recorded while packaging wand $wand, guarded by the wand's token")
-        v.decider.assume(tokenAxiom, Option.when(debugOn)(DebugExp.createInstance("Path conditions recorded while packaging the magic wand", tokenAxiom, true)))
+        v.decider.assume(tokenAxiom, Option.when(debugOn)(DebugExp.createInstance("Path conditions recorded while packaging the magic wand", tokenAxiom, true)), analysisInfos /* TODO ake */)
 
         /* Producing the wand's LHS and executing the proof script can introduce definitional path
          * conditions, e.g. definitions of new snapshot and permission maps (see Decider.assumeDefinition),
@@ -440,7 +440,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                           .distinct
                           .filterNot(_.contains(freshSnapRoot))
         v.decider.prover.comment(s"Definitions recorded while packaging wand $wand")
-        v.decider.assumeDefinition(definitions, Option.when(debugOn)(DebugExp.createInstance("Definitions recorded while packaging the magic wand", true)))
+        v.decider.assumeDefinition(definitions, Option.when(debugOn)(DebugExp.createInstance("Definitions recorded while packaging the magic wand", true)), analysisInfos /* TODO ake */)
 
         /* Merging the states of several branches results in several chunks for the same location, each guarded
          * by the corresponding branch condition. Consuming from such heaps is incomplete (in particular, the
@@ -453,7 +453,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
     val s7 = sJoined.copy(reserveHeaps = sJoined.reserveHeaps.drop(3))
     // Ground definitions (e.g. of a quantified wand's snapshot map) are assumed in the current scope by createWandChunk.
-    val (chWand, _, _) = v.heapSupporter.createWandChunk(s7, wand, tArgs, eArgs, wandSnapshot, v)
+    val (chWand, _, _) = v.heapSupporter.createWandChunk(s7, wand, tArgs, eArgs, wandSnapshot, v, analysisInfos)
 
     tempResult combine Q(s7, chWand, v)
   }
@@ -567,7 +567,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
        * Since innermost assertions must be self-framing, combining hUsed, hOps and hLhs
        * is sound.
        */
-      v.heapSupporter.mergeReserveHeaps(s.reserveHeaps.head, s.reserveHeaps(1), s.reserveHeaps(2), s, v)
+      v.heapSupporter.mergeReserveHeaps(s.reserveHeaps.head, s.reserveHeaps(1), s.reserveHeaps(2), s, v, DependencyAnalysisInfos.DefaultInfos /* XXX ake */)
     } else
       s.h
   }

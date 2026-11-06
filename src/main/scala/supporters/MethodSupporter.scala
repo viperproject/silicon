@@ -7,25 +7,21 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silver.ast
-import viper.silver.cfg
-import viper.silver.components.StatefulComponent
-import viper.silver.verifier.errors._
-import viper.silicon.interfaces._
+import viper.silicon.Map
 import viper.silicon.decider.Decider
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
 import viper.silicon.state.State.OldHeaps
-import viper.silicon.state.{CreateLabel, ExhalePost, InhalePre, State, Store}
+import viper.silicon.state._
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.{Verifier, VerifierComponent}
-import viper.silver.ast
+import viper.silver.{ast, cfg}
 import viper.silver.components.StatefulComponent
 import viper.silver.dependencyAnalysis._
-import viper.silver.verifier.errors._
 import viper.silver.reporter.WarningsDuringVerification
 import viper.silver.verifier.VerifierWarning
+import viper.silver.verifier.errors._
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
@@ -56,7 +52,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
-      val proverOptions: Map[String, String] = AnnotationSupporter.getProverConfigArgs(method, reporter)
+      val proverOptions = AnnotationSupporter.getProverConfigArgs(method, reporter)
       v.decider.setProverOptions(proverOptions)
 
       openSymbExLogger(method)

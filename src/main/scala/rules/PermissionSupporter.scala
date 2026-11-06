@@ -45,7 +45,7 @@ object permissionSupporter extends SymbolicExecutionRules {
         Q(s, v)
       case _ =>
         val termToAssert = perms.IsPositive(tPerm)
-        val debugExp = Option.when(withExp)(perms.IsPositive(ePerm)())
+        val debugExp = Option.when(debugOn)(perms.IsPositive(ePerm)())
         v.decider.assert(termToAssert, analysisInfos) {
           case true => Q(s, v)
           case false =>

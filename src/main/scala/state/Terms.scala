@@ -1337,7 +1337,7 @@ class PermTimes private[terms] (val p0: Term, val p1: Term)
 }
 
 object WildcardSimplifyingPermTimes extends ((Term, Term) => Term) {
-  override def apply(t0: Term, t1: Term) = (t0, t1) match {
+  override def apply(t0: Term, t1: Term): Term = (t0, t1) match {
     case (v1: Var, v2: Var) if v1.isWildcard && v2.isWildcard => if (v1.id.name.compareTo(v2.id.name) > 0) v1 else v2
     case (v1: Var, pl: PermLiteral) if v1.isWildcard && pl.literal > Rational.zero => v1
     case (pl: PermLiteral, v2: Var) if v2.isWildcard && pl.literal > Rational.zero => v2
@@ -1444,7 +1444,7 @@ class PermPlus private[terms] (val p0: Term, val p1: Term)
 }
 
 object PermPlus extends CondFlyweightTermFactory[(Term, Term), PermPlus] {
-  override def apply(v0: (Term, Term)) = v0 match {
+  override def apply(v0: (Term, Term)): Term = v0 match {
     case (NoPerm, t1) => t1
     case (t0, NoPerm) => t0
     case (p0: PermLiteral, p1: PermLiteral) => FractionPermLiteral(p0.literal + p1.literal)
@@ -1474,7 +1474,7 @@ class PermMinus private[terms] (val p0: Term, val p1: Term)
 }
 
 object PermMinus extends CondFlyweightTermFactory[(Term, Term), PermMinus] {
-  override def apply(v0: (Term, Term)) = v0 match {
+  override def apply(v0: (Term, Term)): Term = v0 match {
     case (t0, NoPerm) => t0
     case (p0, p1) if p0 == p1 => NoPerm
     case (p0: PermLiteral, p1: PermLiteral) => FractionPermLiteral(p0.literal - p1.literal)
@@ -2541,7 +2541,7 @@ class MaskAdd(val mask: Term, val at: Term, val addition: Term) extends Term wit
 
 object MaskAdd extends CondFlyweightTermFactory[(Term, Term, Term), MaskAdd] {
 
-  override def apply(v0: (Term, Term, Term)) = v0 match {
+  override def apply(v0: (Term, Term, Term)): Term = v0 match {
     case (mask, _, NoPerm) => mask
     case (MaskAdd(m2, at2, add2), at, addition) if at2 == at => MaskAdd(m2, at, PermPlus(addition, add2))
     case (MaskAdd(MaskAdd(m1, at1, add1), at2, add2), at, PermNegation(sub)) if at == at1 => MaskAdd(MaskAdd(m1, at1, PermMinus(add1, sub)), at2, add2)

@@ -221,9 +221,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         }
       } else {
         val failure = createFailure(ve, v, s, False, "branch is dead")
-        if (s.retryLevel == 0) v.decider.handleFailedAssertion(False, Option.when(withExp)(FalseLit()()), Option.when(withExp)(FalseLit()()), analysisInfos, v.reportFurtherErrors())
+        if (s.retryLevel == 0) v.decider.handleFailedAssertion(False, Option.when(debugOn)(FalseLit()()), Option.when(debugOn)(FalseLit()()), analysisInfos, v.reportFurtherErrors())
         if (s.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.analyzeInfeasiblePaths) {
-          val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
+          val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(debugOn)(PUnknown()))
           failure combine Q(s, snap, v)
         } else {
           failure
@@ -558,7 +558,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val failure = createFailure(ve, v, s, totalPermTaken !== NoPerm, debugExp)
         if (s.retryLevel == 0) v.decider.handleFailedAssertion(termToAssert, debugExp, debugExp, analysisInfos, v.reportFurtherErrors())
         if (s.retryLevel == 0 && v.reportFurtherErrors()) {
-          val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
+          val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(debugOn)(PUnknown()))
           failure combine Q(s1, updatedChunks, if (returnSnap) Some(snap) else None, v)
         } else {
           failure

@@ -159,7 +159,7 @@ object chunkSupporter extends ChunkSupportRules {
             case _ =>
               val failure = createFailure(ve, v1, s1, "consuming chunk", true)
               if (s1.retryLevel == 0) {
-                val falseExp = Option.when(withExp)(FalseLit()())
+                val falseExp = Option.when(debugOn)(FalseLit()())
                 v1.decider.handleFailedAssertion(False, falseExp, falseExp, analysisInfos, v1.reportFurtherErrors())
               }
 
@@ -297,11 +297,11 @@ object chunkSupporter extends ChunkSupportRules {
       case _ =>
         val failure = createFailure(ve, v, s, "looking up chunk", true)
         if (s.retryLevel == 0) {
-          val falseExp = Option.when(withExp)(FalseLit()())
+          val falseExp = Option.when(debugOn)(FalseLit()())
           v.decider.handleFailedAssertion(False, falseExp, falseExp, analysisInfos, v.reportFurtherErrors())
         }
         if (s.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.analyzeInfeasiblePaths) {
-          val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
+          val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(debugOn)(PUnknown()))
           failure combine Q(s, snap, v)
         } else {
           failure

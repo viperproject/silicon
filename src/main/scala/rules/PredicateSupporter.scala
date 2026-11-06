@@ -87,14 +87,14 @@ object predicateSupporter extends PredicateSupportRules {
                         permissionScalingFactorExp = s.permissionScalingFactorExp).setConstrainable(constrainableWildcards, false)
 
       val foldedSnap = v1.heapSupporter.foldedPredicateSnapshot(s1a, predicate, tArgs, snap.get)
-      v1.heapSupporter.produceSingle(s1a, predicate, tArgs, eArgs, foldedSnap, None, tPerm, ePerm, pve, true, v1)((s2, v2) => {
+      v1.heapSupporter.produceSingle(s1a, predicate, tArgs, eArgs, foldedSnap, None, tPerm, ePerm, pve, true, v1, analysisInfos)((s2, v2) => {
         /* The trigger is assumed once the predicate chunk exists, so that heap encodings
          * whose triggers refer to the chunk's heap can look it up in s3.h. */
         if (!Verifier.config.disableFunctionUnfoldTrigger()) {
           val predTrigger = App(s2.predicateData(predicate.name).triggerFunction,
             v2.heapSupporter.predicateTriggerSnapArg(s2, predicate, snap.get, s2.h) +: tArgs)
           val eArgsString = eArgs.mkString(", ")
-          v2.decider.assume(predTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
+          v2.decider.assume(predTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")), analysisInfos)
         }
         val s2a = v2.heapSupporter.triggerResourceIfNeeded(s2, pa, tArgs, eArgs, v2, analysisInfos)
         Q(s2a, v2)

@@ -14,6 +14,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.ast.Exp
 
 object ChunkIdentifier {
   def apply(from: ast.Resource, program: ast.Program): ChunkIdentifer = {
@@ -37,7 +38,8 @@ object BasicChunk {
                             snap: Term,
                             snapExp: Option[ast.Exp],
                             perm: Term,
-                            permExp: Option[ast.Exp]): BasicChunk = new BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
+                            permExp: Option[ast.Exp],
+                            tag: Option[Int]): BasicChunk = new BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp, tag)
 }
 
 case class BasicChunk private[chunks] (resourceID: BaseID,
@@ -95,15 +97,17 @@ sealed trait QuantifiedBasicChunk extends QuantifiedChunk {
 object QuantifiedFieldChunk {
   private[chunks] def apply(id: BasicChunkIdentifier,
                             fvf: Term,
+                            orgCondition: Term,
                             condition: Term,
                             conditionExp: Option[ast.Exp],
                             permValue: Term,
                             permValueExp: Option[ast.Exp],
-                            invs: Option[InverseFunctions],
+                            invs: Seq[InverseFunctions],
                             singletonRcvr: Option[Term],
                             singletonRcvrExp: Option[ast.Exp],
+                            tag: Option[Int],
                             hints: Seq[Term] = Nil): QuantifiedFieldChunk =
-    new QuantifiedFieldChunk(id, fvf, condition, conditionExp, permValue, permValueExp, invs, singletonRcvr, singletonRcvrExp, hints)
+    new QuantifiedFieldChunk(id, fvf, orgCondition, condition, conditionExp, permValue, permValueExp, invs, singletonRcvr, singletonRcvrExp, tag, hints)
 }
 
 /* TODO: Instead of using the singletonRcvr to differentiate between QP chunks that
@@ -175,15 +179,17 @@ object QuantifiedPredicateChunk {
                             quantifiedVars: Seq[Var],
                             quantifiedVarExps: Option[Seq[ast.LocalVarDecl]],
                             psf: Term,
+                            orgCondition: Term,
                             condition: Term,
                             conditionExp: Option[ast.Exp],
                             permValue: Term,
                             permValueExp: Option[ast.Exp],
-                            invs: Option[InverseFunctions],
+                            invs: Seq[InverseFunctions],
                             singletonArgs: Option[Seq[Term]],
                             singletonArgExps: Option[Seq[ast.Exp]],
+                            tag: Option[Int],
                             hints: Seq[Term] = Nil): QuantifiedPredicateChunk =
-    new QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, condition, conditionExp, permValue, permValueExp, invs, singletonArgs, singletonArgExps, hints)
+    new QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, orgCondition, condition, conditionExp, permValue, permValueExp, invs, singletonArgs, singletonArgExps, tag, hints)
 }
 
 case class QuantifiedPredicateChunk protected[chunks] (id: BasicChunkIdentifier,
@@ -242,13 +248,15 @@ object QuantifiedMagicWandChunk {
                             quantifiedVars: Seq[Var],
                             quantifiedVarExps: Option[Seq[ast.LocalVarDecl]],
                             wsf: Term,
+                            orgCondition: Term,
                             perm: Term,
                             permExp: Option[ast.Exp],
-                            invs: Option[InverseFunctions],
+                            invs: Seq[InverseFunctions],
                             singletonArgs: Option[Seq[Term]],
                             singletonArgExps: Option[Seq[ast.Exp]],
+                            tag: Option[Int],
                             hints: Seq[Term] = Nil): QuantifiedMagicWandChunk =
-    new QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, perm, permExp, invs, singletonArgs, singletonArgExps, hints)
+    new QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, orgCondition, perm, permExp, invs, singletonArgs, singletonArgExps, tag, hints)
 }
 
 case class QuantifiedMagicWandChunk protected[chunks] (id: MagicWandIdentifier,
@@ -322,8 +330,9 @@ object MagicWandChunk {
                             argsExp: Option[Seq[ast.Exp]],
                             snap: MagicWandSnapshot,
                             perm: Term,
-                            permExp: Option[ast.Exp]): MagicWandChunk =
-    new MagicWandChunk(id, bindings, args, argsExp, snap, perm, permExp)
+                            permExp: Option[ast.Exp],
+                            tag: Option[Int]): MagicWandChunk =
+    new MagicWandChunk(id, bindings, args, argsExp, snap, perm, permExp, tag)
 }
 
 case class MagicWandChunk protected[chunks] (id: MagicWandIdentifier,
@@ -381,6 +390,9 @@ case class BasicMaskHeapChunk private[state] (resourceID: ResourceID, resource: 
   }
 
   override def substitute(terms: silicon.Map[Term, Term]): Chunk = BasicMaskHeapChunk(resourceID, resource, mask.replace(terms), heap.replace(terms))
+
+  override val permExp: Option[Exp] = None // TODO ake
+  override val perm: Term = mask // TODO ake
 }
 
 object BasicMaskHeapChunk {

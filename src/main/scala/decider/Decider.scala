@@ -327,7 +327,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
       }
 
-      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms), analysisInfos, isDefinition = true)
+      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms.map(t => (t, ""))), analysisInfos, isDefinition = true)
     }
 
     def assume(assumptions: InsertionOrderedSet[(Term, Option[DebugExp])], enforceAssumption: Boolean, isDefinition: Boolean, analysisInfos: DependencyAnalysisInfos): Unit = {
