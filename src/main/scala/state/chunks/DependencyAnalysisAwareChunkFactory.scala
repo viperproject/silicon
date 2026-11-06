@@ -8,7 +8,7 @@ package viper.silicon.state.chunks
 
 import viper.silicon
 import viper.silicon.decider.{Decider, DependencyAnalysisHandler}
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.resources.{BaseID, ResourceID}
 import viper.silicon.rules.InverseFunctions
 import viper.silicon.state.terms.{MagicWandSnapshot, Term, Var}
@@ -27,7 +27,7 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
                                 perm: Term,
                                 permExp: Option[ast.Exp],
                                 tag: Option[Int],
-                                analysisInfos: DependencyAnalysisInfos,
+                                analysisInfos: AnalysisInfos,
                                 isExhale: Boolean = false): BasicChunk = {
     decider.registerChunk[BasicChunk]({finalPerm =>
       BasicChunk(resourceID, id, args, argsExp, snap, snapExp, finalPerm, permExp, tag)
@@ -47,7 +47,7 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
                                           singletonRcvrExp: Option[ast.Exp],
                                           tag: Option[Int],
                                           hints: Seq[Term] = Nil,
-                                          analysisInfos: DependencyAnalysisInfos,
+                                          analysisInfos: AnalysisInfos,
                                           isExhale: Boolean = false): QuantifiedFieldChunk = {
     decider.registerChunk[QuantifiedFieldChunk]({perm =>
       QuantifiedFieldChunk(id, fvf, orgCondition, condition, conditionExp, perm, permValueExp, invs, singletonRcvr, singletonRcvrExp, tag, hints)
@@ -69,7 +69,7 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
                                               singletonArgExps: Option[Seq[ast.Exp]],
                                               tag: Option[Int],
                                               hints: Seq[Term] = Nil,
-                                              analysisInfos: DependencyAnalysisInfos,
+                                              analysisInfos: AnalysisInfos,
                                               isExhale: Boolean = false): QuantifiedPredicateChunk = {
     decider.registerChunk[QuantifiedPredicateChunk]({ finalPerm =>
       QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, orgCondition, condition, conditionExp, finalPerm, permValueExp, invs, singletonArgs, singletonArgExps, tag, hints)
@@ -88,7 +88,7 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
                                               singletonArgExps: Option[Seq[ast.Exp]],
                                               tag: Option[Int],
                                               hints: Seq[Term] = Nil,
-                                              analysisInfos: DependencyAnalysisInfos,
+                                              analysisInfos: AnalysisInfos,
                                               isExhale: Boolean = false): QuantifiedMagicWandChunk = {
     decider.registerChunk[QuantifiedMagicWandChunk]({ finalPerm =>
       QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, orgCondition, perm, permExp, invs, singletonArgs, singletonArgExps, tag, hints)
@@ -103,23 +103,23 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
                                     perm: Term,
                                     permExp: Option[ast.Exp],
                                     tag: Option[Int],
-                                    analysisInfos: DependencyAnalysisInfos,
+                                    analysisInfos: AnalysisInfos,
                                     isExhale: Boolean = false): MagicWandChunk = {
     decider.registerChunk[MagicWandChunk]({ finalPerm =>
       MagicWandChunk(id, bindings, args, argsExp, snap, finalPerm, permExp, tag)
     }, perm, analysisInfos, isExhale)
   }
 
-  def createBasicMaskHeapChunk(resourceID: ResourceID, resource: Any, mask: Term, heap: Term, analysisInfos: DependencyAnalysisInfos) : BasicMaskHeapChunk =
+  def createBasicMaskHeapChunk(resourceID: ResourceID, resource: Any, mask: Term, heap: Term, analysisInfos: AnalysisInfos) : BasicMaskHeapChunk =
     BasicMaskHeapChunk(resourceID, resource, mask, heap) // TODO ake
 
-  def applyCondition(chunk: GeneralChunk, newCond: Term, newCondExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos): GeneralChunk = {
+  def applyCondition(chunk: GeneralChunk, newCond: Term, newCondExp: Option[ast.Exp], analysisInfos: AnalysisInfos): GeneralChunk = {
     decider.registerDerivedChunk(Set(chunk), {_ =>
       chunk.applyCondition(newCond, newCondExp)},
       chunk.perm, analysisInfos, isExhale=false, createLabel=false)
   }
 
-  def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos): GeneralChunk = {
+  def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos): GeneralChunk = {
     val newChunk = decider.registerDerivedChunk(Set(chunk), {finalPerm =>
       chunk.permMinus(finalPerm, newPermExp)},
       newPerm, analysisInfos.overrideDependencyType(AssumptionType.Internal), isExhale=false, createLabel=false) // TODO ake: assumption type? maybe for exhale we want to have Implicit?
@@ -130,7 +130,7 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
     newChunk
   }
 
-  def permMinus(chunk: QuantifiedBasicChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos): QuantifiedBasicChunk = {
+  def permMinus(chunk: QuantifiedBasicChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos): QuantifiedBasicChunk = {
     val newChunk = decider.registerDerivedChunk(Set(chunk), {finalPerm =>
       chunk.permMinus(finalPerm, newPermExp)},
       newPerm, analysisInfos.overrideDependencyType(AssumptionType.Internal), isExhale=false, createLabel=false) // TODO ake: assumption type? maybe for exhale we want to have Implicit?
@@ -141,31 +141,31 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
     newChunk
   }
 
-  def permPlus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos, isExhale: Boolean=false): GeneralChunk = {
+  def permPlus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhale: Boolean=false): GeneralChunk = {
     decider.registerDerivedChunk(Set(chunk), {finalPerm =>
       chunk.permPlus(finalPerm, newPermExp)},
       newPerm, analysisInfos, isExhale)
   }
 
-  def withPerm(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos, isExhale: Boolean=false): GeneralChunk = {
+  def withPerm(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhale: Boolean=false): GeneralChunk = {
     decider.registerDerivedChunk(Set(chunk), {finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},
       newPerm, analysisInfos, isExhale)
   }
 
-  def withPermNonQuantifiedChunk(chunk: NonQuantifiedChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos, isExhale: Boolean=false): NonQuantifiedChunk = {
+  def withPermNonQuantifiedChunk(chunk: NonQuantifiedChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhale: Boolean=false): NonQuantifiedChunk = {
     decider.registerDerivedChunk(Set(chunk), {finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},
       newPerm, analysisInfos, isExhale)
   }
 
-  def permScale(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos, isExhale: Boolean=false): GeneralChunk = {
+  def permScale(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhale: Boolean=false): GeneralChunk = {
     decider.registerDerivedChunk(Set(chunk), {finalPerm =>
       chunk.permScale(finalPerm, newPermExp)},
       newPerm, analysisInfos, isExhale)
   }
 
-  def substitute(chunk: GeneralChunk, terms: silicon.Map[Term, Term], analysisInfos: DependencyAnalysisInfos, isExhale: Boolean = false): GeneralChunk = {
+  def substitute(chunk: GeneralChunk, terms: silicon.Map[Term, Term], analysisInfos: AnalysisInfos, isExhale: Boolean = false): GeneralChunk = {
     val newChunk = chunk.substitute(terms)
     decider.registerDerivedChunk(Set(chunk), { finalPerm =>
       newChunk.withPerm(finalPerm, newChunk.permExp)
@@ -173,21 +173,21 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
       newChunk.perm, analysisInfos, isExhale)
   }
 
-  def substitute(chunk: Chunk, terms: silicon.Map[Term, Term], analysisInfos: DependencyAnalysisInfos, isExhale: Boolean): Chunk = {
+  def substitute(chunk: Chunk, terms: silicon.Map[Term, Term], analysisInfos: AnalysisInfos, isExhale: Boolean): Chunk = {
     chunk match {
       case ch: GeneralChunk => substitute(ch, terms, analysisInfos, isExhale)
       case ch: MaskHeapChunk => ch.substitute(terms) // TODO ake
     }
   }
 
-  def withSnapshotMap(chunk: QuantifiedChunk, snap: Term, analysisInfos: DependencyAnalysisInfos): QuantifiedChunk = {
+  def withSnapshotMap(chunk: QuantifiedChunk, snap: Term, analysisInfos: AnalysisInfos): QuantifiedChunk = {
     decider.registerDerivedChunk[QuantifiedChunk](Set(chunk), {_ =>
       chunk.withSnapshotMap(snap)
     },
       chunk.perm, analysisInfos, isExhale=false, createLabel=false)
   }
 
-  def withSnap(chunk: NonQuantifiedChunk, snap: Term, snapExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos): NonQuantifiedChunk = {
+  def withSnap(chunk: NonQuantifiedChunk, snap: Term, snapExp: Option[ast.Exp], analysisInfos: AnalysisInfos): NonQuantifiedChunk = {
     decider.registerDerivedChunk[NonQuantifiedChunk](Set(chunk), {_ =>
       chunk.withSnap(snap, snapExp)},
       chunk.perm, analysisInfos, isExhale=false, createLabel=false)

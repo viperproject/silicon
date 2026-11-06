@@ -248,15 +248,15 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       val result = executionFlowController.locally(s0, v)((s1, _) => {
         val preMark = decider.setPathConditionMark()
-        produces(s1, toSf(`?s`), pres, ContractNotWellformed, v, analysisInfosPrecondition)((s2, _) => {
+        produces(s1.withAnalysisInfos(analysisInfosPrecondition), toSf(`?s`), pres, ContractNotWellformed, v)((s2, _) => {
           val s2a = if (debugOn) v.finishKeyHeap(s2) else s2
           val relevantPathConditionStack = decider.pcs.after(preMark)
-          phase1Data :+= Phase1Data(s2a, relevantPathConditionStack.branchConditions, relevantPathConditionStack.branchConditionExps,
+          phase1Data :+= Phase1Data(s2a.withAnalysisInfos(s1.analysisInfos), relevantPathConditionStack.branchConditions, relevantPathConditionStack.branchConditionExps,
             relevantPathConditionStack.assumptions, Option.when(debugOn)(relevantPathConditionStack.assumptionExps))
           // The postcondition must be produced with a fresh snapshot (different from `?s`) because
           // the postcondition's snapshot structure is most likely different than that of the
           // precondition
-          produces(s2a, freshSnap, posts, ContractNotWellformed, v, analysisInfosPostcondition)((s3, _) => {
+          produces(s2a.withAnalysisInfos(analysisInfosPostcondition), freshSnap, posts, ContractNotWellformed, v)((s3, _) => {
             recorders :+= s3.functionRecorder
             Success()})})})
 
@@ -294,7 +294,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
             decider.assume(labelledPcsPre, Option.when(debugOn)(DebugExp.createInstance(s"precondition of ${function.name}", pcsPreExp.get)), enforceAssumption = false, precondAnalysisSourceInfos)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s1a = if (debugOn) v.startKeyHeap(s1, "nil", EvalExp(body)) else s1
-            eval(s1a, body, FunctionNotWellformed(function), v, analysisInfosBody)((s2, tBody, bodyNew, _) => {
+            eval(s1a.withAnalysisInfos(analysisInfosBody), body, FunctionNotWellformed(function), v)((s2, tBody, bodyNew, _) => {
               val debugExp = if (debugOn) {
                 val e = ast.EqCmp(ast.Result(function.typ)(), body)(function.pos, function.info, function.errT)
                 val eNew = ast.EqCmp(ast.Result(function.typ)(), bodyNew.get)(function.pos, function.info, function.errT)
@@ -305,7 +305,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 val tmp = v.finishKeyHeap(s2)
                 v.startKeyHeap(tmp, v.getDebugHeapLabel(tmp).getOrElse("missingFunctionHeap"), ExhalePost)
               } else s2
-              consumes(s2a, posts, false, postconditionViolated, v, analysisInfosPostcondition)((s3, _, _) => {
+              consumes(s2a.withAnalysisInfos(analysisInfosPostcondition), posts, false, postconditionViolated, v)((s3, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}
 

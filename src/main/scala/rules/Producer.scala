@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis.DependencyAnalyzer
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.logger.records.data.{CondExpRecord, ImpliesRecord, ProduceRecord}
 import viper.silicon.state._
@@ -41,8 +41,7 @@ trait ProductionRules extends SymbolicExecutionRules {
               sf: (Sort, Verifier) => Term,
               a: ast.Exp,
               pve: PartialVerificationError,
-              v: Verifier,
-              analysisInfos: DependencyAnalysisInfos)
+              v: Verifier)
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult
 
@@ -66,8 +65,7 @@ trait ProductionRules extends SymbolicExecutionRules {
                sf: (Sort, Verifier) => Term,
                as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
-               v: Verifier,
-               analysisInfos: DependencyAnalysisInfos)
+               v: Verifier)
               (Q: (State, Verifier) => VerificationResult)
               : VerificationResult
 }
@@ -106,14 +104,13 @@ object producer extends ProductionRules {
               sf: (Sort, Verifier) => Term,
               a: ast.Exp,
               pve: PartialVerificationError,
-              v: Verifier,
-              analysisInfos: DependencyAnalysisInfos)
+              v: Verifier)
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult =
 
   {
     val aWhenInhaling = a.whenInhaling
-    produceR(s, v.snapshotSupporter.adaptProduceSnapshotFunction(s, sf, aWhenInhaling.topLevelConjuncts, v), aWhenInhaling, pve, v, analysisInfos)(Q)
+    produceR(s, v.snapshotSupporter.adaptProduceSnapshotFunction(s, sf, aWhenInhaling.topLevelConjuncts, v), aWhenInhaling, pve, v)(Q)
   }
 
   /** @inheritdoc */
@@ -121,8 +118,7 @@ object producer extends ProductionRules {
                sf: (Sort, Verifier) => Term,
                as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
-               v: Verifier,
-               analysisInfos: DependencyAnalysisInfos)
+               v: Verifier)
               (Q: (State, Verifier) => VerificationResult)
               : VerificationResult = {
 
@@ -138,15 +134,14 @@ object producer extends ProductionRules {
     })
 
     val tlcsResult = allTlcs.result()
-    produceTlcs(s, v.snapshotSupporter.adaptProduceSnapshotFunction(s, sf, tlcsResult, v), tlcsResult, allPves.result(), v, analysisInfos)(Q)
+    produceTlcs(s, v.snapshotSupporter.adaptProduceSnapshotFunction(s, sf, tlcsResult, v), tlcsResult, allPves.result(), v)(Q)
   }
 
   private def produceTlcs(s: State,
                           sf: (Sort, Verifier) => Term,
                           as: Seq[ast.Exp],
                           pves: Seq[PartialVerificationError],
-                          v: Verifier,
-                          analysisInfos: DependencyAnalysisInfos)
+                          v: Verifier)
                          (Q: (State, Verifier) => VerificationResult)
                          : VerificationResult = {
 
@@ -156,34 +151,34 @@ object producer extends ProductionRules {
       val a = as.head.whenInhaling
       val pve = pves.head
 
-      val analysisInfos1 = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, analysisInfos, a.info, a)
+      val analysisInfos1 = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, s.analysisInfos, a.info, a)
       if (v.decider.isPathMarkedInfeasible) {
         v.decider.handleInfeasiblePath(!Expressions.isKnownWellDefined(a, Some(s.program)), hasAssumptions=true, analysisInfos1)
         return Q(s, v)
       }
 
       if (as.tail.isEmpty)
-        wrappedProduceTlc(s, sf, a, pve, v, analysisInfos1)((s1, v1) => {
-          Q(s1, v1)
+        wrappedProduceTlc(s.withAnalysisInfos(analysisInfos1), sf, a, pve, v)((s1, v1) => {
+          Q(s1.withAnalysisInfos(s.analysisInfos), v1)
         })
       else {
         try {
           val (sf0, sf1) =
-            v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v, analysisInfos1)
+            v.snapshotSupporter.createSnapshotPair(s.withAnalysisInfos(analysisInfos1), sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v)
           /* TODO: Refactor createSnapshotPair s.t. it can be used with Seq[Exp],
            *       then remove use of BigAnd; for one it is not efficient since
            *       the tail of the (decreasing list parameter as) is BigAnd-ed
            *       over and over again.
            */
 
-          wrappedProduceTlc(s, sf0, a, pve, v, analysisInfos1)((s1, v1) => {
-              produceTlcs(s1, sf1, as.tail, pves.tail, v1, analysisInfos)(Q)
+          wrappedProduceTlc(s.withAnalysisInfos(analysisInfos1), sf0, a, pve, v)((s1, v1) => {
+              produceTlcs(s1.withAnalysisInfos(s.analysisInfos), sf1, as.tail, pves.tail, v1)(Q)
             })
         } catch {
           // We will get an IllegalArgumentException from createSnapshotPair if sf(...) returns Unit.
           // This should never happen if we're in a reachable state, so here we check for that
           // (without timeout, since there is no fallback) and stop verifying the current branch.
-          case _: IllegalArgumentException if v.decider.checkSmoke(analysisInfos) =>
+          case _: IllegalArgumentException if v.decider.checkSmoke(s.analysisInfos) =>
             if (Verifier.config.analyzeInfeasiblePaths) Q(s,v) else Unreachable()
         }
 
@@ -195,15 +190,14 @@ object producer extends ProductionRules {
                        sf: (Sort, Verifier) => Term,
                        a: ast.Exp,
                        pve: PartialVerificationError,
-                       v: Verifier,
-                       analysisInfos: DependencyAnalysisInfos)
+                       v: Verifier)
                       (Q: (State, Verifier) => VerificationResult)
                       : VerificationResult = {
 
     val tlcs = a.topLevelConjuncts
     val pves = Seq.fill(tlcs.length)(pve)
 
-    produceTlcs(s, sf, tlcs, pves, v, analysisInfos)(Q)
+    produceTlcs(s, sf, tlcs, pves, v)(Q)
   }
 
   /** Wrapper/decorator for consume that injects the following operations:
@@ -213,18 +207,17 @@ object producer extends ProductionRules {
                                 sf: (Sort, Verifier) => Term,
                                 a: ast.Exp,
                                 pve: PartialVerificationError,
-                                v: Verifier,
-                                analysisInfos: DependencyAnalysisInfos)
+                                v: Verifier)
                                (Q: (State, Verifier) => VerificationResult)
                                : VerificationResult = {
 
     if (v.decider.isPathMarkedInfeasible) {
-      v.decider.handleInfeasiblePath(!Expressions.isKnownWellDefined(a, Some(s.program)), hasAssumptions=true, analysisInfos)
+      v.decider.handleInfeasiblePath(!Expressions.isKnownWellDefined(a, Some(s.program)), hasAssumptions=true, s.analysisInfos)
       return Q(s, v)
     }
 
     val sepIdentifier = v.symbExLog.openScope(new ProduceRecord(a, s, v.decider.pcs))
-    produceTlc(s, sf, a, pve, v, analysisInfos)((s1, v1) => {
+    produceTlc(s, sf, a, pve, v)((s1, v1) => {
       v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, v1)})
   }
@@ -233,8 +226,7 @@ object producer extends ProductionRules {
                          sf: (Sort, Verifier) => Term,
                          a: ast.Exp,
                          pve: PartialVerificationError,
-                         v: Verifier,
-                         analysisInfos: DependencyAnalysisInfos)
+                         v: Verifier)
                         (continuation: (State, Verifier) => VerificationResult)
                         : VerificationResult = {
     v.logger.debug(s"\nPRODUCE ${viper.silicon.utils.ast.sourceLineColumn(a)}: $a")
@@ -248,17 +240,17 @@ object producer extends ProductionRules {
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "produce")
         val uidImplies = v.symbExLog.openScope(impliesRecord)
 
-        eval(s, e0, pve, v, analysisInfos)((s1, t0, e0New, v1) =>
+        eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
-          joiner.join[scala.Null, scala.Null](s1, v1, analysisInfos, resetState = false)((s1, v1, QB) =>
-            branch(s1.copy(parallelizeBranches = false), t0, (e0, e0New), v1, analysisInfos)(
-              (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a0, pve, v2, analysisInfos)((s3, v3) => {
+          joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s1, v1, QB) =>
+            branch(s1.copy(parallelizeBranches = false), t0, (e0, e0New), v1)(
+              (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a0, pve, v2)((s3, v3) => {
                 v3.symbExLog.closeScope(uidImplies)
                 QB(s3, null, v3)
               }),
               (s2, v2) => {
                 v2.snapshotSupporter.emptySnapshotConstraint(sf(sorts.Snap, v2)).foreach(c =>
-                  v2.decider.assume(c, Option.when(debugOn)(DebugExp.createInstance("Empty snapshot", true)), analysisInfos))
+                  v2.decider.assume(c, Option.when(debugOn)(DebugExp.createInstance("Empty snapshot", true)), s.analysisInfos))
                 /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                  * otherwise. In order words, only make this assumption if `sf` has
                  * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
@@ -282,15 +274,15 @@ object producer extends ProductionRules {
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "produce")
         val uidImplies = v.symbExLog.openScope(impliesRecord)
 
-        eval(s, e0, pve, v, analysisInfos)((s1, t0, e0New, v1) =>
-          branch(s1, t0, (e0, e0New), v1, analysisInfos)(
-            (s2, v2) => produceR(s2, sf, a0, pve, v2, analysisInfos)((s3, v3) => {
+        eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
+          branch(s1, t0, (e0, e0New), v1)(
+            (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
               v3.symbExLog.closeScope(uidImplies)
               Q(s3, v3)
             }),
             (s2, v2) => {
                 v2.snapshotSupporter.emptySnapshotConstraint(sf(sorts.Snap, v2)).foreach(c =>
-                  v2.decider.assume(c, Option.when(debugOn)(DebugExp.createInstance("Empty snapshot", isInternal_ = true)), analysisInfos))
+                  v2.decider.assume(c, Option.when(debugOn)(DebugExp.createInstance("Empty snapshot", isInternal_ = true)), s.analysisInfos))
                   /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                    * otherwise. In order words, only make this assumption if `sf` has
                    * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
@@ -303,15 +295,15 @@ object producer extends ProductionRules {
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "produce")
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
 
-        eval(s, e0, pve, v, analysisInfos)((s1, t0, e0New, v1) =>
+        eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
-          joiner.join[scala.Null, scala.Null](s1, v1, analysisInfos, resetState = false)((s1, v1, QB) =>
-            branch(s1.copy(parallelizeBranches = false), t0, (e0, e0New), v1, analysisInfos)(
-              (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a1, pve, v2, analysisInfos)((s3, v3) => {
+          joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s1, v1, QB) =>
+            branch(s1.copy(parallelizeBranches = false), t0, (e0, e0New), v1)(
+              (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a1, pve, v2)((s3, v3) => {
                 v3.symbExLog.closeScope(uidCondExp)
                 QB(s3, null, v3)
               }),
-              (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a2, pve, v2, analysisInfos)((s3, v3) => {
+              (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a2, pve, v2)((s3, v3) => {
                 v3.symbExLog.closeScope(uidCondExp)
                 QB(s3, null, v3)
               }))
@@ -331,29 +323,29 @@ object producer extends ProductionRules {
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "produce")
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
 
-        eval(s, e0, pve, v, analysisInfos)((s1, t0, e0New, v1) =>
-          branch(s1, t0, (e0, e0New), v1, analysisInfos)(
-            (s2, v2) => produceR(s2, sf, a1, pve, v2, analysisInfos)((s3, v3) => {
+        eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
+          branch(s1, t0, (e0, e0New), v1)(
+            (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
               v3.symbExLog.closeScope(uidCondExp)
               Q(s3, v3)
             }),
-            (s2, v2) => produceR(s2, sf, a2, pve, v2, analysisInfos)((s3, v3) => {
+            (s2, v2) => produceR(s2, sf, a2, pve, v2)((s3, v3) => {
               v3.symbExLog.closeScope(uidCondExp)
               Q(s3, v3)
             })))
 
       case let: ast.Let if !let.isPure =>
-        letSupporter.handle[ast.Exp](s, let, pve, v, analysisInfos)((s1, g1, body, v1) =>
-          produceR(s1.copy(g = s1.g + g1), sf, body, pve, v1, analysisInfos)(Q))
+        letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) =>
+          produceR(s1.copy(g = s1.g + g1), sf, body, pve, v1)(Q))
 
       case accPred: ast.AccessPredicate =>
         val eArgs = accPred.loc.args(s.program)
         val ePerm = accPred.perm
         val resource = accPred.res(s.program)
 
-        evals(s, eArgs, _ => pve, v, analysisInfos)((s1, tArgs, eArgsNew, v1) =>
-          eval(s1, ePerm, pve, v1, analysisInfos)((s1a, tPerm, ePermNew, v1a) =>
-            permissionSupporter.assertNotNegative(s1a, tPerm, ePerm, ePermNew, pve, v1a, analysisInfos)((s1b, v2) => {
+        evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
+          eval(s1, ePerm, pve, v1)((s1a, tPerm, ePermNew, v1a) =>
+            permissionSupporter.assertNotNegative(s1a, tPerm, ePerm, ePermNew, pve, v1a)((s1b, v2) => {
               val s2 = s1b.copy(constrainableARPs = s.constrainableARPs)
               val snap = sf(v2.snapshotSupporter.optimalSnapshotSort(resource, s2, v2), v2)
               val gain = if (!Verifier.config.unsafeWildcardOptimization() ||
@@ -362,7 +354,7 @@ object producer extends ProductionRules {
               else
                 WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
               val gainExp = ePermNew.map(p => ast.PermMul(p, s2.permissionScalingFactorExp.get)(p.pos, p.info, p.errT))
-              v2.heapSupporter.produceSingle(s2, resource, tArgs, eArgsNew, snap, None, gain, gainExp, pve, true, v2, analysisInfos)(Q)
+              v2.heapSupporter.produceSingle(s2, resource, tArgs, eArgsNew, snap, None, gain, gainExp, pve, true, v2)(Q)
             })))
 
 
@@ -386,12 +378,12 @@ object producer extends ProductionRules {
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         val s0 = s.copy(functionRecorder = s.functionRecorder.enterQuantifiedExp(qpa))
-        evalQuantified(s0, Forall, forall.variables, Seq(cond), ePerm +: eArgs, optTrigger, qid, pve, v, analysisInfos) {
+        evalQuantified(s0, Forall, forall.variables, Seq(cond), ePerm +: eArgs, optTrigger, qid, pve, v) {
           case (s1, qvars, qvarExps, Seq(tCond), eCondNew, Some((Seq(tPerm, tArgs@_*), permArgs, tTriggers, (auxGlobals, auxNonGlobals), auxExps)), v1) =>
             val s1a = s1.copy(constrainableARPs = s.constrainableARPs)
             v1.heapSupporter.produceQuantified(s1a, sf, forall, resource, qvars, qvarExps, tFormalArgs, eFormalArgs, qid, optTrigger, tTriggers,
               auxGlobals, auxNonGlobals, auxExps.map(_._1), auxExps.map(_._2), tCond, eCondNew.map(_.head), tArgs, permArgs.map(_.tail),
-              tPerm, permArgs.map(_.head), pve, NegativePermission(ePerm), QPAssertionNotInjective(resAcc), v1, analysisInfos)((s2, v2) =>
+              tPerm, permArgs.map(_.head), pve, NegativePermission(ePerm), QPAssertionNotInjective(resAcc), v1)((s2, v2) =>
                 Q(s2.copy(functionRecorder = s2.functionRecorder.leaveQuantifiedExp(qpa)), v2)
               )
           case (s1, _, _, _, _, None, v1) =>
@@ -404,9 +396,9 @@ object producer extends ProductionRules {
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
         v.snapshotSupporter.emptySnapshotConstraint(sf(sorts.Snap, v)).foreach(c =>
-          v.decider.assume(c, Option.when(debugOn)(DebugExp.createInstance("Empty snapshot", true)), analysisInfos)) /* TODO: See comment for case ast.Implies above */
-        eval(s, a, pve, v, analysisInfos)((s1, t, aNew, v1) => {
-          v1.decider.assume(t, Option.when(debugOn)(a), aNew, analysisInfos)
+          v.decider.assume(c, Option.when(debugOn)(DebugExp.createInstance("Empty snapshot", true)), s.analysisInfos)) /* TODO: See comment for case ast.Implies above */
+        eval(s, a, pve, v)((s1, t, aNew, v1) => {
+          v1.decider.assume(t, Option.when(debugOn)(a), aNew, s.analysisInfos)
           Q(s1, v1)})
     }
 

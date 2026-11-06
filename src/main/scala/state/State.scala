@@ -12,7 +12,7 @@ import viper.silicon.Config.JoinMode.JoinMode
 import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.{PathConditionStack, RecordedPathConditions}
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
+import viper.silicon.dependencyAnalysis.{AnalysisInfos, DependencyAnalysisInfos}
 import viper.silicon.state.State.{DebugOldHeaps, OldHeaps, TemporaryRecord}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.{And, Ite, Term, Var}
@@ -85,7 +85,8 @@ final case class State(g: Store = Store(),
                        heapDependentTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet.empty,
                        moreCompleteExhale: Boolean = false,
                        moreCompleteExhaleQP: Boolean = false,
-                       moreJoins: JoinMode = JoinMode.Off)
+                       moreJoins: JoinMode = JoinMode.Off,
+                       analysisInfos: AnalysisInfos = DependencyAnalysisInfos.DefaultInfos.withEnabled(false))
     extends Mergeable[State] {
 
   val isMethodVerification: Boolean = {
@@ -166,6 +167,9 @@ final case class State(g: Store = Store(),
   def scalePermissionFactor(p: Term, exp: Option[ast.Exp]) =
     copy(permissionScalingFactor = terms.PermTimes(p, permissionScalingFactor),
       permissionScalingFactorExp = permissionScalingFactorExp.map(psf => ast.PermMul(exp.get, psf)(exp.get.pos, exp.get.info, exp.get.errT)))
+
+  def withAnalysisInfos(infos: AnalysisInfos): State =
+    if (infos eq analysisInfos) this else copy(analysisInfos = infos)
 
   def merge(other: State): State =
     State.merge(this, other)
@@ -253,7 +257,7 @@ object State {
                  ssCache1, assertReadAccessOnly1,
                  qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1, qpTag1,
                  predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
-                 moreCompleteExhale, moreCompleteExhaleQP, moreJoins) =>
+                 moreCompleteExhale, moreCompleteExhaleQP, moreJoins, _) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -282,7 +286,8 @@ object State {
                      ssCache2, `assertReadAccessOnly1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, `smDomainNeeded1`, qpTag1,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
-                     moreCompleteExhale2, moreCompleteExhaleQP2, `moreJoins`) =>
+                     moreCompleteExhale2, moreCompleteExhaleQP2, `moreJoins`, _) =>
+            // TODO ake: analysisInfos are not compared; the merged state keeps those of s1.
 
             val oldHeaps3 = oldHeaps1 ++ oldHeaps2
             val debugOldHeaps3 = mergeMaps(debugOldHeaps1, (), debugOldHeaps2, ())(
@@ -383,7 +388,7 @@ object State {
   }
 
   // Puts a collection of chunks under a condition.
-  private def conditionalizeChunks(h: Iterable[Chunk], cond: Term, condExp: Option[ast.Exp], v: Verifier, analysisInfos: DependencyAnalysisInfos): Iterable[Chunk] = {
+  private def conditionalizeChunks(h: Iterable[Chunk], cond: Term, condExp: Option[ast.Exp], v: Verifier, analysisInfos: AnalysisInfos): Iterable[Chunk] = {
     h map (c => {
       c match {
         case c: GeneralChunk => v.chunkFactory.applyCondition(c, cond, condExp, analysisInfos)
@@ -393,14 +398,14 @@ object State {
   }
 
   // Puts a heap under a condition.
-  private def conditionalizeHeap(h: Heap, cond: Term, condExp: Option[ast.Exp], v: Verifier, analysisInfos: DependencyAnalysisInfos): Heap = {
+  private def conditionalizeHeap(h: Heap, cond: Term, condExp: Option[ast.Exp], v: Verifier, analysisInfos: AnalysisInfos): Heap = {
     Heap(conditionalizeChunks(h.values, cond, condExp, v, analysisInfos))
   }
 
   // Merges two heaps together, by putting h1 under condition cond1,
   // and h2 under cond2.
   // Assumes that cond1 is the negation of cond2.
-  def mergeHeap(h1: Heap, cond1: Term, cond1Exp: Option[ast.Exp], h2: Heap, cond2: Term, cond2Exp: Option[ast.Exp], v: Verifier, analysisInfos: DependencyAnalysisInfos): Heap = {
+  def mergeHeap(h1: Heap, cond1: Term, cond1Exp: Option[ast.Exp], h2: Heap, cond2: Term, cond2Exp: Option[ast.Exp], v: Verifier, analysisInfos: AnalysisInfos): Heap = {
     val (maskChunks1, generalChunks1) = h1.values.partition(_.isInstanceOf[BasicMaskHeapChunk])
     val (maskChunks2, generalChunks2) = h2.values.partition(_.isInstanceOf[BasicMaskHeapChunk])
 
@@ -425,20 +430,20 @@ object State {
     generalResult + Heap(mergedMaskChunks)
   }
 
-  def merge(s1: State, pc1: RecordedPathConditions, s2: State, pc2: RecordedPathConditions, v: Verifier, analysisInfos: DependencyAnalysisInfos): State = {
+  def merge(s1: State, pc1: RecordedPathConditions, s2: State, pc2: RecordedPathConditions, v: Verifier): State = {
     val withExp = Verifier.config.enableDebugging()
     val conditions1 = And(pc1.branchConditions)
     val conditions1Exp = if (withExp) Some(BigAnd(pc1.branchConditionExps.map(_._2.get))) else None
     val conditions2 = And(pc2.branchConditions)
     val conditions2Exp = if (withExp) Some(BigAnd(pc2.branchConditionExps.map(_._2.get))) else None
 
-    merge(s1, conditions1, conditions1Exp, s2, conditions2, conditions2Exp, v, analysisInfos)
+    merge(s1, conditions1, conditions1Exp, s2, conditions2, conditions2Exp, v)
   }
 
   // Merges two states, by putting s1 under condition conditions1 and s2 under conditions2.
   // Assumes that conditions1 and conditions2 are mutually exclusive.
   def merge(s1: State, conditions1: Term, conditions1Exp: Option[ast.Exp],
-            s2: State, conditions2: Term, conditions2Exp: Option[ast.Exp], v: Verifier, analysisInfos: DependencyAnalysisInfos): State = {
+            s2: State, conditions2: Term, conditions2Exp: Option[ast.Exp], v: Verifier): State = {
     s1 match {
       /* Decompose state s1 */
       case State(g1, h1, program, member,
@@ -465,7 +470,7 @@ object State {
       ssCache1, assertReadAccessOnly1,
       qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1, qpTag1,
       predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
-      moreCompleteExhale, moreCompleteExhaleQP, moreJoins) =>
+      moreCompleteExhale, moreCompleteExhaleQP, moreJoins, _) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -493,7 +498,8 @@ object State {
           ssCache2, `assertReadAccessOnly1`,
           `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, smDomainNeeded2, qpTag1,
           `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
-          moreCompleteExhale2, moreCompleteExhaleQP2, `moreJoins`) =>
+          moreCompleteExhale2, moreCompleteExhaleQP2, `moreJoins`, _) =>
+            // TODO ake: s1.analysisInfos are not compared; the merged state keeps those of s1.
 
             val debugOldHeaps3 = mergeMaps(debugOldHeaps1, (), debugOldHeaps2, ())(
               (record, _) => Some(record))(
@@ -537,17 +543,17 @@ object State {
 
             val g3 = mergeStore(g1, g2)
 
-            val h3 = mergeHeap(h1, conditions1, conditions1Exp, h2, conditions2, conditions2Exp, v, analysisInfos)
+            val h3 = mergeHeap(h1, conditions1, conditions1Exp, h2, conditions2, conditions2Exp, v, s1.analysisInfos)
 
             val partiallyConsumedHeap3 = (partiallyConsumedHeap1, partiallyConsumedHeap2) match {
               case (None, None) => None
-              case (Some(pch1), None) => Some(conditionalizeHeap(pch1, conditions1, conditions1Exp, v, analysisInfos))
-              case (None, Some(pch2)) => Some(conditionalizeHeap(pch2, conditions2, conditions2Exp, v, analysisInfos))
+              case (Some(pch1), None) => Some(conditionalizeHeap(pch1, conditions1, conditions1Exp, v, s1.analysisInfos))
+              case (None, Some(pch2)) => Some(conditionalizeHeap(pch2, conditions2, conditions2Exp, v, s1.analysisInfos))
               case (Some(pch1), Some(pch2)) => Some(mergeHeap(
                 pch1, conditions1, conditions1Exp,
                 pch2, conditions2, conditions2Exp,
                 v,
-                analysisInfos
+                s1.analysisInfos
               ))
             }
 
@@ -556,18 +562,18 @@ object State {
               None
             })
             ((heap1, cond1, heap2, cond2) => {
-              Some(mergeHeap(heap1, cond1._1, cond1._2, heap2, cond2._1, cond2._2, v, analysisInfos))
+              Some(mergeHeap(heap1, cond1._1, cond1._2, heap2, cond2._1, cond2._2, v, s1.analysisInfos))
             }))
 
             assert(invariantContexts1.length == invariantContexts2.length)
             val invariantContexts3 = invariantContexts1
               .zip(invariantContexts2)
-              .map({case (h1, h2) => mergeHeap(h1, conditions1, conditions1Exp, h2, conditions2, conditions2Exp, v, analysisInfos)})
+              .map({case (h1, h2) => mergeHeap(h1, conditions1, conditions1Exp, h2, conditions2, conditions2Exp, v, s1.analysisInfos)})
 
             assert(reserveHeaps1.length == reserveHeaps2.length)
             val reserveHeaps3 = reserveHeaps1
               .zip(reserveHeaps2)
-              .map({case (h1, h2) => mergeHeap(h1, conditions1, conditions1Exp, h2, conditions2, conditions2Exp, v, analysisInfos)})
+              .map({case (h1, h2) => mergeHeap(h1, conditions1, conditions1Exp, h2, conditions2, conditions2Exp, v, s1.analysisInfos)})
 
             val ssCache3 = ssCache1 ++ ssCache2
             val smCache3 = smCache1.union(smCache2)

@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis.DependencyAnalyzer
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.state.State
@@ -27,7 +27,6 @@ trait BranchingRules extends SymbolicExecutionRules {
              condition: Term,
              conditionExp: (ast.Exp, Option[ast.Exp]),
              v: Verifier,
-             analysisInfos: DependencyAnalysisInfos,
              fromShortCircuitingAnd: Boolean = false)
             (fTrue: (State, Verifier) => VerificationResult,
              fFalse: (State, Verifier) => VerificationResult)
@@ -39,14 +38,13 @@ object brancher extends BranchingRules {
              condition: Term,
              conditionExp: (ast.Exp, Option[ast.Exp]),
              v: Verifier,
-             analysisInfos: DependencyAnalysisInfos,
              fromShortCircuitingAnd: Boolean = false)
             (fThen: (State, Verifier) => VerificationResult,
              fElse: (State, Verifier) => VerificationResult)
             : VerificationResult = {
 
     if (v.decider.isPathMarkedInfeasible) {
-      val analysisInfos1 = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, analysisInfos, conditionExp._1.info, conditionExp._1)
+      val analysisInfos1 = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, s.analysisInfos, conditionExp._1.info, conditionExp._1)
       v.decider.handleInfeasiblePath(false, true, analysisInfos1)
       return fThen(s, v).combine(fElse(s, v))
     }
@@ -70,7 +68,7 @@ object brancher extends BranchingRules {
           && allQuantifiedVariables.map(_._1).exists(condition.freeVariables.contains))
     )
 
-    val analysisInfos1 = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, analysisInfos, conditionExp._1.info, conditionExp._1)
+    val analysisInfos1 = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, s.analysisInfos, conditionExp._1.info, conditionExp._1)
 
     /* True if the then-branch is to be explored */
     val executeThenBranch = (
