@@ -81,6 +81,8 @@ object DebugNodeKind {
   *                       is nested in a quantifier).
   * @param origin         the debugger command that added this node, e.g. `unfold list(x)`, if the user added it rather
   *                       than the program; for a node in [[ObligationModel.removed]], the command that removed it.
+  * @param handle         how the user refers to a chunk of the current heap to remove it, e.g. `h3`; see
+  *                       [[SiliconDebugSession.remove]].
   */
 case class DebugNode(id: Int,
                      kind: String,
@@ -95,7 +97,8 @@ case class DebugNode(id: Int,
                      pos: Option[DebugSourcePos] = None,
                      children: Seq[DebugNode] = Seq.empty,
                      quantifier: Option[String] = None,
-                     origin: Option[String] = None) {
+                     origin: Option[String] = None,
+                     handle: Option[String] = None) {
 
   /** True iff a client should offer to expand this node to obtain children it has not received yet. */
   def hasHiddenChildren: Boolean = children.size < childCount

@@ -32,7 +32,7 @@ object DebugRenderer {
 
   /** A flat section, whose entries are printed one per line: branch conditions, the store, a heap. */
   private def renderSection(title: String, nodes: Seq[DebugNode]): String =
-    s"$title:\n\t\t${nodes.map(n => n.label + renderOrigin(n)).mkString("\n\t\t")}\n\n"
+    s"$title:\n\t\t${nodes.map(n => n.handle.map(h => s"[$h] ").getOrElse("") + n.label + renderOrigin(n)).mkString("\n\t\t")}\n\n"
 
   /** Marks what the user changed with debugger commands, so that it can be told apart from what comes from the program. */
   private def renderOrigin(n: DebugNode, verb: String = "added"): String =

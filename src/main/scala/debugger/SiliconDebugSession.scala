@@ -337,11 +337,32 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     }
   }
 
-  def removeAssumptions(ids: Seq[Int]): DebugCommandResult = withObligation { (o, msgs) =>
-    msgs += DebugMessage.info(s"Removing assumptions with IDs ${ids.mkString(",")}")
-    invalidateCounterexample()
-    obl = Some(initVerifier(o.removeAssumptions(ids), o.v.decider.prover.name, lastSolverOptions, msgs))
-    result(msgs)
+  def removeAssumptions(ids: Seq[Int]): DebugCommandResult = remove(ids, Seq.empty)
+
+  /**
+    * Removes the assumptions with ids `assumptionIds` and the chunks `hn` of the current heap with the numbers `n` in
+    * `chunkNumbers`, see [[ProofObligation.removeChunks]]. Use [[parseRemovalTargets]] to read both from text such as
+    * `12, h3`.
+    */
+  def remove(assumptionIds: Seq[Int], chunkNumbers: Seq[Int]): DebugCommandResult = withObligation { (o, msgs) =>
+    val count = o.s.h.values.size
+    val unknown = chunkNumbers.filter(n => n < 1 || n > count)
+    if (unknown.nonEmpty) {
+      DebugCommandResult.error(s"There is no heap chunk ${unknown.map(n => s"h$n").mkString(", ")}; " +
+        (if (count == 0) "the heap is empty." else if (count == 1) "the heap has only h1." else s"the heap has h1 to h$count."))
+    } else {
+      if (assumptionIds.nonEmpty || chunkNumbers.isEmpty)
+        msgs += DebugMessage.info(s"Removing assumptions with IDs ${assumptionIds.mkString(",")}")
+      if (chunkNumbers.nonEmpty)
+        msgs += DebugMessage.info(s"Removing heap chunks ${chunkNumbers.map(n => s"h$n").mkString(",")}")
+      invalidateCounterexample()
+      // Like after a fold or unfold, the assertion was evaluated in a heap that has changed.
+      val withoutChunks =
+        if (chunkNumbers.isEmpty) o
+        else o.removeChunks(chunkNumbers).copy(assertionOutdated = o.assertionOutdated || !isPaused)
+      obl = Some(initVerifier(withoutChunks.removeAssumptions(assumptionIds), o.v.decider.prover.name, lastSolverOptions, msgs))
+      result(msgs)
+    }
   }
 
   /**
@@ -891,6 +912,26 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
 
 object SiliconDebugSession {
   val proverNames: Seq[String] = Seq(Z3ProverStdIO.name, Cvc5ProverStdIO.name)
+
+  /**
+    * The assumption ids and heap chunk numbers in `text`, separated by commas or spaces, e.g. `12, h3` for assumption
+    * `[12]` and chunk `[h3]`; see [[SiliconDebugSession.remove]]. Fails with a message naming what is neither.
+    */
+  def parseRemovalTargets(text: String): Either[String, (Seq[Int], Seq[Int])] = {
+    val ChunkHandle = "[hH](\\d+)".r
+    val targets = text.split("[,\\s]+").toSeq.filter(_.nonEmpty).map(t => t.stripPrefix("[").stripSuffix("]")).map {
+      case ChunkHandle(n) => Right(Right(n.toInt))
+      case t => t.toIntOption.map(id => Right(Left(id))).getOrElse(Left(t))
+    }
+    targets.collect { case Left(t) => t } match {
+      case Seq() =>
+        val valid = targets.collect { case Right(t) => t }
+        Right((valid.collect { case Left(id) => id }, valid.collect { case Right(n) => n }))
+      case invalid =>
+        Left(s"${invalid.mkString(", ")} ${if (invalid.size == 1) "is" else "are"} neither an assumption id such as 12 " +
+          "nor a heap chunk such as h3.")
+    }
+  }
 
   /** Splits `text` at the commas that are not nested in parentheses, brackets or braces, e.g. `f(x, y), 3`. */
   def splitArguments(text: String): Seq[String] = {

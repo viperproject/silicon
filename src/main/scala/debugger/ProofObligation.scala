@@ -81,6 +81,18 @@ case class ProofObligation(s: State,
   }
 
   /**
+    * This obligation without the chunks of the current heap with the given numbers: chunk `n` is the `n`-th chunk of
+    * the heap, which [[ObligationModelBuilder]] shows as `hn`. What was known about the chunks' values stays among
+    * the assumptions. Checks that inspect permissions, such as `perm(x.f) == none`, may now hold although they do not
+    * in the program.
+    */
+  def removeChunks(numbers: Seq[Int]): ProofObligation = {
+    val chunks = s.h.values.toSeq
+    val toRemove = numbers.distinct.flatMap(n => chunks.lift(n - 1))
+    changedBy(UserChanges.removeCommand, copy(s = s.copy(h = toRemove.foldLeft(s.h)(_ - _))))
+  }
+
+  /**
     * `changed`, which is this obligation after the debugger command `command` changed it, with these changes recorded
     * in [[userChanges]]: what `changed` has and this obligation has not was added by the command, and what this
     * obligation has from the program and `changed` has not was removed by it.

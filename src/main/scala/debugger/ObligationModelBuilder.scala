@@ -73,7 +73,8 @@ object ObligationModelBuilder {
   private def heapModels(obl: ProofObligation): Seq[DebugHeapModel] = {
     var counter = 0
     // Only the current heap can have been changed by the user.
-    def chunkNodes(h: Heap, origins: Map[Chunk, String] = Map.empty): Seq[DebugNode] = h.values.toSeq.map { c =>
+    def chunkNodes(h: Heap, origins: Map[Chunk, String] = Map.empty, removable: Boolean = false): Seq[DebugNode] =
+      h.values.toSeq.zipWithIndex.map { case (c, idx) =>
       counter += 1
       // The predicate instance of a predicate chunk, e.g. `list(x)`, lets a client offer to fold or unfold it.
       val predicateInstance = c match {
@@ -82,10 +83,12 @@ object ObligationModelBuilder {
         case _ => None
       }
       DebugNode(syntheticId(HeapSection, counter), DebugNodeKind.Chunk, chunkString(c, obl),
-        expString = predicateInstance, termString = Some(c.toString), origin = origins.get(c))
+        expString = predicateInstance, termString = Some(c.toString), origin = origins.get(c),
+        // The numbering of ProofObligation.removeChunks.
+        handle = Option.when(removable)(s"h${idx + 1}"))
     }
 
-    val current = chunkNodes(obl.s.h, obl.userChanges.chunks)
+    val current = chunkNodes(obl.s.h, obl.userChanges.chunks, removable = true)
     if (obl.printConfig.printOldHeaps)
       DebugHeapModel("Current Heap", "current", current) +:
         obl.s.oldHeaps.toSeq.map { case (k, v) => DebugHeapModel(s"Heap $k", k, chunkNodes(v)) }

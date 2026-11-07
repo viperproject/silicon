@@ -52,7 +52,7 @@ class SiliconDebuggerCli(session: SiliconDebugSession,
   private def debugProofObligation(): Unit = {
     while (true) {
       out(s"\nEnter 'q' to quit, 'z' to zoom in on (i.e., show all children of) an assumption, " +
-        s"'r' to reset the proof obligation, 'ra' to remove assumptions, 'af' to add free assumptions, " +
+        s"'r' to reset the proof obligation, 'ra' to remove assumptions or heap chunks, 'af' to add free assumptions, " +
         s"'ap' prove additional assumptions, 'p' to execute proof, 'x' to show a counterexample, " +
         s"'u' to unfold or 'f' to fold a predicate, 'cs' to switch to a case of the last fold or unfold, " +
         s"'i' to instantiate a forall assumption, 'w' to obtain a witness of an exists assumption, " +
@@ -155,9 +155,11 @@ class SiliconDebuggerCli(session: SiliconDebugSession,
   }
 
   private def removeAssumptions(): Unit = {
-    out("Enter the assumptions you want to remove:")
-    val indices = readLineOr("").split(",").flatMap(s => s.trim.toIntOption).toSeq
-    report(session.removeAssumptions(indices))
+    out("Enter the assumptions (e.g. 12) or heap chunks (e.g. h3) you want to remove:")
+    SiliconDebugSession.parseRemovalTargets(readLineOr("")) match {
+      case Right((ids, chunks)) => report(session.remove(ids, chunks))
+      case Left(error) => out(error)
+    }
   }
 
   private def addAssumption(free: Boolean): Unit = {

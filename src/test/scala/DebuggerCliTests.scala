@@ -58,6 +58,18 @@ class DebuggerCliTests extends AnyFunSuite {
     assert(!output.contains("Invalid input"), output)
   }
 
+  test("removes heap chunks and assumptions, and reports what it cannot remove") {
+    val output = runCli("fold")(line("ra"), line("h1"), line("ra"), line("h9"), line("ra"), line("x"), line("u cell(x)"))
+    assert(output.contains("[h1] acc(cell(x@1), write)"), output)
+    assert(output.contains("Removing heap chunks h1"), output)
+    assert(output.contains("(removed by: remove)"), output)
+    assert(output.contains("There is no heap chunk h9; the heap is empty."), output)
+    assert(output.contains("x is neither an assumption id"), output)
+    // The predicate is gone, so it cannot be unfolded any more.
+    assert(output.contains("Unfolding cell(x"), output)
+    assert(!output.contains("Unfolded cell(x"), output)
+  }
+
   test("reports a predicate instance that cannot be unfolded") {
     val output = runCli("fold")(line("u cell(null)"))
     assert(output.contains("Unfolding cell(null) failed"), output)
