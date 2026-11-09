@@ -29,7 +29,7 @@ import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.TrueLit
-import viper.silver.ast.{FalseLit, NoPosition}
+import viper.silver.ast.NoPosition
 import viper.silver.dependencyAnalysis.{AssumptionType, NoDependencyAnalysisMerge, StringDependencyAnalysisSourceInfo}
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.InternalWarningMessage
@@ -1063,12 +1063,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             Q(s1, v)
           case false =>
             val failure = createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver is injective")
-            if (s.retryLevel == 0) v.decider.handleFailedAssertion(completeReceiverInjectivityCheck, None, None, analysisInfos, v.reportFurtherErrors())
+            recordFailedAssertion(s, v, completeReceiverInjectivityCheck, None, None, analysisInfos)
             if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, v) else failure
         }
       case false =>
         val failure = createFailure(pve dueTo negativePermissionReason, v, s, nonNegImplication, nonNegImplicationExp)
-        if (s.retryLevel == 0) v.decider.handleFailedAssertion(nonNegTerm, nonNegImplicationExp, nonNegImplicationExp, analysisInfos, v.reportFurtherErrors())
+        recordFailedAssertion(s, v, nonNegTerm, nonNegImplicationExp, nonNegImplicationExp, analysisInfos)
         if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, v) else failure
     }
 
@@ -1410,7 +1410,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                     }
                   case (Incomplete(_, _), s2, _, _) =>
                     val failure = createFailure(pve dueTo insufficientPermissionReason, v, s2, "QP consume")
-                    if (s2.retryLevel == 0) v.decider.handleFailedAssertion(False, Option.when(debugOn)(FalseLit()()), Option.when(debugOn)(FalseLit()()), analysisInfos, v.reportFurtherErrors())
+                    recordFailedFalseAssertion(s2, v, analysisInfos)
                     if (s2.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.analyzeInfeasiblePaths)
                       failure combine Q(s2, s2.h, Option.when(returnSnap)(Unit), v) else failure
                 }
@@ -1436,7 +1436,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 consumeQP(s0.copy(h = s.h), s0.h, v0)(QS))(Q)
             case false =>
             val failure = createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver injective")
-            if (s.retryLevel == 0) v.decider.handleFailedAssertion(receiverInjectivityCheck, None, None, analysisInfos, v.reportFurtherErrors())
+            recordFailedAssertion(s, v, receiverInjectivityCheck, None, None, analysisInfos)
             if (s.retryLevel == 0 && v.reportFurtherErrors()) {
               val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(debugOn)(PUnknown()))
               failure combine Q(s, s.h, if (returnSnap) Some(snap) else None, v)
@@ -1446,7 +1446,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           }
         case false =>
           val failure = createFailure(pve dueTo negativePermissionReason, v, s, nonNegTerm, nonNegExp)
-          if (s.retryLevel == 0) v.decider.handleFailedAssertion(nonNegTerm, nonNegExp, nonNegExp, analysisInfos, v.reportFurtherErrors())
+          recordFailedAssertion(s, v, nonNegTerm, nonNegExp, nonNegExp, analysisInfos)
           if (s.retryLevel == 0 && v.reportFurtherErrors()) {
             val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(debugOn)(PUnknown()))
             failure combine Q(s, s.h, if (returnSnap) Some(snap) else None, v)
@@ -1595,7 +1595,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s, "single QP consume")
               case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
             }
-            if (s.retryLevel == 0) v.decider.handleFailedAssertion(False, Option.when(debugOn)(FalseLit()()), Option.when(debugOn)(FalseLit()()), analysisInfos, v.reportFurtherErrors())
+            recordFailedFalseAssertion(s, v, analysisInfos)
             if (s.retryLevel == 0 && v.reportFurtherErrors()) {
               val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(debugOn)(PUnknown()))
               failure combine Q(s, s.h, Some(snap), v)

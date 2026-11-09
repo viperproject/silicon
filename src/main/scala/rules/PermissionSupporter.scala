@@ -30,7 +30,7 @@ object permissionSupporter extends SymbolicExecutionRules {
           case true => Q(s, v)
           case false =>
             val failure = createFailure(pve dueTo NegativePermission(ePerm), v, s, termToAssert, debugExp)
-            if (s.retryLevel == 0) v.decider.handleFailedAssertion(termToAssert, debugExp, debugExp, analysisInfos, v.reportFurtherErrors())
+            recordFailedAssertion(s, v, termToAssert, debugExp, debugExp, analysisInfos)
             if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, v) else failure
         }
     }
@@ -50,7 +50,7 @@ object permissionSupporter extends SymbolicExecutionRules {
           case true => Q(s, v)
           case false =>
             val failure = createFailure(pve dueTo NonPositivePermission(ePerm), v, s, termToAssert, debugExp)
-            if (s.retryLevel == 0) v.decider.handleFailedAssertion(termToAssert, debugExp, debugExp, analysisInfos, v.reportFurtherErrors())
+            recordFailedAssertion(s, v, termToAssert, debugExp, debugExp, analysisInfos)
             if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, v) else failure
         }
     }

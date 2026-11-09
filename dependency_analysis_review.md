@@ -23,6 +23,7 @@ Updated on 2026-11-09, after the fixes on top of `e0fbd85b`. Line links in the f
 | L5 | Partly done, see the L5 row. |
 | L10, C8 | Done. |
 | D3, C3, C4, C5, C7 | Done, except for the two points listed under C7. Compiled only, not run. |
+| L12 | Done. Compiled only, not run. |
 | L13 | Done in Silicon and in `silicon/silver`, compiled only. The Silver commit is local to `silicon/silver`, so `carbon/silver` and the submodule pointers still have the old imports. |
 | Everything else | Open. |
 
@@ -66,8 +67,8 @@ With `--dependencyAnalysis`, Silicon changes what it sends to Z3 and which paths
 
 `Verifier.config.analyzeInfeasiblePaths` appears at 18 sites in `rules/`, plus `isPathMarkedInfeasible` guards and `handleInfeasiblePath` calls. Each site decides locally how to continue on a dead path, and they differ:
 
-- `lookup` invents a fresh snapshot ([ChunkSupporter.scala:284](src/main/scala/rules/ChunkSupporter.scala#L284)).
-- `consume` continues with `None` as the snapshot ([ChunkSupporter.scala:151](src/main/scala/rules/ChunkSupporter.scala#L151)). See B1.
+- `lookup` invents a fresh snapshot ([ChunkSupporter.scala:280](src/main/scala/rules/ChunkSupporter.scala#L280)).
+- `consume` continues with `None` as the snapshot ([ChunkSupporter.scala:150](src/main/scala/rules/ChunkSupporter.scala#L150)). See B1.
 - Quantifier evaluation invents a fresh variable ([Evaluator.scala:574](src/main/scala/rules/Evaluator.scala#L574)).
 - Function-application joins filter entries by infeasibility node ([Evaluator.scala:1416](src/main/scala/rules/Evaluator.scala#L1416)).
 
@@ -166,7 +167,7 @@ None of these has been reproduced.
 
 | ID | Issue | Effect | Suggested check or fix |
 |---|---|---|---|
-| B1 | On a newly detected dead path or with further errors, `consume` passes `None` as the snapshot even if `returnSnap` is true ([ChunkSupporter.scala:151](src/main/scala/rules/ChunkSupporter.scala#L151), [:163](src/main/scala/rules/ChunkSupporter.scala#L163)). Callers call `.get`, e.g. [Evaluator.scala:666](src/main/scala/rules/Evaluator.scala#L666), [PredicateSupporter.scala:85](src/main/scala/rules/PredicateSupporter.scala#L85) and [Executor.scala:674](src/main/scala/rules/Executor.scala#L674). | Possible `NoSuchElementException` while exploring a dead path | Test a function call or `fold` in a branch that becomes infeasible at that consume. Return a fresh snapshot when `returnSnap` is set, as `lookup` does. |
+| B1 | On a newly detected dead path or with further errors, `consume` passes `None` as the snapshot even if `returnSnap` is true ([ChunkSupporter.scala:150](src/main/scala/rules/ChunkSupporter.scala#L150), [:163](src/main/scala/rules/ChunkSupporter.scala#L163)). Callers call `.get`, e.g. [Evaluator.scala:666](src/main/scala/rules/Evaluator.scala#L666), [PredicateSupporter.scala:85](src/main/scala/rules/PredicateSupporter.scala#L85) and [Executor.scala:674](src/main/scala/rules/Executor.scala#L674). | Possible `NoSuchElementException` while exploring a dead path | Test a function call or `fold` in a branch that becomes infeasible at that consume. Return a fresh snapshot when `returnSnap` is set, as `lookup` does. |
 | B2 | **Fixed.** `--assertionMode SoftConstraints` wasn't rejected, but it doesn't name the goal or refresh the unsat core. | First assert throws a `NullPointerException`. Later asserts reuse an old core, giving wrong edges and false vacuous-proof records. | Reject the combination in `Config`. |
 | B3 | **Fixed by rejecting the option.** `--maskHeapMode` wasn't rejected, but `createBasicMaskHeapChunk` adds no label ([DependencyAnalysisAwareChunkFactory.scala:113](src/main/scala/state/chunks/DependencyAnalysisAwareChunkFactory.scala#L113), `TODO ake`). `substitute` has a similar TODO. | Permission dependencies may be missing, which would make results incomplete | Reject the combination until it is supported, or add tests showing it's correct. |
 | B4 | **Resolved by deleting the parameter.** `createLabel` was ignored in `registerDerivedChunk` ([DependencyAnalysisAwareDeciderProvider.scala:179](src/main/scala/decider/DependencyAnalysisAwareDeciderProvider.scala#L179)), so callers passing `createLabel = false` still get a fresh label and node. | Extra overhead at the least. It may not match what those callers intended. | Decide the intent, then implement it or delete the parameter (L5). |
@@ -191,7 +192,7 @@ Listed in the order I'd do them.
 | L9 | Either surface vacuous proofs or delete the tracking. | [DependencyGraph.scala:194](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala#L194) | No more data that's collected and lost |
 | L10 | **Done.** Add `DependencyAnalyzer.isAnalysisLabel(v: Var)` and use it instead of matching the name prefix. This covers both sites, including the function verification unit provider. | [FunctionData.scala:211](src/main/scala/supporters/functions/FunctionData.scala#L211) | One definition of what a label is |
 | L11 | Correct the docs: the scaladoc says all merge infos are propagated, but `getMergeInfo` uses only the head. | [DependencyAnalysisInfos.scala:91](src/main/scala/dependencyAnalysis/DependencyAnalysisInfos.scala#L91), [:189](src/main/scala/dependencyAnalysis/DependencyAnalysisInfos.scala#L189) | Docs match behaviour |
-| L12 | Add a helper for the repeated failed-assertion pattern, after checking that the 33 `handleFailedAssertion` sites fit it. | `SymbolicExecutionRules` | Less duplicated logic and fewer infos arguments |
+| L12 | **Done.** All `handleFailedAssertion` call sites in the rules now use `recordFailedAssertion` or `recordFailedFalseAssertion`. Add a helper for the repeated failed-assertion pattern. | `SymbolicExecutionRules` | Less duplicated logic and fewer infos arguments |
 | L13 | **Done.** Revert unrelated import reordering in upstream files, such as `Config`, `DefaultMainVerifier`, `Ast`, `Program` and `CfgGenerator`. Imports that genuinely changed stay, including those collapsed to wildcards alongside moved classes such as `state.chunks`. Remaining import differences from master are real changes, not reordering. | Several | Smaller diff, fewer merge conflicts |
 | L14 | Move `neo4j_importer.py` out of `src/main/scala`, for example to `scripts/`. | [neo4j_importer.py](src/main/scala/dependencyAnalysis/neo4j_importer.py) | Cleaner source tree |
 | L15 | Resolve the open `TODO ake` and `XXX ake` comments, 27 in Silicon including test files. Start with those that question behaviour: "why do we need this?" ([DependencyAnalyzer.scala:357](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L357)), and the mask heap TODOs. | Several | Exposes undecided behaviour before merging |
@@ -342,7 +343,7 @@ Dependencies should point in one direction: `tools` → `query` → `graph`, and
 
 1. **Confirm bugs:** check B1, then B7. Commit the B6 fix to Silver.
 2. **Safe fixes:** finish L5, then L7 and L8. Each is small, and the existing tests cover most of the behaviour.
-3. **Cleanup:** L9, L11, L12, L14 and L15.
+3. **Cleanup:** L9, L11, L14 and L15.
 4. **Before proposing upstream:** D4 and D7, which change the most for people outside this feature.
 5. **Larger refactors:** D3, D2 and D6, one at a time. Compare graph exports before and after, so that any behaviour change is visible.
 6. **Ongoing:** the D1 comparison and the D5 strict mode, which make all of the above safer. They're cheap enough to start early.

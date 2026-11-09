@@ -25,7 +25,6 @@ import viper.silicon.utils.ast.{BigAnd, replaceVarsInExp}
 import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.FalseLit
 import viper.silver.dependencyAnalysis.{AssumptionType, DependencyAnalysisSourceInfo, SimpleDependencyAnalysisMerge}
 import viper.silver.parser.PUnknown
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
@@ -313,7 +312,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             QS(s5, v1)
           case (Incomplete(_, _), s3, _, _) =>
             val failure = createFailure(ve, v1, s3, "sufficient permission")
-            if (s3.retryLevel == 0) v.decider.handleFailedAssertion(False, Option.when(debugOn)(FalseLit()()), Option.when(debugOn)(FalseLit()()), analysisInfos, v.reportFurtherErrors())
+            recordFailedFalseAssertion(s3, v, analysisInfos)
             if (s3.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s3, v) else failure
       }
       }
@@ -457,7 +456,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
               case false =>
                 val debugExp = Option.when(debugOn)(perms.IsPositive(ast.CurrentPerm(fa)())())
                 val failure = createFailure(ve, v, s, toAssert, debugExp)
-                if (s.retryLevel == 0) v.decider.handleFailedAssertion(toAssert, debugExp, debugExp, analysisInfos, v.reportFurtherErrors())
+                recordFailedAssertion(s, v, toAssert, debugExp, debugExp, analysisInfos)
                 val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(fa.field, s, v), Option.when(debugOn)(PUnknown()))
                 if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, snap, v) else failure
               case true =>
@@ -511,7 +510,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
           v.decider.assert(permCheck,analysisInfos) {
             case false =>
               val failure = createFailure(ve, v, s3, permCheck, permCheckExp)
-              if (s3.retryLevel == 0) v.decider.handleFailedAssertion(permCheck, permCheckExp, permCheckExp, analysisInfos, v.reportFurtherErrors())
+              recordFailedAssertion(s3, v, permCheck, permCheckExp, permCheckExp, analysisInfos)
               val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(fa.field, s3, v), Option.when(debugOn)(PUnknown()))
               if (s3.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s3, snap, v) else failure
             case true =>

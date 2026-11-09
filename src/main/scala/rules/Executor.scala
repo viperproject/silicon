@@ -528,7 +528,7 @@ object executor extends ExecutionRules {
             QS(s1.copy(h = s.h), v1)
           else {
             val failure = createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(debugOn)(a))
-            if (s1.retryLevel == 0) v1.decider.handleFailedAssertion(False, Option.when(debugOn)(FalseLit()()), Option.when(debugOn)(FalseLit()()), analysisInfos, v1.reportFurtherErrors())
+            recordFailedFalseAssertion(s1, v1, analysisInfos)
             if (s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine QS(s1, v1) else failure
           }
         })((s2, v2) =>

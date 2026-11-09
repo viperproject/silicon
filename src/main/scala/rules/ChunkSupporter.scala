@@ -17,7 +17,6 @@ import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.utils.ast.buildMinExp
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.FalseLit
 import viper.silver.dependencyAnalysis.{AssumptionType, StringDependencyAnalysisSourceInfo}
 import viper.silver.parser.PUnknown
 import viper.silver.verifier.VerificationError
@@ -158,10 +157,7 @@ object chunkSupporter extends ChunkSupportRules {
                 Success() // TODO: Mark branch as dead?
             case _ =>
               val failure = createFailure(ve, v1, s1, "consuming chunk", true)
-              if (s1.retryLevel == 0) {
-                val falseExp = Option.when(debugOn)(FalseLit()())
-                v1.decider.handleFailedAssertion(False, falseExp, falseExp, analysisInfos, v1.reportFurtherErrors())
-              }
+              recordFailedFalseAssertion(s1, v1, analysisInfos)
 
               if (s1.retryLevel == 0 && v1.reportFurtherErrors() && Verifier.config.analyzeInfeasiblePaths) {
                 failure combine QS(s1.copy(h = s.h), s1.h, None, v1)
@@ -296,10 +292,7 @@ object chunkSupporter extends ChunkSupportRules {
         }
       case _ =>
         val failure = createFailure(ve, v, s, "looking up chunk", true)
-        if (s.retryLevel == 0) {
-          val falseExp = Option.when(debugOn)(FalseLit()())
-          v.decider.handleFailedAssertion(False, falseExp, falseExp, analysisInfos, v.reportFurtherErrors())
-        }
+        recordFailedFalseAssertion(s, v, analysisInfos)
         if (s.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.analyzeInfeasiblePaths) {
           val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(debugOn)(PUnknown()))
           failure combine Q(s, snap, v)
