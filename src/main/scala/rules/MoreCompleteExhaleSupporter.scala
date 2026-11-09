@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.resources.{FieldID, NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.rules.chunkSupporter.findChunksWithID
@@ -204,7 +204,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                      argsExp: Option[Seq[ast.Exp]],
                      ve: VerificationError,
                      v: Verifier,
-                     analysisInfos: DependencyAnalysisInfos)
+                     analysisInfos: AnalysisInfos)
                     (Q: (State, Term, Verifier) => VerificationResult)
                     : VerificationResult = {
 
@@ -255,7 +255,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                       returnSnap: Boolean,
                       ve: VerificationError,
                       v: Verifier,
-                      analysisInfos: DependencyAnalysisInfos)
+                      analysisInfos: AnalysisInfos)
                      (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                      : VerificationResult = {
 
@@ -274,7 +274,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                                returnSnap: Boolean,
                                                ve: VerificationError,
                                                v: Verifier,
-                                               analysisInfos: DependencyAnalysisInfos)
+                                               analysisInfos: AnalysisInfos)
                                               (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                                               : VerificationResult = {
 
@@ -319,7 +319,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                     returnSnap: Boolean,
                                     ve: VerificationError,
                                     v: Verifier,
-                                    analysisInfos: DependencyAnalysisInfos)
+                                    analysisInfos: AnalysisInfos)
                                    (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                                    : VerificationResult = {
 
@@ -480,7 +480,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                                  returnSnap: Boolean,
                                                  ve: VerificationError,
                                                  v: Verifier,
-                                                 analysisInfos: DependencyAnalysisInfos)
+                                                 analysisInfos: AnalysisInfos)
                                                 (Q: (State, ListBuffer[NonQuantifiedChunk], Option[Term], Verifier) => VerificationResult)
                                                 : VerificationResult = {
 
@@ -569,7 +569,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
   private val freeReceiver = Var(Identifier("?rcvr"), sorts.Ref, false)
   private val freeReceiverExp = ast.LocalVar("?rcvr", ast.Ref)()
 
-  def assumeFieldPermissionUpperBounds(h: Heap, v: Verifier, analysisInfos: DependencyAnalysisInfos): Unit = {
+  def assumeFieldPermissionUpperBounds(h: Heap, v: Verifier, analysisInfos: AnalysisInfos): Unit = {
     // TODO: Instead of "manually" assuming such upper bounds, appropriate PropertyInterpreters
     //       should be used, see StateConsolidator
     val relevantChunksPerField = MMap.empty[String, MList[BasicChunk]]

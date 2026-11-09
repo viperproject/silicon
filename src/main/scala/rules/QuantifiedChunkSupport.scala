@@ -210,7 +210,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                                      tag: Option[Int],
                                      program: ast.Program,
                                      v: Verifier,
-                                     analysisInfos: DependencyAnalysisInfos,
+                                     analysisInfos: AnalysisInfos,
                                      isExhale: Boolean)
                                     : QuantifiedBasicChunk
 
@@ -253,7 +253,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                             tag: Option[Int],
                             v: Verifier,
                             program: ast.Program,
-                            analysisInfos: DependencyAnalysisInfos,
+                            analysisInfos: AnalysisInfos,
                             isExhale: Boolean)
                            : (QuantifiedBasicChunk, InverseFunctions)
 
@@ -266,7 +266,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
   def hintBasedChunkOrderHeuristic(hints: Seq[Term])
                                   : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]
 
-  def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier, analysisInfos: DependencyAnalysisInfos): Option[QuantifiedChunk]
+  def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier, analysisInfos: AnalysisInfos): Option[QuantifiedChunk]
 
   /** Merge the snapshots of two quantified heap chunks that denote the same field locations
    *
@@ -314,7 +314,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                      tag: Option[Int],
                                      program: ast.Program,
                                      v: Verifier,
-                                     analysisInfos: DependencyAnalysisInfos,
+                                     analysisInfos: AnalysisInfos,
                                      isExhale: Boolean)
                                     : QuantifiedBasicChunk = {
 
@@ -371,7 +371,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             tag: Option[Int],
                             v: Verifier,
                             program: ast.Program,
-                            analysisInfos: DependencyAnalysisInfos,
+                            analysisInfos: AnalysisInfos,
                             isExhale: Boolean)
                            : (QuantifiedBasicChunk, InverseFunctions) = {
 
@@ -460,7 +460,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                      hints: Seq[Term],
                                      program: ast.Program,
                                      v: Verifier,
-                                     analysisInfos: DependencyAnalysisInfos,
+                                     analysisInfos: AnalysisInfos,
                                      isExhale: Boolean)
                                     : QuantifiedBasicChunk = {
 
@@ -883,7 +883,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               negativePermissionReason: => ErrorReason,
               notInjectiveReason: => ErrorReason,
               v: Verifier,
-              analysisInfos: DependencyAnalysisInfos)
+              analysisInfos: AnalysisInfos)
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult = {
 
@@ -1087,7 +1087,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             resourceTriggerFactory: Term => Term, /* Trigger with some snapshot */
                             mergeAndTrigger: Boolean,
                             v: Verifier,
-                            analysisInfos: DependencyAnalysisInfos)
+                            analysisInfos: AnalysisInfos)
                            (Q: (State, Verifier) => VerificationResult)
                            : VerificationResult = {
 
@@ -1154,7 +1154,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               notInjectiveReason: => ErrorReason,
               insufficientPermissionReason: => ErrorReason,
               v: Verifier,
-              analysisInfos: DependencyAnalysisInfos)
+              analysisInfos: AnalysisInfos)
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
 
@@ -1470,7 +1470,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             optChunkOrderHeuristic: Option[Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]],
                             pve: PartialVerificationError,
                             v: Verifier,
-                            analysisInfos: DependencyAnalysisInfos)
+                            analysisInfos: AnalysisInfos)
                            (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                            : VerificationResult = {
 
@@ -1622,7 +1622,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                            perms: Term,
                            permsExp: Option[ast.Exp],
                            v: Verifier,
-                           analysisInfos: DependencyAnalysisInfos)
+                           analysisInfos: AnalysisInfos)
   : ConsumptionResult = {
 
     var permsAvailable: Term = NoPerm
@@ -1669,7 +1669,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                         permsExp: Option[ast.Exp], // p(rs)
                         chunkOrderHeuristic: Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk],
                         v: Verifier,
-                        analysisInfos: DependencyAnalysisInfos)
+                        analysisInfos: AnalysisInfos)
   : (ConsumptionResult, State, Seq[QuantifiedBasicChunk], Seq[QuantifiedBasicChunk]) = {
     val rmPermRecord = new CommentRecord("removePermissions", s, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(rmPermRecord)
@@ -2117,7 +2117,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
   }
 
-  override def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier, analysisInfos: DependencyAnalysisInfos): Option[QuantifiedChunk] = {
+  override def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier, analysisInfos: AnalysisInfos): Option[QuantifiedChunk] = {
     if (Verifier.config.exhaleModeQP == ExhaleMode.MoreComplete)
       findChunkWithProvenAliases(chunks, chunk, v, analysisInfos)
     else
@@ -2128,7 +2128,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
    * same original QP assertion, identified cheaply via syntactically equal original conditions
    * or equal tags, and otherwise via prover-checked subset relations between one chunk's
    * permission footprint and the other chunk's original condition. */
-  private def findChunkGreedy(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier, analysisInfos: DependencyAnalysisInfos): Option[QuantifiedChunk] = {
+  private def findChunkGreedy(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier, analysisInfos: AnalysisInfos): Option[QuantifiedChunk] = {
     val relevantChunks: Iterable[QuantifiedBasicChunk] = chunks.flatMap {
       case ch: QuantifiedBasicChunk if ch.id == chunk.id => Some(ch)
       case _ => None
@@ -2173,7 +2173,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
   /* Chunk matching used with the standard QP exhale algorithm: merge only chunks that provably
    * denote the same location(s), i.e. singleton chunks with provably equal receivers, or
    * quantified chunks with provably equal receiver expressions and conditions. */
-  private def findChunkWithProvenAliases(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier, analysisInfos: DependencyAnalysisInfos): Option[QuantifiedChunk] = {
+  private def findChunkWithProvenAliases(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier, analysisInfos: AnalysisInfos): Option[QuantifiedChunk] = {
     val lr = chunk match {
       case qfc: QuantifiedFieldChunk if qfc.invs.nonEmpty =>
         Left(invertiblesWithInversesApplied(qfc.invs, qfc.quantifiedVars), qfc.quantifiedVars, qfc.condition)
@@ -2302,7 +2302,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     (fr2, sm, Forall(qVars, smDef, triggers))
   }
 
-  def qpAppChunkOrderHeuristics(receiverTerms: Seq[Term], quantVars: Seq[Var], hints: Seq[Term], v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  def qpAppChunkOrderHeuristics(receiverTerms: Seq[Term], quantVars: Seq[Var], hints: Seq[Term], v: Verifier, analysisInfos: AnalysisInfos)
                                : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk] = {
     // Heuristics that looks for quantified chunks that have the same shape (as in, the same number and types of
     // quantified variables) and identical receiver terms.
@@ -2345,7 +2345,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
   }
 
-  def singleReceiverChunkOrderHeuristic(receiver: Seq[Term], hints: Seq[Term], v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  def singleReceiverChunkOrderHeuristic(receiver: Seq[Term], hints: Seq[Term], v: Verifier, analysisInfos: AnalysisInfos)
                                        : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk] = {
     // Heuristic that emulates greedy Silicon behavior for consuming single-receiver permissions.
     // First:  Find singleton chunks that have the same receiver syntactically.

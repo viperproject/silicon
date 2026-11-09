@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.state.State
 import viper.silicon.state.terms.{Term, Var, perms}
@@ -16,7 +16,7 @@ import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.{NegativePermission, NonPositivePermission}
 
 object permissionSupporter extends SymbolicExecutionRules {
-  def assertNotNegative(s: State, tPerm: Term, ePerm: ast.Exp, ePermNew: Option[ast.Exp], pve: PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  def assertNotNegative(s: State, tPerm: Term, ePerm: ast.Exp, ePermNew: Option[ast.Exp], pve: PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
                        (Q: (State, Verifier) => VerificationResult)
                        : VerificationResult = {
 
@@ -36,7 +36,7 @@ object permissionSupporter extends SymbolicExecutionRules {
     }
   }
 
-  def assertPositive(s: State, tPerm: Term, ePerm: ast.Exp, pve: PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  def assertPositive(s: State, tPerm: Term, ePerm: ast.Exp, pve: PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
                     (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
 

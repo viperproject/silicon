@@ -40,7 +40,7 @@ trait ConsumptionRules extends SymbolicExecutionRules {
     *          consumed partial heap.
     * @return The result of the continuation.
     */
-  def consume(s: State, a: ast.Exp, returnSnap: Boolean, pve: PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  def consume(s: State, a: ast.Exp, returnSnap: Boolean, pve: PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
              (Q: (State, Option[Term], Verifier) => VerificationResult)
              : VerificationResult
 
@@ -65,7 +65,7 @@ trait ConsumptionRules extends SymbolicExecutionRules {
                returnSnap: Boolean,
                pvef: ast.Exp => PartialVerificationError,
                v: Verifier,
-               analysisInfos: DependencyAnalysisInfos)
+               analysisInfos: AnalysisInfos)
               (Q: (State, Option[Term], Verifier) => VerificationResult)
               : VerificationResult
 }
@@ -79,7 +79,7 @@ object consumer extends ConsumptionRules {
    */
 
   /** @inheritdoc */
-  def consume(s: State, a: ast.Exp, returnSnap: Boolean, pve: PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  def consume(s: State, a: ast.Exp, returnSnap: Boolean, pve: PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
              (Q: (State, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
 
@@ -98,7 +98,7 @@ object consumer extends ConsumptionRules {
                returnSnap: Boolean,
                pvef: ast.Exp => PartialVerificationError,
                v: Verifier,
-               analysisInfos: DependencyAnalysisInfos)
+               analysisInfos: AnalysisInfos)
               (Q: (State, Option[Term], Verifier) => VerificationResult)
               : VerificationResult = {
 
@@ -129,7 +129,7 @@ object consumer extends ConsumptionRules {
                           returnSnap: Boolean,
                           pves: Seq[PartialVerificationError],
                           v: Verifier,
-                          analysisInfos: DependencyAnalysisInfos)
+                          analysisInfos: AnalysisInfos)
                          (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                          : VerificationResult = {
 
@@ -154,7 +154,7 @@ object consumer extends ConsumptionRules {
     }
   }
 
-  private def consumeR(s: State, h: Heap, a: ast.Exp, returnSnap: Boolean, pve: PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  private def consumeR(s: State, h: Heap, a: ast.Exp, returnSnap: Boolean, pve: PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
                       (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                       : VerificationResult = {
 
@@ -174,7 +174,7 @@ object consumer extends ConsumptionRules {
                                   returnSnap: Boolean,
                                   pve: PartialVerificationError,
                                   v: Verifier,
-                                  analysisInfos: DependencyAnalysisInfos)
+                                  analysisInfos: AnalysisInfos)
                                  (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                                  : VerificationResult = {
 
@@ -196,7 +196,7 @@ object consumer extends ConsumptionRules {
     })(Q)
   }
 
-  private def consumeTlc(s: State, h: Heap, a: ast.Exp, returnSnap: Boolean, pve: PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  private def consumeTlc(s: State, h: Heap, a: ast.Exp, returnSnap: Boolean, pve: PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
                         (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                         : VerificationResult = {
 
@@ -359,7 +359,7 @@ object consumer extends ConsumptionRules {
   private def consumeConditionalTlcMoreJoins(s: State, h: Heap, e0: ast.Exp, a1: ast.Exp, a2: Option[ast.Exp], scopeUid: Int,
                                              returnSnap: Boolean,
                                              pve: PartialVerificationError, v: Verifier,
-                                             analysisInfos: DependencyAnalysisInfos)
+                                             analysisInfos: AnalysisInfos)
                                             (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                                             : VerificationResult = {
     eval(s, e0, pve, v, analysisInfos)((s1, t0, e0New, v1) =>
@@ -411,7 +411,7 @@ object consumer extends ConsumptionRules {
   }
 
 
-  private def evalAndAssert(s: State, e: ast.Exp, returnSnap: Boolean, pve: PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  private def evalAndAssert(s: State, e: ast.Exp, returnSnap: Boolean, pve: PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
                            (Q: (State, Option[Term], Verifier) => VerificationResult)
                            : VerificationResult = {
 

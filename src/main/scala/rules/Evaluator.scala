@@ -10,7 +10,7 @@ import viper.silicon
 import viper.silicon.Config.JoinMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis.{AnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
 import viper.silicon.state._
@@ -38,11 +38,11 @@ import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationErro
  */
 
 trait EvaluationRules extends SymbolicExecutionRules {
-  def evals(s: State, es: Seq[ast.Exp], pvef: ast.Exp => PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  def evals(s: State, es: Seq[ast.Exp], pvef: ast.Exp => PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
            (Q: (State, List[Term], Option[List[ast.Exp]], Verifier) => VerificationResult)
            : VerificationResult
 
-  def eval(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  def eval(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
           (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
           : VerificationResult
 
@@ -55,7 +55,7 @@ trait EvaluationRules extends SymbolicExecutionRules {
                      name: String,
                      pve: PartialVerificationError,
                      v: Verifier,
-                     analysisInfos: DependencyAnalysisInfos)
+                     analysisInfos: AnalysisInfos)
                     (Q: (State, Seq[Var], Option[Seq[ast.LocalVarDecl]], Seq[Term], Option[Seq[ast.Exp]], Option[(Seq[Term], Option[Seq[ast.Exp]], Seq[Trigger], (Seq[Term], Seq[Quantification]), Option[(InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp])])], Verifier) => VerificationResult)
                     : VerificationResult
 }
@@ -64,13 +64,13 @@ object evaluator extends EvaluationRules {
   import consumer._
   import producer._
 
-  def evals(s: State, es: Seq[ast.Exp], pvef: ast.Exp => PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  def evals(s: State, es: Seq[ast.Exp], pvef: ast.Exp => PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
            (Q: (State, List[Term], Option[List[ast.Exp]], Verifier) => VerificationResult)
            : VerificationResult =
 
     evals2(s, es, Nil, pvef, v, analysisInfos)(Q)
 
-  private def evals2(s: State, es: Seq[ast.Exp], ts: List[Term], pvef: ast.Exp => PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  private def evals2(s: State, es: Seq[ast.Exp], ts: List[Term], pvef: ast.Exp => PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
                     (Q: (State, List[Term], Option[List[ast.Exp]], Verifier) => VerificationResult)
                     : VerificationResult = {
 
@@ -83,7 +83,7 @@ object evaluator extends EvaluationRules {
 
   /** Wrapper Method for eval, for logging. See Executor.scala for explanation of analogue. **/
   @inline
-  def eval(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  def eval(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
           (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
           : VerificationResult = {
 
@@ -95,7 +95,7 @@ object evaluator extends EvaluationRules {
       Q(s1, t, eNew, v1)})
   }
 
-  def eval3(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  def eval3(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
            (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
            : VerificationResult = {
 
@@ -146,7 +146,7 @@ object evaluator extends EvaluationRules {
       Q(s4, t, eNew, v1)})
   }
 
-  protected def eval2(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  protected def eval2(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
                      (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
                      : VerificationResult = {
     val eOpt = Option.when(debugOn)(e)
@@ -1017,7 +1017,7 @@ object evaluator extends EvaluationRules {
   }
 
 
-  private def assertSeqIndexBounds(tIndex: Term, tSeq: Term, eIndex: ast.Exp, eSeq: ast.Exp, expNew: Option[Seq[ast.Exp]], pve: PartialVerificationError, s: State, v: Verifier, analysisInfos: DependencyAnalysisInfos): VerificationResult = {
+  private def assertSeqIndexBounds(tIndex: Term, tSeq: Term, eIndex: ast.Exp, eSeq: ast.Exp, expNew: Option[Seq[ast.Exp]], pve: PartialVerificationError, s: State, v: Verifier, analysisInfos: AnalysisInfos): VerificationResult = {
 
     def assertLtSeqLength(): VerificationResult = {
       val indexInBoundsTerm = Less(tIndex, SeqLength(tSeq))
@@ -1059,7 +1059,7 @@ object evaluator extends EvaluationRules {
                      name: String,
                      pve: PartialVerificationError,
                      v: Verifier,
-                     analysisInfos: DependencyAnalysisInfos)
+                     analysisInfos: AnalysisInfos)
                     (Q: (State,
                          Seq[Var], /* Variables from vars */
                          Option[Seq[ast.LocalVarDecl]],
@@ -1128,7 +1128,7 @@ object evaluator extends EvaluationRules {
                           fromShortCircuitingAnd: Boolean,
                           pve: PartialVerificationError,
                           v: Verifier,
-                          analysisInfos: DependencyAnalysisInfos)
+                          analysisInfos: AnalysisInfos)
                          (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
                          : VerificationResult = {
 
@@ -1153,7 +1153,7 @@ object evaluator extends EvaluationRules {
                              e: ast.Exp,
                              pve: PartialVerificationError,
                              v: Verifier,
-                             analysisInfos: DependencyAnalysisInfos)
+                             analysisInfos: AnalysisInfos)
                             (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
                             : VerificationResult = {
 
@@ -1189,7 +1189,7 @@ object evaluator extends EvaluationRules {
       Q(s4, t, eNew, v1)})
   }
 
-  def evalResourceAccess(s: State, resacc: ast.ResourceAccess, pve: PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  def evalResourceAccess(s: State, resacc: ast.ResourceAccess, pve: PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
                         (Q: (State, ChunkIdentifer, Seq[Term], Option[Seq[ast.Exp]], Verifier) => VerificationResult)
                         : VerificationResult = {
     evals(s, resacc.args(s.program), _ => pve, v, analysisInfos)((s1, tArgs, eArgsNew, v1) =>
@@ -1202,7 +1202,7 @@ object evaluator extends EvaluationRules {
                                    termOp: ((Term, Term)) => T,
                                    pve: PartialVerificationError,
                                    v: Verifier,
-                                   analysisInfos: DependencyAnalysisInfos)
+                                   analysisInfos: AnalysisInfos)
                                   (Q: (State, T, Option[ast.Exp], Option[ast.Exp], Verifier) => VerificationResult)
                                   : VerificationResult = {
 
@@ -1216,7 +1216,7 @@ object evaluator extends EvaluationRules {
                         termOp: (Term, Term) => T,
                         pve: PartialVerificationError,
                         v: Verifier,
-                        analysisInfos: DependencyAnalysisInfos)
+                        analysisInfos: AnalysisInfos)
                        (Q: (State, T, Option[ast.Exp], Option[ast.Exp], Verifier) => VerificationResult)
                        : VerificationResult = {
 
@@ -1233,7 +1233,7 @@ object evaluator extends EvaluationRules {
                               tZero: Term,
                               pve: PartialVerificationError,
                               v: Verifier,
-                              analysisInfos: DependencyAnalysisInfos)
+                              analysisInfos: AnalysisInfos)
                              (Q: (State, Term, Verifier) => VerificationResult)
                              : VerificationResult = {
 
@@ -1254,7 +1254,7 @@ object evaluator extends EvaluationRules {
                    silverTriggers: Seq[ast.Trigger],
                    pve: PartialVerificationError,
                    v: Verifier,
-                   analysisInfos: DependencyAnalysisInfos)
+                   analysisInfos: AnalysisInfos)
                   (Q: (State, Seq[Trigger], Verifier) => VerificationResult)
                    : VerificationResult = {
 
@@ -1287,7 +1287,7 @@ object evaluator extends EvaluationRules {
                            tTriggersSets: TriggerSets[Term],
                            pve: PartialVerificationError,
                            v: Verifier,
-                           analysisInfos: DependencyAnalysisInfos)
+                           analysisInfos: AnalysisInfos)
                           (Q: (State, TriggerSets[Term], Verifier) => VerificationResult)
                           : VerificationResult = {
 
@@ -1303,7 +1303,7 @@ object evaluator extends EvaluationRules {
       }}
   }
 
-  private def evalTrigger(s: State, exps: Seq[ast.Exp], pve: PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  private def evalTrigger(s: State, exps: Seq[ast.Exp], pve: PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
                          (Q: (State, Seq[Term], Verifier) => VerificationResult)
                          : VerificationResult = {
 
@@ -1412,7 +1412,7 @@ object evaluator extends EvaluationRules {
                    joinFunctionArgs: Seq[Term],
                    joinedExp: Option[ast.Exp],
                    v: Verifier,
-                   analysisInfos: DependencyAnalysisInfos)
+                   analysisInfos: AnalysisInfos)
                   (entries: Seq[JoinDataEntry[(Term, Option[ast.Exp])]])
                   : (State, (Term, Option[ast.Exp])) = {
 
@@ -1453,7 +1453,7 @@ object evaluator extends EvaluationRules {
     }
   }
 
-  def evalHeapTrigger(s: State, exps: Seq[ast.Exp], pve: PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  def evalHeapTrigger(s: State, exps: Seq[ast.Exp], pve: PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
                      (Q: (State, Seq[Seq[Term]], Verifier) => VerificationResult) : VerificationResult = {
     /* Each element of `triggers` is one alternative trigger set; heap encodings may
      * contribute multiple alternative terms per resource access, multiplying the sets. */
@@ -1494,7 +1494,7 @@ object evaluator extends EvaluationRules {
                                   exps: Seq[ast.Exp],
                                   pve: PartialVerificationError,
                                   v: Verifier,
-                                  analysisInfos: DependencyAnalysisInfos)
+                                  analysisInfos: AnalysisInfos)
                                  (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
                                  : VerificationResult = {
     assert(

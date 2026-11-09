@@ -18,7 +18,7 @@ import viper.silver.verifier.reasons._
 import viper.silver.{ast, cfg}
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis.{AnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
 import viper.silicon.state._
@@ -412,7 +412,7 @@ object executor extends ExecutionRules {
     })
   }
 
-  def exec2(state: State, stmt: ast.Stmt, v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  def exec2(state: State, stmt: ast.Stmt, v: Verifier, analysisInfos: AnalysisInfos)
            (continuation: (State, Verifier) => VerificationResult)
            : VerificationResult = {
 
@@ -525,7 +525,7 @@ object executor extends ExecutionRules {
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
         val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(exhale)) else s
-        val analysisInfos1 = if (a.topLevelConjuncts.size > 1) analysisInfos.copy(sourceInfos = List.empty) else analysisInfos // needed to ensure that each top-level conjunct gets a dedicated assertion node
+        val analysisInfos1 = if (a.topLevelConjuncts.size > 1) analysisInfos.withoutSourceInfos() else analysisInfos // needed to ensure that each top-level conjunct gets a dedicated assertion node
         consume(s0, a, false, pve, v, analysisInfos1)((s1, _, v1) => {
           val s1a = if (debugOn) v1.finishKeyHeap(s1) else s1
           Q(s1a, v1)})
@@ -548,7 +548,7 @@ object executor extends ExecutionRules {
         )
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
-        val analysisInfos1 = if (a.topLevelConjuncts.size > 1) analysisInfos.copy(sourceInfos = List.empty) else analysisInfos // needed to ensure that each top-level conjunct gets a dedicated assertion node
+        val analysisInfos1 = if (a.topLevelConjuncts.size > 1) analysisInfos.withoutSourceInfos() else analysisInfos // needed to ensure that each top-level conjunct gets a dedicated assertion node
         val r =
           consume(s, a, false, AssertFailed(assert), v, analysisInfos1)((_, _, _) =>
             Success())
@@ -559,7 +559,7 @@ object executor extends ExecutionRules {
         val pve = AssertFailed(assert)
         val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(assert)) else s
 
-        val analysisInfos1 = if (a.topLevelConjuncts.size > 1) analysisInfos.copy(sourceInfos = List.empty) else analysisInfos // needed to ensure that each top-level conjunct gets a dedicated assertion node
+        val analysisInfos1 = if (a.topLevelConjuncts.size > 1) analysisInfos.withoutSourceInfos() else analysisInfos // needed to ensure that each top-level conjunct gets a dedicated assertion node
 
         if (s.exhaleExt) {
           v.heapSupporter.checkEmptyExhaleExtState(s)
@@ -698,7 +698,7 @@ object executor extends ExecutionRules {
             val s2a = s2.copy(g = s2.g + gOuts, oldHeaps = newOldHeaps)
             val postsWithDAInfo = if (!Verifier.config.dependencyAnalysis.isDefined) meth.posts else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.posts.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
             // TODO ake: Assuming the postcondition should not introduce any proof obligations as they are guaranteed by the fact / assumption that the callee verifies. Hence, we mark them as internal assertions.
-            val analysisInfos2 = analysisInfos.copy(dependencyTypes = List(DependencyTypeInfo(DependencyType(analysisInfos.getDependencyType.assumptionType, AssumptionType.Internal)))).withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Down))
+            val analysisInfos2 = analysisInfos.withAssertionType(AssumptionType.Internal).withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Down))
             produces(s2a, freshSnap, postsWithDAInfo, _ => pveCallTransformed, v2, analysisInfos2)((s3, v3) => {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
@@ -818,7 +818,7 @@ object executor extends ExecutionRules {
     executed
   }
 
-   private def ssaifyRhs(rhs: Term, rhsExp: ast.Exp, rhsExpNew: Option[ast.Exp], name: String, typ: ast.Type, v: Verifier, s : State, analysisInfos: DependencyAnalysisInfos): (Term, Option[ast.Exp]) = {
+   private def ssaifyRhs(rhs: Term, rhsExp: ast.Exp, rhsExpNew: Option[ast.Exp], name: String, typ: ast.Type, v: Verifier, s : State, analysisInfos: AnalysisInfos): (Term, Option[ast.Exp]) = {
      rhs match {
        case _: Var | _: Literal if !Verifier.config.dependencyAnalysis.isDefined =>
          (rhs, rhsExpNew)

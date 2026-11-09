@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis.{AnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.state.State
@@ -27,7 +27,7 @@ trait BranchingRules extends SymbolicExecutionRules {
              condition: Term,
              conditionExp: (ast.Exp, Option[ast.Exp]),
              v: Verifier,
-             analysisInfos: DependencyAnalysisInfos,
+             analysisInfos: AnalysisInfos,
              fromShortCircuitingAnd: Boolean = false)
             (fTrue: (State, Verifier) => VerificationResult,
              fFalse: (State, Verifier) => VerificationResult)
@@ -39,7 +39,7 @@ object brancher extends BranchingRules {
              condition: Term,
              conditionExp: (ast.Exp, Option[ast.Exp]),
              v: Verifier,
-             analysisInfos: DependencyAnalysisInfos,
+             analysisInfos: AnalysisInfos,
              fromShortCircuitingAnd: Boolean = false)
             (fThen: (State, Verifier) => VerificationResult,
              fElse: (State, Verifier) => VerificationResult)

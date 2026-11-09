@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.rules.evaluator.{eval, evalQuantified, evals}
 import viper.silicon.state._
@@ -36,7 +36,7 @@ object havocSupporter extends SymbolicExecutionRules {
   def execHavoc(havoc: ast.Quasihavoc,
                 v: Verifier,
                 s: State,
-                analysisInfos: DependencyAnalysisInfos)
+                analysisInfos: AnalysisInfos)
                 (Q: (State, Verifier) => VerificationResult)
                : VerificationResult = {
 
@@ -74,7 +74,7 @@ object havocSupporter extends SymbolicExecutionRules {
   def execHavocall(havocall: ast.Quasihavocall,
                    v: Verifier,
                    s: State,
-                   analysisInfos: DependencyAnalysisInfos)
+                   analysisInfos: AnalysisInfos)
                    (Q: (State, Verifier) => VerificationResult)
                   : VerificationResult = {
 

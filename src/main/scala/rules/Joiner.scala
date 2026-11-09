@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
+import viper.silicon.dependencyAnalysis.{AnalysisInfos, DependencyAnalysisInfos}
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.logger.records.structural.JoiningRecord
 import viper.silicon.state.{StateMerge, State}
@@ -39,7 +39,7 @@ case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathCondi
 
 trait JoiningRules extends SymbolicExecutionRules {
 
-  def join[D, JD](s: State, v: Verifier, analysisInfos: DependencyAnalysisInfos, resetState: Boolean = true)
+  def join[D, JD](s: State, v: Verifier, analysisInfos: AnalysisInfos, resetState: Boolean = true)
                  (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
                  (Q: (State, JD, Verifier) => VerificationResult)
@@ -47,7 +47,7 @@ trait JoiningRules extends SymbolicExecutionRules {
 }
 
 object joiner extends JoiningRules {
-  def join[D, JD](s: State, v: Verifier, analysisInfos: DependencyAnalysisInfos, resetState: Boolean = true)
+  def join[D, JD](s: State, v: Verifier, analysisInfos: AnalysisInfos, resetState: Boolean = true)
                  (block: (State, Verifier, (State, D,  Verifier) => VerificationResult) => VerificationResult)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
                  (Q: (State, JD, Verifier) => VerificationResult)

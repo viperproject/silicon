@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.state.terms.Term
 import viper.silicon.state.{State, Store}
@@ -17,13 +17,13 @@ import viper.silver.verifier.PartialVerificationError
 trait LetSupportRules extends SymbolicExecutionRules {
   def handle[E <: ast.Exp]
             (s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier,
-             analysisInfos: DependencyAnalysisInfos)
+             analysisInfos: AnalysisInfos)
             (Q: (State, Store, E, Verifier) => VerificationResult)
             : VerificationResult
 
   def handle[E <: ast.Exp]
             (s: State, let: ast.Let, pve: PartialVerificationError, v: Verifier,
-             analysisInfos: DependencyAnalysisInfos)
+             analysisInfos: AnalysisInfos)
             (Q: (State, Store, E, Verifier) => VerificationResult)
             : VerificationResult
 }
@@ -33,7 +33,7 @@ object letSupporter extends LetSupportRules {
 
   def handle[E <: ast.Exp]
             (s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier,
-             analysisInfos: DependencyAnalysisInfos)
+             analysisInfos: AnalysisInfos)
             (Q: (State, Store, E, Verifier) => VerificationResult)
             : VerificationResult = {
 
@@ -45,7 +45,7 @@ object letSupporter extends LetSupportRules {
 
   def handle[E <: ast.Exp]
             (s: State, let: ast.Let, pve: PartialVerificationError, v: Verifier,
-             analysisInfos: DependencyAnalysisInfos)
+             analysisInfos: AnalysisInfos)
             (Q: (State, Store, E, Verifier) => VerificationResult)
             : VerificationResult = {
 
@@ -58,7 +58,7 @@ object letSupporter extends LetSupportRules {
                      let: ast.Let,
                      pve: PartialVerificationError,
                      v: Verifier,
-                     analysisInfos: DependencyAnalysisInfos)
+                     analysisInfos: AnalysisInfos)
                     (Q: (State, Store, E, Verifier) => VerificationResult)
                     : VerificationResult = {
 

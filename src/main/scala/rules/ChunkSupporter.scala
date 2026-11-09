@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
@@ -36,7 +36,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
               ve: VerificationError,
               v: Verifier,
               description: String,
-              analysisInfos: DependencyAnalysisInfos)
+              analysisInfos: AnalysisInfos)
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult
 
@@ -51,7 +51,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
              argsExp: Option[Seq[ast.Exp]],
              ve: VerificationError,
              v: Verifier,
-             analysisInfos: DependencyAnalysisInfos)
+             analysisInfos: AnalysisInfos)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
             : VerificationResult
 
@@ -60,7 +60,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                 id: ChunkIdentifer,
                 args: Iterable[Term],
                 v: Verifier,
-                analysisInfos: DependencyAnalysisInfos)
+                analysisInfos: AnalysisInfos)
                : Option[CH]
 
   def findChunksWithID[CH <: NonQuantifiedChunk: ClassTag]
@@ -82,7 +82,7 @@ object chunkSupporter extends ChunkSupportRules {
               ve: VerificationError,
               v: Verifier,
               description: String,
-              analysisInfos: DependencyAnalysisInfos)
+              analysisInfos: AnalysisInfos)
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
     if (v.decider.isPathMarkedInfeasible) {
@@ -119,7 +119,7 @@ object chunkSupporter extends ChunkSupportRules {
                        returnSnap: Boolean,
                        ve: VerificationError,
                        v: Verifier,
-                       analysisInfos: DependencyAnalysisInfos)
+                       analysisInfos: AnalysisInfos)
                       (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                       : VerificationResult = {
 
@@ -181,7 +181,7 @@ object chunkSupporter extends ChunkSupportRules {
                             perms: Term,
                             permsExp: Option[ast.Exp],
                             v: Verifier,
-                            analysisInfos: DependencyAnalysisInfos)
+                            analysisInfos: AnalysisInfos)
                            : (ConsumptionResult, State, Heap, Option[NonQuantifiedChunk]) = {
 
     val consumeExact = terms.utils.consumeExactRead(perms, s.constrainableARPs)
@@ -254,7 +254,7 @@ object chunkSupporter extends ChunkSupportRules {
              argsExp: Option[Seq[ast.Exp]],
              ve: VerificationError,
              v: Verifier,
-             analysisInfos: DependencyAnalysisInfos)
+             analysisInfos: AnalysisInfos)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
             : VerificationResult = {
     if (v.decider.isPathMarkedInfeasible) {
@@ -278,7 +278,7 @@ object chunkSupporter extends ChunkSupportRules {
                            argsExp: Option[Seq[ast.Exp]],
                            ve: VerificationError,
                            v: Verifier,
-                           analysisInfos: DependencyAnalysisInfos)
+                           analysisInfos: AnalysisInfos)
                           (Q: (State, Term, Verifier) => VerificationResult)
                           : VerificationResult = {
 
@@ -314,7 +314,7 @@ object chunkSupporter extends ChunkSupportRules {
                 id: ChunkIdentifer,
                 args: Iterable[Term],
                 v: Verifier,
-                analysisInfos: DependencyAnalysisInfos)
+                analysisInfos: AnalysisInfos)
                : Option[CH] = {
     val relevantChunks = findChunksWithID[CH](chunks, id)
     findChunkLiterally(relevantChunks, args) orElse findChunkWithProver(relevantChunks, args, v, analysisInfos)
@@ -354,7 +354,7 @@ object chunkSupporter extends ChunkSupportRules {
     chunks find (ch => ch.args == args)
   }
 
-  private def findChunkWithProver[CH <: NonQuantifiedChunk](chunks: Iterable[CH], args: Iterable[Term], v: Verifier, analysisInfos: DependencyAnalysisInfos) = {
+  private def findChunkWithProver[CH <: NonQuantifiedChunk](chunks: Iterable[CH], args: Iterable[Term], v: Verifier, analysisInfos: AnalysisInfos) = {
     chunks find (ch =>
       args.size == ch.args.size &&
       v.decider.check(And(ch.args zip args map (x => x._1 === x._2)), Verifier.config.checkTimeout(), analysisInfos))

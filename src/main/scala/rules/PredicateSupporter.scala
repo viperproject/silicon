@@ -10,7 +10,7 @@ import viper.silicon
 import viper.silicon.Config.JoinMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.resources.FieldID
 import viper.silicon.state._
@@ -34,7 +34,7 @@ trait PredicateSupportRules extends SymbolicExecutionRules {
            constrainableWildcards: InsertionOrderedSet[Var],
            pve: PartialVerificationError,
            v: Verifier,
-           analysisInfos: DependencyAnalysisInfos)
+           analysisInfos: AnalysisInfos)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult
 
@@ -48,7 +48,7 @@ trait PredicateSupportRules extends SymbolicExecutionRules {
              pve: PartialVerificationError,
              v: Verifier,
              pa: ast.PredicateAccess,
-             analysisInfos: DependencyAnalysisInfos)
+             analysisInfos: AnalysisInfos)
             (Q: (State, Verifier) => VerificationResult)
             : VerificationResult
 }
@@ -66,7 +66,7 @@ object predicateSupporter extends PredicateSupportRules {
            constrainableWildcards: InsertionOrderedSet[Var],
            pve: PartialVerificationError,
            v: Verifier,
-           analysisInfos: DependencyAnalysisInfos)
+           analysisInfos: AnalysisInfos)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
@@ -102,7 +102,7 @@ object predicateSupporter extends PredicateSupportRules {
     })
   }
 
-  def producePredicateContents(s: State, tree: PredicateContentsTree, toReplace: silicon.Map[Term, Term], v: Verifier, analysisInfos: DependencyAnalysisInfos, isUnfolding: Boolean = false)
+  def producePredicateContents(s: State, tree: PredicateContentsTree, toReplace: silicon.Map[Term, Term], v: Verifier, analysisInfos: AnalysisInfos, isUnfolding: Boolean = false)
                               (Q: (State, Verifier) => VerificationResult)
             : VerificationResult = {
     tree match {
@@ -195,7 +195,7 @@ object predicateSupporter extends PredicateSupportRules {
              pve: PartialVerificationError,
              v: Verifier,
              pa: ast.PredicateAccess,
-             analysisInfos: DependencyAnalysisInfos)
+             analysisInfos: AnalysisInfos)
             (Q: (State, Verifier) => VerificationResult)
             : VerificationResult = {
 

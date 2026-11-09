@@ -8,7 +8,7 @@ package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisAxiomInfo, DependencyAnalysisInfos, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisAxiomInfo, AnalysisInfos, DependencyAnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces.FatalResult
 import viper.silicon.rules.{InverseFunctions, PermMapDefinition, SnapshotMapDefinition, functionSupporter}
 import viper.silicon.state.terms._
@@ -142,7 +142,7 @@ class FunctionData(val programFunction: ast.Function,
       Seq.fill(stateArgs.size + formalArgs.size)(None)
 
   val isAnalysisEnabled: Boolean = Verifier.config.dependencyAnalysis.isDefined && DependencyAnalyzer.extractEnableAnalysisFromInfo(programFunction.info).getOrElse(true)
-  val defaultAnalysisInfo: DependencyAnalysisInfos = DependencyAnalysisInfos.DefaultInfos.withEnabled(isAnalysisEnabled)
+  val defaultAnalysisInfo: AnalysisInfos = DependencyAnalysisInfos.DefaultInfos.withEnabled(isAnalysisEnabled)
 
   val functionApplication = App(function, stateArgs ++ formalArgs.values.toSeq)
   val limitedFunctionApplication = App(limitedFunction, stateArgs ++ formalArgs.values.toSeq)

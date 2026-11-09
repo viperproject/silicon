@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.Decider
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.resources.{FieldID, MagicWandID, PredicateID}
 import viper.silicon.state.terms.perms.IsPositive
@@ -108,7 +108,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
     }
   }
 
-  def mergeWandHeaps(h: Heap, newH: Heap, v: Verifier, s: Option[State], analysisInfos: DependencyAnalysisInfos): Heap = {
+  def mergeWandHeaps(h: Heap, newH: Heap, v: Verifier, s: Option[State], analysisInfos: AnalysisInfos): Heap = {
     val resources = (h.values.map(c => c.asInstanceOf[BasicMaskHeapChunk].resource) ++
       newH.values.map(c => c.asInstanceOf[BasicMaskHeapChunk].resource)).toSeq.distinct
 
@@ -185,7 +185,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
     And(individualAssumes, maskAssume)
   }
 
-  def removeSingleAdd(origMask: Term, at: Term, amount: Term, s: State, v: Verifier, analysisInfos: DependencyAnalysisInfos): Term = {
+  def removeSingleAdd(origMask: Term, at: Term, amount: Term, s: State, v: Verifier, analysisInfos: AnalysisInfos): Term = {
     if (!simplifyOnConsume) {
       return v.decider.createAlias(MaskAdd(origMask, at, PermNegation(amount)), s)
     }
@@ -256,7 +256,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
     }
   }
 
-  def subtractMask(origMask: Term, removedMask: Term, resource: Any, program: ast.Program, v: Verifier, analysisInfos: DependencyAnalysisInfos): Term = {
+  def subtractMask(origMask: Term, removedMask: Term, resource: Any, program: ast.Program, v: Verifier, analysisInfos: AnalysisInfos): Term = {
     if (!simplifyOnConsume) {
       return MaskDiff(origMask, removedMask)
     }
@@ -343,7 +343,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                             pve: PartialVerificationError,
                             returnSnap: Boolean,
                             v: Verifier,
-                            analysisInfos: DependencyAnalysisInfos)
+                            analysisInfos: AnalysisInfos)
                            (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
   : VerificationResult = {
     val resource = resourceAccess.res(s.program)
@@ -511,7 +511,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
               insufficientPermissionReason: => ErrorReason,
               returnSnap: Boolean,
               v: Verifier,
-              analysisInfos: DependencyAnalysisInfos)
+              analysisInfos: AnalysisInfos)
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
   : VerificationResult = {
 
@@ -753,7 +753,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                             tPerm: Term,
                             v: Verifier,
                             snap: Term,
-                            analysisInfos: DependencyAnalysisInfos)
+                            analysisInfos: AnalysisInfos)
                            (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
     val resId = resource match {
@@ -815,7 +815,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
               negativePermissionReason: => ErrorReason,
               notInjectiveReason: => ErrorReason,
               v: Verifier,
-              analysisInfos: DependencyAnalysisInfos)
+              analysisInfos: AnalysisInfos)
              (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
 
@@ -986,7 +986,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                                eRcvr: Option[ast.Exp],
                                ve: VerificationError,
                                v: Verifier,
-                               analysisInfos: DependencyAnalysisInfos)
+                               analysisInfos: AnalysisInfos)
                               (Q: (State, Term, Verifier) => VerificationResult): VerificationResult = {
     val resChunk = s.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == fa.field).get.asInstanceOf[BasicMaskHeapChunk]
     val maskValue = HeapLookup(resChunk.mask, tRcvr)
@@ -1034,7 +1034,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                              resource: ast.Resource,
                              condInfo: havocSupporter.HavocHelperData,
                              v: Verifier,
-                             analysisInfos: DependencyAnalysisInfos): Heap = {
+                             analysisInfos: AnalysisInfos): Heap = {
     val resourceId = resource match {
       case mw: ast.MagicWand => MagicWandIdentifier(mw, s.program)
       case r => r
@@ -1080,7 +1080,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                              pve: PartialVerificationError,
                              mergeAndTrigger: Boolean,
                              v: Verifier,
-                             analysisInfos: DependencyAnalysisInfos)
+                             analysisInfos: AnalysisInfos)
                             (Q: (State, Verifier) => VerificationResult): VerificationResult = {
     produceSingleLocation(s, resource, tArgs, tPerm, v, tSnap, analysisInfos)(Q)
   }
@@ -1095,7 +1095,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                              returnSnap: Boolean,
                              pve: PartialVerificationError,
                              v: Verifier,
-                             analysisInfos: DependencyAnalysisInfos)
+                             analysisInfos: AnalysisInfos)
                             (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
     val codomainQVars = s.getFormalArgVars(resAcc.res(s.program), v)
     consumeSingleLocation(s, h, codomainQVars, tArgs, eArgs, resAcc, tPerm, ePerm, pve, returnSnap, v, analysisInfos)(Q)
@@ -1126,7 +1126,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                                  negativePermissionReason: => ErrorReason,
                                  notInjectiveReason: => ErrorReason,
                                  v: Verifier,
-                                 analysisInfos: DependencyAnalysisInfos)
+                                 analysisInfos: AnalysisInfos)
                                 (Q: (State, Verifier) => VerificationResult): VerificationResult = {
     val tSnap = sf(null, v)
     val resId = resource match {
@@ -1164,7 +1164,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                                  notInjectiveReason: => ErrorReason,
                                  insufficientPermissionReason: => ErrorReason,
                                  v: Verifier,
-                                 analysisInfos: DependencyAnalysisInfos)
+                                 analysisInfos: AnalysisInfos)
                                 (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
     consume(s, h, resource, qvars, qvarExps, tFormalArgs, eFormalArgs, qid, optTrigger, tTriggers, auxGlobals,
       auxNonGlobals, auxGlobalsExp, auxNonGlobalsExp, tCond, eCond, tArgs, eArgs, tPerm, ePerm, pve,
@@ -1190,7 +1190,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                                tArgs: Seq[Term],
                                eArgs: Option[Seq[ast.Exp]],
                                v: Verifier,
-                               analysisInfos: DependencyAnalysisInfos)
+                               analysisInfos: AnalysisInfos)
                               (Q: (State, Term, Verifier) => VerificationResult): VerificationResult = {
     val res = resAcc match {
       case w: ast.MagicWand => MagicWandIdentifier(w, s.program)
@@ -1218,7 +1218,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                                eRhsNew: Option[ast.Exp],
                                pve: PartialVerificationError,
                                v: Verifier,
-                               analysisInfos: DependencyAnalysisInfos)
+                               analysisInfos: AnalysisInfos)
                               (Q: (State, Verifier) => VerificationResult): VerificationResult = {
     val resChunk = s.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == ass.lhs.field).get.asInstanceOf[BasicMaskHeapChunk]
     val ve = pve dueTo InsufficientPermission(ass.lhs)
@@ -1242,7 +1242,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                                        tArgs: Seq[Term],
                                        eArgs: Option[Seq[ast.Exp]],
                                        v: Verifier,
-                                       analysisInfos: DependencyAnalysisInfos): State = {
+                                       analysisInfos: AnalysisInfos): State = {
     s
   }
 
@@ -1252,7 +1252,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                                eArgs: Option[Seq[ast.Exp]],
                                snapshot: terms.MagicWandSnapshot,
                                v: Verifier,
-                               analysisInfos: DependencyAnalysisInfos): (Chunk, Seq[Term], Option[Seq[DebugExp]]) = {
+                               analysisInfos: AnalysisInfos): (Chunk, Seq[Term], Option[Seq[DebugExp]]) = {
     val argTerm = toSnapTree(tArgs)
     val newMask = MaskAdd(PredZeroMask, argTerm, FullPerm)
     val newHeap = HeapSingleton(argTerm, snapshot.mwsf, WandHeapSort)
@@ -1260,7 +1260,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
     (newChunk, Seq(), Option.when(debugOn)(Seq()))
   }
 
-  override def triggerWandIfNeeded(s: State, wand: ast.MagicWand, chWand: Chunk, v: Verifier, analysisInfos: DependencyAnalysisInfos): State = {
+  override def triggerWandIfNeeded(s: State, wand: ast.MagicWand, chWand: Chunk, v: Verifier, analysisInfos: AnalysisInfos): State = {
     /* Wand chunks are BasicMaskHeapChunks in maskHeapMode; there is no quantified wand
      * chunk variant that would require triggering. */
     s
@@ -1304,7 +1304,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
 
   override def handlesResourceTrigger(ra: ast.ResourceAccess, s: State): Boolean = true
 
-  override def resourceTriggerVariants(ra: ast.ResourceAccess, s: State, pve: PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
+  override def resourceTriggerVariants(ra: ast.ResourceAccess, s: State, pve: PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
                                       : (Seq[Term], Seq[Seq[Term]], Seq[SnapshotMapDefinition], State) = {
     val resource = ra.res(s.program)
     val chunk = resource match {
@@ -1346,10 +1346,10 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
     }(_ => true))
   }
 
-  override def mergeReserveHeaps(hUsed: Heap, hOps: Heap, hLhs: Heap, s: State, v: Verifier, analysisInfos: DependencyAnalysisInfos): Heap =
+  override def mergeReserveHeaps(hUsed: Heap, hOps: Heap, hLhs: Heap, s: State, v: Verifier, analysisInfos: AnalysisInfos): Heap =
     mergeWandHeaps(mergeWandHeaps(hUsed, hOps, v, Some(s), analysisInfos), hLhs, v, Some(s), analysisInfos)
 
-  override def mergeTransferredChunks(fr: viper.silicon.supporters.functions.FunctionRecorder, s: State, h: Heap, usedChunks: Seq[Chunk], v: Verifier, analysisInfos: DependencyAnalysisInfos): (viper.silicon.supporters.functions.FunctionRecorder, Heap) =
+  override def mergeTransferredChunks(fr: viper.silicon.supporters.functions.FunctionRecorder, s: State, h: Heap, usedChunks: Seq[Chunk], v: Verifier, analysisInfos: AnalysisInfos): (viper.silicon.supporters.functions.FunctionRecorder, Heap) =
     (fr, usedChunks.foldLeft(h)((cur, chnk) => mergeWandHeaps(cur, Heap(Seq(chnk)), v, Some(s), analysisInfos)))
 
   override def addWandChunk(h: Heap, chWand: Chunk, s: State, v: Verifier): Heap = {

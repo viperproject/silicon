@@ -10,7 +10,7 @@ import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.{Mark, RecordedPathConditions}
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
+import viper.silicon.dependencyAnalysis.{AnalysisInfos, DependencyAnalysisInfos}
 import viper.silicon.interfaces._
 import viper.silicon.state._
 import viper.silicon.state.chunks._
@@ -94,7 +94,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                   snap: MagicWandSnapshot,
                   pve: PartialVerificationError,
                   v: Verifier,
-                  analysisInfos: DependencyAnalysisInfos)
+                  analysisInfos: AnalysisInfos)
                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
                  : VerificationResult = {
     evaluateWandArguments(s, wand, pve, v, analysisInfos)((s1, ts, esNew, v1) => {
@@ -115,7 +115,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                             wand: ast.MagicWand,
                             pve: PartialVerificationError,
                             v: Verifier,
-                            analysisInfos: DependencyAnalysisInfos)
+                            analysisInfos: AnalysisInfos)
                            (Q: (State, Seq[Term], Option[Seq[ast.Exp]], Verifier) => VerificationResult)
                            : VerificationResult = {
     val s1 = s.copy(exhaleExt = false)
@@ -134,7 +134,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                                failure: Failure,
                                qvars: Seq[Var],
                                v: Verifier,
-                               analysisInfos: DependencyAnalysisInfos)
+                               analysisInfos: AnalysisInfos)
                               (consumeFunction: (State, Heap, Term, Option[ast.Exp], Verifier) => (ConsumptionResult, State, Heap, Option[CH]))
                               (Q: (State, Stack[Heap], Stack[Option[CH]], Verifier) => VerificationResult)
                               : VerificationResult = {
@@ -241,7 +241,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                   proofScript: ast.Seqn,
                   pve: PartialVerificationError,
                   v: Verifier,
-                  analysisInfos: DependencyAnalysisInfos)
+                  analysisInfos: AnalysisInfos)
                  (Q: (State, Chunk, Verifier) => VerificationResult)
                  : VerificationResult = {
 
@@ -271,7 +271,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                                        proofScript: ast.Seqn,
                                        pve: PartialVerificationError,
                                        v: Verifier,
-                                       analysisInfos: DependencyAnalysisInfos)
+                                       analysisInfos: AnalysisInfos)
                                       (Q: (State, Chunk, Verifier) => VerificationResult)
                                       : VerificationResult = {
 
@@ -472,7 +472,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                 wand: ast.MagicWand,
                 pve: PartialVerificationError,
                 v: Verifier,
-                analysisInfos: DependencyAnalysisInfos)
+                analysisInfos: AnalysisInfos)
                (Q: (State, Verifier) => VerificationResult)
                : VerificationResult = {
     // Consume the magic wand instance "A --* B".
@@ -524,7 +524,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                failure: Failure,
                qvars: Seq[Var],
                v: Verifier,
-               analysisInfos: DependencyAnalysisInfos)
+               analysisInfos: AnalysisInfos)
               (consumeFunction: (State, Heap, Term, Option[ast.Exp], Verifier) => (ConsumptionResult, State, Heap, Option[CH]))
               (Q: (State, Seq[CH], Verifier) => VerificationResult)
               : VerificationResult = {

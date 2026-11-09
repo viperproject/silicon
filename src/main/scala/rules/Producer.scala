@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis.{AnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.logger.records.data.{CondExpRecord, ImpliesRecord, ProduceRecord}
 import viper.silicon.state._
@@ -42,7 +42,7 @@ trait ProductionRules extends SymbolicExecutionRules {
               a: ast.Exp,
               pve: PartialVerificationError,
               v: Verifier,
-              analysisInfos: DependencyAnalysisInfos)
+              analysisInfos: AnalysisInfos)
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult
 
@@ -67,7 +67,7 @@ trait ProductionRules extends SymbolicExecutionRules {
                as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
                v: Verifier,
-               analysisInfos: DependencyAnalysisInfos)
+               analysisInfos: AnalysisInfos)
               (Q: (State, Verifier) => VerificationResult)
               : VerificationResult
 }
@@ -107,7 +107,7 @@ object producer extends ProductionRules {
               a: ast.Exp,
               pve: PartialVerificationError,
               v: Verifier,
-              analysisInfos: DependencyAnalysisInfos)
+              analysisInfos: AnalysisInfos)
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult =
 
@@ -122,7 +122,7 @@ object producer extends ProductionRules {
                as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
                v: Verifier,
-               analysisInfos: DependencyAnalysisInfos)
+               analysisInfos: AnalysisInfos)
               (Q: (State, Verifier) => VerificationResult)
               : VerificationResult = {
 
@@ -146,7 +146,7 @@ object producer extends ProductionRules {
                           as: Seq[ast.Exp],
                           pves: Seq[PartialVerificationError],
                           v: Verifier,
-                          analysisInfos: DependencyAnalysisInfos)
+                          analysisInfos: AnalysisInfos)
                          (Q: (State, Verifier) => VerificationResult)
                          : VerificationResult = {
 
@@ -196,7 +196,7 @@ object producer extends ProductionRules {
                        a: ast.Exp,
                        pve: PartialVerificationError,
                        v: Verifier,
-                       analysisInfos: DependencyAnalysisInfos)
+                       analysisInfos: AnalysisInfos)
                       (Q: (State, Verifier) => VerificationResult)
                       : VerificationResult = {
 
@@ -214,7 +214,7 @@ object producer extends ProductionRules {
                                 a: ast.Exp,
                                 pve: PartialVerificationError,
                                 v: Verifier,
-                                analysisInfos: DependencyAnalysisInfos)
+                                analysisInfos: AnalysisInfos)
                                (Q: (State, Verifier) => VerificationResult)
                                : VerificationResult = {
 
@@ -234,7 +234,7 @@ object producer extends ProductionRules {
                          a: ast.Exp,
                          pve: PartialVerificationError,
                          v: Verifier,
-                         analysisInfos: DependencyAnalysisInfos)
+                         analysisInfos: AnalysisInfos)
                         (continuation: (State, Verifier) => VerificationResult)
                         : VerificationResult = {
     v.logger.debug(s"\nPRODUCE ${viper.silicon.utils.ast.sourceLineColumn(a)}: $a")

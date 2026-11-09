@@ -12,7 +12,7 @@ import viper.silicon.Config.JoinMode.JoinMode
 import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.{PathConditionStack, RecordedPathConditions}
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.state.State.{DebugOldHeaps, OldHeaps, TemporaryRecord}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.{And, Ite, Term, Var}
@@ -383,7 +383,7 @@ object State {
   }
 
   // Puts a collection of chunks under a condition.
-  private def conditionalizeChunks(h: Iterable[Chunk], cond: Term, condExp: Option[ast.Exp], v: Verifier, analysisInfos: DependencyAnalysisInfos): Iterable[Chunk] = {
+  private def conditionalizeChunks(h: Iterable[Chunk], cond: Term, condExp: Option[ast.Exp], v: Verifier, analysisInfos: AnalysisInfos): Iterable[Chunk] = {
     h map (c => {
       c match {
         case c: GeneralChunk => v.chunkFactory.applyCondition(c, cond, condExp, analysisInfos)
@@ -393,14 +393,14 @@ object State {
   }
 
   // Puts a heap under a condition.
-  private def conditionalizeHeap(h: Heap, cond: Term, condExp: Option[ast.Exp], v: Verifier, analysisInfos: DependencyAnalysisInfos): Heap = {
+  private def conditionalizeHeap(h: Heap, cond: Term, condExp: Option[ast.Exp], v: Verifier, analysisInfos: AnalysisInfos): Heap = {
     Heap(conditionalizeChunks(h.values, cond, condExp, v, analysisInfos))
   }
 
   // Merges two heaps together, by putting h1 under condition cond1,
   // and h2 under cond2.
   // Assumes that cond1 is the negation of cond2.
-  def mergeHeap(h1: Heap, cond1: Term, cond1Exp: Option[ast.Exp], h2: Heap, cond2: Term, cond2Exp: Option[ast.Exp], v: Verifier, analysisInfos: DependencyAnalysisInfos): Heap = {
+  def mergeHeap(h1: Heap, cond1: Term, cond1Exp: Option[ast.Exp], h2: Heap, cond2: Term, cond2Exp: Option[ast.Exp], v: Verifier, analysisInfos: AnalysisInfos): Heap = {
     val (maskChunks1, generalChunks1) = h1.values.partition(_.isInstanceOf[BasicMaskHeapChunk])
     val (maskChunks2, generalChunks2) = h2.values.partition(_.isInstanceOf[BasicMaskHeapChunk])
 
@@ -425,7 +425,7 @@ object State {
     generalResult + Heap(mergedMaskChunks)
   }
 
-  def merge(s1: State, pc1: RecordedPathConditions, s2: State, pc2: RecordedPathConditions, v: Verifier, analysisInfos: DependencyAnalysisInfos): State = {
+  def merge(s1: State, pc1: RecordedPathConditions, s2: State, pc2: RecordedPathConditions, v: Verifier, analysisInfos: AnalysisInfos): State = {
     val withExp = Verifier.config.enableDebugging()
     val conditions1 = And(pc1.branchConditions)
     val conditions1Exp = if (withExp) Some(BigAnd(pc1.branchConditionExps.map(_._2.get))) else None
@@ -438,7 +438,7 @@ object State {
   // Merges two states, by putting s1 under condition conditions1 and s2 under conditions2.
   // Assumes that conditions1 and conditions2 are mutually exclusive.
   def merge(s1: State, conditions1: Term, conditions1Exp: Option[ast.Exp],
-            s2: State, conditions2: Term, conditions2Exp: Option[ast.Exp], v: Verifier, analysisInfos: DependencyAnalysisInfos): State = {
+            s2: State, conditions2: Term, conditions2Exp: Option[ast.Exp], v: Verifier, analysisInfos: AnalysisInfos): State = {
     s1 match {
       /* Decompose state s1 */
       case State(g1, h1, program, member,
