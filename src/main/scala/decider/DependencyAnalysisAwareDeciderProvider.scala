@@ -11,14 +11,12 @@ import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.state.chunks.{Chunk, GeneralChunk}
 import viper.silicon.state.terms.{False, Term, True}
-import viper.silicon.verifier.{DependencyAnalysisAwareVerifier, Verifier}
+import viper.silicon.verifier.DependencyAnalysisAwareVerifier
 import viper.silver.ast
 import viper.silver.ast.Member
 import viper.silver.dependencyAnalysis.AssumptionType
 
 trait DependencyAnalysisHandler {
-
-  def isDependencyAnalysisEnabled: Boolean
 
   def initDependencyAnalyzer(member: Member, preambleNodes: Iterable[DependencyAnalysisNode]): Unit
   def getDependencyAnalyzer: DependencyAnalyzer
@@ -37,9 +35,14 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
 
   trait DependencyAnalysisAwareDecider extends AbstractDecider with DependencyAnalysisHandler {
 
-    override def isDependencyAnalysisEnabled: Boolean = Verifier.config.dependencyAnalysis.isDefined && !dependencyAnalyzer.isInstanceOf[NoDependencyAnalyzer]
+    override def isAnalysisActiveForMember: Boolean = !dependencyAnalyzer.isInstanceOf[NoDependencyAnalyzer]
 
-    override def defaultAnalysisInfos: AnalysisInfos = DependencyAnalysisInfos.DefaultInfos.withEnabled(isDependencyAnalysisEnabled)
+    override def usesFreshCallArguments: Boolean = true
+    override def attachesContractMergeInfos: Boolean = true
+    override def ssaifiesAllAssignments: Boolean = true
+    override def checksSmokeOnInfeasibleBranches: Boolean = true
+
+    override def defaultAnalysisInfos: AnalysisInfos = DependencyAnalysisInfos.DefaultInfos.withEnabled(isAnalysisActiveForMember)
 
     type P = DependencyAnalysisAwareZ3ProverStdIO
 
@@ -55,7 +58,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
     override def getDependencyAnalyzer: DependencyAnalyzer = dependencyAnalyzer
 
     override def initDependencyAnalyzer(member: Member, preambleNodes: Iterable[DependencyAnalysisNode]): Unit = {
-      val isAnalysisEnabled = DependencyAnalyzer.extractEnableAnalysisFromInfo(member.info).getOrElse(Verifier.config.dependencyAnalysis.isDefined)
+      val isAnalysisEnabled = DependencyAnalyzer.extractEnableAnalysisFromInfo(member.info).getOrElse(true)
       if (isAnalysisEnabled) {
         dependencyAnalyzer = new DefaultDependencyAnalyzer(Some(member))
         dependencyAnalyzer.addNodes(preambleNodes)
@@ -153,7 +156,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
     }
 
     override def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfos: AnalysisInfos, isExhale: Boolean): CH = {
-      if (!isDependencyAnalysisEnabled)
+      if (!isAnalysisActiveForMember)
         return buildChunk(perm)
 
       val labelNodeOpt = getOrCreateAnalysisLabelNode(sourceChunks)
@@ -166,7 +169,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
     }
 
     override def getOrCreateAnalysisLabelNode(sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Option[LabelNode] = {
-      if (!isDependencyAnalysisEnabled)
+      if (!isAnalysisActiveForMember)
         return None
 
       val (label, _) = fresh(ast.LocalVar(DependencyAnalyzer.analysisLabelName, ast.Bool)())

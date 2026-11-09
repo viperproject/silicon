@@ -134,7 +134,7 @@ object DependencyAnalyzer {
 
   def wrapWithDependencyAnalysisLabel(decider: Decider, term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term = decider match {
     case daDecider: DependencyAnalysisHandler =>
-      if (!daDecider.isDependencyAnalysisEnabled || term.equals(True) || sourceChunks.size + sourceTerms.size == 0)
+      if (!daDecider.isAnalysisActiveForMember || term.equals(True) || sourceChunks.size + sourceTerms.size == 0)
         term
       else {
         val labelNode = daDecider.getOrCreateAnalysisLabelNode(sourceChunks, sourceTerms)

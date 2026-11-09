@@ -14,6 +14,7 @@ import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Term}
 import viper.silicon.state.{FunctionPreconditionTransformer, SymbolConverter, terms}
+import viper.silicon.verifier.Verifier
 import viper.silicon.toMap
 import viper.silver.ast
 import viper.silver.ast.NamedDomainAxiom
@@ -107,7 +108,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
         val tAxPres = FunctionPreconditionTransformer.transform(tAx, program)
         val enableAnalysis = DependencyAnalyzer.extractEnableAnalysisFromInfo(axiom.info).getOrElse(isAnalysisForDomainEnabled)
         collectedAxioms = collectedAxioms.incl((terms.And(tAxPres, tAx),
-          DependencyAnalysisAxiomInfo(DependencyAnalysisInfos.DefaultInfos.addInfo(axiom.exp.info, axiom.exp).withEnabled(enableAnalysis), domain.name)))
+          DependencyAnalysisAxiomInfo(DependencyAnalysisInfos.DefaultInfos.withEnabled(Verifier.config.isDependencyAnalysisRun).addInfo(axiom.exp.info, axiom.exp).withEnabled(enableAnalysis), domain.name)))
       })
     })
   }

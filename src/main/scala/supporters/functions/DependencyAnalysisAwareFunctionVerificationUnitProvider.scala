@@ -14,7 +14,7 @@ import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.state.State
 import viper.silicon.state.terms.{Term, True, Var}
-import viper.silicon.verifier.{DependencyAnalysisAwareVerifier, Verifier}
+import viper.silicon.verifier.DependencyAnalysisAwareVerifier
 import viper.silver.ast
 import viper.silver.dependencyAnalysis._
 
@@ -45,11 +45,9 @@ trait DependencyAnalysisAwareFunctionVerificationUnitProvider extends DefaultFun
     }
 
     override protected def emitAndRecordFunctionAxioms(axiom: (Term, DependencyAnalysisAxiomInfo)*): Unit = {
-      val cleanAxiom =
-        if (!Verifier.config.dependencyAnalysis.isDefined) axiom
-        else axiom.map(a => (a._1.transform {
-          case v: Var if DependencyAnalyzer.isAnalysisLabel(v) => True // replace dependency analysis labels by True to avoid errors
-        }(), a._2))
+      val cleanAxiom = axiom.map(a => (a._1.transform {
+        case v: Var if DependencyAnalyzer.isAnalysisLabel(v) => True // replace dependency analysis labels by True to avoid errors
+      }(), a._2))
       decider.prover.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(cleanAxiom), "Function axioms")
 
       emittedFunctionAxiomsWithInfo = emittedFunctionAxiomsWithInfo ++ cleanAxiom

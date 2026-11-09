@@ -16,6 +16,12 @@ The available commands are `interactive` and any command supported by the CLI to
 For debugging dependency analysis results, the option `--enableDependencyAnalysisDebugging` can be used which disables the merging of nodes.
 As a result, the graph used for query computation and the exported graph contain all low-level details.
 
+The analysis is controlled at two levels:
+- The *run mode* is set by `--dependencyAnalysis` and decides once which verifier, decider and chunk classes are used. Symbolic execution rules ask the decider about the resulting encoding (for example `usesFreshCallArguments`) and never read the configuration.
+- *Member activity* (`Decider.isAnalysisActiveForMember`) says whether dependencies are recorded for the member currently being verified.
+
+A member can opt out with the annotation `@enableDependencyAnalysis("false")`. It then records no dependency nodes, but it is still verified with the encoding of the analysis run: it uses the Z3-only prover, weakened known-true checks, additional fresh symbols and dead-path exploration. Its verification result therefore comes from the same encoding as all other members in the run, and may differ from a run without `--dependencyAnalysis`.
+
 The dependency analysis steps through all paths (including provably infeasible paths).
 This behavior can be disabled by setting the flat `--disableInfeasiblePaths`, which might be faster but results in unsound dependency results.
 

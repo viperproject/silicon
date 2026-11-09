@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
-import viper.silicon.dependencyAnalysis.{AnalysisInfos, DependencyAnalysisInfos}
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.logger.records.structural.JoiningRecord
 import viper.silicon.state.{StateMerge, State}
@@ -22,18 +22,19 @@ import viper.silver.dependencyAnalysis.{AssumptionType, StringDependencyAnalysis
 
 case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathConditions) {
 
-  private val analysisInfos = DependencyAnalysisInfos.DefaultInfos.withInfo(StringDependencyAnalysisSourceInfo("merge", NoPosition), AssumptionType.Internal) // TODO ake: is it fine to use DefaultInfos here?
+  private def analysisInfos(v: Verifier): AnalysisInfos =
+    v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo("merge", NoPosition), AssumptionType.Internal)
 
   // Instead of merging states by calling State.merge,
   // we can directly merge JoinDataEntries to obtain new States,
   // and the join data entries themselves provide information about the path conditions to State.merge.
   def pathConditionAwareMerge(other: JoinDataEntry[D], v: Verifier): State = {
-    val res = State.merge(this.s, this.pathConditions, other.s, other.pathConditions, v, analysisInfos)
+    val res = State.merge(this.s, this.pathConditions, other.s, other.pathConditions, v, analysisInfos(v))
     v.stateConsolidator(s).consolidate(res, v)
   }
 
   def pathConditionAwareMergeWithoutConsolidation(other: JoinDataEntry[D], v: Verifier): State = {
-    State.merge(this.s, this.pathConditions, other.s, other.pathConditions, v, analysisInfos)
+    State.merge(this.s, this.pathConditions, other.s, other.pathConditions, v, analysisInfos(v))
   }
 }
 

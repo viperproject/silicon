@@ -10,7 +10,7 @@ import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.{Mark, RecordedPathConditions}
-import viper.silicon.dependencyAnalysis.{AnalysisInfos, DependencyAnalysisInfos}
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.interfaces._
 import viper.silicon.state._
 import viper.silicon.state.chunks._
@@ -567,7 +567,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
        * Since innermost assertions must be self-framing, combining hUsed, hOps and hLhs
        * is sound.
        */
-      v.heapSupporter.mergeReserveHeaps(s.reserveHeaps.head, s.reserveHeaps(1), s.reserveHeaps(2), s, v, DependencyAnalysisInfos.DefaultInfos /* XXX ake */)
+      v.heapSupporter.mergeReserveHeaps(s.reserveHeaps.head, s.reserveHeaps(1), s.reserveHeaps(2), s, v, v.decider.defaultAnalysisInfos)
     } else
       s.h
   }

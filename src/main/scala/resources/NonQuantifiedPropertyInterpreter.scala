@@ -7,7 +7,7 @@
 package viper.silicon.resources
 
 import viper.silicon.Map
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis.DependencyAnalyzer
 import viper.silicon.state.chunks._
 import viper.silicon.state.terms
 import viper.silicon.state.terms.Term
@@ -122,7 +122,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
                                     otherwise: PropertyExpression[K],
                                     info: Info): (Term, Option[ast.Exp]) = {
     val conditionTerm = buildPathCondition(condition, info)._1
-    if (verifier.decider.check(conditionTerm, Verifier.config.checkTimeout(), DependencyAnalysisInfos.DefaultInfos.withInfo(StringDependencyAnalysisSourceInfo(s"property interpreter: ${conditionTerm.toString}"), AssumptionType.Internal.asDepType()))) {
+    if (verifier.decider.check(conditionTerm, Verifier.config.checkTimeout(), verifier.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo(s"property interpreter: ${conditionTerm.toString}"), AssumptionType.Internal.asDepType()))) {
       val (t, e) = buildPathCondition(thenDo, info)
       (DependencyAnalyzer.wrapWithDependencyAnalysisLabel(verifier.decider, t, Set.empty, Set(conditionTerm)), e) // TODO ake: causes imprecision!
     } else {

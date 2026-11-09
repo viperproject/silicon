@@ -633,7 +633,7 @@ object executor extends ExecutionRules {
           val preCondLog = new CommentRecord("Precondition", s1, v1.decider.pcs)
           val preCondId = v1.symbExLog.openScope(preCondLog)
           val argsWithExp: Seq[(Term, Option[ast.Exp])] = {
-            if (Verifier.config.dependencyAnalysis.isDefined) {
+            if (v1.decider.usesFreshCallArguments) {
               tArgs zip eArgsWithDAInfo.map(Some(_))
             } else if (debugOn)
               tArgs zip (eArgsNew.get.map(Some(_)))
@@ -642,7 +642,7 @@ object executor extends ExecutionRules {
             }
           // encode the method call as a sequence of assignments to fresh variables (one for each argument) and a method call using the fresh variables as arguments
           val argsFreshVar =
-            if (Verifier.config.dependencyAnalysis.isDefined) {
+            if (v1.decider.usesFreshCallArguments) {
               argsWithExp.map(arg => {
                 val argNew = v1.decider.fresh(arg._1.sort, None)
                 v1.decider.assume(Equals(argNew, arg._1), None, analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(arg._2.get))))
@@ -657,7 +657,7 @@ object executor extends ExecutionRules {
             case _: ast.Old => true
             case _ => false
           })
-          val presWithDAInfo = if (!Verifier.config.dependencyAnalysis.isDefined) meth.pres else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.pres.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
+          val presWithDAInfo = if (!v1.decider.attachesContractMergeInfos) meth.pres else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.pres.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
           val presDAInfo = analysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Up))
           consumes(s1a, presWithDAInfo, needsOldHeapReconstruct, _ => pvePre, v1, presDAInfo)((s2, preSnap, v2) => {
             v2.symbExLog.closeScope(preCondId)
@@ -696,7 +696,7 @@ object executor extends ExecutionRules {
               s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1, v2))
             }
             val s2a = s2.copy(g = s2.g + gOuts, oldHeaps = newOldHeaps)
-            val postsWithDAInfo = if (!Verifier.config.dependencyAnalysis.isDefined) meth.posts else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.posts.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
+            val postsWithDAInfo = if (!v2.decider.attachesContractMergeInfos) meth.posts else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.posts.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
             // TODO ake: Assuming the postcondition should not introduce any proof obligations as they are guaranteed by the fact / assumption that the callee verifies. Hence, we mark them as internal assertions.
             val analysisInfos2 = analysisInfos.withAssertionType(AssumptionType.Internal).withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Down))
             produces(s2a, freshSnap, postsWithDAInfo, _ => pveCallTransformed, v2, analysisInfos2)((s3, v3) => {
@@ -820,7 +820,7 @@ object executor extends ExecutionRules {
 
    private def ssaifyRhs(rhs: Term, rhsExp: ast.Exp, rhsExpNew: Option[ast.Exp], name: String, typ: ast.Type, v: Verifier, s : State, analysisInfos: AnalysisInfos): (Term, Option[ast.Exp]) = {
      rhs match {
-       case _: Var | _: Literal if !Verifier.config.dependencyAnalysis.isDefined =>
+       case _: Var | _: Literal if !v.decider.ssaifiesAllAssignments =>
          (rhs, rhsExpNew)
 
        case _  =>
