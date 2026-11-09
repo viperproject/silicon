@@ -6,8 +6,7 @@
 
 package viper.silicon.dependencyAnalysis.cliTool
 
-import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
+import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphQueries
 import viper.silicon.interfaces.Failure
 import viper.silver.ast
 
@@ -17,16 +16,16 @@ object DependencyAnalysisCliTool {
   /**
    * @return a CLI tool offering all available commands for the given analysis result
    */
-  def apply(interpreter: DependencyGraphInterpreter[Final], program: ast.Program, verificationErrors: List[Failure],
+  def apply(queries: FinalGraphQueries, program: ast.Program, verificationErrors: List[Failure],
             console: DependencyAnalysisCliConsole = StdDependencyAnalysisCliConsole): DependencyAnalysisCliTool = {
     new DependencyAnalysisCliTool(
-      new CoreDependencyAnalysisCliCommands(interpreter, program, verificationErrors).commands,
+      new CoreDependencyAnalysisCliCommands(queries, program, verificationErrors).commands,
       List(
-        new DebugDependencyAnalysisCliExtension(interpreter),
-        new TestDependencyAnalysisCliExtension(interpreter, console),
-        new BenchmarkDependencyAnalysisCliExtension(interpreter, program, console)
+        new DebugDependencyAnalysisCliExtension(queries),
+        new TestDependencyAnalysisCliExtension(queries, console),
+        new BenchmarkDependencyAnalysisCliExtension(queries, program, console)
       ),
-      verificationErrors.nonEmpty || interpreter.getAssertionNodesWithFailures.nonEmpty,
+      verificationErrors.nonEmpty || queries.getAssertionNodesWithFailures.nonEmpty,
       console
     )
   }

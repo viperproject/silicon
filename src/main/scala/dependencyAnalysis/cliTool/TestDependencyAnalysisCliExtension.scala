@@ -7,14 +7,13 @@
 package viper.silicon.dependencyAnalysis.cliTool
 
 import viper.silicon.dependencyAnalysis.UserLevelDependencyAnalysisNode
-import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyGraphInterpreter, DependencyGraphTestSupporter}
+import viper.silicon.dependencyAnalysis.graphInterpretation.{FinalGraphQueries, DependencyGraphTestSupporter}
 
 /**
  * [[DependencyGraphTestSupporter]] fails with an assertion at the end of a test run, so these commands write to the
  * console while they run instead of returning a result, which would lose the findings reported before the failure.
  */
-class TestDependencyAnalysisCliExtension(interpreter: DependencyGraphInterpreter[Final], console: DependencyAnalysisCliConsole) extends DependencyAnalysisCliToolExtension{
+class TestDependencyAnalysisCliExtension(queries: FinalGraphQueries, console: DependencyAnalysisCliConsole) extends DependencyAnalysisCliToolExtension{
   override val name: String = "Test Features"
   override val commands: List[DependencyAnalysisCliCommand] = List(
     new TestAllCommand,
@@ -26,8 +25,8 @@ class TestDependencyAnalysisCliExtension(interpreter: DependencyGraphInterpreter
     override val cmdName: String = "test"
     override val description: String = s"""'$cmdName' to test all node types and dependencies with respect to the @dependencyInfo(...) annotations"""
     override val cmd: DependencyAnalysisCliInput => DependencyAnalysisCliResult = { _ =>
-      val testSupporter = new DependencyGraphTestSupporter(interpreter, console.printLine)
-      if (interpreter.getAssertionNodesWithFailures.nonEmpty) console.printLine(s"Program contains verification failures at \n\t${interpreter.getAssertionNodesWithFailures.mkString("\n\t")}")
+      val testSupporter = new DependencyGraphTestSupporter(queries, console.printLine)
+      if (queries.getAssertionNodesWithFailures.nonEmpty) console.printLine(s"Program contains verification failures at \n\t${queries.getAssertionNodesWithFailures.mkString("\n\t")}")
       testSupporter.testDependencies()
       testSupporter.testNodeTypes()
       DependencyAnalysisCliResult.empty
@@ -38,11 +37,11 @@ class TestDependencyAnalysisCliExtension(interpreter: DependencyGraphInterpreter
     override val cmdName: String = "testNodeTypes"
     override val description: String = s"""'$cmdName [line numbers]' to test the node type with respect to the @dependencyInfo(...) annotations"""
     override val cmd: DependencyAnalysisCliInput => DependencyAnalysisCliResult = { input =>
-      val testSupporter = new DependencyGraphTestSupporter(interpreter, console.printLine)
+      val testSupporter = new DependencyGraphTestSupporter(queries, console.printLine)
       if (input.args.isEmpty)
         testSupporter.testNodeTypes()
       else
-        input.args.flatMap(_.toIntOption).foreach(line => testSupporter.testNodeTypes(interpreter.getNodesByLine(line)))
+        input.args.flatMap(_.toIntOption).foreach(line => testSupporter.testNodeTypes(queries.getNodesByLine(line)))
       DependencyAnalysisCliResult.empty
     }
   }
@@ -51,12 +50,12 @@ class TestDependencyAnalysisCliExtension(interpreter: DependencyGraphInterpreter
     override val cmdName: String = "testDependencies"
     override val description: String = s"""'$cmdName [line numbers]' to test the node type with respect to the @dependencyInfo(...) annotations"""
     override val cmd: DependencyAnalysisCliInput => DependencyAnalysisCliResult = { input =>
-      val testSupporter = new DependencyGraphTestSupporter(interpreter, console.printLine)
+      val testSupporter = new DependencyGraphTestSupporter(queries, console.printLine)
       if (input.args.isEmpty)
         testSupporter.testDependencies()
       else
         input.args.flatMap(_.toIntOption).foreach(line => {
-          val testResult = UserLevelDependencyAnalysisNode.from(interpreter.getNodesByLine(line)) map testSupporter.testDependencies
+          val testResult = UserLevelDependencyAnalysisNode.from(queries.getNodesByLine(line)) map testSupporter.testDependencies
           val resultStr = if (testResult.forall(_.isEmpty)) "Skipped."
             else if (testResult.forall(test => test.isEmpty || test.get)) "Passed."
             else "Failed."

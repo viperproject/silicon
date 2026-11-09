@@ -15,7 +15,7 @@ import viper.silver.dependencyAnalysis.DependencyAnalysisSourceInfo
 
 import java.io.PrintWriter
 
-class DependencyAnalysisPruningSupporter[T <: DependencyGraphState](interpreter: DependencyGraphInterpreter[T]) {
+class DependencyAnalysisPruningSupporter(queries: FinalGraphQueries) {
 
   /**
    * Prunes the program. That is, all statements and expressions that are not a crucial node are removed from the program.
@@ -105,7 +105,7 @@ class DependencyAnalysisPruningSupporter[T <: DependencyGraphState](interpreter:
   }
 
   private def getCrucialNodes(queriedNodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = {
-    val dependencies = interpreter.computeNonInternalDependencies(queriedNodes)
+    val dependencies = queries.computeNonInternalDependencies(queriedNodes)
     queriedNodes ++ dependencies
   }
 

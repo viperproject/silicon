@@ -10,7 +10,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.cliTool.DependencyGraphImporter
 import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyGraphInterpreter, DependencyGraphTestSupporter}
+import viper.silicon.dependencyAnalysis.graphInterpretation.{FinalGraphQueries, DependencyGraphTestSupporter}
 import viper.silver.ast._
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier
@@ -63,25 +63,25 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
       return
     }
 
-    val name = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter.map(_.getName).getOrElse("graph")
+    val name = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].finalGraphQueries.map(_.getName).getOrElse("graph")
 
-    val fullGraphInterpreter = if (TEST_IMPORTER) {
+    val fullGraphQueries = if (TEST_IMPORTER) {
       println("--------\nTesting via the graph importer.")
       val importedGraph = DependencyGraphImporter.importGraphFromCsv(s"testExports")
-      new DependencyGraphInterpreter[Final](name, importedGraph, List.empty, None)
+      new FinalGraphQueries(name, importedGraph, List.empty)
     } else {
-      frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter.get
+      frontend.reporter.asInstanceOf[DependencyAnalysisReporter].finalGraphQueries.get
     }
 
-    val testSupporter = new DependencyGraphTestSupporter(fullGraphInterpreter)
+    val testSupporter = new DependencyGraphTestSupporter(fullGraphQueries)
     testSupporter.testDependencies()
     testSupporter.testNodeTypes()
-    new PruningTest(filePrefix + "/" + fileName, program, fullGraphInterpreter).execute()
+    new PruningTest(filePrefix + "/" + fileName, program, fullGraphQueries).execute()
 
     if (filePrefix.contains("verificationProgressTests")) {
-      new VerificationProgressTest(filePrefix + "/" + fileName, fullGraphInterpreter).execute()
+      new VerificationProgressTest(filePrefix + "/" + fileName, fullGraphQueries).execute()
     } else if (filePrefix.contains("guidance")) {
-      new GuidanceTest(program, fullGraphInterpreter).execute()
+      new GuidanceTest(program, fullGraphQueries).execute()
     }
   }
 }

@@ -58,7 +58,7 @@ class DependencyAnalysisAwareMainVerifier(config: Config,
     val dependencyAnalysisResult = DependencyAnalysisTool.runDependencyAnalysisWorkflow(verificationResults, program, inputFile)
     (reporter, dependencyAnalysisResult) match {
       case (analysisReporter: DependencyAnalysisReporter, Some(res)) =>
-        analysisReporter.joinedDependencyGraphInterpreter = Some(res.dependencyGraphInterpreter)
+        analysisReporter.finalGraphQueries = Some(res.finalGraphQueries)
       case _ =>
     }
   }

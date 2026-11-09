@@ -9,7 +9,7 @@ package viper.silicon.dependencyAnalysis.cliTool
 import viper.silicon.dependencyAnalysis.UserLevelDependencyAnalysisNode
 import viper.silicon.dependencyAnalysis.cliTool.DependencyAnalysisCliSupport.{getQueriedNodesFromInput, measureTime}
 import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
+import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphQueries
 import viper.silver.ast
 import viper.silver.ast.{AnnotationInfo, AnonymousDomainAxiom, Assume, Goto, If, Inhale, Label, LocalVarDeclStmt, MakeInfoPair, NamedDomainAxiom, Package, Seqn, While}
 
@@ -20,7 +20,7 @@ import java.time.format.DateTimeFormatter
 import scala.io.Source
 import scala.util.matching.Regex
 
-class BenchmarkDependencyAnalysisCliExtension(interpreter: DependencyGraphInterpreter[Final], program: ast.Program, console: DependencyAnalysisCliConsole) extends DependencyAnalysisCliToolExtension {
+class BenchmarkDependencyAnalysisCliExtension(queries: FinalGraphQueries, program: ast.Program, console: DependencyAnalysisCliConsole) extends DependencyAnalysisCliToolExtension {
 
   override val name: String = "Benchmark Features"
   override val commands: List[DependencyAnalysisCliCommand] =
@@ -56,13 +56,13 @@ class BenchmarkDependencyAnalysisCliExtension(interpreter: DependencyGraphInterp
         } else {
           val inputs = userInput.split(" ").toSet
 
-          val queriedNodes = getQueriedNodesFromInput(interpreter, inputs)
+          val queriedNodes = getQueriedNodesFromInput(queries, inputs)
           var allTimes = Seq.empty[Double]
           var numDeps = 0
           var numLowLevelDeps = 0
 
           for (_ <- 0 to N) {
-            val (allDependencies, time) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeNonInternalDependencies(queriedNodes))
+            val (allDependencies, time) = measureTime[Set[DependencyAnalysisNode]](queries.computeNonInternalDependencies(queriedNodes))
             allTimes = allTimes :+ time
             numLowLevelDeps = allDependencies.size
             numDeps = UserLevelDependencyAnalysisNode.from(allDependencies).size
@@ -117,8 +117,8 @@ class BenchmarkDependencyAnalysisCliExtension(interpreter: DependencyGraphInterp
 
       def evalSingleAssertion(assertionLabel: String, groundTruthLabels: Set[String], callGraphLabels: Set[String], bw: BufferedWriter, reported_bw: BufferedWriter): Unit = {
         val startAnalysis = System.nanoTime()
-        val queriedAssertions = interpreter.getNodesByLabel(assertionLabel)
-        val allDependencies = interpreter.computeNonInternalDependencies(queriedAssertions)
+        val queriedAssertions = queries.getNodesByLabel(assertionLabel)
+        val allDependencies = queries.computeNonInternalDependencies(queriedAssertions)
         val sourceDependencies = UserLevelDependencyAnalysisNode.from(allDependencies).toSourceSet().diff(UserLevelDependencyAnalysisNode.from(queriedAssertions).toSourceSet())
 
         val endAnalysis = System.nanoTime()
@@ -248,9 +248,9 @@ class BenchmarkDependencyAnalysisCliExtension(interpreter: DependencyGraphInterp
     override val description: String = s"'$cmdName' to print the size of the graph"
 
     private def handleGraphSizeQuery(): DependencyAnalysisCliResult = {
-      val allAssumptions = interpreter.getNonInternalAssumptionNodes
+      val allAssumptions = queries.getNonInternalAssumptionNodes
       val assumptions = UserLevelDependencyAnalysisNode.from(allAssumptions)
-      val allAssertions = interpreter.getNonInternalAssertionNodes
+      val allAssertions = queries.getNonInternalAssertionNodes
       val assertions = UserLevelDependencyAnalysisNode.from(allAssertions)
       val nodes = UserLevelDependencyAnalysisNode.from(allAssertions.toSet[DependencyAnalysisNode].union(allAssumptions))
       DependencyAnalysisCliResult(
@@ -258,9 +258,9 @@ class BenchmarkDependencyAnalysisCliExtension(interpreter: DependencyGraphInterp
         s"#Assertions = ${assertions.size}",
         s"#Nodes = ${nodes.size}",
         s"#low-level Assumptions (non-internal) = ${allAssumptions.size}",
-        s"#low-level Assumptions (all) = ${interpreter.getAssumptionNodes.size}",
+        s"#low-level Assumptions (all) = ${queries.getAssumptionNodes.size}",
         s"#low-level Assertions (non-internal) = ${allAssertions.size}",
-        s"#low-level Assertions (all) = ${interpreter.getAssertionNodes.size}"
+        s"#low-level Assertions (all) = ${queries.getAssertionNodes.size}"
       )
     }
   }

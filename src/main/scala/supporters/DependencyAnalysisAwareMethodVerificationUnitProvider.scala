@@ -6,7 +6,7 @@
 
 package viper.silicon.supporters
 
-import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
+import viper.silicon.dependencyAnalysis.graphInterpretation.IntraproceduralGraphResult
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.state.State
 import viper.silicon.state.terms.True
@@ -33,7 +33,7 @@ trait DependencyAnalysisAwareMethodVerificationUnitProvider extends DefaultMetho
 
       result foreach (r => {
         val allErrors = (r :: r.previous.toList).filter(_.isInstanceOf[Failure]).map(_.asInstanceOf[Failure])
-        r.dependencyGraphInterpreter = decider.getDependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(method.name, _, allErrors, Some(method)))
+        r.intraproceduralGraphResult = decider.getDependencyAnalyzer.buildFinalGraph().map(new IntraproceduralGraphResult(_, allErrors, method))
       })
 
       result

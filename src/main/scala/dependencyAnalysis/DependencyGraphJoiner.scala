@@ -7,7 +7,7 @@
 package viper.silicon.dependencyAnalysis
 
 import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
+import viper.silicon.dependencyAnalysis.graphInterpretation.{FinalGraphQueries, IntraproceduralGraphResult}
 import viper.silicon.verifier.Verifier
 import viper.silver.dependencyAnalysis.EdgeType.EdgeType
 import viper.silver.dependencyAnalysis.JoinType.JoinType
@@ -17,25 +17,25 @@ import scala.collection.mutable
 
 /**
  * * @param name Optional name for the joined graph.
- * * @param dependencyGraphInterpreters The graphs to be joined.
+ * * @param memberResults The analysis results of the members to be joined.
  */
-class DependencyGraphJoiner(name: String, dependencyGraphInterpreters: Set[DependencyGraphInterpreter[IntraProcedural]]) {
+class DependencyGraphJoiner(name: String, memberResults: Set[IntraproceduralGraphResult]) {
 
   /**
-   * @return A dependency graph interpreter operating on a new dependency graph that represents all input graphs and
+   * @return Queries operating on a new dependency graph that represents all input graphs and
    *         all dependencies between them.
    * The new graph is built by adding all existing nodes and edges of all input graphs and joining them
    * via the join information stored in each node.
    */
-  def joinGraphsAndGetInterpreter(): DependencyGraphInterpreter[Final] = {
+  def joinGraphs(): FinalGraphQueries = {
     val newGraph = new DependencyGraph[Final]
 
-    newGraph.addAssumptionNodes(dependencyGraphInterpreters.flatMap (_.getAssumptionNodes))
-    newGraph.addAssertionNodes(dependencyGraphInterpreters.flatMap (_.getAssertionNodes))
-    dependencyGraphInterpreters foreach (interpreter => interpreter.getGraph.getAllEdges foreach {case (t, deps) => newGraph.addEdges(deps, t)})
+    newGraph.addAssumptionNodes(memberResults.flatMap (_.graph.getAssumptionNodes))
+    newGraph.addAssertionNodes(memberResults.flatMap (_.graph.getAssertionNodes))
+    memberResults foreach (result => result.graph.getAllEdges foreach {case (t, deps) => newGraph.addEdges(deps, t)})
 
-    val joinSourceNodes = dependencyGraphInterpreters flatMap(i => i.joinSourceNodes)
-    val joinSinkNodes   = dependencyGraphInterpreters flatMap(i => i.joinSinkNodes)
+    val joinSourceNodes = memberResults.flatMap(_.joinSourceNodes)
+    val joinSinkNodes   = memberResults.flatMap(_.joinSinkNodes)
 
     def getJoinNodesByJoinInfo(candidateNodes: Set[DependencyAnalysisNode], joinType: JoinType): Map[(DependencyAnalysisSourceInfo, EdgeType), Set[DependencyAnalysisNode]] = {
       val acc: mutable.Map[(DependencyAnalysisSourceInfo, EdgeType), Set[DependencyAnalysisNode]] = mutable.Map.empty
@@ -62,8 +62,7 @@ class DependencyGraphJoiner(name: String, dependencyGraphInterpreters: Set[Depen
       addEdgesConnectingMethods(newGraph, joinKey._2, matchingSourceNodes, sinkNodes, sourceInfoToNodeIds, intraMethodEdges)
     }
 
-    val newInterpreter = new DependencyGraphInterpreter[Final](name, newGraph, dependencyGraphInterpreters.toList.flatMap(_.getErrors))
-    newInterpreter
+    new FinalGraphQueries(name, newGraph, memberResults.toList.flatMap(_.errors))
   }
 
   private def addEdgesConnectingMethods(newGraph: DependencyGraph[Final], edgeType: EdgeType, sourceNodes: Set[DependencyAnalysisNode], sinkNodes: Set[DependencyAnalysisNode], sourceInfoToNodeIds: Map[DependencyAnalysisSourceInfo, Set[Int]], intraMethodEdges: Map[Int, Set[Int]]): Unit = {

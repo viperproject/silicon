@@ -22,7 +22,7 @@ Updated on 2026-11-09, after the fixes on top of `e0fbd85b`. Line links in the f
 | L2, L3 | Done. See the verification note below. |
 | L5 | Partly done, see the L5 row. |
 | L10, C8 | Done. |
-| D3, C5 | Done, see those sections. Compiled only, not run. |
+| D3, C3, C5 | Done, see those sections. Compiled only, not run. |
 | L13 | Done in Silicon and in `silicon/silver`, compiled only. The Silver commit is local to `silicon/silver`, so `carbon/silver` and the submodule pointers still have the old imports. |
 | Everything else | Open. |
 
@@ -139,7 +139,7 @@ The code's own documentation says that a missing source info or dependency type 
 ### D7. Tools and experiment code live in the verifier's main sources
 
 - **In the production JAR:** `BenchmarkDependencyAnalysisCliExtension`, `TestDependencyAnalysisCliExtension`, `DebugDependencyAnalysisCliExtension` and `DependencyGraphTestSupporter`. `neo4j_importer.py` also sits in `src/main/scala`.
-- **Verifier blocking on a terminal:** `afterVerification` runs the command tool, whose `interactive` command reads from the console ([DependencyAnalysisCliTool.scala:94](src/main/scala/dependencyAnalysis/cliTool/DependencyAnalysisCliTool.scala#L94)). If that option reaches a verifier hosted by a server, it would wait on stdin.
+- **Verifier blocking on a terminal:** `afterVerification` runs the command tool, whose `interactive` command reads from the console ([DependencyAnalysisCliTool.scala:93](src/main/scala/dependencyAnalysis/cliTool/DependencyAnalysisCliTool.scala#L93)). If that option reaches a verifier hosted by a server, it would wait on stdin.
 - **Results bypass the reporter:** the default console writes results to standard output rather than through `Reporter`, so server clients don't receive them. C8 makes the console replaceable, but no reporter-backed console exists yet.
 - **A command language inside a config string:** `--dependencyAnalysis` takes commands such as `export>dir` and `computeGraphOnly`, parsed at run time. Invalid commands can't be rejected by `Config`.
 - **An incomplete entry point:** `DependencyAnalysisTool.main` uses the placeholder name `"test"`, and its TODO says it "doesn't fully work yet".
@@ -248,26 +248,19 @@ Nodes are tied to the symbolic execution engine through `Term` and `Chunk`. The 
 
 **Risk:** low for the CSV move, medium for the node change.
 
-### C3. `DependencyGraphInterpreter` is a catch-all, with circular references
+### C3. `DependencyGraphInterpreter` is a catch-all, with circular references (done)
 
-[DependencyGraphInterpreter.scala](src/main/scala/dependencyAnalysis/graphInterpretation/DependencyGraphInterpreter.scala) answers queries, filters nodes, exports files, computes join candidates and creates its own helpers:
+**Implemented:**
+- The class is split by phase. [IntraproceduralGraphResult](src/main/scala/dependencyAnalysis/graphInterpretation/IntraproceduralGraphResult.scala) holds a member's graph, errors and join candidates, and [FinalGraphQueries](src/main/scala/dependencyAnalysis/graphInterpretation/FinalGraphQueries.scala) answers the user-level queries on the joined graph. Join candidates are no longer computed for the final graph, and final-graph operations can't be called on a member's graph.
+- Pruning and progress are standalone classes that take `FinalGraphQueries`, and callers create them, so the circular references are gone.
+- `VerificationProgress` now holds `binaryProofQuality` and `avgProofQuality`, with `binaryProgress` and `avgProgress`, replacing the `Peter` and `Lea` results. The CLI output and the header of the progress CSV use the new names.
 
-- **Circular references:** it creates `DependencyAnalysisPruningSupporter(this)` and `DependencyAnalysisProgressSupporter(this)` in its constructor, and both call back into it.
-- **Mixed phases:** its own TODO says join candidates are only needed for intraprocedural graphs, yet every instance computes them. The type parameter `T` doesn't stop anyone calling a final-graph operation on an intraprocedural interpreter.
-- **Test code in production:** `DependencyGraphTestSupporter` lives in the same package.
-- **Hard-to-read naming:** the progress results are called `Peter` and `Lea` in the CLI and its export. Descriptive names would explain the two measures.
-
-**Proposed change:**
-- Split it into `IntraproceduralGraphResult` (graph, errors, member, join candidates) and `FinalGraphQueries` (user-level queries).
-- Make pruning and progress standalone classes that take `FinalGraphQueries` as a parameter, and let callers create them.
-- Move the test supporter to the test sources.
-
-**Risk:** low to medium, and the compiler will find all callers.
+**Decision:** `DependencyGraphTestSupporter` stays in the production sources, because the `test` CLI commands use it.
 
 ### C4. Dependencies point the wrong way
 
 - **Value object with global dependencies:** `DependencyAnalysisInfos` logs through `SiliconRunner.logger` ([DependencyAnalysisInfos.scala:166](src/main/scala/dependencyAnalysis/DependencyAnalysisInfos.scala#L166)). A data class therefore depends on the command-line runner.
-- **Global config in algorithms:** `DependencyGraphJoiner` ([:71](src/main/scala/dependencyAnalysis/DependencyGraphJoiner.scala#L71)) and `buildFinalGraph` ([DependencyAnalyzer.scala:277](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L277)) read `Verifier.config` directly. They could be plain, independently testable functions.
+- **Global config in algorithms:** `DependencyGraphJoiner` ([:70](src/main/scala/dependencyAnalysis/DependencyGraphJoiner.scala#L70)) and `buildFinalGraph` ([DependencyAnalyzer.scala:277](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L277)) read `Verifier.config` directly. They could be plain, independently testable functions.
 - **Verifier calls a tool:** `afterVerification` calls `DependencyAnalysisTool` ([DependencyAnalysisAwareVerifier.scala](src/main/scala/verifier/DependencyAnalysisAwareVerifier.scala)), so the verifier depends on the CLI package. See D7.
 
 **Proposed change:**
@@ -352,7 +345,7 @@ Dependencies should point in one direction: `tools` → `query` → `graph`, and
 |---|---|---|
 | 1 | C4 options | Removes the remaining global configuration reads without changing behaviour, and the rest becomes easier to move |
 | 2 | C1 `SmtLabels` and graph builder, C2 CSV object | Independent extractions with little risk |
-| 3 | C3 interpreter split | Prepares the tool separation in D7 |
+| 3 | D7 tool separation | Builds on C3 and C8 |
 | 4 | C1 remaining split, C6 | Builds on the hooks from C5 |
 | 5 | C7 `NodeMetadata`, optional debug data from C2 | Touches the most classes, and is easier once the code has moved |
 

@@ -11,7 +11,7 @@ import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.interfaces.Failure
 import viper.silver.ast
 import viper.silver.ast.Program
-import viper.silver.dependencyAnalysis.{AssumptionType, JoinType}
+import viper.silver.dependencyAnalysis.AssumptionType
 
 import java.io.PrintWriter
 import java.nio.file.Paths
@@ -21,16 +21,14 @@ object DATraversalMode extends Enumeration {
   val Upwards, Downwards = Value
 }
 
-class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, dependencyGraph: ReadOnlyDependencyGraph[T], errors: List[Failure], member: Option[ast.Member]=None) {
-  val pruningSupporter: DependencyAnalysisPruningSupporter[T] = new DependencyAnalysisPruningSupporter[T](this)
-  val progressSupporter: DependencyAnalysisProgressSupporter[T] = new DependencyAnalysisProgressSupporter[T](this)
+/**
+ * User-level queries on the final graph, which covers all members of a program.
+ */
+class FinalGraphQueries(name: String, dependencyGraph: ReadOnlyDependencyGraph[Final], errors: List[Failure]) {
 
-
-  def getGraph: ReadOnlyDependencyGraph[T] = dependencyGraph
+  def getGraph: ReadOnlyDependencyGraph[Final] = dependencyGraph
 
   def getName: String = name
-
-  def getMember: Option[ast.Member] = member
 
   def getNodes: Set[DependencyAnalysisNode] = dependencyGraph.getNodes
 
@@ -39,12 +37,6 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
   def getAssertionNodes: Set[GeneralAssertionNode] = dependencyGraph.getAssertionNodes
 
   def getErrors: List[Failure] = errors
-
-  // TODO ake: join nodes are not needed for the final graph. Maybe we can outsource this to a dedicated intraprocedural graph interpreter class.
-  val joinSinkNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfos.exists(_.joinType.equals(JoinType.Sink)))
-  val joinSourceNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfos.exists(_.joinType.equals(JoinType.Source)))
-
-  private def getJoinCandidateNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes.filter(node => node.joinInfos.nonEmpty)
 
   def toUserLevelNodes(nodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = UserLevelDependencyAnalysisNode.from(nodes)
 

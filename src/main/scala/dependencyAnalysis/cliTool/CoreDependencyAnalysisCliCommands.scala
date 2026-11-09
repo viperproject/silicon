@@ -8,7 +8,7 @@ package viper.silicon.dependencyAnalysis.cliTool
 
 import viper.silicon.dependencyAnalysis.cliTool.DependencyAnalysisCliSupport.{getSourceInfoString, measureTime}
 import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisProgressSupporter, DependencyGraphInterpreter}
+import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisProgressSupporter, DependencyAnalysisPruningSupporter, FinalGraphQueries}
 import viper.silicon.interfaces.Failure
 import viper.silver.ast
 
@@ -18,8 +18,11 @@ import scala.collection.mutable
 /**
  * The commands for querying, exporting, and pruning the final dependency graph.
  */
-class CoreDependencyAnalysisCliCommands(interpreter: DependencyGraphInterpreter[Final],
+class CoreDependencyAnalysisCliCommands(queries: FinalGraphQueries,
                                         program: ast.Program, verificationErrors: List[Failure]) {
+
+  private lazy val progressSupporter = new DependencyAnalysisProgressSupporter(queries)
+  private lazy val pruningSupporter = new DependencyAnalysisPruningSupporter(queries)
 
   private class CoreCommand(override val cmdName: String, override val description: String,
                             override val aliases: List[String] = List.empty, override val listedInHelp: Boolean = true)
@@ -40,7 +43,7 @@ class CoreDependencyAnalysisCliCommands(interpreter: DependencyGraphInterpreter[
       input => handlePruningRequest(input.args, input.exportTarget.get)),
     new CoreCommand("export", "'export > [folder]' to export the dependency graph to the given folder")(
       input => {
-        interpreter.exportGraph(program, input.exportTarget.get)
+        queries.exportGraph(program, input.exportTarget.get)
         DependencyAnalysisCliResult.empty
       }),
     new CoreCommand("failures", "'failures' to print the verification failures")(
@@ -50,14 +53,14 @@ class CoreDependencyAnalysisCliCommands(interpreter: DependencyGraphInterpreter[
   )
 
   private def getQueriedNodesFromInput(inputs: Set[String]): Set[DependencyAnalysisNode] =
-    DependencyAnalysisCliSupport.getQueriedNodesFromInput(interpreter, inputs)
+    DependencyAnalysisCliSupport.getQueriedNodesFromInput(queries, inputs)
 
   private def handleFailuresRequest(): DependencyAnalysisCliResult = {
     DependencyAnalysisCliResult(
       "Reported verification failures:",
       s"\t${verificationErrors.mkString("\n\t")}",
       "Dependency nodes of failures:",
-      s"\t${interpreter.getAssertionNodesWithFailures.map(_.sourceInfo).mkString("\n\t")}"
+      s"\t${queries.getAssertionNodesWithFailures.map(_.sourceInfo).mkString("\n\t")}"
     )
   }
 
@@ -65,16 +68,16 @@ class CoreDependencyAnalysisCliCommands(interpreter: DependencyGraphInterpreter[
     val enableDebugging = inputs.nonEmpty && inputs.head.equals("debug")
 
     val details = mutable.ListBuffer.empty[String]
-    val ((optProgressPeter, optProgressLea), optTime) = measureTime(interpreter.progressSupporter.computeVerificationProgress(enableDebugging, details += _))
+    val (progress, optTime) = measureTime(progressSupporter.computeVerificationProgress(enableDebugging, details += _))
 
     if (exportFileNameOpt.isDefined) {
       val writer = new PrintWriter(exportFileNameOpt.get)
-      writer.println("Spec Quality, Proof Quality (Peter), Progress (Peter), Proof Quality (Lea), Progress (Lea), Runtime [ms]")
-      writer.println(s"${optProgressLea.specQuality},${optProgressPeter.proofQuality},${optProgressPeter.progress},${optProgressLea.proofQuality},${optProgressLea.progress},$optTime")
+      writer.println("Spec Quality, Binary Proof Quality, Binary Progress, Avg Proof Quality, Avg Progress, Runtime [ms]")
+      writer.println(s"${progress.specQuality},${progress.binaryProofQuality},${progress.binaryProgress},${progress.avgProofQuality},${progress.avgProgress},$optTime")
       writer.close()
     }
 
-    val summary = s"Peter: ${optProgressPeter.progress}; Lea: ${optProgressLea.progress}\nFinished in ${optTime}ms"
+    val summary = s"Binary progress: ${progress.binaryProgress}; Avg progress: ${progress.avgProgress}\nFinished in ${optTime}ms"
     DependencyAnalysisCliResult((details.toSeq :+ summary): _*)
   }
 
@@ -85,12 +88,12 @@ class CoreDependencyAnalysisCliCommands(interpreter: DependencyGraphInterpreter[
 
   private def handleDependencyQuery(inputs: Set[String]): DependencyAnalysisCliResult = {
     val queriedNodes = getQueriedNodesFromInput(inputs)
-    val queriedAssertions = queriedNodes.filter(interpreter.isNonInternalAssertionNode)
+    val queriedAssertions = queriedNodes.filter(queries.isNonInternalAssertionNode)
 
-    val (directDependencies, timeDirect) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeDirectDependencies(queriedAssertions))
-    val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeNonInternalDependencies(queriedAssertions))
-    val (allDependenciesWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeNonInternalDependencies(queriedAssertions, includeInfeasibilityNodes=false))
-    val (explicitDependencies, timeExplicit) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeExplicitDependencies(queriedAssertions))
+    val (directDependencies, timeDirect) = measureTime[Set[DependencyAnalysisNode]](queries.computeDirectDependencies(queriedAssertions))
+    val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](queries.computeNonInternalDependencies(queriedAssertions))
+    val (allDependenciesWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[DependencyAnalysisNode]](queries.computeNonInternalDependencies(queriedAssertions, includeInfeasibilityNodes=false))
+    val (explicitDependencies, timeExplicit) = measureTime[Set[DependencyAnalysisNode]](queries.computeExplicitDependencies(queriedAssertions))
 
     val lines = Seq(
       s"Queried:\n\t${getSourceInfoString(queriedNodes)}",
@@ -104,9 +107,9 @@ class CoreDependencyAnalysisCliCommands(interpreter: DependencyGraphInterpreter[
 
   private def handleAllDependenciesQuery(inputs: Set[String]): DependencyAnalysisCliResult = {
     val queriedNodes = getQueriedNodesFromInput(inputs)
-    val queriedAssertions = queriedNodes.filter(interpreter.isNonInternalAssertionNode)
+    val queriedAssertions = queriedNodes.filter(queries.isNonInternalAssertionNode)
 
-    val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeNonInternalDependencies(queriedAssertions))
+    val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](queries.computeNonInternalDependencies(queriedAssertions))
 
     val lines = Seq(
       s"Queried:\n\t${getSourceInfoString(queriedNodes)}",
@@ -116,12 +119,12 @@ class CoreDependencyAnalysisCliCommands(interpreter: DependencyGraphInterpreter[
   }
 
   private def handleDependentsQuery(inputs: Set[String]): DependencyAnalysisCliResult = {
-    val queriedNodes = getQueriedNodesFromInput(inputs).filter(interpreter.isNonInternalAssumptionNode)
+    val queriedNodes = getQueriedNodesFromInput(inputs).filter(queries.isNonInternalAssumptionNode)
 
-    val (directDependents, timeDirect) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeDirectDependents(queriedNodes))
-    val (allDependents, timeAll) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeNonInternalDependents(queriedNodes))
-    val (dependentsWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeNonInternalDependents(queriedNodes, includeInfeasibilityNodes=false))
-    val (explicitDependents, timeExplicit) = measureTime[Set[DependencyAnalysisNode]](interpreter.computeExplicitDependents(queriedNodes))
+    val (directDependents, timeDirect) = measureTime[Set[DependencyAnalysisNode]](queries.computeDirectDependents(queriedNodes))
+    val (allDependents, timeAll) = measureTime[Set[DependencyAnalysisNode]](queries.computeNonInternalDependents(queriedNodes))
+    val (dependentsWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[DependencyAnalysisNode]](queries.computeNonInternalDependents(queriedNodes, includeInfeasibilityNodes=false))
+    val (explicitDependents, timeExplicit) = measureTime[Set[DependencyAnalysisNode]](queries.computeExplicitDependents(queriedNodes))
 
     DependencyAnalysisCliResult(
       s"Queried:\n\t${getSourceInfoString(queriedNodes)}",
@@ -135,15 +138,15 @@ class CoreDependencyAnalysisCliCommands(interpreter: DependencyGraphInterpreter[
   private def handlePruningRequest(inputs: Seq[String], exportFileName: String): DependencyAnalysisCliResult = {
     val queriedNodes = getQueriedNodesFromInput(inputs.toSet)
     val messages = mutable.ListBuffer.empty[String]
-    interpreter.pruningSupporter.pruneProgramAndExport(queriedNodes, program, exportFileName, messages += _)
+    pruningSupporter.pruneProgramAndExport(queriedNodes, program, exportFileName, messages += _)
     DependencyAnalysisCliResult(messages.toSeq: _*)
   }
 
   private def handleVerificationGuidanceQuery(inputs: Seq[String]): DependencyAnalysisCliResult = {
     val enableDebugging = inputs.nonEmpty && inputs.head.equals("debug")
 
-    val assumptionRanking = interpreter.progressSupporter.computeAssumptionRanking().filter(_._2 > 0.0)
-    val uncoveredStatements = new DependencyAnalysisProgressSupporter(interpreter).computeUncoveredStatementsPerMember()
+    val assumptionRanking = progressSupporter.computeAssumptionRanking().filter(_._2 > 0.0)
+    val uncoveredStatements = progressSupporter.computeUncoveredStatementsPerMember()
     val memberCoverageRanking = uncoveredStatements.view.mapValues(_.size).toList.filter(_._2 > 0).sortBy(_._2).reverse
 
     val lines = Seq(

@@ -7,8 +7,7 @@
 package viper.silicon.dependencyAnalysis.cliTool
 
 import viper.silicon.dependencyAnalysis.cliTool.DependencyGraphImporter.{importGraphFromCsv, importProgram}
-import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
+import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphQueries
 import viper.silicon.dependencyAnalysis.{DependencyAnalysisResult, DependencyGraphJoiner}
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.verifier.Verifier
@@ -34,8 +33,8 @@ object DependencyAnalysisTool {
     // TODO ake: doesn't fully work yet, because the exported program has a different line numbering than the program used for the analysis
     val program = importProgram(graphFolder)
 
-    val interpreter = new DependencyGraphInterpreter[Final]("test", graph, List.empty, None)
-    val userTool = DependencyAnalysisCliTool(interpreter, program, List.empty)
+    val queries = new FinalGraphQueries("test", graph, List.empty)
+    val userTool = DependencyAnalysisCliTool(queries, program, List.empty)
 
     val cmdsIndex = args.indexOf("--cmds")
     val cmds = if (0 <= cmdsIndex && cmdsIndex < args.length - 1) args(cmdsIndex + 1) else ""
@@ -55,18 +54,18 @@ object DependencyAnalysisTool {
     Verifier.config.dependencyAnalysis.toOption match {
       case None => None
       case Some(cmds) =>
-        val dependencyGraphInterpreters = verificationResults.filter(_.dependencyGraphInterpreter.isDefined).map(_.dependencyGraphInterpreter.get)
+        val memberResults = verificationResults.flatMap(_.intraproceduralGraphResult)
         val verificationErrors: List[Failure] = (verificationResults filter (_.isInstanceOf[Failure])) map (_.asInstanceOf[Failure])
         // TODO ake: make sure we can access the name of frontend programs (instead of naming it "joined")
         val programName = inputFile.map(_.replaceAll("\\\\", "_").replaceAll("/", "_").replaceAll(".vpr", "")).getOrElse("joined")
 
-        val fullGraphInterpreter = new DependencyGraphJoiner(programName, dependencyGraphInterpreters.toSet).joinGraphsAndGetInterpreter()
+        val fullGraphQueries = new DependencyGraphJoiner(programName, memberResults.toSet).joinGraphs()
 
 
-        val userTool = DependencyAnalysisCliTool(fullGraphInterpreter, program, verificationErrors)
+        val userTool = DependencyAnalysisCliTool(fullGraphQueries, program, verificationErrors)
         userTool.runCommands(cmds)
 
-        val result = DependencyAnalysisResult(program, fullGraphInterpreter)
+        val result = DependencyAnalysisResult(program, fullGraphQueries)
         Some(result)
     }
   }

@@ -9,7 +9,7 @@ package viper.silicon.tests
 import viper.silicon.SiliconFrontend
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisProgressSupporter, DependencyAnalysisPruningSupporter, DependencyGraphInterpreter}
+import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisProgressSupporter, DependencyAnalysisPruningSupporter, FinalGraphQueries}
 import viper.silver.ast.Program
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.verifier.VerificationResult
@@ -87,14 +87,14 @@ trait DependencyAnalysisTestFramework {
    *
    * Statements that are only required as a trigger need to be manually annotated with @trigger() by the user.
    */
-  class PruningTest(fileName: String, program: Program, fullGraphInterpreter: DependencyGraphInterpreter[Final]) {
-    lazy val pruningSupporter = new DependencyAnalysisPruningSupporter(fullGraphInterpreter)
+  class PruningTest(fileName: String, program: Program, fullGraphQueries: FinalGraphQueries) {
+    lazy val pruningSupporter = new DependencyAnalysisPruningSupporter(fullGraphQueries)
 
     def execute(): Unit = {
-      val triggerNodeLines = fullGraphInterpreter.getNodes.filter(node => node.getUserLevelRepresentation.contains("@trigger()")).flatMap(_.sourceInfo.getLineNumber)
+      val triggerNodeLines = fullGraphQueries.getNodes.filter(node => node.getUserLevelRepresentation.contains("@trigger()")).flatMap(_.sourceInfo.getLineNumber)
       var id: Int = 0
       // TODO ake: it would be better to work with position string instead of line numbers
-      val testCases = fullGraphInterpreter.getExplicitAssertionNodes flatMap (_.sourceInfo.getLineNumber)
+      val testCases = fullGraphQueries.getExplicitAssertionNodes flatMap (_.sourceInfo.getLineNumber)
       testCases foreach {line =>
         pruneAndVerify(Set(line) ++ triggerNodeLines, "src/test/resources/" + fileName + s"_test$id.out")
         id += 1
@@ -103,9 +103,9 @@ trait DependencyAnalysisTestFramework {
     }
 
     protected def pruneAndVerify(relevantLines: Set[Int], exportFileName: String): Unit = {
-      val relevantNodes = relevantLines.flatMap(line => fullGraphInterpreter.getNodesByLine(line))
+      val relevantNodes = relevantLines.flatMap(line => fullGraphQueries.getNodesByLine(line))
 
-      val dependencies = fullGraphInterpreter.computeNonInternalDependencies(relevantNodes)
+      val dependencies = fullGraphQueries.computeNonInternalDependencies(relevantNodes)
 
       val crucialNodes = relevantNodes ++ dependencies
       val (newProgram, pruningFactor) = pruningSupporter.getPrunedProgram(crucialNodes, program)
@@ -138,26 +138,26 @@ trait DependencyAnalysisTestFramework {
    *
    * [value] can be either a decimal number (e.g., 0.75) or a fraction (e.g., 5/6)
    */
-  class VerificationProgressTest(fileName: String, fullGraphInterpreter: DependencyGraphInterpreter[Final]) {
+  class VerificationProgressTest(fileName: String, fullGraphQueries: FinalGraphQueries) {
     private val epsilon = 1e-6
 
     def execute(): Unit = {
-      val (expectedSpecQuality, expectedProofQualityLea, expectedProgress) = readExpectedValues()
-      val (_, actualProgressLea) = new DependencyAnalysisProgressSupporter(fullGraphInterpreter).computeVerificationProgressOptimized()
+      val (expectedSpecQuality, expectedAvgProofQuality, expectedProgress) = readExpectedValues()
+      val actualProgress = new DependencyAnalysisProgressSupporter(fullGraphQueries).computeVerificationProgressOptimized()
 
       // If a metric type does not exist, it is ignored 
       expectedSpecQuality.foreach { expected =>
-        val actual = actualProgressLea.specQuality
+        val actual = actualProgress.specQuality
         assert(Math.abs(actual - expected) <= epsilon,
           s"specQuality mismatch: expected $expected, got $actual")
       }
-      expectedProofQualityLea.foreach { expected =>
-        val actual = actualProgressLea.proofQuality
+      expectedAvgProofQuality.foreach { expected =>
+        val actual = actualProgress.avgProofQuality
         assert(Math.abs(actual - expected) <= epsilon,
-          s"proofQualityLea mismatch: expected $expected, got $actual")
+          s"avgProofQuality mismatch: expected $expected, got $actual")
       }
       expectedProgress.foreach { expected =>
-        val actual = actualProgressLea.progress
+        val actual = actualProgress.avgProgress
         assert(Math.abs(actual - expected) <= epsilon,
           s"progress mismatch: expected $expected, got ${actual}")
       }
@@ -183,14 +183,14 @@ trait DependencyAnalysisTestFramework {
         .orElse(parseLine(commentText, "spec:"))
         .orElse(parseLine(commentText, "specification:"))
 
-      val proofQualityLea = parseLine(commentText, "proof quality")
+      val avgProofQuality = parseLine(commentText, "proof quality")
         .orElse(parseLine(commentText, "proof:"))
 
       val progress = parseLine(commentText, "progress:")
         .orElse(parseLine(commentText, "verification:"))
         .orElse(parseLine(commentText, "verification progress"))
 
-      (specQuality, proofQualityLea, progress)
+      (specQuality, avgProofQuality, progress)
     }
 
     // Extract value from text with either "metric: value" or "metric = value"
@@ -228,15 +228,16 @@ trait DependencyAnalysisTestFramework {
    * rank higher (i.e., appear earlier) in the actual uncovered-statements-per-method ranking.
    */
   class GuidanceTest(program: Program,
-                     fullGraphInterpreter: DependencyGraphInterpreter[Final]) {
+                     fullGraphQueries: FinalGraphQueries) {
 
     val guidedAssumptionKeyword = "guidedAssumption"
     val uncoveredKeyword = "uncovered"
 
     def execute(): Unit = {
-      val actualAssumptionRanking = fullGraphInterpreter.progressSupporter.computeAssumptionRanking().filter(_._2 > 0.0)
+      val progressSupporter = new DependencyAnalysisProgressSupporter(fullGraphQueries)
+      val actualAssumptionRanking = progressSupporter.computeAssumptionRanking().filter(_._2 > 0.0)
       // Compute uncovered per method once, suppressing stdout side effect
-      val actualUncoveredByMethod: Map[String, (Int, String)] = fullGraphInterpreter.progressSupporter
+      val actualUncoveredByMethod: Map[String, (Int, String)] = progressSupporter
         .computeUncoveredStatementsPerMember().map{ case (member, sources) =>
           (member, (sources.size, s"$member\n\t${sources.mkString("\n\t")}"))}
 

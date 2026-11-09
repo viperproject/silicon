@@ -15,7 +15,7 @@ import scala.util.matching.Regex
 /**
  * @param report receives the test outcomes while the tests run
  */
-class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final], report: String => Unit = println) {
+class DependencyGraphTestSupporter(queries: FinalGraphQueries, report: String => Unit = println) {
 
   private val assumptionTypeRegex = """assumptionType:([^\s,)\"]+)""".r
   private val assertionTypeRegex: Regex = """assertionType:([^\s,)\"]+)""".r
@@ -24,7 +24,7 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
   private val dependencyInfoRegex = """@dependencyInfo\(([^()]*)\)""".r
 
   def testNodeTypes(): Unit = {
-    testNodeTypes(interpreter.getNonInternalAssertionNodes ++ interpreter.getNonInternalAssumptionNodes)
+    testNodeTypes(queries.getNonInternalAssertionNodes ++ queries.getNonInternalAssumptionNodes)
   }
 
   def testNodeTypes(nodes: Set[DependencyAnalysisNode]): Unit = {
@@ -71,7 +71,7 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
       report(message)
 
   def testDependencies(): Unit = {
-    val testResults = UserLevelDependencyAnalysisNode.from(interpreter.getNonInternalAssertionNodes).toList map testDependencies
+    val testResults = UserLevelDependencyAnalysisNode.from(queries.getNonInternalAssertionNodes).toList map testDependencies
     val numExecutedTests = testResults.count(_.isDefined)
     val numPassedTests = testResults.count(_.getOrElse(false))
     report(s"Dependency tests: Passed $numPassedTests/$numExecutedTests tests.")
@@ -84,7 +84,7 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
       case None => None
       case Some(expectedLabels) =>
         val queriedAssertions = assertionNode.lowLevelAssertionNodes
-        val allDependencies = interpreter.computeNonInternalDependencies(queriedAssertions.toSet)
+        val allDependencies = queries.computeNonInternalDependencies(queriedAssertions.toSet)
         val sourceDependencies = UserLevelDependencyAnalysisNode.from(allDependencies).toSourceSet().diff(UserLevelDependencyAnalysisNode.from(queriedAssertions).toSourceSet())
 
         val labelsInReportedDeps: Set[Set[String]] = sourceDependencies.map(node => nodeLabelRegex.findAllMatchIn(node.toString).map(_.group(1)).toSet)

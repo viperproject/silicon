@@ -7,7 +7,7 @@
 package viper.silicon.supporters.functions
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
+import viper.silicon.dependencyAnalysis.graphInterpretation.IntraproceduralGraphResult
 import viper.silicon.dependencyAnalysis.{DependencyAnalysisAxiomInfo, DependencyAnalyzer}
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.interfaces.{Failure, VerificationResult}
@@ -37,8 +37,7 @@ trait DependencyAnalysisAwareFunctionVerificationUnitProvider extends DefaultFun
       }
 
       val allErrors = (result :: result.previous.toList).filter(_.isInstanceOf[Failure]).map(_.asInstanceOf[Failure])
-      result.dependencyGraphInterpreter = decider.getDependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(function.name, _,
-        allErrors, Some(function)))
+      result.intraproceduralGraphResult = decider.getDependencyAnalyzer.buildFinalGraph().map(new IntraproceduralGraphResult(_, allErrors, function))
 
       result
     }

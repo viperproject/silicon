@@ -8,7 +8,7 @@ package viper.silicon.dependencyAnalysis.cliTool
 
 import viper.silicon.dependencyAnalysis.UserLevelDependencyAnalysisNode
 import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
+import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphQueries
 
 /**
  * A parsed command line.
@@ -71,13 +71,13 @@ object DependencyAnalysisCliSupport {
     UserLevelDependencyAnalysisNode.mkUserLevelString(nodes, "\n\t")
   }
 
-  def getQueriedNodesFromInput(interpreter: DependencyGraphInterpreter[Final], inputs: Set[String]): Set[DependencyAnalysisNode] = {
+  def getQueriedNodesFromInput(queries: FinalGraphQueries, inputs: Set[String]): Set[DependencyAnalysisNode] = {
     inputs flatMap (input => {
       val parts = input.split("@")
       if (parts.size == 2)
-        parts(1).toIntOption.map(interpreter.getNodesByPosition(parts(0), _)).getOrElse(Set.empty)
+        parts(1).toIntOption.map(queries.getNodesByPosition(parts(0), _)).getOrElse(Set.empty)
       else if (parts.size == 1) {
-        parts(0).toIntOption map interpreter.getNodesByLine getOrElse Set.empty
+        parts(0).toIntOption map queries.getNodesByLine getOrElse Set.empty
       } else {
         Set.empty
       }

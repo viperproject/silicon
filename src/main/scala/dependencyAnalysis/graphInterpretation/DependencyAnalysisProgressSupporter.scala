@@ -15,12 +15,12 @@ import viper.silver.dependencyAnalysis.{AssumptionType, DependencyAnalysisSource
 
 import scala.collection.mutable
 
-class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter: DependencyGraphInterpreter[T]) {
+class DependencyAnalysisProgressSupporter(queries: FinalGraphQueries) {
 
-  private val dependencyGraph = interpreter.getGraph
-  private lazy val sourceToAssertionNodesMap: Map[DependencyAnalysisSourceInfo, Set[GeneralAssertionNode]] = interpreter.getNonInternalAssertionNodes.groupBy(_.sourceInfo)
+  private val dependencyGraph = queries.getGraph
+  private lazy val sourceToAssertionNodesMap: Map[DependencyAnalysisSourceInfo, Set[GeneralAssertionNode]] = queries.getNonInternalAssertionNodes.groupBy(_.sourceInfo)
 
-  def computeVerificationProgress(enableDebugging: Boolean = false, report: String => Unit = println): (VerificationProgress, VerificationProgress) = {
+  def computeVerificationProgress(enableDebugging: Boolean = false, report: String => Unit = println): VerificationProgress = {
     computeVerificationProgressOptimized(enableDebugging, report)
   }
 
@@ -30,7 +30,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
    * We do not cache intraprocedural dependencies to allow for precise computation of dependencies using the low-level graph.
    */
   val deps: DAMemo[(DependencyAnalysisSourceInfo, DATraversalMode), Set[CompactUserLevelDependencyAnalysisNode]] = DAMemo { case (assertionNode, mode) =>
-    // TODO ake: maybe this should be moved to the DependencyGraphInterpreter such that other queries can be optimized as well.
+    // TODO ake: maybe this should be moved to the FinalGraphQueries such that other queries can be optimized as well.
     def computeDependencies(currentNode: DependencyAnalysisSourceInfo, visited: Set[(DependencyAnalysisSourceInfo, DATraversalMode)], traversalMode: DATraversalMode): Set[CompactUserLevelDependencyAnalysisNode] = {
       if (visited.contains((currentNode, traversalMode))) {
         Set.empty // break cycles to avoid infinite loops
@@ -42,7 +42,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 
         // compute intraprocedural dependencies without caching any intermediate results
         val intraMethodDependencies = dependencyGraph.computeDependencies(allNonInternalAssertions.toSet, includeInfeasibilityNodes = true, includeUpwardEdges = false, includeDownwardEdges = false)
-        val nonInternalIntraMethodDependencies = intraMethodDependencies.filter(interpreter.isNonInternalAssumptionNode)
+        val nonInternalIntraMethodDependencies = intraMethodDependencies.filter(queries.isNonInternalAssumptionNode)
 
         // recursively compute all interprocedural dependencies and cache results at procedure-boundaries
         val relevantInterProceduralEdges = traversalMode match {
@@ -50,7 +50,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
           case DATraversalMode.Downwards => dependencyGraph.getEdgesConnectingMethodsDownwards
         }
         val interProceduralNodeIds = intraMethodDependencies.flatMap(n => relevantInterProceduralEdges.getOrElse(n.id, Set.empty))
-        val interProceduralNodes = interProceduralNodeIds.flatMap(interpreter.getGraph.getNodeById)
+        val interProceduralNodes = interProceduralNodeIds.flatMap(queries.getGraph.getNodeById)
         val interProceduralDependencies = interProceduralNodes.map(_.sourceInfo).flatMap(node => computeDependencies(node, updatedVisited, traversalMode))
 
         // put together all identified dependencies and cache the result
@@ -122,10 +122,11 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
    * @return the verification progress of the entire program.
    *         Verification progress is defined as the product of specification quality and proof quality.
    *         Specification quality is the fraction of source code statements that is a dependency of any proof obligation.
-   *         Proof quality is defined as the average assertion quality over all proof obligations.
+   *         Proof quality is computed in two ways: the binary proof quality is the fraction of proof obligations with an
+   *         assertion quality of 1, and the average proof quality is the average assertion quality over all proof obligations.
    *         Assertion quality of an assertion a is the fraction of non-assumption dependencies over all dependencies of the assertion a.
    */
-  def computeVerificationProgressOptimized(enableDebugOutput: Boolean = false, report: String => Unit = println): (VerificationProgress, VerificationProgress) = {
+  def computeVerificationProgressOptimized(enableDebugOutput: Boolean = false, report: String => Unit = println): VerificationProgress = {
 
     // compute all dependencies of each proof obligation
     val allAssertions = getAssertionsRelevantForProgress.keySet.toList
@@ -140,13 +141,13 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
     val assertionQualities = allDependenciesPerAssertionNode map (ass => (computeAssertionQuality(ass._1, ass._2), ass._2)) collect { case (Some(q), s) => (q, s) }
     val numNonTrivialAssertions = assertionQualities.size
 
-    // compute Peter's proof quality
+    // all-or-nothing: an assertion only counts if it has no assumption dependencies
     val fullyVerifiedAssertions = assertionQualities.filter(_._1 == 1.0)
-    val proofQualityPeter = if (numNonTrivialAssertions > 0) fullyVerifiedAssertions.size.toDouble / numNonTrivialAssertions.toDouble else 1.0
+    val binaryProofQuality = if (numNonTrivialAssertions > 0) fullyVerifiedAssertions.size.toDouble / numNonTrivialAssertions.toDouble else 1.0
 
-    // compute Lea's proof quality
+    // partial credit: every assertion contributes its assertion quality
     val assertionQualitiesSum = assertionQualities.map(_._1).sum
-    val proofQualityLea = if (numNonTrivialAssertions > 0) assertionQualitiesSum / numNonTrivialAssertions.toDouble else 1.0
+    val avgProofQuality = if (numNonTrivialAssertions > 0) assertionQualitiesSum / numNonTrivialAssertions.toDouble else 1.0
 
     if (enableDebugOutput)
       report(
@@ -156,13 +157,11 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 
     report(
       s"specQuality = $specQuality\n" +
-        s"proof quality (Peter): ${fullyVerifiedAssertions.size} / $numNonTrivialAssertions = $proofQualityPeter\n" +
-        s"proof quality (Lea): $assertionQualitiesSum / $numNonTrivialAssertions = $proofQualityLea\n"
+        s"binary proof quality: ${fullyVerifiedAssertions.size} / $numNonTrivialAssertions = $binaryProofQuality\n" +
+        s"average proof quality: $assertionQualitiesSum / $numNonTrivialAssertions = $avgProofQuality\n"
     )
 
-    val progressPeter = VerificationProgress(specQuality, proofQualityPeter)
-    val progressLea = VerificationProgress(specQuality, proofQualityLea)
-    (progressPeter, progressLea)
+    VerificationProgress(specQuality, binaryProofQuality, avgProofQuality)
   }
 
 
@@ -172,8 +171,8 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
    */
   private def computeSpecQuality(coveredNodes: Set[CompactUserLevelDependencyAnalysisNode], enableDebugOutput: Boolean, report: String => Unit): Double = {
 
-    val explicitAssertions = toCompactUserLevelNodes(interpreter.getExplicitAssertionNodes.toSet)
-    val allSourceCodeNodes = toCompactUserLevelNodes(interpreter.getNonInternalAssumptionNodes).filter(n => n.assumptionTypes.exists(_.isInstanceOf[AssumptionType.SourceCodeType])).map(_.source).diff(explicitAssertions.map(_.source))
+    val explicitAssertions = toCompactUserLevelNodes(queries.getExplicitAssertionNodes.toSet)
+    val allSourceCodeNodes = toCompactUserLevelNodes(queries.getNonInternalAssumptionNodes).filter(n => n.assumptionTypes.exists(_.isInstanceOf[AssumptionType.SourceCodeType])).map(_.source).diff(explicitAssertions.map(_.source))
 
     if (allSourceCodeNodes.isEmpty)
       1.0
@@ -195,10 +194,10 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
    * @return a list of assumption nodes ordered by their impact on proof quality.
    */
   def computeAssumptionRanking(): List[(String, Double)] = {
-    val allAssertions = interpreter.toUserLevelNodes(getAssertionsRelevantForProgress.values.flatten)
+    val allAssertions = queries.toUserLevelNodes(getAssertionsRelevantForProgress.values.flatten)
 
     val relevantDependenciesPerAssertion = allAssertions
-      .map(ass => (ass, interpreter.toUserLevelNodes(interpreter.computeNonInternalDependencies(ass.lowerLevelNodes)).diffBySource(Set(ass)))).toMap
+      .map(ass => (ass, queries.toUserLevelNodes(queries.computeNonInternalDependencies(ass.lowerLevelNodes)).diffBySource(Set(ass)))).toMap
       .filter { case (assertion, assumptions) => assumptions.nonEmpty || assertion.hasFailures || assertion.assertionTypes.contains(AssumptionType.ExplicitPostcondition) }
     val numAssertions = relevantDependenciesPerAssertion.size.toDouble
 
@@ -216,7 +215,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
   }
 
   private def getAssertionsWithZeroQuality: Set[DependencyAnalysisSourceInfo] = {
-    val allAssertions = interpreter.toUserLevelNodes(interpreter.getNonInternalAssertionNodes)
+    val allAssertions = queries.toUserLevelNodes(queries.getNonInternalAssertionNodes)
     allAssertions.filter(assertion => assertion.hasFailures || assertion.assertionTypes.contains(AssumptionType.ExplicitPostcondition)).toSourceSet()
   }
 
@@ -226,11 +225,11 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
   def computeUncoveredStatementsPerMember(): Map[String, List[DependencyAnalysisSourceInfo]] = {
     val allAssertions = getAssertionsRelevantForProgress
     val allDependencies = allAssertions.flatMap(ass => {
-      interpreter.computeNonInternalDependencies(ass._2.toSet).filterNot(_.sourceInfo == ass._1)
+      queries.computeNonInternalDependencies(ass._2.toSet).filterNot(_.sourceInfo == ass._1)
     }).groupBy(_.sourceInfo)
 
-    val explicitAssertions = interpreter.getExplicitAssertionNodes.groupBy(_.sourceInfo)
-    val allNodes = interpreter.getNonInternalAssumptionNodes.groupBy(n => (n.sourceInfo, n.memberStr))
+    val explicitAssertions = queries.getExplicitAssertionNodes.groupBy(_.sourceInfo)
+    val allNodes = queries.getNonInternalAssumptionNodes.groupBy(n => (n.sourceInfo, n.memberStr))
     val allSourceCodeStmts = allNodes.filter(_._2.exists(_.assumptionType.isInstanceOf[AssumptionType.SourceCodeType])).filterNot(n => explicitAssertions.contains(n._1._1)).keySet
 
     val uncoveredSourceCodeStmts = allSourceCodeStmts.filterNot(n => allDependencies.contains(n._1))
@@ -253,6 +252,7 @@ case class DAMemo[A,B](f: A => B) extends (A => B) {
   }
 }
 
-case class VerificationProgress(specQuality: Double, proofQuality: Double) {
-  lazy val progress: Double = specQuality * proofQuality
+case class VerificationProgress(specQuality: Double, binaryProofQuality: Double, avgProofQuality: Double) {
+  lazy val binaryProgress: Double = specQuality * binaryProofQuality
+  lazy val avgProgress: Double = specQuality * avgProofQuality
 }
