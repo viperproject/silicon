@@ -10,7 +10,11 @@ import viper.silicon.dependencyAnalysis.UserLevelDependencyAnalysisNode
 import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyGraphInterpreter, DependencyGraphTestSupporter}
 
-class TestDependencyAnalysisCliExtension(override val interpreter: DependencyGraphInterpreter[Final]) extends DependencyAnalysisCliToolExtension{
+/**
+ * [[DependencyGraphTestSupporter]] prints its findings while it runs, so these commands print through the console to
+ * keep their own messages in order with that output.
+ */
+class TestDependencyAnalysisCliExtension(interpreter: DependencyGraphInterpreter[Final], console: DependencyAnalysisCliConsole) extends DependencyAnalysisCliToolExtension{
   override val name: String = "Test Features"
   override val commands: List[DependencyAnalysisCliCommand] = List(
     new TestAllCommand,
@@ -21,41 +25,44 @@ class TestDependencyAnalysisCliExtension(override val interpreter: DependencyGra
   private class TestAllCommand extends DependencyAnalysisCliCommand {
     override val cmdName: String = "test"
     override val description: String = s"""'$cmdName' to test all node types and dependencies with respect to the @dependencyInfo(...) annotations"""
-    override val cmd: Seq[String] => Unit = { _ =>
+    override val cmd: DependencyAnalysisCliInput => DependencyAnalysisCliResult = { _ =>
       val testSupporter = new DependencyGraphTestSupporter(interpreter)
-      if (interpreter.getAssertionNodesWithFailures.nonEmpty) println(s"Program contains verification failures at \n\t${interpreter.getAssertionNodesWithFailures.mkString("\n\t")}")
+      if (interpreter.getAssertionNodesWithFailures.nonEmpty) console.printLine(s"Program contains verification failures at \n\t${interpreter.getAssertionNodesWithFailures.mkString("\n\t")}")
       testSupporter.testDependencies()
       testSupporter.testNodeTypes()
+      DependencyAnalysisCliResult.empty
     }
   }
 
   private class NodeTypeTestCommand extends DependencyAnalysisCliCommand {
     override val cmdName: String = "testNodeTypes"
     override val description: String = s"""'$cmdName [line numbers]' to test the node type with respect to the @dependencyInfo(...) annotations"""
-    override val cmd: Seq[String] => Unit = { inputs =>
+    override val cmd: DependencyAnalysisCliInput => DependencyAnalysisCliResult = { input =>
       val testSupporter = new DependencyGraphTestSupporter(interpreter)
-      if (inputs.isEmpty)
+      if (input.args.isEmpty)
         testSupporter.testNodeTypes()
       else
-        inputs.flatMap(_.toIntOption).foreach(line => testSupporter.testNodeTypes(interpreter.getNodesByLine(line)))
+        input.args.flatMap(_.toIntOption).foreach(line => testSupporter.testNodeTypes(interpreter.getNodesByLine(line)))
+      DependencyAnalysisCliResult.empty
     }
   }
 
   private class DependenciesTestCommand extends DependencyAnalysisCliCommand {
     override val cmdName: String = "testDependencies"
     override val description: String = s"""'$cmdName [line numbers]' to test the node type with respect to the @dependencyInfo(...) annotations"""
-    override val cmd: Seq[String] => Unit = { inputs =>
+    override val cmd: DependencyAnalysisCliInput => DependencyAnalysisCliResult = { input =>
       val testSupporter = new DependencyGraphTestSupporter(interpreter)
-      if (inputs.isEmpty)
+      if (input.args.isEmpty)
         testSupporter.testDependencies()
       else
-        inputs.flatMap(_.toIntOption).foreach(line => {
+        input.args.flatMap(_.toIntOption).foreach(line => {
           val testResult = UserLevelDependencyAnalysisNode.from(interpreter.getNodesByLine(line)) map testSupporter.testDependencies
           val resultStr = if (testResult.forall(_.isEmpty)) "Skipped."
             else if (testResult.forall(test => test.isEmpty || test.get)) "Passed."
             else "Failed."
-          println(s"Line $line: $resultStr")
+          console.printLine(s"Line $line: $resultStr")
         })
+      DependencyAnalysisCliResult.empty
     }
   }
 }

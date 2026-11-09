@@ -35,7 +35,7 @@ object DependencyAnalysisTool {
     val program = importProgram(graphFolder)
 
     val interpreter = new DependencyGraphInterpreter[Final]("test", graph, List.empty, None)
-    val userTool = new DependencyAnalysisCliTool(interpreter, program, List.empty)
+    val userTool = DependencyAnalysisCliTool(interpreter, program, List.empty)
 
     val cmdsIndex = args.indexOf("--cmds")
     val cmds = if (0 <= cmdsIndex && cmdsIndex < args.length - 1) args(cmdsIndex + 1) else ""
@@ -63,7 +63,7 @@ object DependencyAnalysisTool {
         val fullGraphInterpreter = new DependencyGraphJoiner(programName, dependencyGraphInterpreters.toSet).joinGraphsAndGetInterpreter()
 
 
-        val userTool = new DependencyAnalysisCliTool(fullGraphInterpreter, program, verificationErrors)
+        val userTool = DependencyAnalysisCliTool(fullGraphInterpreter, program, verificationErrors)
         runUserTool(cmds, userTool)
 
         val result = DependencyAnalysisResult(program, fullGraphInterpreter)

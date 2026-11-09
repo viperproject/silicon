@@ -7,6 +7,7 @@
 package viper.silicon.dependencyAnalysis.cliTool
 
 import viper.silicon.dependencyAnalysis.UserLevelDependencyAnalysisNode
+import viper.silicon.dependencyAnalysis.cliTool.DependencyAnalysisCliSupport.{getQueriedNodesFromInput, measureTime}
 import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silver.ast
@@ -17,10 +18,9 @@ import java.nio.file.{Path, Paths}
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import scala.io.Source
-import scala.io.StdIn.readLine
 import scala.util.matching.Regex
 
-class BenchmarkDependencyAnalysisCliExtension(override val interpreter: DependencyGraphInterpreter[Final], program: ast.Program) extends DependencyAnalysisCliToolExtension {
+class BenchmarkDependencyAnalysisCliExtension(interpreter: DependencyGraphInterpreter[Final], program: ast.Program, console: DependencyAnalysisCliConsole) extends DependencyAnalysisCliToolExtension {
 
   override val name: String = "Benchmark Features"
   override val commands: List[DependencyAnalysisCliCommand] =
@@ -33,27 +33,30 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
 
   private class PerformanceBenchmarkCommand extends DependencyAnalysisCliCommand {
     override val cmdName: String = "benchmark"
-    override val cmd: Seq[String] => Unit = _ => handleBenchmarkQuery()
+    override val cmd: DependencyAnalysisCliInput => DependencyAnalysisCliResult = _ => {
+      handleBenchmarkQuery()
+      DependencyAnalysisCliResult.empty
+    }
     override val description: String = s"'$cmdName' to run the performance benchmark"
 
     private def handleBenchmarkQuery(): Unit = {
       val N = 12
       var check = true
-      println("Result file name: ")
-      val exportFileName = readLine()
+      console.printLine("Result file name: ")
+      val exportFileName = console.readLine()
       val writer = new PrintWriter(exportFileName)
       writer.println("queried line,#lowLevelDeps,#deps,runtimes [ms]")
 
       while(check){
-        println("enter line number(s) for query or 'q' to quit")
-        val userInput = readLine()
+        console.printLine("enter line number(s) for query or 'q' to quit")
+        val userInput = console.readLine()
         if (userInput.equalsIgnoreCase("q")) {
-          println("Quit.")
+          console.printLine("Quit.")
           check = false
         } else {
           val inputs = userInput.split(" ").toSet
 
-          val queriedNodes = getQueriedNodesFromInput(inputs)
+          val queriedNodes = getQueriedNodesFromInput(interpreter, inputs)
           var allTimes = Seq.empty[Double]
           var numDeps = 0
           var numLowLevelDeps = 0
@@ -66,7 +69,7 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
           }
 
           writer.println(s"$userInput,$numLowLevelDeps,$numDeps,${allTimes.mkString(",")}")
-          println(s"Avg: ${allTimes.sum/allTimes.size}")
+          console.printLine(s"Avg: ${allTimes.sum/allTimes.size}")
         }
       }
 
@@ -76,7 +79,10 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
 
   private class PrecisionEvaluationCommand extends DependencyAnalysisCliCommand {
     override val cmdName: String = "precisionEval"
-    override val cmd: Seq[String] => Unit = inputs => handlePrecisionEval(inputs.head)
+    override val cmd: DependencyAnalysisCliInput => DependencyAnalysisCliResult = input => {
+      handlePrecisionEval(input.args.head)
+      DependencyAnalysisCliResult.empty
+    }
     override val description: String = s"'$cmdName [folder]' to run precision evaluation with respect to the ground truth and call graphs specified in the provided folder"
 
     override def accept(inputs: Seq[String]): Boolean = super.accept(inputs) && inputs.size >= 2
@@ -106,7 +112,7 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
       def addOutput(bw: BufferedWriter, output: String): Unit = {
         bw.write(output)
         bw.newLine()
-        println(output)
+        console.printLine(output)
       }
 
       def evalSingleAssertion(assertionLabel: String, groundTruthLabels: Set[String], callGraphLabels: Set[String], bw: BufferedWriter, reported_bw: BufferedWriter): Unit = {
@@ -129,7 +135,7 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
         assert(!isSound || groundTruthLabels.size + imprecise.size == actualLabelInReportedDeps.size, s"Imprecision calculation is wrong.")
         
         val isBiggerThanCallGraph = actualLabelInReportedDeps.size > callGraphLabels.size
-        if (isBiggerThanCallGraph) println("Reported more dependencies than the size of the call graph!")
+        if (isBiggerThanCallGraph) console.printLine("Reported more dependencies than the size of the call graph!")
 
         reported_bw.write(s"$assertionLabel=${actualLabelInReportedDeps.toList.sorted.mkString(",")};isBiggerThanCallGraph=$isBiggerThanCallGraph")
         reported_bw.newLine()
@@ -160,7 +166,7 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
         reported_bw.close()
 
       } catch {
-        case e: Throwable => println(s"Failed. ${e.getMessage}")
+        case e: Throwable => console.printLine(s"Failed. ${e.getMessage}")
       } finally {
         bw.close()
       }
@@ -169,7 +175,10 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
 
   private class AnnotateProgramCommand extends DependencyAnalysisCliCommand {
     override val cmdName: String = "annotate"
-    override val cmd: Seq[String] => Unit = inputs => handleAnnotateQuery(inputs.head)
+    override val cmd: DependencyAnalysisCliInput => DependencyAnalysisCliResult = input => {
+      handleAnnotateQuery(input.args.head)
+      DependencyAnalysisCliResult.empty
+    }
     override val description: String = s"'$cmdName [file name] to annotate each statement with a label and write the resulting program to the provided file"
 
     override def accept(inputs: Seq[String]): Boolean = super.accept(inputs) && inputs.size >= 2
@@ -235,22 +244,24 @@ class BenchmarkDependencyAnalysisCliExtension(override val interpreter: Dependen
 
   private class GraphSizeCommand extends DependencyAnalysisCliCommand {
     override val cmdName: String = "graphSize"
-    override val cmd: Seq[String] => Unit = _ => handleGraphSizeQuery()
+    override val cmd: DependencyAnalysisCliInput => DependencyAnalysisCliResult = _ => handleGraphSizeQuery()
     override val description: String = s"'$cmdName' to print the size of the graph"
 
-    private def handleGraphSizeQuery(): Unit = {
+    private def handleGraphSizeQuery(): DependencyAnalysisCliResult = {
       val allAssumptions = interpreter.getNonInternalAssumptionNodes
       val assumptions = UserLevelDependencyAnalysisNode.from(allAssumptions)
       val allAssertions = interpreter.getNonInternalAssertionNodes
       val assertions = UserLevelDependencyAnalysisNode.from(allAssertions)
       val nodes = UserLevelDependencyAnalysisNode.from(allAssertions.toSet[DependencyAnalysisNode].union(allAssumptions))
-      println(s"#Assumptions = ${assumptions.size}")
-      println(s"#Assertions = ${assertions.size}")
-      println(s"#Nodes = ${nodes.size}")
-      println(s"#low-level Assumptions (non-internal) = ${allAssumptions.size}")
-      println(s"#low-level Assumptions (all) = ${interpreter.getAssumptionNodes.size}")
-      println(s"#low-level Assertions (non-internal) = ${allAssertions.size}")
-      println(s"#low-level Assertions (all) = ${interpreter.getAssertionNodes.size}")
+      DependencyAnalysisCliResult(
+        s"#Assumptions = ${assumptions.size}",
+        s"#Assertions = ${assertions.size}",
+        s"#Nodes = ${nodes.size}",
+        s"#low-level Assumptions (non-internal) = ${allAssumptions.size}",
+        s"#low-level Assumptions (all) = ${interpreter.getAssumptionNodes.size}",
+        s"#low-level Assertions (non-internal) = ${allAssertions.size}",
+        s"#low-level Assertions (all) = ${interpreter.getAssertionNodes.size}"
+      )
     }
   }
 }
