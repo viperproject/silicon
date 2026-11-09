@@ -23,7 +23,7 @@ Updated on 2026-11-09, after the fixes on top of `e0fbd85b`. Line links in the f
 | L5 | Partly done, see the L5 row. |
 | L10, C8 | Done. |
 | D3, C3, C4, C5, C7 | Done, except for the reporting point listed under C7. Compiled only, not run. |
-| L7, L12 | Done. Compiled only, not run. |
+| L7, L8, L12 | Done. Compiled only, not run. |
 | L13 | Done in Silicon and in `silicon/silver`, compiled only. The Silver commit is local to `silicon/silver`, so `carbon/silver` and the submodule pointers still have the old imports. |
 | Everything else | Open. |
 
@@ -188,7 +188,7 @@ Listed in the order I'd do them.
 | L5 | **Partly done.** `createLabel` and the `sourceChunks` parameters of `registerInhaleChunk` and `registerExhaleChunk` are gone. `registerDerivedChunk` keeps `sourceChunks` because the B4 fix passes it to `getOrCreateAnalysisLabelNode`, but `createLabelNode` ignores it, so it still has no effect. Either link labels to their source chunks in `createLabelNode`, or remove the parameter along the whole path, where `registerDerivedChunk` then duplicates `registerChunk`. | [DependencyAnalyzer.scala:32](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L32), [DependencyAnalysisAwareDeciderProvider.scala:23](src/main/scala/decider/DependencyAnalysisAwareDeciderProvider.scala#L23) | Signatures stop implying tracking that doesn't happen |
 | L6 | **Fixed only in the uncommitted `carbon/silver` working copy** (see B6). Fix `NoDependencyAnalysisSourceInfo` equality. | [DependencyAnalysisSourceInfo.scala:71](silver/src/main/scala/viper/silver/dependencyAnalysis/DependencyAnalysisSourceInfo.scala#L71) | Correct contract (B6) |
 | L7 | **Done.** Use one parameter order for `getAllEdges`. The class and its private `selectEdges` now say upward then downward, like the trait. | [DependencyGraph.scala:73](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala#L73), [:145](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala#L145) | Prevents a future swapped-flag bug |
-| L8 | Keep one infeasibility accessor on the path condition stack (`infeasibilityNodeId` and `getCurrentInfeasibilityNode` duplicate each other) and fix `Option[Mark]`, which should be `Option[Int]`. | [PathConditions.scala:543](src/main/scala/decider/PathConditions.scala#L543), [:661](src/main/scala/decider/PathConditions.scala#L661) | Removes duplication and a misleading type |
+| L8 | **Done.** `getCurrentInfeasibilityNode` is gone, and callers use `infeasibilityNodeId`. The `Option[Mark]` return type stays, by decision. | [PathConditions.scala:659](src/main/scala/decider/PathConditions.scala#L659) | Removes duplication |
 | L9 | Either surface vacuous proofs or delete the tracking. | [DependencyGraph.scala:194](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala#L194) | No more data that's collected and lost |
 | L10 | **Done.** Add `DependencyAnalyzer.isAnalysisLabel(v: Var)` and use it instead of matching the name prefix. This covers both sites, including the function verification unit provider. | [FunctionData.scala:211](src/main/scala/supporters/functions/FunctionData.scala#L211) | One definition of what a label is |
 | L11 | Correct the docs: the scaladoc says all merge infos are propagated, but `getMergeInfo` uses only the head. | [DependencyAnalysisInfos.scala:91](src/main/scala/dependencyAnalysis/DependencyAnalysisInfos.scala#L91), [:189](src/main/scala/dependencyAnalysis/DependencyAnalysisInfos.scala#L189) | Docs match behaviour |

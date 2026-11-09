@@ -71,7 +71,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
         info.getAllInfos[AdditionalDependencyNodeInfo].foreach {
           case AdditionalAssertionNode() => dependencyAnalyzer.createAssertOrCheckNode(True, newAnalysisInfos, isCheck = false).foreach(n => {
             dependencyAnalyzer.addAssertionNode(n)
-            if (isPathMarkedInfeasible) dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, Some(n.id))
+            if (isPathMarkedInfeasible) dependencyAnalyzer.addDependency(pcs.infeasibilityNodeId, Some(n.id))
           })
           case AdditionalAssumptionNode() => dependencyAnalyzer.addAssumption(True, newAnalysisInfos)
         }
@@ -119,7 +119,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       val result = proverAssert(t, timeout)(prover.assert(t, timeout, label))
 
       if (isPathMarkedInfeasible)
-        dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, assertNode map (_.id))
+        dependencyAnalyzer.addDependency(pcs.infeasibilityNodeId, assertNode map (_.id))
       else if (result)
         assertNode foreach (node => dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, node.id))
 
@@ -138,7 +138,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
 
       if (isPathMarkedInfeasible) {
         checkNode foreach dependencyAnalyzer.addAssertionNode
-        dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, checkNode.map(_.id))
+        dependencyAnalyzer.addDependency(pcs.infeasibilityNodeId, checkNode.map(_.id))
         true
       } else {
         val result = checkSmokeInternal(isAssert)
@@ -165,7 +165,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       if (!isPathMarkedInfeasible) return
       super.handleInfeasiblePath(hasAssertions, hasAssumptions, analysisInfos)
       if (hasAssertions) {
-        dependencyAnalyzer.addAssertionWithDepToInfeasNode(pcs.getCurrentInfeasibilityNode, analysisInfos)
+        dependencyAnalyzer.addAssertionWithDepToInfeasNode(pcs.infeasibilityNodeId, analysisInfos)
       }
       if (hasAssumptions) {
         dependencyAnalyzer.addAssumption(True, analysisInfos)

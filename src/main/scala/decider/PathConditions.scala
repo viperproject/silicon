@@ -74,7 +74,6 @@ trait PathConditionStack extends RecordedPathConditions {
   def isPathMarkedInfeasible: Boolean
   def markPathInfeasible(infeasible: Boolean): Unit
   def setCurrentInfeasibilityNode(node: Option[Int]): Unit
-  def getCurrentInfeasibilityNode: Option[Int]
   def addAnalysisLabel(assumption: Term): Unit
 
   def startDebugSubExp(): Unit
@@ -540,7 +539,6 @@ private[decider] class LayeredPathConditionStack
   def setCurrentInfeasibilityNode(node: Option[Int]): Unit = {
     layers.head.setInfeasibilityNodeId(node)
   }
-  def getCurrentInfeasibilityNode: Option[Int] = layers.map(_.infeasibilityNodeId).find(_.isDefined).flatten
 
   def startDebugSubExp(): Unit = {
     layers.head.startDebugSubExp()
