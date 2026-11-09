@@ -48,7 +48,7 @@ trait DependencyAnalysisAwareFunctionVerificationUnitProvider extends DefaultFun
       val cleanAxiom =
         if (!Verifier.config.dependencyAnalysis.isDefined) axiom
         else axiom.map(a => (a._1.transform {
-          case Var(name, _, _) if name.name.startsWith(DependencyAnalyzer.analysisLabelName) => True // replace dependency analysis labels by True to avoid errors
+          case v: Var if DependencyAnalyzer.isAnalysisLabel(v) => True // replace dependency analysis labels by True to avoid errors
         }(), a._2))
       decider.prover.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(cleanAxiom), "Function axioms")
 

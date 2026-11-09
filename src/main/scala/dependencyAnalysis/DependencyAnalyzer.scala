@@ -30,8 +30,8 @@ trait DependencyAnalyzer {
   def addAssumptionNode(node: GeneralAssumptionNode): Unit
   def addAssumption(assumption: Term, analysisInfos: AnalysisInfos, description: Option[String] = None): Option[Int]
   def addAxiom(assumption: Term, analysisAxiomInfo: DependencyAnalysisAxiomInfo, description: Option[String] = None): Option[Int]
-  def registerInhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, labelNode: Option[LabelNode], analysisInfos: AnalysisInfos): CH = buildChunk(perm)
-  def registerExhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, labelNodeOpt: Option[LabelNode], analysisInfos: AnalysisInfos): CH = buildChunk(perm)
+  def registerInhaleChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, labelNode: Option[LabelNode], analysisInfos: AnalysisInfos): CH = buildChunk(perm)
+  def registerExhaleChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, labelNodeOpt: Option[LabelNode], analysisInfos: AnalysisInfos): CH = buildChunk(perm)
   def createLabelNode(label: Var, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): Option[LabelNode]
 
   def createAssertOrCheckNode(term: Term, analysisInfos: AnalysisInfos, isCheck: Boolean): Option[GeneralAssertionNode]
@@ -109,6 +109,8 @@ object DependencyAnalyzer {
   private def createLabel(description: String, id: Option[Int]): Option[String] = {
     id.map(description + "_" + _)
   }
+
+  def isAnalysisLabel(v: Var): Boolean = v.id.name.startsWith(analysisLabelName)
 
   private lazy val labelPrefixes = Seq(assumptionLabelPrefix, assertionLabelPrefix, axiomLabelPrefix)
   def getIdFromLabel(label: String): Option[Int] = {
@@ -194,7 +196,7 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
     Some(node.id)
   }
 
-  override def registerExhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, labelNodeOpt: Option[LabelNode], analysisInfos: AnalysisInfos): CH = {
+  override def registerExhaleChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, labelNodeOpt: Option[LabelNode], analysisInfos: AnalysisInfos): CH = {
     val labelNode = labelNodeOpt.get
     val chunk = buildChunk(Ite(labelNode.term, perm, NoPerm))
     val chunkNode = addPermissionExhaleNode(chunk, chunk.perm, analysisInfos, labelNode)
@@ -202,7 +204,7 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
     chunk
   }
 
-  override def registerInhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, labelNodeOpt: Option[LabelNode], analysisInfos: AnalysisInfos): CH = {
+  override def registerInhaleChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, labelNodeOpt: Option[LabelNode], analysisInfos: AnalysisInfos): CH = {
     val labelNode = labelNodeOpt.get
     val chunk = buildChunk(Ite((labelNode.term, perm, NoPerm)))
     val chunkNode = addPermissionInhaleNode(chunk, chunk.perm, analysisInfos, labelNode)

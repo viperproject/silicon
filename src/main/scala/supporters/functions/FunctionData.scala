@@ -209,7 +209,7 @@ class FunctionData(val programFunction: ast.Function,
 
     val nested = if (!Verifier.config.dependencyAnalysis.isDefined) nestedTmp
       else nestedTmp.map(_.transform{
-        case Var(name, _, _) if name.name.startsWith(DependencyAnalyzer.analysisLabelName) => True // replace dependency analysis labels by True to avoid errors
+        case v: Var if DependencyAnalyzer.isAnalysisLabel(v) => True // replace dependency analysis labels by True to avoid errors
       }())
 
     // Filter out nested definitions that contain free variables.

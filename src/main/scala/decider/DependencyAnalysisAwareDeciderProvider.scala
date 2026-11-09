@@ -159,9 +159,9 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       val labelNodeOpt = getOrCreateAnalysisLabelNode(sourceChunks)
 
       if (isExhale)
-        dependencyAnalyzer.registerExhaleChunk(sourceChunks, buildChunk, perm, labelNodeOpt, analysisInfos)
+        dependencyAnalyzer.registerExhaleChunk(buildChunk, perm, labelNodeOpt, analysisInfos)
       else {
-        dependencyAnalyzer.registerInhaleChunk(sourceChunks, buildChunk, perm, labelNodeOpt, analysisInfos)
+        dependencyAnalyzer.registerInhaleChunk(buildChunk, perm, labelNodeOpt, analysisInfos)
       }
     }
 
