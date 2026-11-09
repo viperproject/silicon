@@ -11,7 +11,6 @@ import viper.silver.dependencyAnalysis.{AssumptionType, DependencyAnalysisSource
 import java.io.PrintWriter
 import java.nio.file.Paths
 import java.util.concurrent.atomic.AtomicInteger
-import scala.annotation.unused
 import scala.collection.mutable
 
 
@@ -119,7 +118,8 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   private val edgesConnectingMethodsDownwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // e.g. edges connecting POSTcondition with method/function calls
   private val edgesConnectingMethodsUpwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // e.g. edges connecting PREconditions with method/function calls
   private val allEdges: mutable.Map[Int, Set[Int]] = mutable.Map.empty // should contain exactly all edges from intraMethodEdges, edgesConnectingMethodsDownwards, edgesConnectingMethodsUpwards
-  private val vacuousProofs: mutable.Set[Int] = mutable.Set()
+  // TODO ake: collect vacuous proof information
+  // private val vacuousProofs: mutable.Set[Int] = mutable.Set()
 
   private val assumptionNodes: mutable.Map[Int, GeneralAssumptionNode] = mutable.HashMap.empty
   private val assertionNodes: mutable.Map[Int, GeneralAssertionNode] = mutable.HashMap.empty
@@ -190,8 +190,8 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
     visited.toSet
   }
 
-  @unused
-  def getVacuousProofs: Set[Int] = vacuousProofs.toSet // TODO ake: what to do with these?
+  // TODO ake: collect vacuous proof information
+  // def getVacuousProofs: Set[Int] = vacuousProofs.toSet
 
   def addAssumptionNode(node: GeneralAssumptionNode): Unit = {
     assumptionNodes.update(node.id, node)
@@ -272,9 +272,10 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   }
 
 
-  def addVacuousProof(assertionId: Int): Unit = {
-    vacuousProofs.add(assertionId)
-  }
+  // TODO ake: collect vacuous proof information
+  // def addVacuousProof(assertionId: Int): Unit = {
+  //   vacuousProofs.add(assertionId)
+  // }
 
   def computeDependencies(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[DependencyAnalysisNode] = {
     val edges = selectEdges(includeUpwardEdges, includeDownwardEdges)

@@ -128,7 +128,11 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member], options: DependencyA
 
   /* Every node is built from infos that passed through here, so that incomplete infos are reported. */
   private def checked(analysisInfos: AnalysisInfos): AnalysisInfos = {
-    analysisInfos.missingInfos foreach (missing => logger.warn(s"WARN: $missing"))
+    val missingInfos = analysisInfos.missingInfos
+    if (missingInfos.nonEmpty) {
+      val message = s"Dependency analysis results might be unsound because of incomplete infos in member ${member.map(_.name).getOrElse("<none>")}: ${missingInfos.mkString("; ")}"
+      if (options.enableDebugging) sys.error(message) else logger.warn(message)
+    }
     analysisInfos
   }
 
@@ -244,8 +248,9 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member], options: DependencyA
 
   override def processUnsatCoreAndAddDependencies(unsatCore: Seq[String], assertionId: Int): Unit = {
     val assumptionIds = unsatCore.flatMap(DependencyAnalyzer.getIdFromLabel).toSet
-    if (!assumptionIds.contains(assertionId))
-      dependencyGraph.addVacuousProof(assertionId)
+    // TODO ake: collect vacuous proof information
+    // if (!assumptionIds.contains(assertionId))
+    //   dependencyGraph.addVacuousProof(assertionId)
     dependencyGraph.addEdges(assumptionIds.diff(Set(assertionId)), assertionId)
   }
 

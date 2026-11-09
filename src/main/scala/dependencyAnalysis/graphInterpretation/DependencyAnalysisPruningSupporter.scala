@@ -19,6 +19,8 @@ class DependencyAnalysisPruningSupporter(queries: FinalGraphQueries) {
 
   /**
    * Prunes the program. That is, all statements and expressions that are not a crucial node are removed from the program.
+   * Nodes are matched by file name and line only: statements on the same line, and lines of equally named files in
+   * different folders, cannot be told apart.
    */
   def getPrunedProgram(crucialNodes: Set[DependencyAnalysisNode], program: ast.Program): (ast.Program, Double) = {
 

@@ -155,7 +155,7 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
 
   private def getDebugInfo: String = {
     val sourceInfo = sourceInfos.headOption.map("source info: " + _.toString + " ").getOrElse("")
-    val nodeInfo = if (nodes.nonEmpty) "nodes: " + nodes.map(getNodeInfo).mkString(", ") else ""
+    val nodeInfo = if (nodes.nonEmpty) "nodes: " + nodes.map(getNodeInfo).mkString(", ") else "no AST node recorded"
     s"$sourceInfo$nodeInfo"
   }
 
