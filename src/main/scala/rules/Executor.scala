@@ -335,7 +335,7 @@ object executor extends ExecutionRules {
                       v2.decider.declareAndRecordAsFreshMacros(fm1.filter(!v2.decider.freshMacros.contains(_))) /* [BRANCH-PARALLELISATION] */
                       v2.decider.pcs.markPathInfeasible(v2.decider.pcs.isPathMarkedInfeasible || pcs.isPathMarkedInfeasible)
                       if (v2.decider.pcs.infeasibilityNodeId.isEmpty) v2.decider.pcs.setCurrentInfeasibilityNode(pcs.infeasibilityNodeId)
-                      v2.decider.assume(pcs.assumptions map (t => v.decider.analysisHooks.withLabel(t, pcs.analysisNodeIds(t))), Option.when(debugOn)(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, analysisInfosLoopInternal)
+                      v2.decider.assume(pcs.labelledAssumptions map { case (t, label) => v.decider.analysisHooks.withLabel(t, label) }, Option.when(debugOn)(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, analysisInfosLoopInternal)
                       v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
                       if (deadPath.stopsEarly && v2.decider.checkSmoke(analysisInfosLoopInternal))
                         Success()

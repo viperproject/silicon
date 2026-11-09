@@ -83,6 +83,9 @@ trait Decider {
 
   def check(t: Term, timeout: Int, analysisInfos: AnalysisInfos): Boolean
 
+  /** Like `check`, but also returns the id of the dependency analysis node of a successful check, if there is one. */
+  def checkWithLabel(t: Term, timeout: Int, analysisInfos: AnalysisInfos): (Boolean, Option[Int])
+
   /* TODO: Consider changing assert such that
    *         1. It passes State and Operations to the continuation
    *         2. The implementation reacts to a failing assertion by e.g. a state consolidation
@@ -405,19 +408,20 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     protected def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], analysisInfos: AnalysisInfos, isDefinition: Boolean = false): Unit =
-      assumeWithoutSmokeChecksInternal(terms, isDefinition)(t => prover.assume(t))
+      assumeWithoutSmokeChecksInternal(terms, isDefinition, _ => None)(t => prover.assume(t))
 
-    /* `proverAssume` determines how each term is passed to the prover; it is not invoked on infeasible paths. */
-    protected def assumeWithoutSmokeChecksInternal(terms: InsertionOrderedSet[Term], isDefinition: Boolean)(proverAssume: Term => Unit): Unit =
+    /* `proverAssume` determines how each term is passed to the prover; it is not invoked on infeasible paths.
+     * `labels` gives the label recorded with each term in the path conditions. */
+    protected def assumeWithoutSmokeChecksInternal(terms: InsertionOrderedSet[Term], isDefinition: Boolean, labels: Term => Option[Int])(proverAssume: Term => Unit): Unit =
       if (!isPathMarkedInfeasible) {
         val assumeRecord = new DeciderAssumeRecord(terms)
         val sepIdentifier = symbExLog.openScope(assumeRecord)
 
         /* Add terms to Silicon-managed path conditions */
         if (isDefinition) {
-          terms foreach pathConditions.addDefinition
+          terms foreach (t => pathConditions.addDefinition(t, labels(t)))
         } else {
-          terms foreach pathConditions.add
+          terms foreach (t => pathConditions.add(t, labels(t)))
         }
 
         /* Add terms to the prover's assumptions */
@@ -452,14 +456,16 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     /* The infos to use when a failed assertion is subsequently assumed. */
     protected def failedAssertionInfos(analysisInfos: AnalysisInfos): AnalysisInfos = analysisInfos
 
-    def check(t: Term, timeout: Int, analysisInfos: AnalysisInfos): Boolean = {
+    def check(t: Term, timeout: Int, analysisInfos: AnalysisInfos): Boolean =
+      checkWithLabel(t, timeout, analysisInfos)._1
+
+    def checkWithLabel(t: Term, timeout: Int, analysisInfos: AnalysisInfos): (Boolean, Option[Int]) =
       deciderAssert(t, analysisInfos, Some(timeout), isCheck=true)
-    }
 
     def assert(t: Term, analysisInfos: AnalysisInfos)(Q:  Boolean => VerificationResult): VerificationResult = assert(t, analysisInfos,  timeout=Verifier.config.assertTimeout.toOption)(Q)
 
     def assert(t: Term, analysisInfos: AnalysisInfos, timeout: Option[Int])(Q:  Boolean => VerificationResult): VerificationResult = {
-      val success = deciderAssert(t, analysisInfos, timeout)
+      val (success, _) = deciderAssert(t, analysisInfos, timeout)
 
       // If the SMT query was not successful, store it (possibly "overwriting"
       // any previously saved query), otherwise discard any query we had saved
@@ -473,18 +479,18 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       Q(success)
     }
 
-    private def deciderAssert(t: Term, analysisInfos: AnalysisInfos, timeout: Option[Int], isCheck: Boolean=false) = {
+    private def deciderAssert(t: Term, analysisInfos: AnalysisInfos, timeout: Option[Int], isCheck: Boolean=false): (Boolean, Option[Int]) = {
       val assertRecord = new DeciderAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
-      val result = isKnownToBeTrue(t) || deciderAssertInternal(t, timeout, analysisInfos, isCheck)
+      val result = if (isKnownToBeTrue(t)) (true, None) else deciderAssertInternal(t, timeout, analysisInfos, isCheck)
 
       symbExLog.closeScope(sepIdentifier)
       result
     }
 
-    protected def deciderAssertInternal(t: Term, timeout: Option[Int], analysisInfos: AnalysisInfos, isCheck: Boolean): Boolean =
-      proverAssert(t, timeout)(prover.assert(t, timeout))
+    protected def deciderAssertInternal(t: Term, timeout: Option[Int], analysisInfos: AnalysisInfos, isCheck: Boolean): (Boolean, Option[Int]) =
+      (proverAssert(t, timeout)(prover.assert(t, timeout)), None)
 
     protected def isKnownToBeTrue(t: Term) = t match {
       case True => true

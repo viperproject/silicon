@@ -21,7 +21,7 @@ trait DependencyAnalysisHandler {
 
   def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfos: AnalysisInfos, isExhale: Boolean): CH
 
-  def getOrCreateAnalysisLabelNode(sourceNodeIds: Set[Int] = Set.empty): Option[LabelNode]
+  def getOrCreateAnalysisLabelNode(sourceNodeId: Option[Int] = None): Option[LabelNode]
 }
 
 trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v: DependencyAnalysisAwareVerifier =>
@@ -47,8 +47,6 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
 
     private var dependencyAnalyzer: DependencyAnalyzer = new NoDependencyAnalyzer()
     override def getDependencyAnalyzer: DependencyAnalyzer = dependencyAnalyzer
-
-    private var lastCheckNodeId: Option[Int] = None
 
     override def analysisHooks: AnalysisHooks = DependencyAnalysisHooks
 
@@ -79,14 +77,12 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
         newAnalysisInfos
       }
 
-      override def withLabel(term: Term, sourceNodeIds: Set[Int]): Term = {
+      override def withLabel(term: Term, sourceNodeId: Option[Int]): Term = {
         if (!isDependencyAnalysisEnabledForMember || term.equals(True))
           term
         else
-          getOrCreateAnalysisLabelNode(sourceNodeIds).map(n => Implies(n.term, term)).getOrElse(term)
+          getOrCreateAnalysisLabelNode(sourceNodeId).map(n => Implies(n.term, term)).getOrElse(term)
       }
-
-      override def lastCheckNodeIds: Set[Int] = lastCheckNodeId.toSet
 
       override def linkMergeInfos(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit =
         dependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(sourceExps, targetExps)
@@ -98,31 +94,20 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
     override protected def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], analysisInfos: AnalysisInfos, isDefinition: Boolean = false): Unit = {
       /* Registered up front since assumptions on infeasible paths must be recorded too, even though they never reach the prover. */
       val labels = registerAssumptions(terms, analysisInfos)
-      assumeWithoutSmokeChecksInternal(terms, isDefinition)(t => prover.assume(t, labels(t)))
+      assumeWithoutSmokeChecksInternal(terms, isDefinition, labels)(t => prover.assume(t, DependencyAnalyzer.createAssumptionLabel(labels(t))))
     }
 
-    def assumeLabel(term: Term, assumptionLabel: Option[String]): Unit = {
-      pathConditions.addAnalysisLabel(term)
-      prover.assume(term, assumptionLabel)
+    def assumeLabel(term: Term, nodeId: Option[Int]): Unit = {
+      pathConditions.addAnalysisLabel(term, nodeId)
+      prover.assume(term, DependencyAnalyzer.createAssumptionLabel(nodeId))
     }
 
-    private def registerAssumptions(terms: InsertionOrderedSet[Term], analysisInfos: AnalysisInfos): Map[Term, Option[String]] = {
-      terms.toSeq.map(t => {
-        val assumptionId = dependencyAnalyzer.addAssumption(t, analysisInfos)
-        assumptionId foreach (pathConditions.addAnalysisNodeId(t, _))
-        (t, DependencyAnalyzer.createAssumptionLabel(assumptionId))
-      }).toMap
-    }
+    private def registerAssumptions(terms: InsertionOrderedSet[Term], analysisInfos: AnalysisInfos): Map[Term, Option[Int]] =
+      terms.toSeq.map(t => (t, dependencyAnalyzer.addAssumption(t, analysisInfos))).toMap
 
     override protected def isKnownToBeTrue(t: Term): Boolean = t.equals(True)
 
-    override def check(t: Term, timeout: Int, analysisInfos: AnalysisInfos): Boolean = {
-      /* A trivially true term doesn't reach deciderAssertInternal, and must not inherit the node of an earlier check. */
-      lastCheckNodeId = None
-      super.check(t, timeout, analysisInfos)
-    }
-
-    override protected def deciderAssertInternal(t: Term, timeout: Option[Int], analysisInfos: AnalysisInfos, isCheck: Boolean): Boolean = {
+    override protected def deciderAssertInternal(t: Term, timeout: Option[Int], analysisInfos: AnalysisInfos, isCheck: Boolean): (Boolean, Option[Int]) = {
       val assertNode = dependencyAnalyzer.createAssertOrCheckNode(t, analysisInfos, isCheck)
       val label = DependencyAnalyzer.createAssertionLabel(assertNode map (_.id))
 
@@ -135,10 +120,9 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
 
       if (result) {
         assertNode foreach dependencyAnalyzer.addAssertionNode
-        if (isCheck) lastCheckNodeId = assertNode map (_.id)
       }
 
-      result
+      (result, if (result) assertNode map (_.id) else None)
     }
 
     override protected def failedAssertionInfos(analysisInfos: AnalysisInfos): AnalysisInfos =
@@ -196,15 +180,13 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       }
     }
 
-    override def getOrCreateAnalysisLabelNode(sourceNodeIds: Set[Int] = Set.empty): Option[LabelNode] = {
+    override def getOrCreateAnalysisLabelNode(sourceNodeId: Option[Int] = None): Option[LabelNode] = {
       if (!isDependencyAnalysisEnabledForMember)
         return None
 
       val (label, _) = fresh(ast.LocalVar(DependencyAnalyzer.analysisLabelName, ast.Bool)())
-      val labelNode = dependencyAnalyzer.createLabelNode(label, sourceNodeIds)
-      val smtLabel = DependencyAnalyzer.createAssumptionLabel(labelNode.map(_.id))
-      assumeLabel(label, smtLabel)
-      labelNode foreach (n => pathConditions.addAnalysisNodeId(n.term, n.id))
+      val labelNode = dependencyAnalyzer.createLabelNode(label, sourceNodeId)
+      assumeLabel(label, labelNode.map(_.id))
       labelNode
     }
   }

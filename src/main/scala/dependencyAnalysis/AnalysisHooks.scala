@@ -28,14 +28,8 @@ trait AnalysisHooks {
    */
   def enterNode(analysisInfos: AnalysisInfos, info: ast.Info, node: ast.Node): AnalysisInfos = analysisInfos
 
-  /** @return the term, guarded by a fresh label that depends on the given nodes if the analysis tracks them */
-  def withLabel(term: Term, sourceNodeIds: Set[Int] = Set.empty): Term = term
-
-  /**
-   * @return the node of the most recent `Decider.check` if that check succeeded and created one. Must be read before
-   *         the next check, which replaces it.
-   */
-  def lastCheckNodeIds: Set[Int] = Set.empty
+  /** @return the term, guarded by a fresh label that depends on the given node if the analysis tracks it */
+  def withLabel(term: Term, sourceNodeId: Option[Int] = None): Term = term
 
   /** Connects all nodes with a merge info in `sourceExps` to all nodes with a merge info in `targetExps`. */
   def linkMergeInfos(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {}

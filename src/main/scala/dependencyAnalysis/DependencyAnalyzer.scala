@@ -31,7 +31,7 @@ trait DependencyAnalyzer {
   def addAxiom(assumption: Term, analysisAxiomInfo: DependencyAnalysisAxiomInfo, description: Option[String] = None): Option[Int]
   def registerInhaleChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, labelNode: Option[LabelNode], analysisInfos: AnalysisInfos): CH = buildChunk(perm)
   def registerExhaleChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, labelNodeOpt: Option[LabelNode], analysisInfos: AnalysisInfos): CH = buildChunk(perm)
-  def createLabelNode(label: Var, sourceNodeIds: Set[Int]): Option[LabelNode]
+  def createLabelNode(label: Var, sourceNodeId: Option[Int]): Option[LabelNode]
 
   def createAssertOrCheckNode(term: Term, analysisInfos: AnalysisInfos, isCheck: Boolean): Option[GeneralAssertionNode]
   def addAssertFalseNode(isCheck: Boolean, analysisInfos: AnalysisInfos): Option[Int]
@@ -191,10 +191,10 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member], options: DependencyA
     Some(node.id)
   }
 
-  override def createLabelNode(label: Var, sourceNodeIds: Set[Int]): Option[LabelNode] = {
+  override def createLabelNode(label: Var, sourceNodeId: Option[Int]): Option[LabelNode] = {
     val labelNode = DependencyNodeFactory.createLabelNode(label, getMember.name)
     addAssumptionNode(labelNode)
-    dependencyGraph.addEdges(sourceNodeIds, labelNode.id)
+    dependencyGraph.addEdges(sourceNodeId.toSet, labelNode.id)
     Some(labelNode)
   }
 
@@ -382,7 +382,7 @@ class NoDependencyAnalyzer extends DependencyAnalyzer {
   override def addAssumptionNode(node: GeneralAssumptionNode): Unit = {}
   override def addAssumption(assumption: Term, analysisInfos: AnalysisInfos, description: Option[String] = None): Option[Int] = None
   override def addAxiom(assumption: Term, analysisAxiomInfo: DependencyAnalysisAxiomInfo, description: Option[String]): Option[Int] = None
-  override def createLabelNode(labelTerm: Var, sourceNodeIds: Set[Int]): Option[LabelNode] = None
+  override def createLabelNode(labelTerm: Var, sourceNodeId: Option[Int]): Option[LabelNode] = None
 
   override def createAssertOrCheckNode(term: Term, analysisInfos: AnalysisInfos, isCheck: Boolean): Option[GeneralAssertionNode] = None
   override def addAssertFalseNode(isCheck: Boolean, analysisInfos: AnalysisInfos): Option[Int] = None
