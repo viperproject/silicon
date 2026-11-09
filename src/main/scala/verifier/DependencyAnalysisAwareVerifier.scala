@@ -55,7 +55,8 @@ class DependencyAnalysisAwareMainVerifier(config: Config,
   }
 
   override def afterVerification(verificationResults: List[VerificationResult], program: ast.Program, inputFile: Option[String]): Unit = {
-    val dependencyAnalysisResult = DependencyAnalysisTool.runDependencyAnalysisWorkflow(verificationResults, program, inputFile)
+    val dependencyAnalysisResult = config.dependencyAnalysis.toOption.map(commands =>
+      DependencyAnalysisTool.runDependencyAnalysisWorkflow(commands, config.dependencyAnalysisOptions, verificationResults, program, inputFile))
     (reporter, dependencyAnalysisResult) match {
       case (analysisReporter: DependencyAnalysisReporter, Some(res)) =>
         analysisReporter.finalGraphQueries = Some(res.finalGraphQueries)

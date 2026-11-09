@@ -11,7 +11,7 @@ import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.state.chunks.{Chunk, GeneralChunk}
 import viper.silicon.state.terms.{False, Implies, Term, True}
-import viper.silicon.verifier.DependencyAnalysisAwareVerifier
+import viper.silicon.verifier.{DependencyAnalysisAwareVerifier, Verifier}
 import viper.silver.ast
 import viper.silver.dependencyAnalysis.{AdditionalAssertionNode, AdditionalAssumptionNode, AdditionalDependencyNodeInfo, AssumptionType}
 
@@ -55,7 +55,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       override def beginMember(member: ast.Member, preambleNodes: Iterable[DependencyAnalysisNode]): Unit = {
         val isAnalysisEnabled = DependencyAnalyzer.extractEnableAnalysisFromInfo(member.info).getOrElse(true)
         if (isAnalysisEnabled) {
-          dependencyAnalyzer = new DefaultDependencyAnalyzer(Some(member))
+          dependencyAnalyzer = new DefaultDependencyAnalyzer(Some(member), Verifier.config.dependencyAnalysisOptions)
           dependencyAnalyzer.addNodes(preambleNodes ++ prover.getPreambleAnalysisNodes)
         } else {
           dependencyAnalyzer = new NoDependencyAnalyzer

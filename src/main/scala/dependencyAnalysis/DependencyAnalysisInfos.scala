@@ -6,7 +6,6 @@
 
 package viper.silicon.dependencyAnalysis
 
-import viper.silicon.SiliconRunner
 import viper.silver.ast
 import viper.silver.ast._
 import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
@@ -53,6 +52,9 @@ abstract class AnalysisInfos {
   def overrideDependencyType(dependencyType: DependencyType): AnalysisInfos
   def overrideDependencyType(assumptionType: AssumptionType): AnalysisInfos
   def overrideSourceInfo(source: DependencyAnalysisSourceInfo): AnalysisInfos
+
+  /** Descriptions of the information that is missing from these infos and was replaced by placeholders. */
+  def missingInfos: List[String]
 
   def getSourceInfo: DependencyAnalysisSourceInfo
   def getDependencyType: DependencyType
@@ -157,15 +159,20 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
     s"$sourceInfo$nodeInfo"
   }
 
+  def missingInfos: List[String] =
+    if (!analysisEnabled) List.empty
+    else {
+      val missingSourceInfo = Option.when(sourceInfos.isEmpty)(s"Missing source info for $getDebugInfo")
+      val missingDependencyType = Option.when(dependencyTypes.isEmpty)(s"Missing dependency type for $getDebugInfo")
+      val missingJoinSource = Option.when(sourceInfos.isEmpty && joinInfos.exists(_.isInstanceOf[EvalStackDependencyAnalysisJoin]))(s"Missing source info for the join infos of $getDebugInfo")
+      List(missingSourceInfo, missingDependencyType, missingJoinSource).flatten
+    }
+
   def getSourceInfo: DependencyAnalysisSourceInfo = {
     if (analysisEnabled) {
-      val sourceInfoOpt = sourceInfos.headOption
-      if (sourceInfoOpt.isDefined) {
-        sourceInfoOpt.get
-      } else {
-        SiliconRunner.logger.warn(s"WARN: Missing source info for $getDebugInfo")
-        nodes.headOption.map(DependencyAnalysisSourceInfo.createAnalysisSourceInfo).getOrElse(StringDependencyAnalysisSourceInfo("Unknown", NoPosition))
-      }
+      sourceInfos.headOption
+        .orElse(nodes.headOption.map(DependencyAnalysisSourceInfo.createAnalysisSourceInfo))
+        .getOrElse(StringDependencyAnalysisSourceInfo("Unknown", NoPosition))
     } else {
       StringDependencyAnalysisSourceInfo("Unknown", NoPosition)
     }
@@ -173,13 +180,7 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
 
   def getDependencyType: DependencyType = {
     if (analysisEnabled) {
-      val dependencyTypeOpt = dependencyTypes.headOption.map(_.dependencyType)
-      if (dependencyTypeOpt.isDefined) {
-        dependencyTypeOpt.get
-      } else {
-        SiliconRunner.logger.warn(s"WARN: Missing dependency type for $getDebugInfo")
-        AssumptionType.Unknown.asDepType()
-      }
+      dependencyTypes.headOption.map(_.dependencyType).getOrElse(AssumptionType.Unknown.asDepType())
     } else {
       AssumptionType.Unknown.asDepType()
     }
@@ -194,7 +195,6 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
     if (analysisEnabled) {
       joinInfos.map {
         case EvalStackDependencyAnalysisJoin(joinType, edgeType) =>
-          if (sourceInfos.lastOption.isEmpty) SiliconRunner.logger.warn(s"WARN: Missing source info for $getDebugInfo")
           SimpleDependencyAnalysisJoin(sourceInfos.lastOption.orElse(nodes.lastOption.map(DependencyAnalysisSourceInfo.createAnalysisSourceInfo)).getOrElse(StringDependencyAnalysisSourceInfo("Unknown", NoPosition)), joinType, edgeType)
         case a: SimpleDependencyAnalysisJoin => a
       }

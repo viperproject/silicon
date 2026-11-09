@@ -15,6 +15,7 @@ import viper.silicon.Config.JoinMode.JoinMode
 import viper.silicon.Config.StateConsolidationMode.StateConsolidationMode
 import viper.silicon.Config.AssertionMode.{PushPop, SoftConstraints}
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverAPI, Z3ProverStdIO}
+import viper.silicon.dependencyAnalysis.DependencyAnalysisOptions
 import viper.silver.frontend.SilFrontendConfig
 
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
@@ -784,6 +785,9 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
    * per-member flag.
    */
   lazy val isDependencyAnalysisEnabled: Boolean = dependencyAnalysis.isDefined
+
+  lazy val dependencyAnalysisOptions: DependencyAnalysisOptions =
+    DependencyAnalysisOptions(enableDependencyAnalysisDebugging(), !disableDependencyAnalysisJoinPrecisionOpt())
 
   /**
    * If true, verification always steps through all paths; even if provably infeasible. Might have a huge performance penalty!

@@ -8,7 +8,6 @@ package viper.silicon.dependencyAnalysis
 
 import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.dependencyAnalysis.graphInterpretation.{FinalGraphQueries, IntraproceduralGraphResult}
-import viper.silicon.verifier.Verifier
 import viper.silver.dependencyAnalysis.EdgeType.EdgeType
 import viper.silver.dependencyAnalysis.JoinType.JoinType
 import viper.silver.dependencyAnalysis.{DependencyAnalysisSourceInfo, EdgeType, JoinType}
@@ -19,7 +18,7 @@ import scala.collection.mutable
  * * @param name Optional name for the joined graph.
  * * @param memberResults The analysis results of the members to be joined.
  */
-class DependencyGraphJoiner(name: String, memberResults: Set[IntraproceduralGraphResult]) {
+class DependencyGraphJoiner(name: String, memberResults: Set[IntraproceduralGraphResult], options: DependencyAnalysisOptions) {
 
   /**
    * @return Queries operating on a new dependency graph that represents all input graphs and
@@ -67,7 +66,7 @@ class DependencyGraphJoiner(name: String, memberResults: Set[IntraproceduralGrap
 
   private def addEdgesConnectingMethods(newGraph: DependencyGraph[Final], edgeType: EdgeType, sourceNodes: Set[DependencyAnalysisNode], sinkNodes: Set[DependencyAnalysisNode], sourceInfoToNodeIds: Map[DependencyAnalysisSourceInfo, Set[Int]], intraMethodEdges: Map[Int, Set[Int]]): Unit = {
     if (edgeType.equals(EdgeType.Up)) {
-      val directDepsOfSources = if(!Verifier.config.disableDependencyAnalysisJoinPrecisionOpt()) {
+      val directDepsOfSources = if (options.useJoinPrecisionOpt) {
         // Preconditions are connected to the dependencies required to prove them at all call sites. However, they do not depend on the calls themselves.
         sourceNodes.groupBy(_.sourceInfo).flatMap(t => getDirectIntraMethodDependencies(t._2.map(_.id), sourceInfoToNodeIds(t._1), intraMethodEdges))
       } else {

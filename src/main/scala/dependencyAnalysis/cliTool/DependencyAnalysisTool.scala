@@ -8,9 +8,8 @@ package viper.silicon.dependencyAnalysis.cliTool
 
 import viper.silicon.dependencyAnalysis.cliTool.DependencyGraphImporter.{importGraphFromCsv, importProgram}
 import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphQueries
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisResult, DependencyGraphJoiner}
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisOptions, DependencyAnalysisResult, DependencyGraphJoiner}
 import viper.silicon.interfaces.{Failure, VerificationResult}
-import viper.silicon.verifier.Verifier
 import viper.silver.ast
 
 object DependencyAnalysisTool {
@@ -34,7 +33,7 @@ object DependencyAnalysisTool {
     val program = importProgram(graphFolder)
 
     val queries = new FinalGraphQueries("test", graph, List.empty)
-    val userTool = DependencyAnalysisCliTool(queries, program, List.empty)
+    val userTool = DependencyAnalysisCliTool(queries, program, List.empty, DependencyAnalysisOptions())
 
     val cmdsIndex = args.indexOf("--cmds")
     val cmds = if (0 <= cmdsIndex && cmdsIndex < args.length - 1) args(cmdsIndex + 1) else ""
@@ -50,23 +49,18 @@ object DependencyAnalysisTool {
       throw new IllegalArgumentException("Error: --graphFolder argument is required but not found.")
   }
 
-  def runDependencyAnalysisWorkflow(verificationResults: List[VerificationResult], program: ast.Program, inputFile: Option[String]): Option[DependencyAnalysisResult] = {
-    Verifier.config.dependencyAnalysis.toOption match {
-      case None => None
-      case Some(cmds) =>
-        val memberResults = verificationResults.flatMap(_.intraproceduralGraphResult)
-        val verificationErrors: List[Failure] = (verificationResults filter (_.isInstanceOf[Failure])) map (_.asInstanceOf[Failure])
-        // TODO ake: make sure we can access the name of frontend programs (instead of naming it "joined")
-        val programName = inputFile.map(_.replaceAll("\\\\", "_").replaceAll("/", "_").replaceAll(".vpr", "")).getOrElse("joined")
+  def runDependencyAnalysisWorkflow(commands: String, options: DependencyAnalysisOptions, verificationResults: List[VerificationResult], program: ast.Program, inputFile: Option[String]): DependencyAnalysisResult = {
+    val memberResults = verificationResults.flatMap(_.intraproceduralGraphResult)
+    val verificationErrors: List[Failure] = (verificationResults filter (_.isInstanceOf[Failure])) map (_.asInstanceOf[Failure])
+    // TODO ake: make sure we can access the name of frontend programs (instead of naming it "joined")
+    val programName = inputFile.map(_.replaceAll("\\\\", "_").replaceAll("/", "_").replaceAll(".vpr", "")).getOrElse("joined")
 
-        val fullGraphQueries = new DependencyGraphJoiner(programName, memberResults.toSet).joinGraphs()
+    val fullGraphQueries = new DependencyGraphJoiner(programName, memberResults.toSet, options).joinGraphs()
 
 
-        val userTool = DependencyAnalysisCliTool(fullGraphQueries, program, verificationErrors)
-        userTool.runCommands(cmds)
+    val userTool = DependencyAnalysisCliTool(fullGraphQueries, program, verificationErrors, options)
+    userTool.runCommands(commands)
 
-        val result = DependencyAnalysisResult(program, fullGraphQueries)
-        Some(result)
-    }
+    DependencyAnalysisResult(program, fullGraphQueries)
   }
 }

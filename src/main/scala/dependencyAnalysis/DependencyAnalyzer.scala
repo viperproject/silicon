@@ -6,10 +6,10 @@
 
 package viper.silicon.dependencyAnalysis
 
+import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.state.chunks.{Chunk, GeneralChunk}
 import viper.silicon.state.terms.{NoPerm, _}
-import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast._
 import viper.silver.dependencyAnalysis._
@@ -121,10 +121,16 @@ object DependencyAnalyzer {
   }
 }
 
-class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAnalyzer {
+class DefaultDependencyAnalyzer(member: Option[ast.Member], options: DependencyAnalysisOptions) extends DependencyAnalyzer with LazyLogging {
   protected var customMergeDependencies: Set[(Set[DependencyAnalysisMergeInfo], Set[DependencyAnalysisMergeInfo])] = Set.empty
 
   override def getMember: ast.Member = member.get
+
+  /* Every node is built from infos that passed through here, so that incomplete infos are reported. */
+  private def checked(analysisInfos: AnalysisInfos): AnalysisInfos = {
+    analysisInfos.missingInfos foreach (missing => logger.warn(s"WARN: $missing"))
+    analysisInfos
+  }
 
   override def getNodes: Iterable[DependencyAnalysisNode] = dependencyGraph.getNodes
 
@@ -146,13 +152,14 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
   override def addAssertionNode(node: GeneralAssertionNode): Unit = dependencyGraph.addAssertionNode(node)
 
   override def addAssumption(assumption: Term, analysisInfos: AnalysisInfos, description: Option[String]): Option[Int] = {
+    checked(analysisInfos)
     val node = DependencyNodeFactory.createSimpleAssumptionNode(assumption, description, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assumptionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo.filterNot(_.assertOnly), getMember.name)
     addAssumptionNode(node)
     Some(node.id)
   }
 
   override def addAxiom(assumption: Term, analysisAxiomInfo: DependencyAnalysisAxiomInfo, description: Option[String]): Option[Int] = {
-    val analysisInfos = analysisAxiomInfo.analysisInfos
+    val analysisInfos = checked(analysisAxiomInfo.analysisInfos)
     val node = DependencyNodeFactory.createAxiomAssumptionNode(assumption, description, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assumptionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo.filterNot(_.assertOnly), analysisAxiomInfo.memberStr)
     addAssumptionNode(node)
     Some(node.id)
@@ -175,12 +182,14 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
   }
 
   private def addPermissionInhaleNode(chunk: Chunk, permAmount: Term, analysisInfos: AnalysisInfos, labelNode: LabelNode): Option[Int] = {
+    checked(analysisInfos)
     val node = DependencyNodeFactory.createPermissionInhaleNode(chunk, permAmount, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assumptionType, analysisInfos.getMergeInfo, labelNode, analysisInfos.getJoinInfo, getMember.name)
     addAssumptionNode(node)
     Some(node.id)
   }
 
   private def addPermissionExhaleNode(chunk: Chunk, permAmount: Term, analysisInfos: AnalysisInfos, labelNode: LabelNode): Option[Int] = {
+    checked(analysisInfos)
     val node = DependencyNodeFactory.createPermissionExhaleNode(chunk, permAmount, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assertionType, analysisInfos.getMergeInfo, labelNode, analysisInfos.getJoinInfo, getMember.name)
     addAssertionNode(node)
     Some(node.id)
@@ -195,6 +204,7 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
   }
 
   override def createAssertOrCheckNode(term: Term, analysisInfos: AnalysisInfos, isCheck: Boolean): Option[GeneralAssertionNode] = {
+    checked(analysisInfos)
     if (isCheck)
       Some(DependencyNodeFactory.createSimpleCheckNode(term, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assertionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo, getMember.name))
     else
@@ -214,12 +224,14 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
   }
 
   override def addInfeasibilityNode(isCheck: Boolean, analysisInfos: AnalysisInfos): Option[Int] = {
+    checked(analysisInfos)
     val node = DependencyNodeFactory.createInfeasibilityNode(analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assumptionType, getMember.name)
     addAssumptionNode(node)
     Some(node.id)
   }
 
   override def addAssertionFailedNode(failedAssertion: Term, analysisInfos: AnalysisInfos): Option[Int] = {
+    checked(analysisInfos)
     val assumeNode = DependencyNodeFactory.createSimpleAssumptionNode(failedAssertion, None, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assertionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo.filterNot(_.assertOnly), getMember.name)
     val assertFailedNode = DependencyNodeFactory.createSimpleAssertionNode(failedAssertion, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assertionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo, getMember.name, hasFailed=true)
     dependencyGraph.addNode(assumeNode)
@@ -271,9 +283,9 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
    */
   override def buildFinalGraph(): Option[DependencyGraph[IntraProcedural]] = {
     dependencyGraph.removeLabelNodes()
-    val mergedGraph = if (Verifier.config.enableDependencyAnalysisDebugging()) dependencyGraph.asInstanceOf[DependencyGraph[IntraProcedural]] else buildAndGetMergedGraph()
+    val mergedGraph = if (options.enableDebugging) dependencyGraph.asInstanceOf[DependencyGraph[IntraProcedural]] else buildAndGetMergedGraph()
     addTransitiveEdges(mergedGraph)
-    if (!Verifier.config.enableDependencyAnalysisDebugging()) mergedGraph.removeInternalNodes()
+    if (!options.enableDebugging) mergedGraph.removeInternalNodes()
     Some(mergedGraph)
   }
 

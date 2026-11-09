@@ -6,13 +6,13 @@
 
 package viper.silicon.dependencyAnalysis.cliTool
 
+import viper.silicon.dependencyAnalysis.DependencyAnalysisOptions
 import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphQueries
-import viper.silicon.verifier.Verifier
 import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silver.dependencyAnalysis.{AssumptionType, DependencyAnalysisSourceInfo}
 
-class DebugDependencyAnalysisCliExtension(queries: FinalGraphQueries) extends DependencyAnalysisCliToolExtension{
+class DebugDependencyAnalysisCliExtension(queries: FinalGraphQueries, options: DependencyAnalysisOptions) extends DependencyAnalysisCliToolExtension{
   override val name: String = "Debug Features"
   override val commands: List[DependencyAnalysisCliCommand] = List(
                                                                 new AssumptionTypesCommand,
@@ -90,7 +90,7 @@ class DebugDependencyAnalysisCliExtension(queries: FinalGraphQueries) extends De
 
     private def getSingleNodeString(infoAndNodes: (DependencyAnalysisSourceInfo, Set[DependencyAnalysisNode])): String = {
       val (sourceInfo, nodes) = infoAndNodes
-      val lowLevelNodesStr = if(Verifier.config.enableDependencyAnalysisDebugging())
+      val lowLevelNodesStr = if (options.enableDebugging)
         s"\n\t${nodes.map(n => s"${n.getNodeString} | ${n.assumptionType}").mkString("\n\t")}"
         else ""
       s"\n--\n${sourceInfo.toString}$lowLevelNodesStr\n--"

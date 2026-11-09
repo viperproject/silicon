@@ -13,6 +13,7 @@ import viper.silicon.dependencyAnalysis.{DefaultDependencyAnalyzer, DependencyAn
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms.Term
+import viper.silicon.verifier.Verifier
 import viper.silver.reporter.Reporter
 
 class DependencyAnalysisAwareZ3ProverStdIO(uniqueId: String, termConverter: TermToSMTLib2Converter, identifierFactory: IdentifierFactory, reporter: Reporter)
@@ -40,7 +41,7 @@ class DependencyAnalysisAwareZ3ProverStdIO(uniqueId: String, termConverter: Term
 }
 
 trait DependencyAnalysisProverHandler extends ProverLike {
-  protected val preambleDependencyAnalyzer: DependencyAnalyzer = new DefaultDependencyAnalyzer(None)
+  protected val preambleDependencyAnalyzer: DependencyAnalyzer = new DefaultDependencyAnalyzer(None, Verifier.config.dependencyAnalysisOptions)
 
   def getPreambleAnalysisNodes: Iterable[DependencyAnalysisNode] = preambleDependencyAnalyzer.getNodes
 
