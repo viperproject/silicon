@@ -189,6 +189,7 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
   override def createLabelNode(label: Var, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): Option[LabelNode] = {
     val labelNode = DependencyNodeFactory.createLabelNode(label, getMember.name)
     addAssumptionNode(labelNode)
+    // TODO ake: what to do with the source chunks?
     dependencyGraph.addEdges(getNodeIdsByTerm(sourceTerms.toSet), labelNode.id)
     Some(labelNode)
   }
