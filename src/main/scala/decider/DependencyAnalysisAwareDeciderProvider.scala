@@ -24,8 +24,8 @@ trait DependencyAnalysisHandler {
   def getDependencyAnalyzer: DependencyAnalyzer
   def resetDependencyAnalyzer(): Unit
 
-  def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfos: AnalysisInfos, isExhale: Boolean): CH
-  def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfos: AnalysisInfos, isExhale: Boolean, createLabel: Boolean = true): CH
+  def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfos: DependencyAnalysisInfos, isExhale: Boolean): CH
+  def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfos: DependencyAnalysisInfos, isExhale: Boolean, createLabel: Boolean = true): CH
 
   def getOrCreateAnalysisLabelNode(sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Option[LabelNode]
 }
@@ -39,7 +39,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
 
     override def isDependencyAnalysisEnabled: Boolean = Verifier.config.dependencyAnalysis.isDefined && !dependencyAnalyzer.isInstanceOf[NoDependencyAnalyzer]
 
-    override def defaultAnalysisInfos: AnalysisInfos = DependencyAnalysisInfos.DefaultInfos.withEnabled(isDependencyAnalysisEnabled)
+    override def defaultAnalysisInfos: DependencyAnalysisInfos = DependencyAnalysisInfos.DefaultInfos.withEnabled(isDependencyAnalysisEnabled)
 
     type P = DependencyAnalysisAwareZ3ProverStdIO
 
@@ -68,7 +68,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       dependencyAnalyzer = new NoDependencyAnalyzer
     }
 
-    override protected def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], analysisInfos: AnalysisInfos, isDefinition: Boolean = false): Unit = {
+    override protected def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], analysisInfos: DependencyAnalysisInfos, isDefinition: Boolean = false): Unit = {
       /* Registered up front since assumptions on infeasible paths must be recorded too, even though they never reach the prover. */
       val labels = registerAssumptions(terms, analysisInfos)
       assumeWithoutSmokeChecksInternal(terms, isDefinition)(t => prover.assume(t, labels(t)))
@@ -79,7 +79,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       prover.assume(term, assumptionLabel)
     }
 
-    private def registerAssumptions(terms: InsertionOrderedSet[Term], analysisInfos: AnalysisInfos): Map[Term, Option[String]] = {
+    private def registerAssumptions(terms: InsertionOrderedSet[Term], analysisInfos: DependencyAnalysisInfos): Map[Term, Option[String]] = {
       terms.toSeq.map(t => {
         val assumptionIds = dependencyAnalyzer.addAssumption(t, analysisInfos)
         (t, DependencyAnalyzer.createAssumptionLabel(assumptionIds))
@@ -88,7 +88,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
 
     override protected def isKnownToBeTrue(t: Term): Boolean = t.equals(True)
 
-    override protected def deciderAssertInternal(t: Term, timeout: Option[Int], analysisInfos: AnalysisInfos, isCheck: Boolean): Boolean = {
+    override protected def deciderAssertInternal(t: Term, timeout: Option[Int], analysisInfos: DependencyAnalysisInfos, isCheck: Boolean): Boolean = {
       val assertNode = dependencyAnalyzer.createAssertOrCheckNode(t, analysisInfos, isCheck)
       val label = DependencyAnalyzer.createAssertionLabel(assertNode map (_.id))
 
@@ -106,10 +106,10 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       result
     }
 
-    override protected def failedAssertionInfos(analysisInfos: AnalysisInfos): AnalysisInfos =
+    override protected def failedAssertionInfos(analysisInfos: DependencyAnalysisInfos): DependencyAnalysisInfos =
       analysisInfos.overrideDependencyType(AssumptionType.Explicit)
 
-    override def checkSmoke(analysisInfos: AnalysisInfos, isAssert: Boolean = false): Boolean = {
+    override def checkSmoke(analysisInfos: DependencyAnalysisInfos, isAssert: Boolean = false): Boolean = {
       val checkNode = dependencyAnalyzer.createAssertOrCheckNode(False, analysisInfos, !isAssert)
 
       if (isPathMarkedInfeasible) {
@@ -132,12 +132,12 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       }
     }
 
-    override def handleFailedAssertion(failedAssertion: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: AnalysisInfos, assumeFailedAssertion: Boolean): Unit = {
+    override def handleFailedAssertion(failedAssertion: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit = {
       dependencyAnalyzer.addAssertionFailedNode(failedAssertion, analysisInfos)
       super.handleFailedAssertion(failedAssertion, e, finalExp, analysisInfos, assumeFailedAssertion)
     }
 
-    override def handleInfeasiblePath(hasAssertions: Boolean, hasAssumptions: Boolean, analysisInfos: AnalysisInfos): Unit = {
+    override def handleInfeasiblePath(hasAssertions: Boolean, hasAssumptions: Boolean, analysisInfos: DependencyAnalysisInfos): Unit = {
       if (!isPathMarkedInfeasible) return
       super.handleInfeasiblePath(hasAssertions, hasAssumptions, analysisInfos)
       if (hasAssertions) {
@@ -148,11 +148,11 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       }
     }
 
-    override def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfos: AnalysisInfos, isExhale: Boolean): CH = {
+    override def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfos: DependencyAnalysisInfos, isExhale: Boolean): CH = {
       registerDerivedChunk(Set.empty, buildChunk, perm, analysisInfos, isExhale)
     }
 
-    override def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfos: AnalysisInfos, isExhale: Boolean, createLabel: Boolean = true): CH = {
+    override def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfos: DependencyAnalysisInfos, isExhale: Boolean, createLabel: Boolean = true): CH = {
       if (!isDependencyAnalysisEnabled)
         return buildChunk(perm)
 

@@ -41,39 +41,6 @@ import viper.silver.dependencyAnalysis._
  */
 
 /**
- * Information about the currently evaluated/executed Viper AST node that is carried along in the symbolic state.
- * An analysis provides its own instantiation.
- */
-abstract class AnalysisInfos {
-  def analysisEnabled: Boolean
-
-  def addInfo(info: ast.Info, node: ast.Node): AnalysisInfos
-  def addInfo(info: ast.Info): AnalysisInfos
-  def addInfo(infoString: String, pos: ast.Position, dependencyType: DependencyType): AnalysisInfos
-
-  def overrideDependencyType(dependencyType: DependencyType): AnalysisInfos
-  def overrideDependencyType(assumptionType: AssumptionType): AnalysisInfos
-  def overrideSourceInfo(source: DependencyAnalysisSourceInfo): AnalysisInfos
-
-  def getSourceInfo: DependencyAnalysisSourceInfo
-  def getDependencyType: DependencyType
-  def getMergeInfo: DependencyAnalysisMergeInfo
-  def getJoinInfo: List[SimpleDependencyAnalysisJoin]
-
-  def withMergeInfo(mergeInfo: DependencyAnalysisMergeInfo): AnalysisInfos
-  def withJoinInfo(joinInfo: DependencyAnalysisJoinInfo): AnalysisInfos
-  def removeSinkJoinInfos(): AnalysisInfos
-  def withEnabled(analysisEnabled: Boolean): AnalysisInfos
-  def withInfo(sourceInfo: DependencyAnalysisSourceInfo, dependencyType: DependencyType): AnalysisInfos
-  def withInfo(sourceInfo: DependencyAnalysisSourceInfo, assumptionType: AssumptionType): AnalysisInfos
-
-  /** Forgets all source infos encountered so far. */
-  def withoutSourceInfos(): AnalysisInfos
-  /** Replaces all dependency types by the current one, with its assertion type set to `assertionType`. */
-  def withAssertionType(assertionType: AssumptionType): AnalysisInfos
-}
-
-/**
  * Stores all information about the currently evaluated/executed Viper AST node. This info is used to derive the parameters for the low-level dependency nodes.
  *
  * @param sourceInfos list of sourceInfos encountered during execution/evaluation of the current Viper AST node.
@@ -97,7 +64,7 @@ abstract class AnalysisInfos {
  *              The tail indicates its subexpressions in the order they got evaluated.
  * @param analysisEnabled boolean flag indicating whether the analysis is currently enabled; might change at runtime.
  */
-case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInfo], dependencyTypes: List[DependencyTypeInfo], mergeInfos: List[DependencyAnalysisMergeInfo], joinInfos: List[DependencyAnalysisJoinInfo], nodes: List[ast.Node], analysisEnabled: Boolean = true) extends AnalysisInfos {
+case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInfo], dependencyTypes: List[DependencyTypeInfo], mergeInfos: List[DependencyAnalysisMergeInfo], joinInfos: List[DependencyAnalysisJoinInfo], nodes: List[ast.Node], analysisEnabled: Boolean = true) {
 
   private def isAnalysisEnabled = Verifier.config.dependencyAnalysis.isDefined && analysisEnabled
 
@@ -219,15 +186,10 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
 
   def withInfo(sourceInfo: DependencyAnalysisSourceInfo, assumptionType: AssumptionType): DependencyAnalysisInfos =
     this.overrideSourceInfo(sourceInfo).overrideDependencyType(assumptionType)
-
-  def withoutSourceInfos(): DependencyAnalysisInfos = this.copy(sourceInfos = List.empty)
-
-  def withAssertionType(assertionType: AssumptionType): DependencyAnalysisInfos =
-    this.copy(dependencyTypes = List(DependencyTypeInfo(DependencyType(getDependencyType.assumptionType, assertionType))))
 }
 
 object DependencyAnalysisInfos {
   val DefaultInfos = DependencyAnalysisInfos(List.empty, List.empty, List.empty, List.empty, List.empty)
 }
 
-case class DependencyAnalysisAxiomInfo(analysisInfos: AnalysisInfos, memberStr: String)
+case class DependencyAnalysisAxiomInfo(analysisInfos: DependencyAnalysisInfos, memberStr: String)

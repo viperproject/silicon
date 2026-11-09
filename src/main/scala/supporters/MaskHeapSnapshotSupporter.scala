@@ -6,6 +6,7 @@
 
 package viper.silicon.supporters
 
+import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
 
 import scala.collection.immutable
 import viper.silver.ast
@@ -80,7 +81,8 @@ class MaskHeapSnapshotSupporter(symbolConverter: SymbolConverter)
                                   sf: (Sort, Verifier) => Term,
                                   a0: ast.Exp,
                                   a1: ast.Exp,
-                                  v: Verifier)
+                                  v: Verifier,
+                                  analysisInfos: DependencyAnalysisInfos)
                                  : ((Sort, Verifier) => Term, (Sort, Verifier) => Term) =
     (sf, sf)
 }

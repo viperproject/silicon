@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.state.State
 import viper.silicon.state.terms.{Term, Var, perms}
@@ -15,7 +16,7 @@ import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.{NegativePermission, NonPositivePermission}
 
 object permissionSupporter extends SymbolicExecutionRules {
-  def assertNotNegative(s: State, tPerm: Term, ePerm: ast.Exp, ePermNew: Option[ast.Exp], pve: PartialVerificationError, v: Verifier)
+  def assertNotNegative(s: State, tPerm: Term, ePerm: ast.Exp, ePermNew: Option[ast.Exp], pve: PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
                        (Q: (State, Verifier) => VerificationResult)
                        : VerificationResult = {
 
@@ -25,17 +26,17 @@ object permissionSupporter extends SymbolicExecutionRules {
       case _ =>
         val termToAssert = perms.IsNonNegative(tPerm)
         val debugExp = ePermNew.map(ep => perms.IsNonNegative(ep)(ep.pos, ep.info, ep.errT))
-        v.decider.assert(termToAssert, s.analysisInfos) {
+        v.decider.assert(termToAssert, analysisInfos) {
           case true => Q(s, v)
           case false =>
             val failure = createFailure(pve dueTo NegativePermission(ePerm), v, s, termToAssert, debugExp)
-            if (s.retryLevel == 0) v.decider.handleFailedAssertion(termToAssert, debugExp, debugExp, s.analysisInfos, v.reportFurtherErrors())
+            if (s.retryLevel == 0) v.decider.handleFailedAssertion(termToAssert, debugExp, debugExp, analysisInfos, v.reportFurtherErrors())
             if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, v) else failure
         }
     }
   }
 
-  def assertPositive(s: State, tPerm: Term, ePerm: ast.Exp, pve: PartialVerificationError, v: Verifier)
+  def assertPositive(s: State, tPerm: Term, ePerm: ast.Exp, pve: PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
                     (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
 
@@ -45,11 +46,11 @@ object permissionSupporter extends SymbolicExecutionRules {
       case _ =>
         val termToAssert = perms.IsPositive(tPerm)
         val debugExp = Option.when(debugOn)(perms.IsPositive(ePerm)())
-        v.decider.assert(termToAssert, s.analysisInfos) {
+        v.decider.assert(termToAssert, analysisInfos) {
           case true => Q(s, v)
           case false =>
             val failure = createFailure(pve dueTo NonPositivePermission(ePerm), v, s, termToAssert, debugExp)
-            if (s.retryLevel == 0) v.decider.handleFailedAssertion(termToAssert, debugExp, debugExp, s.analysisInfos, v.reportFurtherErrors())
+            if (s.retryLevel == 0) v.decider.handleFailedAssertion(termToAssert, debugExp, debugExp, analysisInfos, v.reportFurtherErrors())
             if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, v) else failure
         }
     }

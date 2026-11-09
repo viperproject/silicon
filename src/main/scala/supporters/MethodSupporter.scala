@@ -106,9 +106,9 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
          * rules in Smans' paper.
          */
         executionFlowController.locally(s0, v)((s1, v1) => {
-          produces(s1.withAnalysisInfos(analysisInfosPrecondition), freshSnap, pres, ContractNotWellformed, v1)((s2, v2) => {
+          produces(s1, freshSnap, pres, ContractNotWellformed, v1, analysisInfosPrecondition)((s2, v2) => {
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-            val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h), analysisInfos = s1.analysisInfos)
+            val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
             val s2b = if (producer.debugOn) {
               val tmp = v2.finishKeyHeap(s2a)
               val parentLabel = v2.getDebugHeapLabel(tmp).getOrElse("nil")
@@ -118,7 +118,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                   val s3a = s3.copy(h = v3.heapSupporter.getEmptyHeap(s3.program, v3))
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
                   val sepIdentifier = symbExLog.openScope(impLog)
-                  produces(s3a.withAnalysisInfos(analysisInfosPostcondition), freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
+                  produces(s3a, freshSnap, posts, ContractNotWellformed, v3, analysisInfosPostcondition)((_, _) => {
                     symbExLog.closeScope(sepIdentifier)
                     Success()})})
             && {
@@ -126,7 +126,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                   exec(s3, body, v3)((s4, v4) => { {
                     val currentLabel = v4.getDebugHeapLabel(s4).getOrElse("finalHeapMissing")
                     val s4a = if (producer.debugOn) v4.startKeyHeap(s4, currentLabel, ExhalePost) else s4
-                    consumes(s4a.withAnalysisInfos(analysisInfosPostcondition), posts, false, postViolated, v4)((_, _, _) =>
+                    consumes(s4a, posts, false, postViolated, v4, analysisInfosPostcondition)((_, _, _) =>
                       Success())}})}) }  )})})
 
       v.decider.resetProverOptions()

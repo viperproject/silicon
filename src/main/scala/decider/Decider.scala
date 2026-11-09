@@ -50,9 +50,9 @@ trait Decider {
   def pushScope(): Unit
   def popScope(): Unit
 
-  def checkSmoke(analysisInfos: AnalysisInfos, isAssert: Boolean = false): Boolean
+  def checkSmoke(analysisInfos: DependencyAnalysisInfos, isAssert: Boolean = false): Boolean
 
-  def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp]), analysisInfos: AnalysisInfos): Unit
+  def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp]), analysisInfos: DependencyAnalysisInfos): Unit
   def setPathConditionMark(): Mark
 
   def finishDebugSubExp(description : String): Unit
@@ -62,24 +62,24 @@ trait Decider {
   def debuggerAssume(terms: Iterable[Term], de: DebugExp)
 
   def isPathMarkedInfeasible: Boolean
-  def handleInfeasiblePath(hasAssertions: Boolean, hasAssumptions: Boolean, analysisInfos: AnalysisInfos): Unit
+  def handleInfeasiblePath(hasAssertions: Boolean, hasAssumptions: Boolean, analysisInfos: DependencyAnalysisInfos): Unit
 
-  def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: AnalysisInfos): Unit
-  def assume(t: Term, debugExp: Option[DebugExp], analysisInfos: AnalysisInfos): Unit
-  def assume(terms: Seq[Term], debugExps: Option[Seq[DebugExp]], analysisInfos: AnalysisInfos): Unit
-  def assume(assumptions: Iterable[Term], debugExps: Option[Iterable[DebugExp]], description: String, enforceAssumption: Boolean, analysisInfos: AnalysisInfos): Unit
-  def assumeDefinition(terms: Iterable[Term], debugExp: Option[DebugExp], analysisInfos: AnalysisInfos): Unit
-  def assumeDefinition(t: Term, debugExp: Option[DebugExp], analysisInfos: AnalysisInfos): Unit
-  def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean, analysisInfos: AnalysisInfos): Unit
+  def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos): Unit
+  def assume(t: Term, debugExp: Option[DebugExp], analysisInfos: DependencyAnalysisInfos): Unit
+  def assume(terms: Seq[Term], debugExps: Option[Seq[DebugExp]], analysisInfos: DependencyAnalysisInfos): Unit
+  def assume(assumptions: Iterable[Term], debugExps: Option[Iterable[DebugExp]], description: String, enforceAssumption: Boolean, analysisInfos: DependencyAnalysisInfos): Unit
+  def assumeDefinition(terms: Iterable[Term], debugExp: Option[DebugExp], analysisInfos: DependencyAnalysisInfos): Unit
+  def assumeDefinition(t: Term, debugExp: Option[DebugExp], analysisInfos: DependencyAnalysisInfos): Unit
+  def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean, analysisInfos: DependencyAnalysisInfos): Unit
 
-  def check(t: Term, timeout: Int, analysisInfos: AnalysisInfos): Boolean
+  def check(t: Term, timeout: Int, analysisInfos: DependencyAnalysisInfos): Boolean
 
   /* TODO: Consider changing assert such that
    *         1. It passes State and Operations to the continuation
    *         2. The implementation reacts to a failing assertion by e.g. a state consolidation
    */
-  def assert(t: Term, analysisInfos: AnalysisInfos)(Q: Boolean => VerificationResult): VerificationResult
-  def assert(t: Term, analysisInfos: AnalysisInfos, timeout: Option[Int])(Q: Boolean => VerificationResult): VerificationResult
+  def assert(t: Term, analysisInfos: DependencyAnalysisInfos)(Q: Boolean => VerificationResult): VerificationResult
+  def assert(t: Term, analysisInfos: DependencyAnalysisInfos, timeout: Option[Int])(Q: Boolean => VerificationResult): VerificationResult
 
   def fresh(id: String, sort: Sort, ptype: Option[PType]): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
@@ -110,9 +110,9 @@ trait Decider {
 
   def statistics(): Map[String, String]
 
-  def handleFailedAssertion(failedAssertion: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: AnalysisInfos, assumeFailedAssertion: Boolean): Unit
+  def handleFailedAssertion(failedAssertion: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit
 
-  def defaultAnalysisInfos: AnalysisInfos
+  def defaultAnalysisInfos: DependencyAnalysisInfos
 }
 
 /*
@@ -169,7 +169,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     var debugVariableTypes : Map[String, PType] = Map.empty
 
-    override def defaultAnalysisInfos: AnalysisInfos = DependencyAnalysisInfos.DefaultInfos.withEnabled(false)
+    override def defaultAnalysisInfos: DependencyAnalysisInfos = DependencyAnalysisInfos.DefaultInfos.withEnabled(false)
 
     def setPcs(other: PathConditionStack) = {
       /* [BRANCH-PARALLELISATION] */
@@ -273,7 +273,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       //symbExLog.closeScope(sepIdentifier)
     }
 
-    def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp]), analysisInfos: AnalysisInfos): Unit =
+    def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp]), analysisInfos: DependencyAnalysisInfos): Unit =
       if (!isPathMarkedInfeasible) {
       pathConditions.setCurrentBranchCondition(t, te)
       assume(t, Option.when(te._2.isDefined)(te._1), te._2, analysisInfos)
@@ -297,7 +297,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def isPathMarkedInfeasible: Boolean = Verifier.config.analyzeInfeasiblePaths && pcs.isPathMarkedInfeasible
 
-    def handleInfeasiblePath(hasAssertions: Boolean, hasAssumptions: Boolean, analysisInfos: AnalysisInfos): Unit = {}
+    def handleInfeasiblePath(hasAssertions: Boolean, hasAssumptions: Boolean, analysisInfos: DependencyAnalysisInfos): Unit = {}
 
     def addDebugExp(e: DebugExp): Unit = {
       if (debugMode) {
@@ -305,7 +305,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
     }
 
-    def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: AnalysisInfos): Unit = {
+    def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos): Unit = {
       if (finalExp.isDefined) {
         assume(assumptions=InsertionOrderedSet((t, Some(DebugExp.createInstance(e.get, finalExp.get)))), enforceAssumption = false, isDefinition = false, analysisInfos)
       } else {
@@ -313,15 +313,15 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
     }
 
-    def assume(t: Term, debugExp: Option[DebugExp], analysisInfos: AnalysisInfos): Unit = {
+    def assume(t: Term, debugExp: Option[DebugExp], analysisInfos: DependencyAnalysisInfos): Unit = {
       assume(InsertionOrderedSet(Seq((t, debugExp))), enforceAssumption = false, isDefinition = false, analysisInfos)
     }
 
-    def assumeDefinition(t: Term, debugExp: Option[DebugExp], analysisInfos: AnalysisInfos): Unit = {
+    def assumeDefinition(t: Term, debugExp: Option[DebugExp], analysisInfos: DependencyAnalysisInfos): Unit = {
       assume(InsertionOrderedSet(Seq((t, debugExp))), enforceAssumption=false, isDefinition=true, analysisInfos)
     }
 
-    def assumeDefinition(terms: Iterable[Term], debugExp: Option[DebugExp], analysisInfos: AnalysisInfos): Unit = {
+    def assumeDefinition(terms: Iterable[Term], debugExp: Option[DebugExp], analysisInfos: DependencyAnalysisInfos): Unit = {
       val filteredTerms = terms filterNot isKnownToBeTrue
 
       if (debugMode && filteredTerms.nonEmpty) {
@@ -331,7 +331,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms), analysisInfos, isDefinition = true)
     }
 
-    def assume(assumptions: InsertionOrderedSet[(Term, Option[DebugExp])], enforceAssumption: Boolean, isDefinition: Boolean, analysisInfos: AnalysisInfos): Unit = {
+    def assume(assumptions: InsertionOrderedSet[(Term, Option[DebugExp])], enforceAssumption: Boolean, isDefinition: Boolean, analysisInfos: DependencyAnalysisInfos): Unit = {
       val filteredAssumptions =
         if (enforceAssumption) assumptions
         else assumptions filterNot (a => isKnownToBeTrue(a._1))
@@ -344,14 +344,14 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       if (filteredAssumptions.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredAssumptions.map(_._1)), analysisInfos, isDefinition=isDefinition)
     }
 
-    def assume(assumptions: Seq[Term], debugExps: Option[Seq[DebugExp]], analysisInfos: AnalysisInfos): Unit = {
+    def assume(assumptions: Seq[Term], debugExps: Option[Seq[DebugExp]], analysisInfos: DependencyAnalysisInfos): Unit = {
       assumeWithoutSmokeChecks(InsertionOrderedSet(assumptions), analysisInfos)
       if (debugMode) {
         debugExps.get foreach (e => addDebugExp(e))
       }
     }
 
-    def assume(assumptions: Iterable[Term], debugExps: Option[Iterable[DebugExp]], description: String, enforceAssumption: Boolean, analysisInfos: AnalysisInfos): Unit = {
+    def assume(assumptions: Iterable[Term], debugExps: Option[Iterable[DebugExp]], description: String, enforceAssumption: Boolean, analysisInfos: DependencyAnalysisInfos): Unit = {
       val debugExp = Option.when(debugExps.isDefined)(DebugExp.createInstance(description, InsertionOrderedSet(debugExps.get)))
 
       val filteredTerms =
@@ -368,7 +368,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
 
-    def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean, analysisInfos: AnalysisInfos): Unit = {
+    def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean, analysisInfos: DependencyAnalysisInfos): Unit = {
       val filteredTerms =
         if (enforceAssumption) terms
         else terms filterNot isKnownToBeTrue
@@ -392,7 +392,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       })
     }
 
-    protected def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], analysisInfos: AnalysisInfos, isDefinition: Boolean = false): Unit =
+    protected def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], analysisInfos: DependencyAnalysisInfos, isDefinition: Boolean = false): Unit =
       assumeWithoutSmokeChecksInternal(terms, isDefinition)(t => prover.assume(t))
 
     /* `proverAssume` determines how each term is passed to the prover; it is not invoked on infeasible paths. */
@@ -416,7 +416,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     /* Asserting facts */
 
-    def checkSmoke(analysisInfos: AnalysisInfos, isAssert: Boolean=false): Boolean = {
+    def checkSmoke(analysisInfos: DependencyAnalysisInfos, isAssert: Boolean=false): Boolean = {
       checkSmokeInternal(isAssert)
     }
 
@@ -427,7 +427,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       result
     }
 
-    override def handleFailedAssertion(failedAssertion: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: AnalysisInfos, assumeFailedAssertion: Boolean): Unit = {
+    override def handleFailedAssertion(failedAssertion: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit = {
       if (assumeFailedAssertion) {
         assume(failedAssertion, e, finalExp, failedAssertionInfos(analysisInfos))
         failedAssertion match {
@@ -438,15 +438,15 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     /* The infos to use when a failed assertion is subsequently assumed. */
-    protected def failedAssertionInfos(analysisInfos: AnalysisInfos): AnalysisInfos = analysisInfos
+    protected def failedAssertionInfos(analysisInfos: DependencyAnalysisInfos): DependencyAnalysisInfos = analysisInfos
 
-    def check(t: Term, timeout: Int, analysisInfos: AnalysisInfos): Boolean = {
+    def check(t: Term, timeout: Int, analysisInfos: DependencyAnalysisInfos): Boolean = {
       deciderAssert(t, analysisInfos, Some(timeout), isCheck=true)
     }
 
-    def assert(t: Term, analysisInfos: AnalysisInfos)(Q:  Boolean => VerificationResult): VerificationResult = assert(t, analysisInfos,  timeout=Verifier.config.assertTimeout.toOption)(Q)
+    def assert(t: Term, analysisInfos: DependencyAnalysisInfos)(Q:  Boolean => VerificationResult): VerificationResult = assert(t, analysisInfos,  timeout=Verifier.config.assertTimeout.toOption)(Q)
 
-    def assert(t: Term, analysisInfos: AnalysisInfos, timeout: Option[Int])(Q:  Boolean => VerificationResult): VerificationResult = {
+    def assert(t: Term, analysisInfos: DependencyAnalysisInfos, timeout: Option[Int])(Q:  Boolean => VerificationResult): VerificationResult = {
       val success = deciderAssert(t, analysisInfos, timeout)
 
       // If the SMT query was not successful, store it (possibly "overwriting"
@@ -461,7 +461,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       Q(success)
     }
 
-    private def deciderAssert(t: Term, analysisInfos: AnalysisInfos, timeout: Option[Int], isCheck: Boolean=false) = {
+    private def deciderAssert(t: Term, analysisInfos: DependencyAnalysisInfos, timeout: Option[Int], isCheck: Boolean=false) = {
       val assertRecord = new DeciderAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
@@ -471,7 +471,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       result
     }
 
-    protected def deciderAssertInternal(t: Term, timeout: Option[Int], analysisInfos: AnalysisInfos, isCheck: Boolean): Boolean =
+    protected def deciderAssertInternal(t: Term, timeout: Option[Int], analysisInfos: DependencyAnalysisInfos, isCheck: Boolean): Boolean =
       proverAssert(t, timeout)(prover.assert(t, timeout))
 
     protected def isKnownToBeTrue(t: Term) = t match {
