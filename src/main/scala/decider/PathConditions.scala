@@ -6,9 +6,9 @@
 
 package viper.silicon.decider
 
+import viper.silicon.debugger.DebugExp
 import viper.silicon.Stack
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.debugger.DebugExp
 import viper.silicon.state.terms._
 import viper.silicon.utils.Counter
 import viper.silicon.verifier.Verifier

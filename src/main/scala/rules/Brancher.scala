@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import java.util.concurrent._
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.dependencyAnalysis.AnalysisInfos
@@ -19,7 +20,6 @@ import viper.silver.dependencyAnalysis.{AssumptionType, NoDependencyAnalysisMerg
 import viper.silver.reporter.BranchFailureMessage
 import viper.silver.verifier.Failure
 
-import java.util.concurrent._
 import scala.collection.immutable.HashSet
 
 trait BranchingRules extends SymbolicExecutionRules {

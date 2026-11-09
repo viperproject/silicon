@@ -7,21 +7,21 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.Map
-import viper.silicon.decider.Decider
+import viper.silver.components.StatefulComponent
+import viper.silver.dependencyAnalysis._
+import viper.silver.verifier.errors._
 import viper.silicon.interfaces._
+import viper.silicon.decider.Decider
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state._
-import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.{Verifier, VerifierComponent}
-import viper.silver.{ast, cfg}
-import viper.silver.components.StatefulComponent
-import viper.silver.dependencyAnalysis._
+import viper.silicon.utils.freshSnap
+import viper.silicon.Map
 import viper.silver.reporter.WarningsDuringVerification
 import viper.silver.verifier.VerifierWarning
-import viper.silver.verifier.errors._
+import viper.silver.{ast, cfg}
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 

@@ -6,7 +6,10 @@
 
 package viper.silicon.supporters.functions
 
+import scala.annotation.unused
 import com.typesafe.scalalogging.LazyLogging
+import viper.silver.ast
+import viper.silver.ast.utility.Functions
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.dependencyAnalysis.{DependencyAnalysisAxiomInfo, AnalysisInfos, DependencyAnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces.FatalResult
@@ -18,14 +21,10 @@ import viper.silicon.supporters.PredicateData
 import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Config, Map, toMap}
-import viper.silver.ast
 import viper.silver.ast.LocalVarWithVersion
-import viper.silver.ast.utility.Functions
 import viper.silver.dependencyAnalysis._
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.{InternalWarningMessage, Reporter}
-
-import scala.annotation.unused
 
 trait FunctionRecorderHandler {
 

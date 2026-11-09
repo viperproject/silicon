@@ -6,17 +6,16 @@
 
 package viper.silicon.supporters
 
-import viper.silicon.dependencyAnalysis.AnalysisInfos
-
 import scala.collection.immutable
 import viper.silver.ast
 import viper.silver.ast.Field
 import viper.silicon.rules.{magicWandSupporter, maskHeapSupporter}
-import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.state.{Heap, State, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort, WandHeapSort}
+import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.verifier.Verifier
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 
 /** Snapshot format of the maskHeap encoding: while consuming, snapshots are per-resource
   * masks describing the consumed footprint (MaskMapTerm); a completed consume packs them

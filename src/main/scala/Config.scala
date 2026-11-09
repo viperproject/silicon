@@ -6,17 +6,16 @@
 
 package viper.silicon
 
-import org.rogach.scallop._
-import viper.silicon.Config.AssertionMode.{PushPop, SoftConstraints}
-import viper.silicon.Config.JoinMode.JoinMode
-import viper.silicon.Config.StateConsolidationMode.StateConsolidationMode
-import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverAPI, Z3ProverStdIO}
-import viper.silver.frontend.SilFrontendConfig
-
 import java.nio.file.{Files, Path, Paths}
 import scala.collection.immutable.ArraySeq
-import scala.util.Properties._
 import scala.util.matching.Regex
+import scala.util.Properties._
+import org.rogach.scallop._
+import viper.silicon.Config.JoinMode.JoinMode
+import viper.silicon.Config.StateConsolidationMode.StateConsolidationMode
+import viper.silicon.Config.AssertionMode.{PushPop, SoftConstraints}
+import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverAPI, Z3ProverStdIO}
+import viper.silver.frontend.SilFrontendConfig
 
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   import Config._

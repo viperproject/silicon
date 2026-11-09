@@ -20,12 +20,12 @@ import viper.silicon.state._
 import viper.silicon.state.chunks._
 import viper.silicon.supporters.functions.{MaskHeapFunctionEncoding, NoopFunctionRecorder}
 import viper.silicon.verifier.Verifier
+import viper.silver.verifier.{ErrorReason, PartialVerificationError, VerificationError}
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.InternalWarningMessage
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
-import viper.silver.verifier.{ErrorReason, PartialVerificationError, VerificationError}
 
 import scala.collection.mutable.ListBuffer
 import scala.collection.{immutable, mutable}

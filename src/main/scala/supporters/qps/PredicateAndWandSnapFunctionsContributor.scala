@@ -10,7 +10,6 @@
 
 package  viper.silicon.supporters.qps
 
-import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -18,6 +17,7 @@ import viper.silicon.{Config, Map}
 import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
 import viper.silicon.state.terms.{Sort, SortDecl, sorts}
+import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silver.ast.PredicateAccess
 
 trait PredicateSnapFunctionsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]

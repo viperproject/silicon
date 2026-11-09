@@ -6,6 +6,10 @@
 
 package viper.silicon.decider
 
+import java.io._
+import java.nio.file.Path
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider._
@@ -17,10 +21,6 @@ import viper.silicon.{Config, Map, toMap}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, QuantifierInstantiationsMessage, Reporter}
 import viper.silver.verifier.{Model, DefaultDependency => SilDefaultDependency}
 
-import java.io._
-import java.nio.file.Path
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
 
 abstract class ProverStdIO(uniqueId: String,

@@ -7,9 +7,9 @@
 package viper.silicon.decider
 
 import com.typesafe.scalalogging.Logger
+import viper.silicon.debugger.DebugExp
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider._
@@ -26,8 +26,8 @@ import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
 import viper.silver.verifier.{DependencyNotFoundError, Model}
 
 import scala.collection.immutable.HashSet
-import scala.collection.mutable
 import scala.reflect.{ClassTag, classTag}
+import scala.collection.mutable
 
 /*
  * Interfaces

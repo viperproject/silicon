@@ -6,20 +6,20 @@
 
 package viper.silicon.reporting
 
-import viper.silicon.decider.TermToSMTLib2Converter
-import viper.silicon.interfaces.SiliconCounterexample
-import viper.silicon.interfaces.decider.TermConverter
-import viper.silicon.reporting.Converter.evaluateTerm
-import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.state.chunks._
-import viper.silicon.state.terms._
-import viper.silicon.state.{DefaultSymbolConverter, State, Store, SymbolConverter}
-import viper.silicon.{Map, state => st}
 import viper.silver.ast
 import viper.silver.ast._
-import viper.silver.verifier._
 
 import scala.util.Try
+import viper.silicon.{Map, state => st}
+import viper.silicon.resources.{FieldID, PredicateID}
+import viper.silicon.state.terms._
+import viper.silicon.state.chunks._
+import viper.silicon.state.{DefaultSymbolConverter, State, Store, SymbolConverter}
+import viper.silicon.decider.TermToSMTLib2Converter
+import viper.silicon.interfaces.decider.TermConverter
+import viper.silicon.interfaces.SiliconCounterexample
+import viper.silicon.reporting.Converter.evaluateTerm
+import viper.silver.verifier._
 
 /**
   * Transforms the model returned by the SMT solver into a Viper counterexample. One can choose

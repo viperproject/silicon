@@ -6,14 +6,14 @@
 
 package viper.silicon.interfaces.decider
 
+import viper.silicon.debugger.DebugAxiom
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.config.Version
-import viper.silicon.debugger.DebugAxiom
 import viper.silicon.dependencyAnalysis.DependencyAnalysisAxiomInfo
+import viper.silver.components.StatefulComponent
+import viper.silicon.{Config, Map}
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
-import viper.silicon.{Config, Map}
-import viper.silver.components.StatefulComponent
 import viper.silver.verifier.Model
 
 sealed abstract class Result

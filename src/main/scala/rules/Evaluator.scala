@@ -7,9 +7,15 @@
 package viper.silicon.rules
 
 import viper.silicon
-import viper.silicon.Config.JoinMode
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
+import viper.silicon.Config.JoinMode
+import viper.silver.ast
+import viper.silver.ast.{AnnotationInfo, FalseLit, LocalVarWithVersion, WeightedQuantifier}
+import viper.silver.dependencyAnalysis._
+import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, VerifierWarning}
+import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
+import viper.silver.verifier.reasons._
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
@@ -22,14 +28,8 @@ import viper.silicon.utils.ast._
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
-import viper.silver.ast
-import viper.silver.ast.{AnnotationInfo, FalseLit, LocalVarWithVersion, WeightedQuantifier}
-import viper.silver.dependencyAnalysis._
 import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
 import viper.silver.utility.Common.Rational
-import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
-import viper.silver.verifier.reasons._
-import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, VerifierWarning}
 
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution

@@ -6,10 +6,18 @@
 
 package viper.silicon.verifier
 
+import viper.silicon.debugger.SiliconDebugger
 import viper.silicon.Config.{ExhaleMode, JoinMode}
+
+import java.text.SimpleDateFormat
+import java.util.concurrent._
+import scala.annotation.unused
+import scala.collection.mutable
+import scala.util.Random
+import viper.silver.ast
+import viper.silver.components.StatefulComponent
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.debugger.SiliconDebugger
 import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.extensions.ConditionalPermissionRewriter
 import viper.silicon.interfaces._
@@ -20,25 +28,17 @@ import viper.silicon.rules.maskHeapSupporter
 import viper.silicon.state._
 import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
-import viper.silicon.supporters._
-import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
 import viper.silicon.supporters.qps._
+import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
+import viper.silicon.supporters._
 import viper.silicon.utils.Counter
 import viper.silver.ast.utility.QuantifiedPermissions.collectInDependencies
-import viper.silver.ast
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.{BackendType, Member}
 import viper.silver.cfg.silver.SilverCfg
-import viper.silver.components.StatefulComponent
 import viper.silver.frontend.FrontendStateCache
 import viper.silver.reporter._
 import viper.silver.verifier.VerifierWarning
-
-import java.text.SimpleDateFormat
-import java.util.concurrent._
-import scala.annotation.unused
-import scala.collection.mutable
-import scala.util.Random
 
 /* TODO: Extract a suitable MainVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)

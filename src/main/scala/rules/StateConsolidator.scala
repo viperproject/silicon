@@ -6,10 +6,10 @@
 
 package viper.silicon.rules
 
+import viper.silicon.debugger.DebugExp
 import viper.silicon.Config
 import viper.silicon.Config.ExhaleMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.logger.records.data.{CommentRecord, SingleMergeRecord}
 import viper.silicon.resources.{FieldID, MagicWandID, NonQuantifiedPropertyInterpreter, PredicateID, Resources}
@@ -21,9 +21,9 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.FunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.dependencyAnalysis.{AssumptionType, StringDependencyAnalysisSourceInfo}
 import viper.silver.ast.Exp
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
+import viper.silver.dependencyAnalysis.{AssumptionType, StringDependencyAnalysisSourceInfo}
 import viper.silver.parser.PUnknown
 
 import scala.annotation.unused

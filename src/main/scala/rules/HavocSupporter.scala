@@ -6,12 +6,12 @@
 
 package viper.silicon.rules
 
-import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.rules.evaluator.{eval, evalQuantified, evals}
 import viper.silicon.state._
+import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver.ast

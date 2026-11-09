@@ -11,7 +11,6 @@ import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.ExhaleMode
 import viper.silicon.Map
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.logger.records.data.CommentRecord
@@ -25,8 +24,8 @@ import viper.silicon.state.terms.utils.consumeExactRead
 import viper.silicon.supporters.functions.{FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.utils.ast.{BigAnd, buildMinExp}
 import viper.silicon.utils.freshSnap
-import viper.silicon.utils.freshSnap
 import viper.silicon.utils.notNothing.NotNothing
+import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.TrueLit

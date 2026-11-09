@@ -11,10 +11,10 @@ import viper.silver.ast
 import viper.silver.ast.utility.Expressions
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silicon.rules.{functionSupporter, maskHeapSupporter}
-import viper.silicon.state.chunks.MagicWandIdentifier
-import viper.silicon.state.{Identifier, IdentifierFactory, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
+import viper.silicon.state.chunks.MagicWandIdentifier
+import viper.silicon.state.{Identifier, IdentifierFactory, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.verifier.Verifier
 
 /** Function encoding of the maskHeap mode: heap-dependent functions take one heap

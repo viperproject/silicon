@@ -7,29 +7,29 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
-import viper.silicon.decider.Decider
-import viper.silicon.dependencyAnalysis._
-import viper.silicon.interfaces._
-import viper.silicon.interfaces.decider.ProverLike
-import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
-import viper.silicon.state.State.OldHeaps
-import viper.silicon.state._
-import viper.silicon.state.terms._
-import viper.silicon.state.terms.predef.`?s`
-import viper.silicon.supporters.{AnnotationSupporter, PredicateData}
-import viper.silicon.utils.ast.{BigAnd, simplifyVariableName}
-import viper.silicon.utils.{freshSnap, toSf}
-import viper.silicon.verifier.{Verifier, VerifierComponent}
-import viper.silicon.{Map, Stack, toMap}
 import viper.silver.ast
 import viper.silver.ast._
 import viper.silver.ast.utility.Functions
 import viper.silver.components.StatefulComponent
 import viper.silver.dependencyAnalysis._
-import viper.silver.parser.PType
 import viper.silver.verifier.errors.{ContractNotWellformed, FunctionNotWellformed, PostconditionViolated}
+import viper.silicon.{Map, Stack, toMap}
+import viper.silicon.interfaces.decider.ProverLike
+import viper.silicon.interfaces._
+import viper.silicon.state._
+import viper.silicon.state.State.OldHeaps
+import viper.silicon.state.terms._
+import viper.silicon.state.terms.predef.`?s`
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.decider.Decider
+import viper.silicon.dependencyAnalysis._
+import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
+import viper.silicon.supporters.{AnnotationSupporter, PredicateData}
+import viper.silicon.utils.ast.{BigAnd, simplifyVariableName}
+import viper.silicon.verifier.{Verifier, VerifierComponent}
+import viper.silicon.utils.{freshSnap, toSf}
+import viper.silver.parser.PType
 
 import scala.annotation.unused
 

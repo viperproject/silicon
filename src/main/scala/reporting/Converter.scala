@@ -6,21 +6,21 @@
 
 package viper.silicon.reporting
 
-import viper.silicon.state.chunks.Chunk
 import viper.silicon
-import viper.silicon.Map
-import viper.silicon.decider.TermToSMTLib2Converter
-import viper.silicon.interfaces.decider.TermConverter
-import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.state.chunks._
-import viper.silicon.state.terms._
-import viper.silicon.state.terms.sorts.{Snap, UserSort}
-import viper.silicon.state.{DefaultSymbolConverter, State, Store, SymbolConverter}
-import viper.silver.ast
-import viper.silver.utility.Common.Rational
-import viper.silver.verifier._
 
 import scala.util.{Success, Try}
+import viper.silver.ast
+import viper.silicon.Map
+import viper.silicon.resources.{FieldID, PredicateID}
+import viper.silicon.state.terms._
+import viper.silicon.state.terms.sorts.{Snap, UserSort}
+import viper.silicon.state.chunks.Chunk
+import viper.silicon.state.chunks._
+import viper.silicon.state.{DefaultSymbolConverter, State, Store, SymbolConverter}
+import viper.silicon.decider.TermToSMTLib2Converter
+import viper.silicon.interfaces.decider.TermConverter
+import viper.silver.utility.Common.Rational
+import viper.silver.verifier._
 
 case class ExtractedModel(entries: Map[String, ExtractedModelEntry]) {
   override lazy val toString: String =

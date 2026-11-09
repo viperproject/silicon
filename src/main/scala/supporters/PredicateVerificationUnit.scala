@@ -8,21 +8,21 @@ package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider.Decider
-import viper.silicon.interfaces._
-import viper.silicon.interfaces.decider.ProverLike
-import viper.silicon.rules.executionFlowController
-import viper.silicon.state.State.OldHeaps
-import viper.silicon.state._
-import viper.silicon.state.terms._
-import viper.silicon.supporters.functions.{ActualFunctionRecorder, FunctionRecorder, FunctionRecorderHandler, NoopFunctionRecorder}
-import viper.silicon.utils.{freshSnap, toSf}
-import viper.silicon.verifier.{Verifier, VerifierComponent}
-import viper.silicon.{Map, toMap}
 import viper.silver.ast
 import viper.silver.ast.Program
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
+import viper.silicon.decider.Decider
+import viper.silicon.{Map, toMap}
+import viper.silicon.interfaces.decider.ProverLike
+import viper.silicon.state._
+import viper.silicon.state.State.OldHeaps
+import viper.silicon.state.terms._
+import viper.silicon.interfaces._
+import viper.silicon.rules.executionFlowController
+import viper.silicon.supporters.functions.{ActualFunctionRecorder, FunctionRecorder, FunctionRecorderHandler, NoopFunctionRecorder}
+import viper.silicon.verifier.{Verifier, VerifierComponent}
+import viper.silicon.utils.{freshSnap, toSf}
 
 class PredicateData(val predicate: ast.Predicate)
                    /* Note: Holding a reference to a fixed symbol converter (instead of going

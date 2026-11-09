@@ -6,13 +6,13 @@
 
 package viper.silicon.rules
 
-import viper.silicon.dependencyAnalysis.AnalysisInfos
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.state.State
 import viper.silicon.state.terms.{Term, Var, perms}
 import viper.silicon.verifier.Verifier
-import viper.silver.ast
-import viper.silver.verifier.PartialVerificationError
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silver.verifier.reasons.{NegativePermission, NonPositivePermission}
 
 object permissionSupporter extends SymbolicExecutionRules {

@@ -6,14 +6,16 @@
 
 package viper.silicon.state
 
-import viper.silicon.state.chunks.{BasicMaskHeapChunk, Chunk, GeneralChunk, MagicWandIdentifier}
 import viper.silicon.Config.JoinMode
 import viper.silicon.Config.JoinMode.JoinMode
+import viper.silver.ast
+import viper.silver.cfg.silver.SilverCfg
 import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.{PathConditionStack, RecordedPathConditions}
 import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.state.State.{DebugOldHeaps, OldHeaps, TemporaryRecord}
+import viper.silicon.state.chunks.{BasicMaskHeapChunk, Chunk, GeneralChunk, MagicWandIdentifier}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.{And, Ite, Term, Var}
 import viper.silicon.supporters.PredicateData
@@ -21,8 +23,6 @@ import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopF
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, SiliconRunner, Stack}
-import viper.silver.ast
-import viper.silver.cfg.silver.SilverCfg
 import viper.silver.utility.Sanitizer
 
 final case class State(g: Store = Store(),

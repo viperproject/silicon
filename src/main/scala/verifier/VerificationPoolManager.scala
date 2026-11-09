@@ -6,16 +6,15 @@
 
 package viper.silicon.verifier
 
-import org.apache.commons.pool2.impl.{DefaultPooledObject, GenericObjectPool, GenericObjectPoolConfig}
+import java.util.concurrent._
 import org.apache.commons.pool2.{BasePooledObjectFactory, ObjectPool, PoolUtils, PooledObject}
+import org.apache.commons.pool2.impl.{DefaultPooledObject, GenericObjectPool, GenericObjectPoolConfig}
 import viper.silicon.Config
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
+import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.terms.{Decl, Term}
-import viper.silver.components.StatefulComponent
-
-import java.util.concurrent._
 
 abstract class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulComponent {
   /** The type of the workers in this pool, which lets subclasses use the capabilities of their workers without casts. */

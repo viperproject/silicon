@@ -15,11 +15,11 @@ import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.havocSupporter.{HavocHelperData, HavocOneData, HavocallData}
 import viper.silicon.rules.quantifiedChunkSupporter.freshSnapshotMap
-import viper.silicon.state._
-import viper.silicon.state.chunks._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.predef.{`?r`, `?s`}
+import viper.silicon.state._
+import viper.silicon.state.chunks._
 import viper.silicon.supporters.functions.{FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.utils.ast.{BigAnd, replaceVarsInExp}
 import viper.silicon.utils.{freshSnap, toSf}

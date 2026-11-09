@@ -6,11 +6,11 @@
 
 package viper.silicon.supporters
 
-import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.state.terms.{Combine, First, Second, Sort, Term, Unit, sorts}
 import viper.silicon.state.{Heap, State, SymbolConverter}
+import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silver.ast

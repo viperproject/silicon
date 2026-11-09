@@ -25,8 +25,8 @@ import viper.silver.dependencyAnalysis.{AssumptionType, StringDependencyAnalysis
 import viper.silver.parser.PUnknown
 import viper.silver.verifier.VerificationError
 
-import scala.annotation.unused
 import scala.collection.mutable.ListBuffer
+import scala.annotation.unused
 
 object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
   sealed trait TaggedSummarisingSnapshot {

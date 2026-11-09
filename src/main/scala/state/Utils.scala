@@ -6,10 +6,9 @@
 
 package viper.silicon.state
 
-import viper.silicon.state.chunks.{BasicChunk, QuantifiedFieldChunk}
-
 import scala.collection.mutable
 import viper.silicon.state.terms._
+import viper.silicon.state.chunks.{BasicChunk, QuantifiedFieldChunk}
 import viper.silver.ast
 
 package object utils {

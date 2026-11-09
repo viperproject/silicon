@@ -6,19 +6,19 @@
 
 package viper.silicon.state.terms
 
+import java.util.concurrent.atomic.AtomicInteger
+import scala.annotation.tailrec
+import scala.reflect.ClassTag
+import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.chunks.{MagicWandChunk, MagicWandIdentifier}
 import viper.silicon.state.{Identifier, SortBasedIdentifier}
-import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, Stack, state, toMap}
-import viper.silver.ast
+import viper.silicon.verifier.Verifier
 import viper.silver.utility.Common.Rational
 
-import java.util.concurrent.atomic.AtomicInteger
-import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
 import scala.collection.immutable
-import scala.reflect.ClassTag
 
 sealed trait Node {
   def toString: String

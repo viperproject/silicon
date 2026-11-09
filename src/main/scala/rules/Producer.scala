@@ -6,22 +6,22 @@
 
 package viper.silicon.rules
 
-import viper.silicon.Config.JoinMode
 import viper.silicon.debugger.DebugExp
+import viper.silicon.Config.JoinMode
 import viper.silicon.dependencyAnalysis.AnalysisInfos
+
+import scala.collection.mutable
+import viper.silver.ast
+import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
+import viper.silver.ast.utility.Expressions
+import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.logger.records.data.{CondExpRecord, ImpliesRecord, ProduceRecord}
 import viper.silicon.state._
 import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
-import viper.silver.ast
-import viper.silver.ast.utility.Expressions
-import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.{NegativePermission, QPAssertionNotInjective}
-
-import scala.collection.mutable
 
 trait ProductionRules extends SymbolicExecutionRules {
 

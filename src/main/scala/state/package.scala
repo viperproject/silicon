@@ -6,11 +6,11 @@
 
 package viper.silicon
 
+import viper.silver.ast
 import viper.silicon.rules.PermMapDefinition
 import viper.silicon.rules.moreCompleteExhaleSupporter.TaggedSummarisingSnapshot
-import viper.silicon.state.chunks.{NonQuantifiedChunk, QuantifiedBasicChunk}
 import viper.silicon.state.terms.Term
-import viper.silver.ast
+import viper.silicon.state.chunks.{NonQuantifiedChunk, QuantifiedBasicChunk}
 
 package object state {
   type PmCache =

@@ -6,8 +6,8 @@
 
 package viper.silicon.rules
 
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.interfaces.{Success, VerificationResult}
