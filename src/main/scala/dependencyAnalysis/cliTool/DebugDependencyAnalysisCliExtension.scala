@@ -32,7 +32,7 @@ class DebugDependencyAnalysisCliExtension(queries: FinalGraphQueries, options: D
     override val description: String = s"'$cmdName [line numbers]' to print the assumption types of all nodes or just the provided lines"
 
     private def getAssumptionTypesByLine(line: Int): Set[AssumptionType] = {
-      queries.getNodesByLine(line).filter(_.isInstanceOf[GeneralAssumptionNode]).map(_.assumptionType)
+      queries.getNodesByLine(line).collect { case n: GeneralAssumptionNode => n.assumptionType }
     }
 
     private def getAssumptionTypesPerNode: Map[DependencyAnalysisSourceInfo, Set[AssumptionType]] =
@@ -53,7 +53,7 @@ class DebugDependencyAnalysisCliExtension(queries: FinalGraphQueries, options: D
     override val description: String = s"'$cmdName [line numbers]' to print the assertion types of all nodes or just the provided lines"
 
     private def getAssertionTypesByLine(line: Int): Set[AssumptionType] = {
-      queries.getNodesByLine(line).filter(_.isInstanceOf[GeneralAssertionNode]).map(_.assumptionType)
+      queries.getNodesByLine(line).collect { case n: GeneralAssertionNode => n.assumptionType }
     }
 
     private def getAssertionTypesPerNode: Map[DependencyAnalysisSourceInfo, Set[AssumptionType]] =

@@ -82,7 +82,7 @@ class CoreDependencyAnalysisCliCommands(queries: FinalGraphQueries,
   }
 
   private def failedAssertionsWarning(queriedAssertions: Set[DependencyAnalysisNode]): Seq[String] = {
-    if (queriedAssertions.exists(_.asInstanceOf[GeneralAssertionNode].hasFailed)) Seq("\nQueried assertions (partially) FAILED!\n")
+    if (queriedAssertions.collect { case n: GeneralAssertionNode => n }.exists(_.hasFailed)) Seq("\nQueried assertions (partially) FAILED!\n")
     else Seq.empty
   }
 

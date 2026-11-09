@@ -59,16 +59,17 @@ object DependencyGraphImporter {
       val mergeInfo: SimpleDependencyAnalysisMerge = SimpleDependencyAnalysisMerge(sourceInfo)
       val labelNode: LabelNode = LabelNode(-1, dummyVar, memberStr)
       val joinNodeInfos: List[SimpleDependencyAnalysisJoin] = List.empty
+      val metadata = NodeMetadata(sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr)
 
       val nodeId = nodeIdStr.toInt
       // Create node based on type
       val node = nodeType match {
-        case "Assumption" => SimpleAssumptionNode(nodeId, term, description, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr)
-        case "Axiom" => AxiomAssumptionNode(nodeId, term, description, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr)
-        case "Assertion" => SimpleAssertionNode(nodeId, term, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr, hasFailed)
-        case "Check" => SimpleCheckNode(nodeId, term, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr, hasFailed)
-        case "Inhale" => PermissionInhaleNode(nodeId, chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinNodeInfos, memberStr)
-        case "Exhale" => PermissionExhaleNode(nodeId, chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinNodeInfos, memberStr, hasFailed)
+        case "Assumption" => SimpleAssumptionNode(nodeId, term, description, metadata)
+        case "Axiom" => AxiomAssumptionNode(nodeId, term, description, metadata)
+        case "Assertion" => SimpleAssertionNode(nodeId, term, metadata, hasFailed)
+        case "Check" => SimpleCheckNode(nodeId, term, metadata, hasFailed)
+        case "Inhale" => PermissionInhaleNode(nodeId, chunk, term, metadata, labelNode)
+        case "Exhale" => PermissionExhaleNode(nodeId, chunk, term, metadata, labelNode, hasFailed)
         case "Label" => LabelNode(nodeId, dummyVar, memberStr)
         case "Infeasible" => InfeasibilityNode(nodeId, sourceInfo, assumptionType, memberStr)
         case _ => throw new IllegalArgumentException(s"Unknown node type: $nodeType")

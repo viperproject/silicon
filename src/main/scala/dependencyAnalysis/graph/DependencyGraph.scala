@@ -375,9 +375,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
    * Removes all label nodes while perceiving the transitive closure by adding edges between the predecessors and successors.
    */
   def removeLabelNodes(): Unit = {
-    def filterCriteria(n: DependencyAnalysisNode) = n.isInstanceOf[LabelNode]
-
-    val idsToRemove = getAssumptionNodes.filter(filterCriteria).map(_.id)
+    val idsToRemove = assumptionNodes.valuesIterator.collect { case n: LabelNode => n.id }.toSet
     removeAllEdgesForNodes(idsToRemove)
     removeNodes(idsToRemove)
   }
@@ -386,10 +384,11 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
    * Removes internal nodes while perceiving the transitive closure by adding edges between the predecessors and successors.
    */
   def removeInternalNodes(): Unit = {
-    def filterCriteria(n: DependencyAnalysisNode) = {
-      n.assumptionType.isInstanceOf[AssumptionType.InternalType] &&
-        !n.isInstanceOf[InfeasibilityNode] && // infeasibility nodes are required for some of the graph queries
-        n.joinInfos.isEmpty // join nodes must not be removed because we need them for joining the graphs later on
+    def filterCriteria(n: DependencyAnalysisNode) = n match {
+      case _: InfeasibilityNode => false // infeasibility nodes are required for some of the graph queries
+      case _ =>
+        n.assumptionType.isInstanceOf[AssumptionType.InternalType] &&
+          n.joinInfos.isEmpty // join nodes must not be removed because we need them for joining the graphs later on
     }
 
     val idsToRemove = getNodes.filter(filterCriteria).map(_.id)

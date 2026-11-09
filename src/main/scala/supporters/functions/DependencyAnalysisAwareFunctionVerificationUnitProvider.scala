@@ -7,15 +7,13 @@
 package viper.silicon.supporters.functions
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.dependencyAnalysis.graphInterpretation.IntraproceduralGraphResult
 import viper.silicon.dependencyAnalysis.{DependencyAnalysisAxiomInfo, DependencyAnalyzer}
 import viper.silicon.interfaces.decider.ProverLike
-import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.interfaces.VerificationResult
 import viper.silicon.state.State
 import viper.silicon.state.terms.{Term, True, Var}
 import viper.silicon.verifier.DependencyAnalysisAwareVerifier
 import viper.silver.ast
-import viper.silver.dependencyAnalysis._
 
 trait DependencyAnalysisAwareFunctionVerificationUnitProvider extends DefaultFunctionVerificationUnitProvider { v: DependencyAnalysisAwareVerifier =>
 
@@ -24,20 +22,16 @@ trait DependencyAnalysisAwareFunctionVerificationUnitProvider extends DefaultFun
   object DependencyAnalysisAwareFunctionSupporter extends FunctionsSupporter {
     override protected def handleFunction(sInit: State, function: ast.Function): VerificationResult = {
 
-      function.pres.flatMap(_.topLevelConjuncts).flatMap(pc => {
-        val analysisInfos = decider.defaultAnalysisInfos.addInfo(pc.info, pc).withJoinInfo(SimpleDependencyAnalysisJoin(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up))
-        decider.getDependencyAnalyzer.createAssertOrCheckNode(True, analysisInfos, isCheck = false)
-      }).foreach(decider.getDependencyAnalyzer.addAssertionNode)
+      addPreconditionNodes(function.pres)
 
       val result = super.handleFunction(sInit, function)
 
       if (function.body.isEmpty) {
         decider.getDependencyAnalyzer.addNodes(decider.prover.getPreambleAnalysisNodes)
-        decider.getDependencyAnalyzer.addDependenciesForAbstractMembers(function.pres.flatMap(_.topLevelConjuncts), function.posts.flatMap(_.topLevelConjuncts), decider.defaultAnalysisInfos)
+        addDependenciesForAbstractMember(function.pres, function.posts)
       }
 
-      val allErrors = (result :: result.previous.toList).filter(_.isInstanceOf[Failure]).map(_.asInstanceOf[Failure])
-      result.intraproceduralGraphResult = decider.getDependencyAnalyzer.buildFinalGraph().map(new IntraproceduralGraphResult(_, allErrors, function))
+      attachIntraproceduralResult(result, function)
 
       result
     }

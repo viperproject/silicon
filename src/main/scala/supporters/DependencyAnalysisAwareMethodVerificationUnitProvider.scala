@@ -6,13 +6,10 @@
 
 package viper.silicon.supporters
 
-import viper.silicon.dependencyAnalysis.graphInterpretation.IntraproceduralGraphResult
-import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.interfaces.VerificationResult
 import viper.silicon.state.State
-import viper.silicon.state.terms.True
 import viper.silicon.verifier.DependencyAnalysisAwareVerifier
 import viper.silver.ast.Method
-import viper.silver.dependencyAnalysis._
 
 trait DependencyAnalysisAwareMethodVerificationUnitProvider extends DefaultMethodVerificationUnitProvider { v: DependencyAnalysisAwareVerifier =>
   override def methodSupporter: MethodSupporter = DependencyAnalysisAwareMethodSupporter
@@ -21,20 +18,14 @@ trait DependencyAnalysisAwareMethodVerificationUnitProvider extends DefaultMetho
 
     override def verify(sInit: State, method: Method): Seq[VerificationResult] = {
 
-      method.pres.flatMap(_.topLevelConjuncts).flatMap(pc => {
-        val analysisInfos = decider.defaultAnalysisInfos.addInfo(pc.info, pc).withJoinInfo(SimpleDependencyAnalysisJoin(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up))
-        decider.getDependencyAnalyzer.createAssertOrCheckNode(True, analysisInfos, isCheck = false)
-      }).foreach(decider.getDependencyAnalyzer.addAssertionNode)
+      addPreconditionNodes(method.pres)
 
       val result = super.verify(sInit, method)
 
       if (method.body.isEmpty)
-        decider.getDependencyAnalyzer.addDependenciesForAbstractMembers(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts), decider.defaultAnalysisInfos)
+        addDependenciesForAbstractMember(method.pres, method.posts)
 
-      result foreach (r => {
-        val allErrors = (r :: r.previous.toList).filter(_.isInstanceOf[Failure]).map(_.asInstanceOf[Failure])
-        r.intraproceduralGraphResult = decider.getDependencyAnalyzer.buildFinalGraph().map(new IntraproceduralGraphResult(_, allErrors, method))
-      })
+      result foreach (attachIntraproceduralResult(_, method))
 
       result
     }

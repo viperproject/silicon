@@ -37,10 +37,6 @@ object UserLevelDependencyAnalysisNode {
     def toSourceSet(): Set[DependencyAnalysisSourceInfo] = {
       left.map(_.source)
     }
-
-    def toSourceMemberSet: Set[DependencyAnalysisSourceInfo] = {
-      left.map(_.source)
-    }
   }
 }
 
