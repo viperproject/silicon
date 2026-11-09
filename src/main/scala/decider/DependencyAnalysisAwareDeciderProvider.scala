@@ -9,7 +9,7 @@ package viper.silicon.decider
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.state.chunks.{Chunk, GeneralChunk}
+import viper.silicon.state.chunks.GeneralChunk
 import viper.silicon.state.terms.{False, Implies, Term, True}
 import viper.silicon.verifier.{DependencyAnalysisAwareVerifier, Verifier}
 import viper.silver.ast
@@ -20,9 +20,8 @@ trait DependencyAnalysisHandler {
   def getDependencyAnalyzer: DependencyAnalyzer
 
   def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfos: AnalysisInfos, isExhale: Boolean): CH
-  def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfos: AnalysisInfos, isExhale: Boolean): CH
 
-  def getOrCreateAnalysisLabelNode(sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Option[LabelNode]
+  def getOrCreateAnalysisLabelNode(sourceTerms: Iterable[Term] = Set.empty): Option[LabelNode]
 }
 
 trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v: DependencyAnalysisAwareVerifier =>
@@ -78,11 +77,11 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
         newAnalysisInfos
       }
 
-      override def withLabel(term: Term, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): Term = {
-        if (!isDependencyAnalysisEnabledForMember || term.equals(True) || sourceChunks.size + sourceTerms.size == 0)
+      override def withLabel(term: Term, sourceTerms: Iterable[Term]): Term = {
+        if (!isDependencyAnalysisEnabledForMember || term.equals(True))
           term
         else
-          getOrCreateAnalysisLabelNode(sourceChunks, sourceTerms).map(n => Implies(n.term, term)).getOrElse(term)
+          getOrCreateAnalysisLabelNode(sourceTerms).map(n => Implies(n.term, term)).getOrElse(term)
       }
 
       override def linkMergeInfos(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit =
@@ -173,14 +172,10 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
     }
 
     override def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfos: AnalysisInfos, isExhale: Boolean): CH = {
-      registerDerivedChunk(Set.empty, buildChunk, perm, analysisInfos, isExhale)
-    }
-
-    override def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfos: AnalysisInfos, isExhale: Boolean): CH = {
       if (!isDependencyAnalysisEnabledForMember)
         return buildChunk(perm)
 
-      val labelNodeOpt = getOrCreateAnalysisLabelNode(sourceChunks)
+      val labelNodeOpt = getOrCreateAnalysisLabelNode()
 
       if (isExhale)
         dependencyAnalyzer.registerExhaleChunk(buildChunk, perm, labelNodeOpt, analysisInfos)
@@ -189,12 +184,12 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       }
     }
 
-    override def getOrCreateAnalysisLabelNode(sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Option[LabelNode] = {
+    override def getOrCreateAnalysisLabelNode(sourceTerms: Iterable[Term] = Set.empty): Option[LabelNode] = {
       if (!isDependencyAnalysisEnabledForMember)
         return None
 
       val (label, _) = fresh(ast.LocalVar(DependencyAnalyzer.analysisLabelName, ast.Bool)())
-      val labelNode = dependencyAnalyzer.createLabelNode(label, sourceChunks, sourceTerms)
+      val labelNode = dependencyAnalyzer.createLabelNode(label, sourceTerms)
       val smtLabel = DependencyAnalyzer.createAssumptionLabel(labelNode.map(_.id))
       assumeLabel(label, smtLabel)
       labelNode

@@ -123,7 +123,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
     val conditionTerm = buildPathCondition(condition, info)._1
     if (verifier.decider.check(conditionTerm, Verifier.config.checkTimeout(), verifier.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo(s"property interpreter: ${conditionTerm.toString}"), AssumptionType.Internal.asDepType()))) {
       val (t, e) = buildPathCondition(thenDo, info)
-      (verifier.decider.analysisHooks.withLabel(t, Set.empty, Set(conditionTerm)), e) // TODO ake: causes imprecision!
+      (verifier.decider.analysisHooks.withLabel(t, Set(conditionTerm)), e) // TODO ake: causes imprecision!
     } else {
       buildPathCondition(otherwise, info)
     }
@@ -154,14 +154,14 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
         case c +: Seq() => buildPathCondition(body, info.addMapping(c, chunk))
         case c +: tail => buildForEach(chunks, tail, body, info.addMapping(c, chunk))
       }
-      (verifier.decider.analysisHooks.withLabel(res._1, Set(chunk)), res._2)
+      (verifier.decider.analysisHooks.withLabel(res._1), res._2)
     }
     val conds = chunks.flatMap { chunk =>
         // check that only distinct tuples are handled
         // TODO: Is it possible to get this behavior without having to check every tuple?
         if (!info.pm.values.exists(chunk eq _)) {
           val res = builder(chunk)
-          Some((verifier.decider.analysisHooks.withLabel(res._1, Set(chunk)), res._2))
+          Some((verifier.decider.analysisHooks.withLabel(res._1), res._2))
         } else {
           None
         }

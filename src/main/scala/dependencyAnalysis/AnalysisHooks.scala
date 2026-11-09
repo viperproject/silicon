@@ -7,7 +7,6 @@
 package viper.silicon.dependencyAnalysis
 
 import viper.silicon.dependencyAnalysis.graph.DependencyAnalysisNode
-import viper.silicon.state.chunks.Chunk
 import viper.silicon.state.terms.Term
 import viper.silver.ast
 
@@ -30,7 +29,7 @@ trait AnalysisHooks {
   def enterNode(analysisInfos: AnalysisInfos, info: ast.Info, node: ast.Node): AnalysisInfos = analysisInfos
 
   /** @return the term, guarded by a fresh label that depends on the given sources if the analysis tracks them */
-  def withLabel(term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term = term
+  def withLabel(term: Term, sourceTerms: Iterable[Term] = Set.empty): Term = term
 
   /** Connects all nodes with a merge info in `sourceExps` to all nodes with a merge info in `targetExps`. */
   def linkMergeInfos(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {}

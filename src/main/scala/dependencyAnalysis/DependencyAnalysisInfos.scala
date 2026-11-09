@@ -88,8 +88,8 @@ abstract class AnalysisInfos {
  *                        The dependency type should always be set when creating nodes. Otherwise, the analysis might be unsound.
  * @param mergeInfos list of mergeInfos encountered during execution/evaluation of the current Viper AST node.
  *                   They indicate which edges need to be added to the low-level, intraprocedural graph.
- *                   All merge infos are relevant and thus propagated to newly created dependency nodes.
- *                   If mergeInfos is empty, the head of sourceInfos determines the dependency node's merge info.
+ *                   The head determines the merge info of newly created dependency nodes, and the tail is ignored.
+ *                   If mergeInfos is empty, the source info determines the dependency node's merge info (see getSourceInfo).
  * @param joinInfos list of joinInfos encountered during execution/evaluation of the current Viper AST node.
  *                  They indicate how to join graphs of different procedures.
  *                  All join infos are relevant and thus propagated to newly created dependency nodes.

@@ -114,60 +114,60 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
     BasicMaskHeapChunk(resourceID, resource, mask, heap) // TODO ake
 
   def applyCondition(chunk: GeneralChunk, newCond: Term, newCondExp: Option[ast.Exp], analysisInfos: AnalysisInfos): GeneralChunk = {
-    decider.registerDerivedChunk(Set(chunk), {_ =>
+    decider.registerChunk({_ =>
       chunk.applyCondition(newCond, newCondExp)},
       chunk.perm, analysisInfos, isExhale=false)
   }
 
   def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos): GeneralChunk = {
-    val newChunk = decider.registerDerivedChunk(Set(chunk), {finalPerm =>
+    val newChunk = decider.registerChunk({finalPerm =>
       chunk.permMinus(finalPerm, newPermExp)},
       newPerm, analysisInfos.overrideDependencyType(AssumptionType.Internal), isExhale=false) // TODO ake: assumption type? maybe for exhale we want to have Implicit?
     @unused // we need to register the chunk to have a sound analysis
-    val exhaledChunk = decider.registerDerivedChunk(Set(chunk), { finalPerm =>
+    val exhaledChunk = decider.registerChunk({ finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},
       newPerm, analysisInfos, isExhale=true)
     newChunk
   }
 
   def permMinus(chunk: QuantifiedBasicChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos): QuantifiedBasicChunk = {
-    val newChunk = decider.registerDerivedChunk(Set(chunk), {finalPerm =>
+    val newChunk = decider.registerChunk({finalPerm =>
       chunk.permMinus(finalPerm, newPermExp)},
       newPerm, analysisInfos.overrideDependencyType(AssumptionType.Internal), isExhale=false) // TODO ake: assumption type? maybe for exhale we want to have Implicit?
     @unused // we need to register the chunk to have a sound analysis
-    val exhaledChunk = decider.registerDerivedChunk(Set(chunk), { finalPerm =>
+    val exhaledChunk = decider.registerChunk({ finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},
       newPerm, analysisInfos, isExhale=true)
     newChunk
   }
 
   def permPlus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhale: Boolean=false): GeneralChunk = {
-    decider.registerDerivedChunk(Set(chunk), {finalPerm =>
+    decider.registerChunk({finalPerm =>
       chunk.permPlus(finalPerm, newPermExp)},
       newPerm, analysisInfos, isExhale)
   }
 
   def withPerm(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhale: Boolean=false): GeneralChunk = {
-    decider.registerDerivedChunk(Set(chunk), {finalPerm =>
+    decider.registerChunk({finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},
       newPerm, analysisInfos, isExhale)
   }
 
   def withPermNonQuantifiedChunk(chunk: NonQuantifiedChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhale: Boolean=false): NonQuantifiedChunk = {
-    decider.registerDerivedChunk(Set(chunk), {finalPerm =>
+    decider.registerChunk({finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},
       newPerm, analysisInfos, isExhale)
   }
 
   def permScale(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhale: Boolean=false): GeneralChunk = {
-    decider.registerDerivedChunk(Set(chunk), {finalPerm =>
+    decider.registerChunk({finalPerm =>
       chunk.permScale(finalPerm, newPermExp)},
       newPerm, analysisInfos, isExhale)
   }
 
   def substitute(chunk: GeneralChunk, terms: silicon.Map[Term, Term], analysisInfos: AnalysisInfos, isExhale: Boolean = false): GeneralChunk = {
     val newChunk = chunk.substitute(terms)
-    decider.registerDerivedChunk(Set(chunk), { finalPerm =>
+    decider.registerChunk({ finalPerm =>
       newChunk.withPerm(finalPerm, newChunk.permExp)
     },
       newChunk.perm, analysisInfos, isExhale)
@@ -181,14 +181,14 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
   }
 
   def withSnapshotMap(chunk: QuantifiedChunk, snap: Term, analysisInfos: AnalysisInfos): QuantifiedChunk = {
-    decider.registerDerivedChunk[QuantifiedChunk](Set(chunk), {_ =>
+    decider.registerChunk[QuantifiedChunk]({_ =>
       chunk.withSnapshotMap(snap)
     },
       chunk.perm, analysisInfos, isExhale=false)
   }
 
   def withSnap(chunk: NonQuantifiedChunk, snap: Term, snapExp: Option[ast.Exp], analysisInfos: AnalysisInfos): NonQuantifiedChunk = {
-    decider.registerDerivedChunk[NonQuantifiedChunk](Set(chunk), {_ =>
+    decider.registerChunk[NonQuantifiedChunk]({_ =>
       chunk.withSnap(snap, snapExp)},
       chunk.perm, analysisInfos, isExhale=false)
   }
