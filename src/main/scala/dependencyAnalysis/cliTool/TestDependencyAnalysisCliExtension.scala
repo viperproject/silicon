@@ -11,8 +11,8 @@ import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyGraphInterpreter, DependencyGraphTestSupporter}
 
 /**
- * [[DependencyGraphTestSupporter]] prints its findings while it runs, so these commands print through the console to
- * keep their own messages in order with that output.
+ * [[DependencyGraphTestSupporter]] fails with an assertion at the end of a test run, so these commands write to the
+ * console while they run instead of returning a result, which would lose the findings reported before the failure.
  */
 class TestDependencyAnalysisCliExtension(interpreter: DependencyGraphInterpreter[Final], console: DependencyAnalysisCliConsole) extends DependencyAnalysisCliToolExtension{
   override val name: String = "Test Features"
@@ -26,7 +26,7 @@ class TestDependencyAnalysisCliExtension(interpreter: DependencyGraphInterpreter
     override val cmdName: String = "test"
     override val description: String = s"""'$cmdName' to test all node types and dependencies with respect to the @dependencyInfo(...) annotations"""
     override val cmd: DependencyAnalysisCliInput => DependencyAnalysisCliResult = { _ =>
-      val testSupporter = new DependencyGraphTestSupporter(interpreter)
+      val testSupporter = new DependencyGraphTestSupporter(interpreter, console.printLine)
       if (interpreter.getAssertionNodesWithFailures.nonEmpty) console.printLine(s"Program contains verification failures at \n\t${interpreter.getAssertionNodesWithFailures.mkString("\n\t")}")
       testSupporter.testDependencies()
       testSupporter.testNodeTypes()
@@ -38,7 +38,7 @@ class TestDependencyAnalysisCliExtension(interpreter: DependencyGraphInterpreter
     override val cmdName: String = "testNodeTypes"
     override val description: String = s"""'$cmdName [line numbers]' to test the node type with respect to the @dependencyInfo(...) annotations"""
     override val cmd: DependencyAnalysisCliInput => DependencyAnalysisCliResult = { input =>
-      val testSupporter = new DependencyGraphTestSupporter(interpreter)
+      val testSupporter = new DependencyGraphTestSupporter(interpreter, console.printLine)
       if (input.args.isEmpty)
         testSupporter.testNodeTypes()
       else
@@ -51,7 +51,7 @@ class TestDependencyAnalysisCliExtension(interpreter: DependencyGraphInterpreter
     override val cmdName: String = "testDependencies"
     override val description: String = s"""'$cmdName [line numbers]' to test the node type with respect to the @dependencyInfo(...) annotations"""
     override val cmd: DependencyAnalysisCliInput => DependencyAnalysisCliResult = { input =>
-      val testSupporter = new DependencyGraphTestSupporter(interpreter)
+      val testSupporter = new DependencyGraphTestSupporter(interpreter, console.printLine)
       if (input.args.isEmpty)
         testSupporter.testDependencies()
       else

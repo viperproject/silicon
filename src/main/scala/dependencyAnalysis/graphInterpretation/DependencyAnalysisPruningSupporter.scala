@@ -113,12 +113,14 @@ class DependencyAnalysisPruningSupporter[T <: DependencyGraphState](interpreter:
    * Prunes the given program with respect to the queries nodes. That is, all statements and expressions that are neither
    * one of the queried nodes nor a dependencies of a queried node are removed from the program. The program is exported
    * to the given export file.
+   *
+   * @param report receives progress messages
    */
-  def pruneProgramAndExport(queriedNodes: Set[DependencyAnalysisNode], program: ast.Program, exportFileName: String): Unit = {
+  def pruneProgramAndExport(queriedNodes: Set[DependencyAnalysisNode], program: ast.Program, exportFileName: String, report: String => Unit): Unit = {
     val writer = new PrintWriter(exportFileName)
 
     val crucialNodes = getCrucialNodes(queriedNodes)
-    println(s"Found ${crucialNodes.size} crucial nodes. Pruning...")
+    report(s"Found ${crucialNodes.size} crucial nodes. Pruning...")
 
     val (newProgram, pruningFactor) = getPrunedProgram(crucialNodes, program)
     writer.println("// pruning factor: " + pruningFactor)

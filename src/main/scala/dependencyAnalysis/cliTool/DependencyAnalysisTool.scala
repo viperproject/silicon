@@ -40,7 +40,7 @@ object DependencyAnalysisTool {
     val cmdsIndex = args.indexOf("--cmds")
     val cmds = if (0 <= cmdsIndex && cmdsIndex < args.length - 1) args(cmdsIndex + 1) else ""
 
-    runUserTool(cmds, userTool)
+    userTool.runCommands(cmds)
   }
 
   private def extractGraphFolderFromArgs(args: Array[String]): String = {
@@ -64,20 +64,10 @@ object DependencyAnalysisTool {
 
 
         val userTool = DependencyAnalysisCliTool(fullGraphInterpreter, program, verificationErrors)
-        runUserTool(cmds, userTool)
+        userTool.runCommands(cmds)
 
         val result = DependencyAnalysisResult(program, fullGraphInterpreter)
         Some(result)
     }
   }
-
-  private def runUserTool(cmdStr: String, userTool: DependencyAnalysisCliTool): Unit =
-    if (cmdStr.nonEmpty) {
-      val cmds = cmdStr.split(";").map(_.trim)
-
-      cmds foreach {c =>
-        println(s"\n--------\nProcessing command \"$c\"...")
-        userTool.run(c)
-      }
-    }
 }

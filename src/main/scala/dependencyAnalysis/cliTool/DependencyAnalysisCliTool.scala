@@ -54,7 +54,19 @@ class DependencyAnalysisCliTool(coreCommands: List[DependencyAnalysisCliCommand]
   private val listedCommands: List[DependencyAnalysisCliCommand] = helpCommand :: coreCommands
   private val allCommands: List[DependencyAnalysisCliCommand] = listedCommands ++ extensions.flatMap(_.commands)
 
-  def run(commandStr: String): Unit = {
+  /**
+   * Runs the given commands, which are separated by semicolons, in order.
+   */
+  def runCommands(commands: String): Unit = {
+    if (commands.nonEmpty) {
+      commands.split(";").map(_.trim) foreach { command =>
+        console.printLine(s"\n--------\nProcessing command \"$command\"...")
+        run(command)
+      }
+    }
+  }
+
+  private def run(commandStr: String): Unit = {
     commandStr.toLowerCase() match {
       case "interactive" => handleInteractiveMode()
       case _ => handleCommand(commandStr)

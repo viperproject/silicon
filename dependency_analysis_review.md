@@ -127,7 +127,7 @@ The code's own documentation says that a missing source info or dependency type 
 [DependencyGraph.scala:117](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala#L117) is a mutable class with several weaknesses:
 
 - **Redundant state:** `allEdges` must stay equal to the union of three other maps, which only a comment states ([:121](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala#L121)).
-- **Weak phase markers:** `Init`, `IntraProcedural` and `Final` are phantom types, but all methods exist in every phase, and a cast changes the phase ([DependencyAnalyzer.scala:311](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L311)).
+- **Weak phase markers:** `Init`, `IntraProcedural` and `Final` are phantom types, but all methods exist in every phase, and a cast changes the phase ([DependencyAnalyzer.scala:312](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L312)).
 - **In-place building:** `buildFinalGraph` mutates the graph, so it can't safely be called twice.
 - **Remaining linear scans:** L1 to L3 removed the worst costs, but `getNodeIdsByTerm` still scans all nodes whenever it is given terms, and `getNodes` rebuilds a set from both node maps on every call.
 - **Deep keys:** source infos hold whole AST nodes and are used as `groupBy` keys, for example in `DependencyGraphJoiner`. Each lookup hashes and compares by those fields.
@@ -139,7 +139,7 @@ The code's own documentation says that a missing source info or dependency type 
 ### D7. Tools and experiment code live in the verifier's main sources
 
 - **In the production JAR:** `BenchmarkDependencyAnalysisCliExtension`, `TestDependencyAnalysisCliExtension`, `DebugDependencyAnalysisCliExtension` and `DependencyGraphTestSupporter`. `neo4j_importer.py` also sits in `src/main/scala`.
-- **Verifier blocking on a terminal:** `afterVerification` runs the command tool, whose `interactive` command reads from the console ([DependencyAnalysisCliTool.scala:82](src/main/scala/dependencyAnalysis/cliTool/DependencyAnalysisCliTool.scala#L82)). If that option reaches a verifier hosted by a server, it would wait on stdin.
+- **Verifier blocking on a terminal:** `afterVerification` runs the command tool, whose `interactive` command reads from the console ([DependencyAnalysisCliTool.scala:94](src/main/scala/dependencyAnalysis/cliTool/DependencyAnalysisCliTool.scala#L94)). If that option reaches a verifier hosted by a server, it would wait on stdin.
 - **Results bypass the reporter:** the default console writes results to standard output rather than through `Reporter`, so server clients don't receive them. C8 makes the console replaceable, but no reporter-backed console exists yet.
 - **A command language inside a config string:** `--dependencyAnalysis` takes commands such as `export>dir` and `computeGraphOnly`, parsed at run time. Invalid commands can't be rejected by `Config`.
 - **An incomplete entry point:** `DependencyAnalysisTool.main` uses the placeholder name `"test"`, and its TODO says it "doesn't fully work yet".
@@ -194,7 +194,7 @@ Listed in the order I'd do them.
 | L12 | Add a helper for the repeated failed-assertion pattern, after checking that the 33 `handleFailedAssertion` sites fit it. | `SymbolicExecutionRules` | Less duplicated logic and fewer infos arguments |
 | L13 | Revert unrelated import reordering in upstream files, such as `Config`, `DefaultMainVerifier`, `Ast`, `Program` and `CfgGenerator`. | Several | Smaller diff, fewer merge conflicts |
 | L14 | Move `neo4j_importer.py` out of `src/main/scala`, for example to `scripts/`. | [neo4j_importer.py](src/main/scala/dependencyAnalysis/neo4j_importer.py) | Cleaner source tree |
-| L15 | Resolve the open `TODO ake` and `XXX ake` comments, 27 in Silicon including test files. Start with those that question behaviour: "why do we need this?" ([DependencyAnalyzer.scala:330](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L330)), the mask heap TODOs, and the `DefaultInfos` use at [MagicWandSupporter.scala:563](src/main/scala/rules/MagicWandSupporter.scala#L563). | Several | Exposes undecided behaviour before merging |
+| L15 | Resolve the open `TODO ake` and `XXX ake` comments, 27 in Silicon including test files. Start with those that question behaviour: "why do we need this?" ([DependencyAnalyzer.scala:331](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L331)), the mask heap TODOs, and the `DefaultInfos` use at [MagicWandSupporter.scala:563](src/main/scala/rules/MagicWandSupporter.scala#L563). | Several | Exposes undecided behaviour before merging |
 
 ## Class structure and decoupling of the analysis code
 
@@ -269,7 +269,7 @@ Nodes are tied to the symbolic execution engine through `Term` and `Chunk`. The 
 
 - **Package cycle:** `dependencyAnalysis` imports `decider` to match on `DependencyAnalysisHandler` ([DependencyAnalyzer.scala:9](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L9)), and `decider` imports `dependencyAnalysis`.
 - **Value object with global dependencies:** `DependencyAnalysisInfos` reads `Verifier.config` and logs through `SiliconRunner.logger` ([DependencyAnalysisInfos.scala:102](src/main/scala/dependencyAnalysis/DependencyAnalysisInfos.scala#L102), [:168](src/main/scala/dependencyAnalysis/DependencyAnalysisInfos.scala#L168)). A data class therefore depends on the command-line runner and can't be used without global setup.
-- **Global config in algorithms:** `DependencyGraphJoiner` ([:71](src/main/scala/dependencyAnalysis/DependencyGraphJoiner.scala#L71)) and `buildFinalGraph` ([DependencyAnalyzer.scala:311](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L311)) read `Verifier.config` directly. They could be plain, independently testable functions.
+- **Global config in algorithms:** `DependencyGraphJoiner` ([:71](src/main/scala/dependencyAnalysis/DependencyGraphJoiner.scala#L71)) and `buildFinalGraph` ([DependencyAnalyzer.scala:312](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L312)) read `Verifier.config` directly. They could be plain, independently testable functions.
 - **Verifier calls a tool:** `afterVerification` calls `DependencyAnalysisTool` ([DependencyAnalysisAwareVerifier.scala](src/main/scala/verifier/DependencyAnalysisAwareVerifier.scala)), so the verifier depends on the CLI package. See D7.
 
 **Proposed change:**
@@ -344,9 +344,11 @@ For axioms, give `ProverLike` an overridable method that takes the axiom infos a
 - `DependencyAnalysisCliSupport` replaces the helper inheritance.
 - Commands return a `DependencyAnalysisCliResult`, which `DependencyAnalysisCliConsole` writes out.
 
-**Still printing directly:**
-- `benchmark` and `precisionEval` use the console while running, for prompts and progress. The test commands do too, so that their messages stay in order with the output of `DependencyGraphTestSupporter`.
-- `DependencyGraphTestSupporter`, `DependencyAnalysisPruningSupporter` and `DependencyAnalysisProgressSupporter` still call `println`, as does `DependencyAnalysisTool.runUserTool`. Their output doesn't go through the console.
+- The pruning, progress and test supporters report through a function they are given, so all CLI output goes through the console or a command result. `DependencyAnalysisCliTool.runCommands` handles command lists.
+
+`benchmark`, `precisionEval` and the test commands write to the console while they run, by design: they prompt for input, report progress, or may fail with an assertion after reporting findings. The supporters default to `println` where tests call them directly.
+
+Not verified by running: this step was compiled only.
 
 ### Target structure
 

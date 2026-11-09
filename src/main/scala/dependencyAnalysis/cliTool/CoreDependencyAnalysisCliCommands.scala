@@ -13,6 +13,7 @@ import viper.silicon.interfaces.Failure
 import viper.silver.ast
 
 import java.io.PrintWriter
+import scala.collection.mutable
 
 /**
  * The commands for querying, exporting, and pruning the final dependency graph.
@@ -63,7 +64,8 @@ class CoreDependencyAnalysisCliCommands(interpreter: DependencyGraphInterpreter[
   private def handleVerificationProgressQuery(inputs: Seq[String], exportFileNameOpt: Option[String]): DependencyAnalysisCliResult = {
     val enableDebugging = inputs.nonEmpty && inputs.head.equals("debug")
 
-    val ((optProgressPeter, optProgressLea), optTime) = measureTime(interpreter.progressSupporter.computeVerificationProgress(enableDebugging))
+    val details = mutable.ListBuffer.empty[String]
+    val ((optProgressPeter, optProgressLea), optTime) = measureTime(interpreter.progressSupporter.computeVerificationProgress(enableDebugging, details += _))
 
     if (exportFileNameOpt.isDefined) {
       val writer = new PrintWriter(exportFileNameOpt.get)
@@ -72,7 +74,8 @@ class CoreDependencyAnalysisCliCommands(interpreter: DependencyGraphInterpreter[
       writer.close()
     }
 
-    DependencyAnalysisCliResult(s"Peter: ${optProgressPeter.progress}; Lea: ${optProgressLea.progress}\nFinished in ${optTime}ms")
+    val summary = s"Peter: ${optProgressPeter.progress}; Lea: ${optProgressLea.progress}\nFinished in ${optTime}ms"
+    DependencyAnalysisCliResult((details.toSeq :+ summary): _*)
   }
 
   private def failedAssertionsWarning(queriedAssertions: Set[DependencyAnalysisNode]): Seq[String] = {
@@ -131,8 +134,9 @@ class CoreDependencyAnalysisCliCommands(interpreter: DependencyGraphInterpreter[
 
   private def handlePruningRequest(inputs: Seq[String], exportFileName: String): DependencyAnalysisCliResult = {
     val queriedNodes = getQueriedNodesFromInput(inputs.toSet)
-    interpreter.pruningSupporter.pruneProgramAndExport(queriedNodes, program, exportFileName)
-    DependencyAnalysisCliResult.empty
+    val messages = mutable.ListBuffer.empty[String]
+    interpreter.pruningSupporter.pruneProgramAndExport(queriedNodes, program, exportFileName, messages += _)
+    DependencyAnalysisCliResult(messages.toSeq: _*)
   }
 
   private def handleVerificationGuidanceQuery(inputs: Seq[String]): DependencyAnalysisCliResult = {

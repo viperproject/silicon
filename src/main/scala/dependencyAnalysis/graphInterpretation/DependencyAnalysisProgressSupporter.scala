@@ -20,8 +20,8 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
   private val dependencyGraph = interpreter.getGraph
   private lazy val sourceToAssertionNodesMap: Map[DependencyAnalysisSourceInfo, Set[GeneralAssertionNode]] = interpreter.getNonInternalAssertionNodes.groupBy(_.sourceInfo)
 
-  def computeVerificationProgress(enableDebugging: Boolean = false): (VerificationProgress, VerificationProgress) = {
-    computeVerificationProgressOptimized(enableDebugging)
+  def computeVerificationProgress(enableDebugging: Boolean = false, report: String => Unit = println): (VerificationProgress, VerificationProgress) = {
+    computeVerificationProgressOptimized(enableDebugging, report)
   }
 
   /**
@@ -125,7 +125,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
    *         Proof quality is defined as the average assertion quality over all proof obligations.
    *         Assertion quality of an assertion a is the fraction of non-assumption dependencies over all dependencies of the assertion a.
    */
-  def computeVerificationProgressOptimized(enableDebugOutput: Boolean = false): (VerificationProgress, VerificationProgress) = {
+  def computeVerificationProgressOptimized(enableDebugOutput: Boolean = false, report: String => Unit = println): (VerificationProgress, VerificationProgress) = {
 
     // compute all dependencies of each proof obligation
     val allAssertions = getAssertionsRelevantForProgress.keySet.toList
@@ -135,7 +135,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
       reduceCompactUserLevelNodes(ups ++ downs)
     }, ass))
 
-    val specQuality = computeSpecQuality(allDependenciesPerAssertionNode.flatMap(_._1).toSet, enableDebugOutput)
+    val specQuality = computeSpecQuality(allDependenciesPerAssertionNode.flatMap(_._1).toSet, enableDebugOutput, report)
 
     val assertionQualities = allDependenciesPerAssertionNode map (ass => (computeAssertionQuality(ass._1, ass._2), ass._2)) collect { case (Some(q), s) => (q, s) }
     val numNonTrivialAssertions = assertionQualities.size
@@ -149,12 +149,12 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
     val proofQualityLea = if (numNonTrivialAssertions > 0) assertionQualitiesSum / numNonTrivialAssertions.toDouble else 1.0
 
     if (enableDebugOutput)
-      println(
+      report(
         s"fullyVerifiedAssertions:\n\t${fullyVerifiedAssertions.sortBy(n => (n._2.getLineNumber, n._2.toString)).mkString("\n\t")}\n" +
         s"assertionQualitiesSum:\n\t${assertionQualities.sortBy(n => (n._2.getLineNumber, n._2.toString)).mkString("\n\t")}"
       )
 
-    println(
+    report(
       s"specQuality = $specQuality\n" +
         s"proof quality (Peter): ${fullyVerifiedAssertions.size} / $numNonTrivialAssertions = $proofQualityPeter\n" +
         s"proof quality (Lea): $assertionQualitiesSum / $numNonTrivialAssertions = $proofQualityLea\n"
@@ -170,7 +170,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
    * Computes the specification quality given the covered nodes. Specification quality is defined as the fraction of
    * all (user-level) nodes in the graph that are covered.
    */
-  private def computeSpecQuality(coveredNodes: Set[CompactUserLevelDependencyAnalysisNode], enableDebugOutput: Boolean = false): Double = {
+  private def computeSpecQuality(coveredNodes: Set[CompactUserLevelDependencyAnalysisNode], enableDebugOutput: Boolean, report: String => Unit): Double = {
 
     val explicitAssertions = toCompactUserLevelNodes(interpreter.getExplicitAssertionNodes.toSet)
     val allSourceCodeNodes = toCompactUserLevelNodes(interpreter.getNonInternalAssumptionNodes).filter(n => n.assumptionTypes.exists(_.isInstanceOf[AssumptionType.SourceCodeType])).map(_.source).diff(explicitAssertions.map(_.source))
@@ -180,12 +180,12 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
     else {
       val coveredSourceCodeNodes = coveredNodes.map(_.source).intersect(allSourceCodeNodes)
       if (enableDebugOutput)
-        println(
+        report(
           s"Covered Source Code:\n\t${coveredSourceCodeNodes.toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}\n" +
             s"Uncovered Source Code:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}"
         )
 
-      println(s"Spec Quality = ${coveredSourceCodeNodes.size} / ${allSourceCodeNodes.size}")
+      report(s"Spec Quality = ${coveredSourceCodeNodes.size} / ${allSourceCodeNodes.size}")
       coveredSourceCodeNodes.size.toDouble / allSourceCodeNodes.size.toDouble
     }
   }

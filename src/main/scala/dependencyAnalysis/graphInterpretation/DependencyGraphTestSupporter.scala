@@ -12,7 +12,10 @@ import viper.silver.dependencyAnalysis.AssumptionType
 
 import scala.util.matching.Regex
 
-class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final]) {
+/**
+ * @param report receives the test outcomes while the tests run
+ */
+class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final], report: String => Unit = println) {
 
   private val assumptionTypeRegex = """assumptionType:([^\s,)\"]+)""".r
   private val assertionTypeRegex: Regex = """assertionType:([^\s,)\"]+)""".r
@@ -29,7 +32,7 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
     val tests = userLevelNodes.toList map testUserLevelNode
     val numExecutedTests = tests.count(_.isDefined)
     val numPassedTests = tests.count(_.getOrElse(false))
-    println(s"Node type tests: Passed $numPassedTests/$numExecutedTests tests.")
+    report(s"Node type tests: Passed $numPassedTests/$numExecutedTests tests.")
     assert(numPassedTests == numExecutedTests, s"Node type test failed. Only $numPassedTests/$numExecutedTests tests passed.")
   }
 
@@ -57,7 +60,7 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
           case Some(expectedType) =>
             (reportedTypes.filterNot(_.isInstanceOf[AssumptionType.InternalType]).equals(Set(expectedType)), true)
           case None =>
-            print(s"ERROR: could not parse assumption type $expectedTypeStr.")
+            report(s"ERROR: could not parse assumption type $expectedTypeStr.")
             (false, true)
         }
       case None => (true, false) // not tested
@@ -65,13 +68,13 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
 
   private def printIfFalse(test: Boolean, message: String): Unit =
     if (!test)
-      println(message)
+      report(message)
 
   def testDependencies(): Unit = {
     val testResults = UserLevelDependencyAnalysisNode.from(interpreter.getNonInternalAssertionNodes).toList map testDependencies
     val numExecutedTests = testResults.count(_.isDefined)
     val numPassedTests = testResults.count(_.getOrElse(false))
-    println(s"Dependency tests: Passed $numPassedTests/$numExecutedTests tests.")
+    report(s"Dependency tests: Passed $numPassedTests/$numExecutedTests tests.")
     assert(numPassedTests == numExecutedTests, s"Dependency test failed. Only $numPassedTests/$numExecutedTests tests passed.")
   }
 
