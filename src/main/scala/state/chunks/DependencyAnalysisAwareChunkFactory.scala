@@ -116,28 +116,28 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
   def applyCondition(chunk: GeneralChunk, newCond: Term, newCondExp: Option[ast.Exp], analysisInfos: AnalysisInfos): GeneralChunk = {
     decider.registerDerivedChunk(Set(chunk), {_ =>
       chunk.applyCondition(newCond, newCondExp)},
-      chunk.perm, analysisInfos, isExhale=false, createLabel=false)
+      chunk.perm, analysisInfos, isExhale=false)
   }
 
   def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos): GeneralChunk = {
     val newChunk = decider.registerDerivedChunk(Set(chunk), {finalPerm =>
       chunk.permMinus(finalPerm, newPermExp)},
-      newPerm, analysisInfos.overrideDependencyType(AssumptionType.Internal), isExhale=false, createLabel=false) // TODO ake: assumption type? maybe for exhale we want to have Implicit?
+      newPerm, analysisInfos.overrideDependencyType(AssumptionType.Internal), isExhale=false) // TODO ake: assumption type? maybe for exhale we want to have Implicit?
     @unused // we need to register the chunk to have a sound analysis
     val exhaledChunk = decider.registerDerivedChunk(Set(chunk), { finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},
-      newPerm, analysisInfos, isExhale=true, createLabel=false)
+      newPerm, analysisInfos, isExhale=true)
     newChunk
   }
 
   def permMinus(chunk: QuantifiedBasicChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos): QuantifiedBasicChunk = {
     val newChunk = decider.registerDerivedChunk(Set(chunk), {finalPerm =>
       chunk.permMinus(finalPerm, newPermExp)},
-      newPerm, analysisInfos.overrideDependencyType(AssumptionType.Internal), isExhale=false, createLabel=false) // TODO ake: assumption type? maybe for exhale we want to have Implicit?
+      newPerm, analysisInfos.overrideDependencyType(AssumptionType.Internal), isExhale=false) // TODO ake: assumption type? maybe for exhale we want to have Implicit?
     @unused // we need to register the chunk to have a sound analysis
     val exhaledChunk = decider.registerDerivedChunk(Set(chunk), { finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},
-      newPerm, analysisInfos, isExhale=true, createLabel=false)
+      newPerm, analysisInfos, isExhale=true)
     newChunk
   }
 
@@ -184,12 +184,12 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
     decider.registerDerivedChunk[QuantifiedChunk](Set(chunk), {_ =>
       chunk.withSnapshotMap(snap)
     },
-      chunk.perm, analysisInfos, isExhale=false, createLabel=false)
+      chunk.perm, analysisInfos, isExhale=false)
   }
 
   def withSnap(chunk: NonQuantifiedChunk, snap: Term, snapExp: Option[ast.Exp], analysisInfos: AnalysisInfos): NonQuantifiedChunk = {
     decider.registerDerivedChunk[NonQuantifiedChunk](Set(chunk), {_ =>
       chunk.withSnap(snap, snapExp)},
-      chunk.perm, analysisInfos, isExhale=false, createLabel=false)
+      chunk.perm, analysisInfos, isExhale=false)
   }
 }

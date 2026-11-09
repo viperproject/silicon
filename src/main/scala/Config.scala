@@ -7,6 +7,7 @@
 package viper.silicon
 
 import org.rogach.scallop._
+import viper.silicon.Config.AssertionMode.{PushPop, SoftConstraints}
 import viper.silicon.Config.JoinMode.JoinMode
 import viper.silicon.Config.StateConsolidationMode.StateConsolidationMode
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverAPI, Z3ProverStdIO}
@@ -895,6 +896,19 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case (dam, Some(true)) if dam.isDefined =>
       Left(s"Option ${dependencyAnalysis.name} is not supported in combination with ${parallelizeBranches.name}")
     case (_, Some(false)) => Right(())
+  }
+
+  validateOpt(dependencyAnalysis, maskHeapMode) {
+    case (dam, Some(true)) if dam.isDefined =>
+      Left(s"Option ${dependencyAnalysis.name} is not supported in combination with ${maskHeapMode.name}")
+    case (_, Some(false)) => Right(())
+  }
+
+  validateOpt(dependencyAnalysis, assertionMode) {
+    case (dam, _) if dam.isEmpty => Right(())
+    case (_, Some(PushPop)) => Right(())
+    case (_, _) =>
+      Left(s"Option ${dependencyAnalysis.name} is only supported in combination with ${assertionMode.name} PushPop")
   }
 
   validateOpt(rawProverArgs, dependencyAnalysis) {

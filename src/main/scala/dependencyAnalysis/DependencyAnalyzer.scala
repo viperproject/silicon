@@ -165,7 +165,8 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAn
   override def getNodes: Iterable[DependencyAnalysisNode] = dependencyGraph.getNodes
 
   private def getNodeIdsByTerm(terms: Set[Term]): Set[Int] = {
-    dependencyGraph.getNodes
+    if (terms.isEmpty) return Set.empty
+    dependencyGraph.getNodes // TODO ake: this is expensive
       .filter(t => terms.contains(t.term))
       .map(_.id)
   }

@@ -159,7 +159,7 @@ case class PermissionExhaleNode private[graph] (override val id: Int, override v
  * By default, they get removed from the final graph. When debugging the DA is enabled, they are kept but still marked internal.
  */
 case class LabelNode private[graph] (override val id: Int, override val term: Var, override val memberStr: String) extends GeneralAssumptionNode {
-  override val sourceInfo: DependencyAnalysisSourceInfo = NoDependencyAnalysisSourceInfo()
+  override val sourceInfo: DependencyAnalysisSourceInfo = new NoDependencyAnalysisSourceInfo()
   override val assumptionType: AssumptionType = AssumptionType.Internal
   override val mergeInfo: DependencyAnalysisMergeInfo = NoDependencyAnalysisMerge()
   val description: String = term.toString
