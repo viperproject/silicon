@@ -143,18 +143,51 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   }
 
   def getAllEdges(includeDownwardEdges: Boolean, includeUpwardEdges: Boolean): Map[Int, Set[Int]] = {
-    if(includeUpwardEdges && includeDownwardEdges)  getAllEdges // avoids expensive computation
+    selectEdges(includeDownwardEdges, includeUpwardEdges).toMap
+  }
+
+  /**
+   * @return the selected edges as a map from node to its direct dependencies. The result may be the graph's internal
+   *         map rather than a copy, so it must only be used for reading and only while the graph is not modified.
+   */
+  private def selectEdges(includeDownwardEdges: Boolean, includeUpwardEdges: Boolean): collection.Map[Int, Set[Int]] = {
+    if (includeDownwardEdges && includeUpwardEdges) allEdges
+    else if (!includeDownwardEdges && !includeUpwardEdges) intraMethodEdges
     else {
-      val intraMethodEdges = getIntraMethodEdges
-      val upwardEdges: mutable.Map[Int, Set[Int]] = if (includeUpwardEdges) edgesConnectingMethodsUpwards else mutable.Map.empty
-      val downwardEdges: mutable.Map[Int, Set[Int]] = if (includeDownwardEdges) edgesConnectingMethodsDownwards else mutable.Map.empty
-      val keys = intraMethodEdges.keySet ++ downwardEdges.keySet ++ upwardEdges.keySet
-      val allEdges = mutable.Map[Int, Set[Int]]()
-      keys foreach { key =>
-        allEdges.update(key, intraMethodEdges.getOrElse(key, Set()) ++ downwardEdges.getOrElse(key, Set()) ++ upwardEdges.getOrElse(key, Set()))
+      val interproceduralEdges = if (includeDownwardEdges) edgesConnectingMethodsDownwards else edgesConnectingMethodsUpwards
+      val merged = mutable.Map.from(intraMethodEdges)
+      interproceduralEdges foreach { case (target, sources) =>
+        merged.update(target, merged.getOrElse(target, Set.empty) ++ sources)
       }
-      allEdges.toMap
+      merged
     }
+  }
+
+  private def reverseEdges(edges: collection.Map[Int, Set[Int]]): collection.Map[Int, Set[Int]] = {
+    val reversed = mutable.Map.empty[Int, Set[Int]]
+    edges foreach { case (target, sources) =>
+      sources foreach (source => reversed.update(source, reversed.getOrElse(source, Set.empty) + target))
+    }
+    reversed
+  }
+
+  private def infeasibilityNodeIdsToSkip(includeInfeasibilityNodes: Boolean): Set[Int] = {
+    if (includeInfeasibilityNodes) Set.empty
+    else assumptionNodes.valuesIterator.collect { case node: InfeasibilityNode => node.id }.toSet
+  }
+
+  /**
+   * @return startIds and all nodes reachable from them via the given edges without entering a node in skippedIds
+   */
+  private def computeReachableIds(startIds: Set[Int], edges: collection.Map[Int, Set[Int]], skippedIds: Set[Int]): Set[Int] = {
+    val visited = mutable.Set.from(startIds)
+    val queue = mutable.Queue.from(startIds)
+    while (queue.nonEmpty) {
+      edges.getOrElse(queue.dequeue(), Set.empty) foreach { next =>
+        if (!skippedIds.contains(next) && visited.add(next)) queue.enqueue(next)
+      }
+    }
+    visited.toSet
   }
 
   @unused
@@ -244,69 +277,54 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   }
 
   def computeDependencies(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[DependencyAnalysisNode] = {
-    val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)
-    val visited: mutable.Set[Int] = mutable.Set.empty
-    val queue: mutable.Queue[Int] = mutable.Queue(nodesToAnalyze.map(_.id).toSeq: _*)
-    val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
-    while(queue.nonEmpty) {
-      val curr = queue.dequeue()
-      val newVisits = allEdges.getOrElse(curr, Set()).diff(infeasibilityNodeIds)
-      visited.add(curr)
-      queue.enqueueAll(newVisits.diff(visited).diff(queue.toSet))
-    }
-    (visited flatMap getNodeById).toSet
+    val edges = selectEdges(includeDownwardEdges, includeUpwardEdges)
+    getNodesByIds(computeReachableIds(nodesToAnalyze.map(_.id), edges, infeasibilityNodeIdsToSkip(includeInfeasibilityNodes)))
   }
 
   def computeDirectDependencies(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[DependencyAnalysisNode] = {
-    val depIds = nodesToAnalyze.groupBy(_.sourceInfo).flatMap { case (sourceInfo, nodes) =>
-      getDirectDependenciesInternal(nodes.map(_.id).toList, sourceInfo, includeInfeasibilityNodes, includeUpwardEdges, includeDownwardEdges)
+    val infeasibilityNodeIds = infeasibilityNodeIdsToSkip(includeInfeasibilityNodes)
+    val edges = selectEdges(includeDownwardEdges, includeUpwardEdges)
+    val targetsBySourceInfo = nodesToAnalyze.groupBy(_.sourceInfo)
+    val nodeIdsBySourceInfo = (assumptionNodes.valuesIterator ++ assertionNodes.valuesIterator)
+      .filter(node => targetsBySourceInfo.contains(node.sourceInfo))
+      .toList.groupMap(_.sourceInfo)(_.id)
+    val depIds = targetsBySourceInfo.flatMap { case (sourceInfo, nodes) =>
+      getDirectDependenciesInternal(nodes.map(_.id).toList, sourceInfo, nodeIdsBySourceInfo.getOrElse(sourceInfo, List.empty).toSet, infeasibilityNodeIds, edges)
     }
     (depIds flatMap getNodeById).toSet
   }
 
-  private def getDirectDependenciesInternal(initQueue: List[Int], targetSourceInfo: DependencyAnalysisSourceInfo, includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {
-    val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes.filter(_.isInstanceOf[InfeasibilityNode]).map(_.id)
-    val targetIds: Set[Int] = initQueue.toSet
-    val sourceInfoNodeIds: Set[Int] = getNodes.filter(_.sourceInfo == targetSourceInfo).map(_.id)
-    assert(targetIds.subsetOf(sourceInfoNodeIds), s"Target ids do not all belong to sourceInfo $targetSourceInfo")
+  private def getDirectDependenciesInternal(initQueue: List[Int], targetSourceInfo: DependencyAnalysisSourceInfo, sourceInfoNodeIds: Set[Int], infeasibilityNodeIds: Set[Int], edges: collection.Map[Int, Set[Int]]): Set[Int] = {
+    assert(initQueue.toSet.subsetOf(sourceInfoNodeIds), s"Target ids do not all belong to sourceInfo $targetSourceInfo")
     val visited: mutable.Set[Int] = mutable.Set.empty
     val result: mutable.Set[Int] = mutable.Set.empty
-    var queue: List[Int] = initQueue
-    val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
+    val queued: mutable.Set[Int] = mutable.Set.from(initQueue)
+    val queue: mutable.Queue[Int] = mutable.Queue.from(initQueue)
     while (queue.nonEmpty) {
-      val curr = queue.head
-      val newVisits = allEdges.getOrElse(curr, Set()).diff(infeasibilityNodeIds).diff(visited)
+      val newVisits = edges.getOrElse(queue.dequeue(), Set.empty).diff(infeasibilityNodeIds).diff(visited)
       val newQueues = newVisits.intersect(sourceInfoNodeIds)
       visited.addAll(newVisits)
       result.addAll(newVisits.diff(newQueues))
-      queue = queue.tail ++ newQueues.diff(queue.toSet)
+      newQueues foreach (id => if (queued.add(id)) queue.enqueue(id))
     }
     result.toSet
   }
 
   def computeDependents(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[DependencyAnalysisNode] = {
-    val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)
-    val visited: mutable.Set[Int] = mutable.Set.empty
-    var queue: Set[Int] = nodesToAnalyze.map(_.id)
-    val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
-    while(queue.nonEmpty) {
-      val newVisits = allEdges.filter{ case (t, s) => s.intersect(queue).nonEmpty && !infeasibilityNodeIds.contains(t) }.keys.toSet
-      visited.addAll(queue)
-      queue = newVisits.diff(visited)
-    }
-    (visited flatMap getNodeById).toSet
+    val dependents = reverseEdges(selectEdges(includeDownwardEdges, includeUpwardEdges))
+    getNodesByIds(computeReachableIds(nodesToAnalyze.map(_.id), dependents, infeasibilityNodeIdsToSkip(includeInfeasibilityNodes)))
   }
 
   def computeDirectDependents(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[DependencyAnalysisNode] = {
-    val infeasibilityNodeIds: Set[Int] = if (includeInfeasibilityNodes) Set.empty else getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)
+    val infeasibilityNodeIds = infeasibilityNodeIdsToSkip(includeInfeasibilityNodes)
     val visited: mutable.Set[Int] = mutable.Set.empty
     val result: mutable.Set[Int] = mutable.Set.empty
     var queue: Set[Int] = nodesToAnalyze.map(_.id)
     val sourceSourceInfos = nodesToAnalyze.map(_.sourceInfo)
-    val allEdges = getAllEdges(includeDownwardEdges, includeUpwardEdges)
+    val dependents = reverseEdges(selectEdges(includeDownwardEdges, includeUpwardEdges))
     while(queue.nonEmpty) {
       visited.addAll(queue)
-      val newVisits = allEdges.filter{case (t, s) => s.intersect(queue).nonEmpty && !infeasibilityNodeIds.contains(t)}.keys.toSet.diff(visited)
+      val newVisits = queue.flatMap(id => dependents.getOrElse(id, Set.empty[Int])).diff(infeasibilityNodeIds).diff(visited)
       val newQueues = getNodesByIds(newVisits).filter(n => sourceSourceInfos.contains(n.sourceInfo)).map(_.id)
       result.addAll(newVisits.diff(newQueues))
       queue = newQueues.diff(visited)
@@ -315,16 +333,35 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   }
 
   /**
-   * Removes the provided nodes while perceiving the transitive closure by adding edges between the predecessors and successors.
+   * Removes the provided nodes from all edge maps while preserving the transitive closure of the remaining nodes:
+   * an edge to a removed node is replaced by edges to all remaining nodes reachable via removed nodes only.
    */
-  private def removeAllEdgesForNode(node: DependencyAnalysisNode): Unit = {
-    val id = node.id
-
+  private def removeAllEdgesForNodes(nodeIds: Set[Int]): Unit = {
     def removeEdgesFromMap(edges: mutable.Map[Int, Set[Int]]): Unit = {
-      val predecessors = (edges filter { case (_, t) => t.contains(id) }).keys
-      val successors = edges.getOrElse(id, Set.empty)
-      edges.remove(id)
-      predecessors foreach (pid => edges.update(pid, edges.getOrElse(pid, Set.empty).filter(_ != id) ++ successors))
+      val edgesOfRemovedNodes = edges.view.filterKeys(nodeIds.contains).toMap
+      val remainingSuccessors = mutable.Map.empty[Int, Set[Int]]
+
+      def computeRemainingSuccessors(removedId: Int): Set[Int] = remainingSuccessors.getOrElseUpdate(removedId, {
+        val result = mutable.Set.empty[Int]
+        val visited = mutable.Set(removedId)
+        val workList = mutable.Stack(removedId)
+        while (workList.nonEmpty) {
+          edgesOfRemovedNodes.getOrElse(workList.pop(), Set.empty[Int]) foreach { successor =>
+            if (!nodeIds.contains(successor)) result.add(successor)
+            else remainingSuccessors.get(successor) match {
+              case Some(known) => result.addAll(known)
+              case None => if (visited.add(successor)) workList.push(successor)
+            }
+          }
+        }
+        result.toSet
+      })
+
+      edges --= nodeIds
+      edges mapValuesInPlace { (_, successors) =>
+        val (removed, remaining) = successors.partition(nodeIds.contains)
+        if (removed.isEmpty) successors else remaining ++ removed.flatMap(computeRemainingSuccessors)
+      }
     }
 
     removeEdgesFromMap(intraMethodEdges)
@@ -340,9 +377,9 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   def removeLabelNodes(): Unit = {
     def filterCriteria(n: DependencyAnalysisNode) = n.isInstanceOf[LabelNode]
 
-    val nodesToRemove = getAssumptionNodes filter filterCriteria
-    nodesToRemove foreach removeAllEdgesForNode
-    removeNodes(nodesToRemove.map(_.id))
+    val idsToRemove = getAssumptionNodes.filter(filterCriteria).map(_.id)
+    removeAllEdgesForNodes(idsToRemove)
+    removeNodes(idsToRemove)
   }
 
   /**
@@ -355,9 +392,9 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
         n.joinInfos.isEmpty // join nodes must not be removed because we need them for joining the graphs later on
     }
 
-    val nodesToRemove = getNodes filter filterCriteria
-    nodesToRemove foreach removeAllEdgesForNode
-    removeNodes(nodesToRemove.map(_.id))
+    val idsToRemove = getNodes.filter(filterCriteria).map(_.id)
+    removeAllEdgesForNodes(idsToRemove)
+    removeNodes(idsToRemove)
   }
 
   private def removeNodes(nodeIds: Iterable[Int]) = {

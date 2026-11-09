@@ -55,21 +55,22 @@ class DependencyGraphJoiner(name: String, dependencyGraphInterpreters: Set[Depen
     val sinkNodesByJoinInfo = getJoinNodesByJoinInfo(joinSinkNodes, JoinType.Sink)
 
     val sourceInfoToNodeIds = newGraph.getNodes.groupBy(_.sourceInfo).view.mapValues(_.map(_.id)).toMap
+    val intraMethodEdges = newGraph.getIntraMethodEdges
 
     sinkNodesByJoinInfo.foreach { case (joinKey, sinkNodes) =>
       val matchingSourceNodes = sourceNodesByJoinInfo.getOrElse(joinKey, Set.empty)
-      addEdgesConnectingMethods(newGraph, joinKey._2, matchingSourceNodes, sinkNodes, sourceInfoToNodeIds)
+      addEdgesConnectingMethods(newGraph, joinKey._2, matchingSourceNodes, sinkNodes, sourceInfoToNodeIds, intraMethodEdges)
     }
 
     val newInterpreter = new DependencyGraphInterpreter[Final](name, newGraph, dependencyGraphInterpreters.toList.flatMap(_.getErrors))
     newInterpreter
   }
 
-  private def addEdgesConnectingMethods(newGraph: DependencyGraph[Final], edgeType: EdgeType, sourceNodes: Set[DependencyAnalysisNode], sinkNodes: Set[DependencyAnalysisNode], sourceInfoToNodeIds: Map[DependencyAnalysisSourceInfo, Set[Int]]): Unit = {
+  private def addEdgesConnectingMethods(newGraph: DependencyGraph[Final], edgeType: EdgeType, sourceNodes: Set[DependencyAnalysisNode], sinkNodes: Set[DependencyAnalysisNode], sourceInfoToNodeIds: Map[DependencyAnalysisSourceInfo, Set[Int]], intraMethodEdges: Map[Int, Set[Int]]): Unit = {
     if (edgeType.equals(EdgeType.Up)) {
       val directDepsOfSources = if(!Verifier.config.disableDependencyAnalysisJoinPrecisionOpt()) {
         // Preconditions are connected to the dependencies required to prove them at all call sites. However, they do not depend on the calls themselves.
-        sourceNodes.groupBy(_.sourceInfo).flatMap(t => getDirectIntraMethodDependencies(t._2.map(_.id), sourceInfoToNodeIds(t._1), newGraph))
+        sourceNodes.groupBy(_.sourceInfo).flatMap(t => getDirectIntraMethodDependencies(t._2.map(_.id), sourceInfoToNodeIds(t._1), intraMethodEdges))
       } else {
         // Connect preconditions directly to call and therefore, indirectly to all its dependencies -> imprecise but might be faster and
         // more user-friendly since it becomes apparent which call introduced these indirect dependencies.
@@ -81,20 +82,19 @@ class DependencyGraphJoiner(name: String, dependencyGraphInterpreters: Set[Depen
     }
   }
 
-  private def getDirectIntraMethodDependencies(initQueue: Set[Int], allNodesWithSameSource: Set[Int], graph: DependencyGraph[Final]): Set[Int] = {
+  private def getDirectIntraMethodDependencies(initQueue: Set[Int], allNodesWithSameSource: Set[Int], intraMethodEdges: Map[Int, Set[Int]]): Set[Int] = {
     assert(initQueue.subsetOf(allNodesWithSameSource), s"Target ids do not all belong to sourceInfo $allNodesWithSameSource")
     val visited: mutable.Set[Int] = mutable.Set.empty
     val result: mutable.Set[Int] = mutable.Set.empty
-    val queue: mutable.Queue[Int] = mutable.Queue(initQueue.toSeq: _*)
-    val relevantEdges = graph.
-      getIntraMethodEdges
+    val queued: mutable.Set[Int] = mutable.Set.from(initQueue)
+    val queue: mutable.Queue[Int] = mutable.Queue.from(initQueue)
     while (queue.nonEmpty) {
       val curr = queue.dequeue()
-      val newVisits = relevantEdges.getOrElse(curr, Set()).diff(visited)
+      val newVisits = intraMethodEdges.getOrElse(curr, Set()).diff(visited)
       val newQueues = newVisits.intersect(allNodesWithSameSource)
       visited.addAll(newVisits)
       result.addAll(newVisits.diff(newQueues))
-      queue.enqueueAll(newQueues.diff(queue.toSet))
+      newQueues foreach (id => if (queued.add(id)) queue.enqueue(id))
     }
     result.toSet
   }
