@@ -337,7 +337,7 @@ object executor extends ExecutionRules {
                       if (v2.decider.pcs.infeasibilityNodeId.isEmpty) v2.decider.pcs.setCurrentInfeasibilityNode(pcs.infeasibilityNodeId)
                       v2.decider.assume(pcs.assumptions map (t => v.decider.analysisHooks.withLabel(t, Set.empty, Set(t))), Option.when(debugOn)(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, analysisInfosLoopInternal)
                       v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-                      if (!Verifier.config.analyzeInfeasiblePaths && v2.decider.checkSmoke(analysisInfosLoopInternal))
+                      if (deadPath.stopsEarly && v2.decider.checkSmoke(analysisInfosLoopInternal))
                         Success()
                       else {
                         execs(s2, stmts, v2)((s3, v3) => {
@@ -499,7 +499,7 @@ object executor extends ExecutionRules {
         })
 
       case inhale @ ast.Inhale(a) => a match {
-        case _: ast.FalseLit if !Verifier.config.analyzeInfeasiblePaths =>
+        case _: ast.FalseLit if deadPath.stopsEarly =>
           /* We're done */
           Success()
         case _: ast.TrueLit =>
@@ -508,7 +508,7 @@ object executor extends ExecutionRules {
           val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(inhale)) else s
           produce(s0, freshSnap, a, InhaleFailed(inhale), v, analysisInfos)((s1, v1) => {
             v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-            if (Verifier.config.analyzeInfeasiblePaths && a.isInstanceOf[ast.FalseLit]) v1.decider.checkSmoke(analysisInfos)
+            if (a.isInstanceOf[ast.FalseLit]) v1.decider.checkSmoke(analysisInfos)
             val s1a = if (debugOn) v.finishKeyHeap(s1) else s1
             Q(s1a, v1)})
       }
@@ -532,10 +532,7 @@ object executor extends ExecutionRules {
             if (s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine QS(s1, v1) else failure
           }
         })((s2, v2) =>
-          if (Verifier.config.analyzeInfeasiblePaths)
-            Q(s2, v2)
-          else
-            Success()
+          deadPath.continue(Success())(Q(s2, v2))
         )
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>

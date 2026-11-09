@@ -23,7 +23,7 @@ Updated on 2026-11-09, after the fixes on top of `e0fbd85b`. Line links in the f
 | L5 | Partly done, see the L5 row. |
 | L10, C8 | Done. |
 | D3, C3, C4, C5, C7 | Done, except for the reporting point listed under C7. Compiled only, not run. |
-| L7, L8, L12 | Done. Compiled only, not run. |
+| D2, L7, L8, L12 | Done. Compiled only, not run. |
 | L13 | Done in Silicon and in `silicon/silver`, compiled only. The Silver commit is local to `silicon/silver`, so `carbon/silver` and the submodule pointers still have the old imports. |
 | Everything else | Open. |
 
@@ -51,7 +51,7 @@ With `--dependencyAnalysis`, Silicon changes what it sends to Z3 and which paths
 
 - **Chunk permissions are rewritten.** They become `Ite(label, perm, NoPerm)` with a fresh label ([DependencyAnalyzer.scala:170](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L170), [:178](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L178)).
 - **Known-true checks are weakened.** `isKnownToBeTrue` only accepts `True`, so the path-condition lookup is skipped ([DependencyAnalysisAwareDeciderProvider.scala:113](src/main/scala/decider/DependencyAnalysisAwareDeciderProvider.scala#L113)).
-- **More fresh symbols are created.** Assignments are always made SSA ([Executor.scala:816](src/main/scala/rules/Executor.scala#L816)), and call arguments get fresh variables ([Executor.scala:637](src/main/scala/rules/Executor.scala#L637)).
+- **More fresh symbols are created.** Assignments are always made SSA ([Executor.scala:813](src/main/scala/rules/Executor.scala#L813)), and call arguments get fresh variables ([Executor.scala:634](src/main/scala/rules/Executor.scala#L634)).
 - **Dead paths are explored,** unless `--disableInfeasiblePaths` is set (D2).
 
 **Why it matters:** the graph describes the proof found in the instrumented run. Rules that inspect permission terms syntactically now see an `Ite`, and Z3 gets a different problem. A program could verify in one mode and fail or time out in the other, or the reported dependencies could differ from the proof a normal run finds. I haven't shown that this happens, but nothing rules it out.
@@ -63,20 +63,20 @@ With `--dependencyAnalysis`, Silicon changes what it sends to Z3 and which paths
 
 **Risk:** the comparison and the documentation carry no risk to production code. Removing instrumentation carries high risk.
 
-### D2. Dead-path handling is scattered through the symbolic execution rules
+### D2. Dead-path handling was scattered through the symbolic execution rules (done)
 
-`Verifier.config.analyzeInfeasiblePaths` appears at 18 sites in `rules/`, plus `isPathMarkedInfeasible` guards and `handleInfeasiblePath` calls. Each site decides locally how to continue on a dead path, and they differ:
+`Verifier.config.analyzeInfeasiblePaths` used to appear at 18 sites in `rules/`, next to `isPathMarkedInfeasible` guards and `handleInfeasiblePath` calls. Each site decided locally whether to continue on a dead path.
 
-- `lookup` invents a fresh snapshot ([ChunkSupporter.scala:280](src/main/scala/rules/ChunkSupporter.scala#L280)).
-- `consume` continues with `None` as the snapshot ([ChunkSupporter.scala:150](src/main/scala/rules/ChunkSupporter.scala#L150)). See B1.
-- Quantifier evaluation invents a fresh variable ([Evaluator.scala:574](src/main/scala/rules/Evaluator.scala#L574)).
-- Function-application joins filter entries by infeasibility node ([Evaluator.scala:1416](src/main/scala/rules/Evaluator.scala#L1416)).
+**Implemented:** the rules now state how they continue, and [DeadPath.scala](src/main/scala/rules/DeadPath.scala) decides whether they do. Behaviour is meant to be unchanged.
+- `deadPath.skipRule` replaces the guards at the start of a rule, and records what the rule would have contributed.
+- `deadPath.continue` handles a path that was just proven dead, and takes the result to use when verification stops there.
+- `deadPath.continueAfterFailure` handles a failure after which the rest of the path is explored.
+- `deadPath.exploresBranch`, `contributesToJoin` and `stopsEarly` cover branching, joins and the two places that skip work outright.
+- `deadPath.freshSnapshot` is shared by the two lookup rules.
 
-**Why it matters:** this is the largest change to core rule logic, and it conflicts with any upstream change to those rules. A new rule that forgets the case stops exploring the path, and the dependencies of that path's obligations are then missing from the graph. The config comment itself says this mode may affect performance heavily and hasn't been tested without the analysis.
+The continuations still differ by rule, but are now visible at the call: `lookup` uses a fresh snapshot, `consume` continues with `None` (see B1), and quantifier evaluation uses a fresh variable.
 
-**Suggested change:** add one small abstraction with named operations, such as `deadPath.continueWithFreshSnapshot(...)`, `deadPath.continueWithoutResult(...)` and `deadPath.terminate(...)`. The default implementation would keep today's behaviour of stopping. The rules would then state *what* happens on a dead path, not *whether* the analysis is on.
-
-**Risk:** medium. Doing it one rule at a time keeps each step reviewable.
+**Remaining:** `Decider.isPathMarkedInfeasible` still reads the option. `StateConsolidator` and the edge handling in `Executor` use that guard directly, because they have nothing to record.
 
 ### D3. Six overlapping on/off mechanisms (done)
 
@@ -91,7 +91,7 @@ There are now two flags:
 
 **Decision on disabled members:** which encoding a member that disables the analysis is verified with is not significant. It currently keeps the encoding of the run and records no nodes.
 
-**Remaining:** `analyzeInfeasiblePaths` is a separate option derived from the overall flag and `--disableInfeasiblePaths`. It is still read in the rules and belongs to D2.
+**Remaining:** `analyzeInfeasiblePaths` is a separate option derived from the overall flag and `--disableInfeasiblePaths`. Within the rules, only `deadPath` reads it (D2).
 
 ### D4. Silver annotates every AST, in every run, for every backend
 
@@ -167,7 +167,7 @@ None of these has been reproduced.
 
 | ID | Issue | Effect | Suggested check or fix |
 |---|---|---|---|
-| B1 | On a newly detected dead path or with further errors, `consume` passes `None` as the snapshot even if `returnSnap` is true ([ChunkSupporter.scala:150](src/main/scala/rules/ChunkSupporter.scala#L150), [:163](src/main/scala/rules/ChunkSupporter.scala#L163)). Callers call `.get`, e.g. [Evaluator.scala:666](src/main/scala/rules/Evaluator.scala#L666), [PredicateSupporter.scala:85](src/main/scala/rules/PredicateSupporter.scala#L85) and [Executor.scala:674](src/main/scala/rules/Executor.scala#L674). | Possible `NoSuchElementException` while exploring a dead path | Test a function call or `fold` in a branch that becomes infeasible at that consume. Return a fresh snapshot when `returnSnap` is set, as `lookup` does. |
+| B1 | On a newly detected dead path or with further errors, `consume` passes `None` as the snapshot even if `returnSnap` is true ([ChunkSupporter.scala:149](src/main/scala/rules/ChunkSupporter.scala#L149), [:158](src/main/scala/rules/ChunkSupporter.scala#L158)). Callers call `.get`, e.g. [Evaluator.scala:666](src/main/scala/rules/Evaluator.scala#L666), [PredicateSupporter.scala:85](src/main/scala/rules/PredicateSupporter.scala#L85) and [Executor.scala:671](src/main/scala/rules/Executor.scala#L671). | Possible `NoSuchElementException` while exploring a dead path | Test a function call or `fold` in a branch that becomes infeasible at that consume. Return a fresh snapshot when `returnSnap` is set, as `lookup` does. |
 | B2 | **Fixed.** `--assertionMode SoftConstraints` wasn't rejected, but it doesn't name the goal or refresh the unsat core. | First assert throws a `NullPointerException`. Later asserts reuse an old core, giving wrong edges and false vacuous-proof records. | Reject the combination in `Config`. |
 | B3 | **Fixed by rejecting the option.** `--maskHeapMode` wasn't rejected, but `createBasicMaskHeapChunk` adds no label ([DependencyAnalysisAwareChunkFactory.scala:113](src/main/scala/state/chunks/DependencyAnalysisAwareChunkFactory.scala#L113), `TODO ake`). `substitute` has a similar TODO. | Permission dependencies may be missing, which would make results incomplete | Reject the combination until it is supported, or add tests showing it's correct. |
 | B4 | **Resolved by deleting the parameter.** `createLabel` was ignored in `registerDerivedChunk` ([DependencyAnalysisAwareDeciderProvider.scala:179](src/main/scala/decider/DependencyAnalysisAwareDeciderProvider.scala#L179)), so callers passing `createLabel = false` still get a fresh label and node. | Extra overhead at the least. It may not match what those callers intended. | Decide the intent, then implement it or delete the parameter (L5). |

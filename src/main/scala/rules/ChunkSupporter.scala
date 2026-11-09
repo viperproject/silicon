@@ -84,8 +84,7 @@ object chunkSupporter extends ChunkSupportRules {
               analysisInfos: AnalysisInfos)
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
-    if (v.decider.isPathMarkedInfeasible) {
-      v.decider.handleInfeasiblePath(true, false, analysisInfos)
+    if (deadPath.skipRule(v, true, false, analysisInfos)) {
       return Q(s, h, Option.when(returnSnap)(Unit), v)
     }
 
@@ -151,19 +150,12 @@ object chunkSupporter extends ChunkSupportRules {
               }
               QS(s2.copy(h = s.h), h2, snap, v1)
             case (_, s2, h2, _) if v1.decider.checkSmoke(analysisInfos, isAssert = true) =>
-              if (Verifier.config.analyzeInfeasiblePaths)
-                QS(s2.copy(h = s.h), h2, None, v1)
-              else
-                Success() // TODO: Mark branch as dead?
+              deadPath.continue(Success() /* TODO: Mark branch as dead? */)(QS(s2.copy(h = s.h), h2, None, v1))
             case _ =>
               val failure = createFailure(ve, v1, s1, "consuming chunk", true)
               recordFailedFalseAssertion(s1, v1, analysisInfos)
 
-              if (s1.retryLevel == 0 && v1.reportFurtherErrors() && Verifier.config.analyzeInfeasiblePaths) {
-                failure combine QS(s1.copy(h = s.h), s1.h, None, v1)
-              } else {
-                failure
-              }
+              deadPath.continueAfterFailure(failure, s1, v1)(QS(s1.copy(h = s.h), s1.h, None, v1))
           }
         }
       )(Q)
@@ -253,8 +245,7 @@ object chunkSupporter extends ChunkSupportRules {
              analysisInfos: AnalysisInfos)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
             : VerificationResult = {
-    if (v.decider.isPathMarkedInfeasible) {
-      v.decider.handleInfeasiblePath(true, false, analysisInfos)
+    if (deadPath.skipRule(v, true, false, analysisInfos)) {
       return Q(s, h, Unit, v)
     }
 
@@ -284,21 +275,11 @@ object chunkSupporter extends ChunkSupportRules {
       case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.assertTimeout.getOrElse(0), analysisInfos) =>
         Q(s, ch.snap, v)
       case _ if v.decider.checkSmoke(analysisInfos, isAssert = true) =>
-        if (s.isInPackage || Verifier.config.analyzeInfeasiblePaths) {
-          val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(debugOn)(PUnknown()))
-          Q(s, snap, v)
-        } else {
-          Success() // TODO: Mark branch as dead?
-        }
+        deadPath.continue(Success() /* TODO: Mark branch as dead? */, alwaysContinue = s.isInPackage)(Q(s, deadPath.freshSnapshot(resource, s, v), v))
       case _ =>
         val failure = createFailure(ve, v, s, "looking up chunk", true)
         recordFailedFalseAssertion(s, v, analysisInfos)
-        if (s.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.analyzeInfeasiblePaths) {
-          val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(debugOn)(PUnknown()))
-          failure combine Q(s, snap, v)
-        } else {
-          failure
-        }
+        deadPath.continueAfterFailure(failure, s, v)(Q(s, deadPath.freshSnapshot(resource, s, v), v))
     }
   }
 

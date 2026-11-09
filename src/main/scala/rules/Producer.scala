@@ -157,8 +157,7 @@ object producer extends ProductionRules {
       val pve = pves.head
 
       val analysisInfos1 = v.decider.analysisHooks.enterNode(analysisInfos, a.info, a)
-      if (v.decider.isPathMarkedInfeasible) {
-        v.decider.handleInfeasiblePath(!Expressions.isKnownWellDefined(a, Some(s.program)), hasAssumptions=true, analysisInfos1)
+      if (deadPath.skipRule(v, !Expressions.isKnownWellDefined(a, Some(s.program)), hasAssumptions=true, analysisInfos1)) {
         return Q(s, v)
       }
 
@@ -184,7 +183,7 @@ object producer extends ProductionRules {
           // This should never happen if we're in a reachable state, so here we check for that
           // (without timeout, since there is no fallback) and stop verifying the current branch.
           case _: IllegalArgumentException if v.decider.checkSmoke(analysisInfos) =>
-            if (Verifier.config.analyzeInfeasiblePaths) Q(s,v) else Unreachable()
+            deadPath.continue(Unreachable())(Q(s, v))
         }
 
       }
@@ -218,8 +217,7 @@ object producer extends ProductionRules {
                                (Q: (State, Verifier) => VerificationResult)
                                : VerificationResult = {
 
-    if (v.decider.isPathMarkedInfeasible) {
-      v.decider.handleInfeasiblePath(!Expressions.isKnownWellDefined(a, Some(s.program)), hasAssumptions=true, analysisInfos)
+    if (deadPath.skipRule(v, !Expressions.isKnownWellDefined(a, Some(s.program)), hasAssumptions=true, analysisInfos)) {
       return Q(s, v)
     }
 

@@ -207,8 +207,7 @@ object consumer extends ConsumptionRules {
      * time permissions have been consumed.
      */
 
-    if (v.decider.isPathMarkedInfeasible) {
-      v.decider.handleInfeasiblePath(true, false, analysisInfos)
+    if (deadPath.skipRule(v, true, false, analysisInfos)) {
       return Q(s, h, Option.when(returnSnap)(Unit), v)
     }
 

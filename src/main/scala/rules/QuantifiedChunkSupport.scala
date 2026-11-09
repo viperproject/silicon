@@ -1411,8 +1411,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   case (Incomplete(_, _), s2, _, _) =>
                     val failure = createFailure(pve dueTo insufficientPermissionReason, v, s2, "QP consume")
                     recordFailedFalseAssertion(s2, v, analysisInfos)
-                    if (s2.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.analyzeInfeasiblePaths)
-                      failure combine Q(s2, s2.h, Option.when(returnSnap)(Unit), v) else failure
+                    deadPath.continueAfterFailure(failure, s2, v)(Q(s2, s2.h, Option.when(returnSnap)(Unit), v))
                 }
               }
             }
