@@ -14,7 +14,7 @@ import viper.silver.ast.utility.Functions
 import viper.silver.components.StatefulComponent
 import viper.silver.dependencyAnalysis._
 import viper.silver.verifier.errors.{ContractNotWellformed, FunctionNotWellformed, PostconditionViolated}
-import viper.silicon.{Map, Stack, toMap}
+import viper.silicon.{Map, toMap}
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.interfaces._
 import viper.silicon.state._
@@ -22,7 +22,7 @@ import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider.Decider
+import viper.silicon.decider.{Decider, RecordedPathConditions}
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
 import viper.silicon.supporters.{AnnotationSupporter, PredicateData}
@@ -41,7 +41,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
   def decider: Decider
   def symbolConverter: SymbolConverter
 
-  private case class Phase1Data(sPre: State, bcsPre: Stack[Term], bcsPreExp: Stack[(ast.Exp, Option[ast.Exp])], pcsPre: InsertionOrderedSet[Term], pcsPreExp: Option[InsertionOrderedSet[DebugExp]])
+  private case class Phase1Data(sPre: State, pcsPre: RecordedPathConditions)
 
   def functionsSupporter: FunctionsSupporter = DefaultFunctionsSupporter
 
@@ -250,9 +250,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         val preMark = decider.setPathConditionMark()
         produces(s1, toSf(`?s`), pres, ContractNotWellformed, v, analysisInfosPrecondition)((s2, _) => {
           val s2a = if (debugOn) v.finishKeyHeap(s2) else s2
-          val relevantPathConditionStack = decider.pcs.after(preMark)
-          phase1Data :+= Phase1Data(s2a, relevantPathConditionStack.branchConditions, relevantPathConditionStack.branchConditionExps,
-            relevantPathConditionStack.assumptions, Option.when(debugOn)(relevantPathConditionStack.assumptionExps))
+          phase1Data :+= Phase1Data(s2a, decider.pcs.after(preMark))
           // The postcondition must be produced with a fresh snapshot (different from `?s`) because
           // the postcondition's snapshot structure is most likely different than that of the
           // precondition
@@ -286,12 +284,13 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       val result = phase1data.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
-        case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
+        case (intermediateResult, Phase1Data(sPre, pcsPre)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
-            val labelledBcsPre = terms.And(bcsPre map (t => v.decider.analysisHooks.withLabel(t, Set(t))))
+            val bcsPreExp = pcsPre.branchConditionExps
+            val labelledBcsPre = terms.And(pcsPre.branchConditions map (t => v.decider.analysisHooks.withLabel(t, pcsPre.analysisNodeIds(t))))
             decider.setCurrentBranchCondition(labelledBcsPre, (BigAnd(bcsPreExp.map(_._1)), Option.when(debugOn)(BigAnd(bcsPreExp.map(_._2.get)))), precondAnalysisSourceInfos)
-            val labelledPcsPre = pcsPre map (t => v.decider.analysisHooks.withLabel(t, Set(t)))
-            decider.assume(labelledPcsPre, Option.when(debugOn)(DebugExp.createInstance(s"precondition of ${function.name}", pcsPreExp.get)), enforceAssumption = false, precondAnalysisSourceInfos)
+            val labelledPcsPre = pcsPre.assumptions map (t => v.decider.analysisHooks.withLabel(t, pcsPre.analysisNodeIds(t)))
+            decider.assume(labelledPcsPre, Option.when(debugOn)(DebugExp.createInstance(s"precondition of ${function.name}", pcsPre.assumptionExps)), enforceAssumption = false, precondAnalysisSourceInfos)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s1a = if (debugOn) v.startKeyHeap(s1, "nil", EvalExp(body)) else s1
             eval(s1a, body, FunctionNotWellformed(function), v, analysisInfosBody)((s2, tBody, bodyNew, _) => {

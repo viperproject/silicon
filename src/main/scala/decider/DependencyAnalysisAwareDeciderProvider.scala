@@ -21,7 +21,7 @@ trait DependencyAnalysisHandler {
 
   def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfos: AnalysisInfos, isExhale: Boolean): CH
 
-  def getOrCreateAnalysisLabelNode(sourceTerms: Iterable[Term] = Set.empty): Option[LabelNode]
+  def getOrCreateAnalysisLabelNode(sourceNodeIds: Set[Int] = Set.empty): Option[LabelNode]
 }
 
 trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v: DependencyAnalysisAwareVerifier =>
@@ -47,6 +47,8 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
 
     private var dependencyAnalyzer: DependencyAnalyzer = new NoDependencyAnalyzer()
     override def getDependencyAnalyzer: DependencyAnalyzer = dependencyAnalyzer
+
+    private var lastCheckNodeId: Option[Int] = None
 
     override def analysisHooks: AnalysisHooks = DependencyAnalysisHooks
 
@@ -77,12 +79,14 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
         newAnalysisInfos
       }
 
-      override def withLabel(term: Term, sourceTerms: Iterable[Term]): Term = {
+      override def withLabel(term: Term, sourceNodeIds: Set[Int]): Term = {
         if (!isDependencyAnalysisEnabledForMember || term.equals(True))
           term
         else
-          getOrCreateAnalysisLabelNode(sourceTerms).map(n => Implies(n.term, term)).getOrElse(term)
+          getOrCreateAnalysisLabelNode(sourceNodeIds).map(n => Implies(n.term, term)).getOrElse(term)
       }
+
+      override def lastCheckNodeIds: Set[Int] = lastCheckNodeId.toSet
 
       override def linkMergeInfos(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit =
         dependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(sourceExps, targetExps)
@@ -104,12 +108,19 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
 
     private def registerAssumptions(terms: InsertionOrderedSet[Term], analysisInfos: AnalysisInfos): Map[Term, Option[String]] = {
       terms.toSeq.map(t => {
-        val assumptionIds = dependencyAnalyzer.addAssumption(t, analysisInfos)
-        (t, DependencyAnalyzer.createAssumptionLabel(assumptionIds))
+        val assumptionId = dependencyAnalyzer.addAssumption(t, analysisInfos)
+        assumptionId foreach (pathConditions.addAnalysisNodeId(t, _))
+        (t, DependencyAnalyzer.createAssumptionLabel(assumptionId))
       }).toMap
     }
 
     override protected def isKnownToBeTrue(t: Term): Boolean = t.equals(True)
+
+    override def check(t: Term, timeout: Int, analysisInfos: AnalysisInfos): Boolean = {
+      /* A trivially true term doesn't reach deciderAssertInternal, and must not inherit the node of an earlier check. */
+      lastCheckNodeId = None
+      super.check(t, timeout, analysisInfos)
+    }
 
     override protected def deciderAssertInternal(t: Term, timeout: Option[Int], analysisInfos: AnalysisInfos, isCheck: Boolean): Boolean = {
       val assertNode = dependencyAnalyzer.createAssertOrCheckNode(t, analysisInfos, isCheck)
@@ -124,6 +135,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
 
       if (result) {
         assertNode foreach dependencyAnalyzer.addAssertionNode
+        if (isCheck) lastCheckNodeId = assertNode map (_.id)
       }
 
       result
@@ -184,14 +196,15 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       }
     }
 
-    override def getOrCreateAnalysisLabelNode(sourceTerms: Iterable[Term] = Set.empty): Option[LabelNode] = {
+    override def getOrCreateAnalysisLabelNode(sourceNodeIds: Set[Int] = Set.empty): Option[LabelNode] = {
       if (!isDependencyAnalysisEnabledForMember)
         return None
 
       val (label, _) = fresh(ast.LocalVar(DependencyAnalyzer.analysisLabelName, ast.Bool)())
-      val labelNode = dependencyAnalyzer.createLabelNode(label, sourceTerms)
+      val labelNode = dependencyAnalyzer.createLabelNode(label, sourceNodeIds)
       val smtLabel = DependencyAnalyzer.createAssumptionLabel(labelNode.map(_.id))
       assumeLabel(label, smtLabel)
+      labelNode foreach (n => pathConditions.addAnalysisNodeId(n.term, n.id))
       labelNode
     }
   }

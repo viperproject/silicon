@@ -129,7 +129,7 @@ The code's own documentation says that a missing source info or dependency type 
 - **Redundant state:** `allEdges` must stay equal to the union of three other maps, which only a comment states ([:120](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala#L120)).
 - **Weak phase markers:** `Init`, `IntraProcedural` and `Final` are phantom types, but all methods exist in every phase, and a cast changes the phase ([DependencyAnalyzer.scala:290](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L290)).
 - **In-place building:** `buildFinalGraph` mutates the graph, so it can't safely be called twice.
-- **Remaining linear scans:** L1 to L3 removed the worst costs, but `getNodeIdsByTerm` still scans all nodes whenever it is given terms, and `getNodes` rebuilds a set from both node maps on every call.
+- **Remaining linear scans:** L1 to L3 removed the worst costs, but `getNodes` still rebuilds a set from both node maps on every call.
 - **Deep keys:** source infos hold whole AST nodes and are used as `groupBy` keys, for example in `DependencyGraphJoiner`. Each lookup hashes and compares by those fields.
 
 **Suggested change:** split the graph into a mutable builder used during verification and an immutable, indexed result with forward and reverse adjacency. Derive `allEdges` rather than storing it, and give source infos a stable, cheap key.
@@ -170,7 +170,7 @@ None of these has been reproduced.
 | B2 | **Fixed.** `--assertionMode SoftConstraints` wasn't rejected, but it doesn't name the goal or refresh the unsat core. | First assert throws a `NullPointerException`. Later asserts reuse an old core, giving wrong edges and false vacuous-proof records. | Reject the combination in `Config`. |
 | B3 | **Fixed by rejecting the option.** `--maskHeapMode` wasn't rejected, but `createBasicMaskHeapChunk` adds no label ([DependencyAnalysisAwareChunkFactory.scala:113](src/main/scala/state/chunks/DependencyAnalysisAwareChunkFactory.scala#L113), `TODO ake`). `substitute` has a similar TODO. | Permission dependencies may be missing, which would make results incomplete | Reject the combination until it is supported, or add tests showing it's correct. |
 | B4 | **Resolved by deleting the parameter.** `createLabel` was ignored in `registerDerivedChunk`, so callers passing `createLabel = false` still get a fresh label and node. | Extra overhead at the least. It may not match what those callers intended. | Decide the intent, then implement it or delete the parameter (L5). |
-| B5 | `getNodeIdsByTerm` finds source nodes by structural term equality across the whole member graph ([DependencyAnalyzer.scala:145](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L145)). | The same term assumed on another branch also becomes a dependency, which is imprecise rather than unsound | Check whether this appears in practice. |
+| B5 | **Fixed.** `getNodeIdsByTerm` found source nodes by structural term equality across the whole member graph, and missed assumptions that were split into conjuncts. | The same term assumed on another branch also became a dependency, and conjuncts of a recorded assumption lost theirs | Path condition layers now record the node ids of their terms and conjuncts, and labels take node ids. |
 | B6 | **Fixed.** `NoDependencyAnalysisSourceInfo.equals` was always false, even for the same object ([DependencyAnalysisSourceInfo.scala:66](silver/src/main/scala/viper/silver/dependencyAnalysis/DependencyAnalysisSourceInfo.scala#L66)). | Broke the `equals` contract for a value used in sets and `groupBy` keys | It is now a plain class with identity equality (L6). |
 | B7 | `DecreasesCheck` now gives generated nodes a source position and info instead of the defaults, in all runs ([DecreasesCheck.scala:90](silver/src/main/scala/viper/silver/plugin/standard/termination/transformation/DecreasesCheck.scala#L90)). | Could change termination error locations outside the analysis | Compare termination error output with master. |
 
@@ -180,7 +180,7 @@ Listed in the order I'd do them.
 
 | ID | Change | Where | Benefit |
 |---|---|---|---|
-| L1 | **Done.** Return early from `getNodeIdsByTerm` when `terms` is empty. Every chunk creation used to scan all nodes, even though `getOrCreateAnalysisLabelNode()` passes no terms. | [DependencyAnalyzer.scala:145](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L145) | Removes a likely quadratic cost during verification |
+| L1 | **Done,** and superseded by B5, which removed the scan. Return early from `getNodeIdsByTerm` when `terms` is empty. Every chunk creation used to scan all nodes, even though `getOrCreateAnalysisLabelNode()` passes no terms. | `DependencyAnalyzer` | Removes a likely quadratic cost during verification |
 | L2 | **Done.** In graph queries, track queued nodes in a mutable set rather than `queue.toSet`, compute infeasibility IDs once, and avoid `toMap` copies of the edges. Build a reverse index for dependents instead of scanning all edges per layer. | [computeDependencies](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala#L280), [computeDependents](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala#L314), [getDirectDependenciesInternal](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala#L298), `DependencyGraphJoiner` | Faster queries, same results |
 | L3 | **Done,** for label and internal nodes. Remove nodes in one batch rather than scanning all four edge maps per node. One intended difference: when removed nodes form a cycle, the old code could leave edges pointing at already deleted nodes, and these are gone now (32 edges across 7 of the 61 test programs). Dependencies between remaining nodes are unchanged. | [removeAllEdgesForNodes](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala#L340) | Faster graph finalisation |
 | L4 | **Done.** Add `validateOpt` checks for `SoftConstraints` and `maskHeapMode` with the analysis. | [Config.scala:893](src/main/scala/Config.scala#L893) | Clear error instead of wrong results (B2, B3) |
@@ -239,12 +239,12 @@ The interface is also too wide for its users:
 
 [DependencyGraph.scala](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala) holds the data, every traversal and the CSV export. The format is therefore defined twice: written in `exportNodes` and read by column number in [DependencyGraphImporter.scala](src/main/scala/dependencyAnalysis/cliTool/DependencyGraphImporter.scala). Export is also on `ReadOnlyDependencyGraph`, so the query interface includes file output.
 
-Nodes are tied to the symbolic execution engine through `Term` and `Chunk`. The importer shows the cost: it creates a `dummyVar` and placeholder terms only to satisfy the constructors. The code's own comments say `term` is "only used for debugging", and that the chunk and label on permission nodes are "not strictly needed anymore". `getNodeIdsByTerm` is the exception, since it does use `term`.
+Nodes are tied to the symbolic execution engine through `Term` and `Chunk`. The importer shows the cost: it creates a `dummyVar` and placeholder terms only to satisfy the constructors. The code's own comments say `term` is "only used for debugging", and that the chunk and label on permission nodes are "not strictly needed anymore".
 
 **Proposed change:**
 - Keep storage in `DependencyGraph` and move traversals to `DependencyGraphQueries`.
 - Put reading and writing in one `DependencyGraphCsv` object, so the format has a single definition.
-- Make low-level data optional, for example `debugInfo: Option[NodeDebugInfo]` on nodes, once `getNodeIdsByTerm` no longer needs it or uses a separate lookup kept by the recorder.
+- Make low-level data optional, for example `debugInfo: Option[NodeDebugInfo]` on nodes.
 
 **Risk:** low for the CSV move, medium for the node change.
 
@@ -342,7 +342,7 @@ Dependencies should point in one direction: `tools` → `query` → `graph`, and
 
 Only open changes are listed.
 
-1. **Confirm bugs:** check B1, then B5 and B7.
+1. **Confirm bugs:** check B1, then B7.
 2. **Cleanup:** L14 and L15.
 3. **Before proposing upstream:** D4, D7 and D8, which change the most for people outside this feature.
 4. **Larger refactors:** D6 and the class structure steps above, one at a time. Compare graph exports before and after, so that any behaviour change is visible.

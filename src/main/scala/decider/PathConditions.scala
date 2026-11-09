@@ -35,6 +35,9 @@ trait RecordedPathConditions {
   def infeasibilityNodeId: Option[Int]
   def isPathMarkedInfeasible: Boolean
 
+  /** The dependency analysis nodes of the assumptions of the given term on this path. Empty without an analysis. */
+  def analysisNodeIds(term: Term): Set[Int]
+
   def definitionsOnly: RecordedPathConditions
 
   def contains(assumption: Term): Boolean
@@ -76,6 +79,9 @@ trait PathConditionStack extends RecordedPathConditions {
   def setCurrentInfeasibilityNode(node: Option[Int]): Unit
   def addAnalysisLabel(assumption: Term): Unit
 
+  /** Records that the given node represents an assumption of the term and of each of its top-level conjuncts. */
+  def addAnalysisNodeId(term: Term, nodeId: Int): Unit
+
   def startDebugSubExp(): Unit
   def finishDebugSubExp(description : String): Unit
 
@@ -110,6 +116,7 @@ private class PathConditionStackLayer
   private var _nonGlobalDefiningAssumptionDebugExps: InsertionOrderedSet[DebugExp] = InsertionOrderedSet.empty
   private var _declarations: InsertionOrderedSet[Decl] = InsertionOrderedSet.empty
   private var _analysisLabels: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
+  private var _analysisNodeIds: Map[Term, Set[Int]] = Map.empty
 
   def branchCondition: Option[Term] = _branchCondition
   def branchConditionExp: Option[(ast.Exp, Option[ast.Exp])] = _branchConditionExp
@@ -125,6 +132,7 @@ private class PathConditionStackLayer
   def nonGlobalAssumptionDebugExps: InsertionOrderedSet[DebugExp] = _nonGlobalAssumptionDebugExps
   def declarations: InsertionOrderedSet[Decl] = _declarations
   def analysisLabels: InsertionOrderedSet[Term] = _analysisLabels
+  def analysisNodeIds(term: Term): Set[Int] = _analysisNodeIds.getOrElse(term, Set.empty)
 
   def isPathMarkedInfeasible: Boolean = _isPathMarkedInfeasible
   def markPathInfeasible(infeasible: Boolean): Unit = {
@@ -169,6 +177,7 @@ private class PathConditionStackLayer
     result._nonGlobalAssumptionDebugExps = _nonGlobalDefiningAssumptionDebugExps
     result._nonGlobalDefiningAssumptionDebugExps = _nonGlobalDefiningAssumptionDebugExps
     result._analysisLabels = _analysisLabels
+    result._analysisNodeIds = _analysisNodeIds
     result
   }
 
@@ -208,6 +217,10 @@ private class PathConditionStackLayer
     _globalAssumptions += assumption // labels are always global
     _globalDefiningAssumptions += assumption
     _analysisLabels += assumption
+  }
+
+  def addAnalysisNodeId(term: Term, nodeId: Int): Unit = {
+    _analysisNodeIds += term -> (analysisNodeIds(term) + nodeId)
   }
 
   def addNonGlobalDebugExp(debugExp : DebugExp): Unit = {
@@ -317,6 +330,9 @@ private trait LayeredPathConditionStackLike {
 
   protected def analysisLabels(layers: Stack[PathConditionStackLayer]): InsertionOrderedSet[Term] =
     InsertionOrderedSet(layers.flatMap(_.analysisLabels))
+
+  protected def analysisNodeIds(layers: Stack[PathConditionStackLayer], term: Term): Set[Int] =
+    layers.flatMap(_.analysisNodeIds(term)).toSet
 
   protected def isPathMarkedInfeasible(layers: Stack[PathConditionStackLayer]): Boolean = layers.exists(_.isPathMarkedInfeasible)
 
@@ -472,6 +488,8 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
   val infeasibilityNodeId: Option[Int] = infeasibilityNodeId(from)
   val isPathMarkedInfeasible: Boolean = isPathMarkedInfeasible(from)
 
+  def analysisNodeIds(term: Term): Set[Int] = analysisNodeIds(from, term)
+
   def contains(assumption: Term): Boolean = contains(from, assumption)
 
   val conditionalized: Seq[Term] = conditionalized(from)
@@ -586,6 +604,11 @@ private[decider] class LayeredPathConditionStack
     layers.head.addAnalysisLabel(assumption)
   }
 
+  def addAnalysisNodeId(term: Term, nodeId: Int): Unit = {
+    /* The whole term is needed as well because branch conditions are recorded without being split. */
+    (term +: term.topLevelConjuncts) foreach (layers.head.addAnalysisNodeId(_, nodeId))
+  }
+
   def pushScope(): Unit = {
     val scopeMark = pushLayer()
     scopeMarks = scopeMark :: scopeMarks
@@ -657,6 +680,8 @@ private[decider] class LayeredPathConditionStack
   def analysisLabels: InsertionOrderedSet[Term] = InsertionOrderedSet(layers.flatMap(_.analysisLabels))
 
   override def infeasibilityNodeId: Option[Mark] = layers.flatMap(_.infeasibilityNodeId).headOption
+
+  def analysisNodeIds(term: Term): Set[Int] = analysisNodeIds(layers, term)
 
   def definingAssumptions: InsertionOrderedSet[Term] =
     InsertionOrderedSet(layers.flatMap(_.globalDefiningAssumptions) ++ layers.flatMap(_.nonGlobalDefiningAssumptions)) // Note: Performance?

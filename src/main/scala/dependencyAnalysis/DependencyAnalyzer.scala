@@ -31,7 +31,7 @@ trait DependencyAnalyzer {
   def addAxiom(assumption: Term, analysisAxiomInfo: DependencyAnalysisAxiomInfo, description: Option[String] = None): Option[Int]
   def registerInhaleChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, labelNode: Option[LabelNode], analysisInfos: AnalysisInfos): CH = buildChunk(perm)
   def registerExhaleChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, labelNodeOpt: Option[LabelNode], analysisInfos: AnalysisInfos): CH = buildChunk(perm)
-  def createLabelNode(label: Var, sourceTerms: Iterable[Term]): Option[LabelNode]
+  def createLabelNode(label: Var, sourceNodeIds: Set[Int]): Option[LabelNode]
 
   def createAssertOrCheckNode(term: Term, analysisInfos: AnalysisInfos, isCheck: Boolean): Option[GeneralAssertionNode]
   def addAssertFalseNode(isCheck: Boolean, analysisInfos: AnalysisInfos): Option[Int]
@@ -142,14 +142,6 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member], options: DependencyA
 
   override def getNodes: Iterable[DependencyAnalysisNode] = dependencyGraph.getNodes
 
-  private def getNodeIdsByTerm(terms: Set[Term]): Set[Int] = {
-    if (terms.isEmpty) return Set.empty
-    dependencyGraph.getNodes // TODO ake: this is expensive
-      .filter(t => terms.contains(t.term))
-      .map(_.id)
-  }
-
-
   override def addNodes(nodes: Iterable[DependencyAnalysisNode]): Unit = {
     nodes foreach dependencyGraph.addNode
   }
@@ -199,10 +191,10 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member], options: DependencyA
     Some(node.id)
   }
 
-  override def createLabelNode(label: Var, sourceTerms: Iterable[Term]): Option[LabelNode] = {
+  override def createLabelNode(label: Var, sourceNodeIds: Set[Int]): Option[LabelNode] = {
     val labelNode = DependencyNodeFactory.createLabelNode(label, getMember.name)
     addAssumptionNode(labelNode)
-    dependencyGraph.addEdges(getNodeIdsByTerm(sourceTerms.toSet), labelNode.id)
+    dependencyGraph.addEdges(sourceNodeIds, labelNode.id)
     Some(labelNode)
   }
 
@@ -390,7 +382,7 @@ class NoDependencyAnalyzer extends DependencyAnalyzer {
   override def addAssumptionNode(node: GeneralAssumptionNode): Unit = {}
   override def addAssumption(assumption: Term, analysisInfos: AnalysisInfos, description: Option[String] = None): Option[Int] = None
   override def addAxiom(assumption: Term, analysisAxiomInfo: DependencyAnalysisAxiomInfo, description: Option[String]): Option[Int] = None
-  override def createLabelNode(labelTerm: Var, sourceTerms: Iterable[Term]): Option[LabelNode] = None
+  override def createLabelNode(labelTerm: Var, sourceNodeIds: Set[Int]): Option[LabelNode] = None
 
   override def createAssertOrCheckNode(term: Term, analysisInfos: AnalysisInfos, isCheck: Boolean): Option[GeneralAssertionNode] = None
   override def addAssertFalseNode(isCheck: Boolean, analysisInfos: AnalysisInfos): Option[Int] = None
