@@ -10,17 +10,14 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.state.chunks.{Chunk, GeneralChunk}
-import viper.silicon.state.terms.{False, Term, True}
+import viper.silicon.state.terms.{False, Implies, Term, True}
 import viper.silicon.verifier.DependencyAnalysisAwareVerifier
 import viper.silver.ast
-import viper.silver.ast.Member
-import viper.silver.dependencyAnalysis.AssumptionType
+import viper.silver.dependencyAnalysis.{AdditionalAssertionNode, AdditionalAssumptionNode, AdditionalDependencyNodeInfo, AssumptionType}
 
 trait DependencyAnalysisHandler {
 
-  def initDependencyAnalyzer(member: Member, preambleNodes: Iterable[DependencyAnalysisNode]): Unit
   def getDependencyAnalyzer: DependencyAnalyzer
-  def resetDependencyAnalyzer(): Unit
 
   def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfos: AnalysisInfos, isExhale: Boolean): CH
   def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfos: AnalysisInfos, isExhale: Boolean): CH
@@ -57,18 +54,47 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
     private var dependencyAnalyzer: DependencyAnalyzer = new NoDependencyAnalyzer()
     override def getDependencyAnalyzer: DependencyAnalyzer = dependencyAnalyzer
 
-    override def initDependencyAnalyzer(member: Member, preambleNodes: Iterable[DependencyAnalysisNode]): Unit = {
-      val isAnalysisEnabled = DependencyAnalyzer.extractEnableAnalysisFromInfo(member.info).getOrElse(true)
-      if (isAnalysisEnabled) {
-        dependencyAnalyzer = new DefaultDependencyAnalyzer(Some(member))
-        dependencyAnalyzer.addNodes(preambleNodes)
-      } else {
+    override def analysisHooks: AnalysisHooks = DependencyAnalysisHooks
+
+    private object DependencyAnalysisHooks extends AnalysisHooks {
+      override def beginMember(member: ast.Member, preambleNodes: Iterable[DependencyAnalysisNode]): Unit = {
+        val isAnalysisEnabled = DependencyAnalyzer.extractEnableAnalysisFromInfo(member.info).getOrElse(true)
+        if (isAnalysisEnabled) {
+          dependencyAnalyzer = new DefaultDependencyAnalyzer(Some(member))
+          dependencyAnalyzer.addNodes(preambleNodes ++ prover.getPreambleAnalysisNodes)
+        } else {
+          dependencyAnalyzer = new NoDependencyAnalyzer
+        }
+      }
+
+      override def endMember(): Unit = {
         dependencyAnalyzer = new NoDependencyAnalyzer
       }
-    }
 
-    override def resetDependencyAnalyzer(): Unit = {
-      dependencyAnalyzer = new NoDependencyAnalyzer
+      override def enterNode(analysisInfos: AnalysisInfos, info: ast.Info, node: ast.Node): AnalysisInfos = {
+        val newAnalysisInfos = analysisInfos.addInfo(info, node)
+        info.getAllInfos[AdditionalDependencyNodeInfo].foreach {
+          case AdditionalAssertionNode() => dependencyAnalyzer.createAssertOrCheckNode(True, newAnalysisInfos, isCheck = false).foreach(n => {
+            dependencyAnalyzer.addAssertionNode(n)
+            if (isPathMarkedInfeasible) dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, Some(n.id))
+          })
+          case AdditionalAssumptionNode() => dependencyAnalyzer.addAssumption(True, newAnalysisInfos)
+        }
+        newAnalysisInfos
+      }
+
+      override def withLabel(term: Term, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): Term = {
+        if (!isAnalysisActiveForMember || term.equals(True) || sourceChunks.size + sourceTerms.size == 0)
+          term
+        else
+          getOrCreateAnalysisLabelNode(sourceChunks, sourceTerms).map(n => Implies(n.term, term)).getOrElse(term)
+      }
+
+      override def linkMergeInfos(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit =
+        dependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(sourceExps, targetExps)
+
+      override def recordAssumption(assumption: Term, analysisInfos: AnalysisInfos, description: Option[String]): Unit =
+        dependencyAnalyzer.addAssumption(assumption, analysisInfos, description)
     }
 
     override protected def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], analysisInfos: AnalysisInfos, isDefinition: Boolean = false): Unit = {

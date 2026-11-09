@@ -12,26 +12,20 @@ import viper.silicon.dependencyAnalysis.DependencyAnalysisAxiomInfo
 import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.state.terms.Term
 
-class DependencyAnalysisAwareVerificationPoolManager(mainVerifier: MainVerifier) extends VerificationPoolManager(mainVerifier) {
+class DependencyAnalysisAwareVerificationPoolManager(mainVerifier: DependencyAnalysisAwareMainVerifier) extends VerificationPoolManager(mainVerifier) {
+  override type Worker = DependencyAnalysisAwareWorkerVerifier
 
-  def getAllDAAxiomNodes: Seq[DependencyAnalysisNode] = workerVerifiers.flatMap(v => v.decider.prover match {
-    case d: DependencyAnalysisProverHandler => d.getPreambleAnalysisNodes
-    case _ => Set.empty
-  })
+  override protected def createWorker(): DependencyAnalysisAwareWorkerVerifier = mainVerifier.createWorkerVerifier()
+
+  def getAllDAAxiomNodes: Seq[DependencyAnalysisNode] = workerVerifiers.flatMap(_.decider.prover.getPreambleAnalysisNodes)
 
   override def pooledVerifiers: DefaultPooledVerifiers with DependencyAnalysisProverHandler = DependencyAnalysisAwarePooledVerifiers
 
   private object DependencyAnalysisAwarePooledVerifiers extends DefaultPooledVerifiers with DependencyAnalysisProverHandler {
     def assume(term: Term, label: Option[String]): Unit =
-      workerVerifiers foreach {
-        case daV: DependencyAnalysisAwareWorkerVerifier => daV.decider.prover.assume(term, label)
-        case v => v.decider.prover.assume(term)
-      }
+      workerVerifiers foreach (_.decider.prover.assume(term, label))
 
     override def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, DependencyAnalysisAxiomInfo)], description: String): Unit =
-      workerVerifiers foreach {
-        case daV: DependencyAnalysisAwareWorkerVerifier => daV.decider.prover.assumeAxiomsWithAnalysisInfo(axioms, description)
-        case _ => super.assumeAxioms(axioms.map(_._1), description)
-      }
+      workerVerifiers foreach (_.decider.prover.assumeAxiomsWithAnalysisInfo(axioms, description))
   }
 }

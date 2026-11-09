@@ -18,7 +18,7 @@ import viper.silver.verifier.reasons._
 import viper.silver.{ast, cfg}
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
-import viper.silicon.dependencyAnalysis.{AnalysisInfos, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
 import viper.silicon.state._
@@ -84,7 +84,7 @@ object executor extends ExecutionRules {
           val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
           val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
           val s1 = handleOutEdge(s, edge, v)
-          val analysisInfos = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, v.decider.defaultAnalysisInfos, ce.condition.info, ce.condition)
+          val analysisInfos = v.decider.analysisHooks.enterNode(v.decider.defaultAnalysisInfos, ce.condition.info, ce.condition)
           eval(s1, ce.condition, IfFailed(ce.condition), v, analysisInfos)((s2, tCond, condNew, v1) =>
             /* Using branch(...) here ensures that the edge condition is recorded
              * as a branch condition on the pathcondition stack.
@@ -165,7 +165,7 @@ object executor extends ExecutionRules {
           case _ => false
         })
 
-        val analysisInfos = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, v.decider.defaultAnalysisInfos, cedge1.condition.info, cedge1.condition)
+        val analysisInfos = v.decider.analysisHooks.enterNode(v.decider.defaultAnalysisInfos, cedge1.condition.info, cedge1.condition)
 
         eval(s, cedge1.condition, pvef(cedge1.condition), v, analysisInfos)((s1, t0, condNew, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
@@ -201,7 +201,7 @@ object executor extends ExecutionRules {
         if Verifier.config.parallelizeBranches() && cond2 == ast.Not(cond1)() =>
         val condEdgeRecord = new ConditionalEdgeRecord(thenEdge.condition, s, v.decider.pcs)
         val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
-        val analysisInfos = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, v.decider.defaultAnalysisInfos, thenEdge.condition.info, thenEdge.condition)
+        val analysisInfos = v.decider.analysisHooks.enterNode(v.decider.defaultAnalysisInfos, thenEdge.condition.info, thenEdge.condition)
         val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v, analysisInfos)((s2, tCond, eCondNew, v1) =>
           brancher.branch(s2, tCond, (thenEdge.condition, eCondNew), v1, analysisInfos)(
             (s3, v3) => {
@@ -344,7 +344,7 @@ object executor extends ExecutionRules {
                       v2.decider.declareAndRecordAsFreshMacros(fm1.filter(!v2.decider.freshMacros.contains(_))) /* [BRANCH-PARALLELISATION] */
                       v2.decider.pcs.markPathInfeasible(v2.decider.pcs.isPathMarkedInfeasible || pcs.isPathMarkedInfeasible)
                       if (v2.decider.pcs.getCurrentInfeasibilityNode.isEmpty) v2.decider.pcs.setCurrentInfeasibilityNode(pcs.infeasibilityNodeId)
-                      v2.decider.assume(pcs.assumptions map (t => DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v.decider, t, Set.empty, Set(t))), Option.when(debugOn)(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, analysisInfosLoopInternal)
+                      v2.decider.assume(pcs.assumptions map (t => v.decider.analysisHooks.withLabel(t, Set.empty, Set(t))), Option.when(debugOn)(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, analysisInfosLoopInternal)
                       v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
                       if (!Verifier.config.analyzeInfeasiblePaths && v2.decider.checkSmoke(analysisInfosLoopInternal))
                         Success()
@@ -405,7 +405,7 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
-    val analysisInfos = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, v.decider.defaultAnalysisInfos, stmt.info, stmt)
+    val analysisInfos = v.decider.analysisHooks.enterNode(v.decider.defaultAnalysisInfos, stmt.info, stmt)
     exec2(s, stmt, v, analysisInfos)((s1, v1) => {
       v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, v1)
@@ -614,7 +614,7 @@ object executor extends ExecutionRules {
         val pveCall = CallFailed(call)
         val pveCallTransformed = pveCall.withReasonNodeTransformed(reasonTransformer)
 
-        DependencyAnalyzer.addAssumption(v.decider, True, analysisInfos, None) // make sure method calls are represented as a node, even if there are no postconditions
+        v.decider.analysisHooks.recordAssumption(True, analysisInfos, None) // make sure method calls are represented as a node, even if there are no postconditions
 
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
         val sepIdentifier = v.symbExLog.openScope(mcLog)
@@ -707,7 +707,7 @@ object executor extends ExecutionRules {
               val s3a = s3.copy(g = s1.g + gLhs,
                                oldHeaps = s1.oldHeaps,
                                recordVisited = s1.recordVisited)
-              DependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(v3.decider, presWithDAInfo, postsWithDAInfo)
+              v3.decider.analysisHooks.linkMergeInfos(presWithDAInfo, postsWithDAInfo)
               v3.symbExLog.closeScope(sepIdentifier)
               val s3b = if (debugOn) v3.finishKeyHeap(s3a) else s3a
               Q(s3b, v3)})})})

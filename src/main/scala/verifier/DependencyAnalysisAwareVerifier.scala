@@ -48,15 +48,10 @@ class DependencyAnalysisAwareMainVerifier(config: Config,
   }
 
   override def verifyMember(doVerify: Unit => Seq[VerificationResult], v: Verifier, member: ast.Member): Seq[VerificationResult] = {
-    v match {
-      case daVerifier: DependencyAnalysisAwareVerifier =>
-        daVerifier.decider.initDependencyAnalyzer(member, allProvers.getPreambleAnalysisNodes ++ daVerifier.decider.prover.getPreambleAnalysisNodes
-        ++ _verificationPoolManager.getAllDAAxiomNodes)
-        val result = super.verifyMember(doVerify, daVerifier, member)
-        daVerifier.decider.resetDependencyAnalyzer()
-        result
-      case _ => super.verifyMember(doVerify, v, member)
-    }
+    v.decider.analysisHooks.beginMember(member, allProvers.getPreambleAnalysisNodes ++ _verificationPoolManager.getAllDAAxiomNodes)
+    val result = super.verifyMember(doVerify, v, member)
+    v.decider.analysisHooks.endMember()
+    result
   }
 
   override def afterVerification(verificationResults: List[VerificationResult], program: ast.Program, inputFile: Option[String]): Unit = {

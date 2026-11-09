@@ -7,7 +7,6 @@
 package viper.silicon.supporters.functions
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider.DependencyAnalysisProverHandler
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.dependencyAnalysis.{DependencyAnalysisAxiomInfo, DependencyAnalyzer}
 import viper.silicon.interfaces.decider.ProverLike
@@ -53,11 +52,8 @@ trait DependencyAnalysisAwareFunctionVerificationUnitProvider extends DefaultFun
       emittedFunctionAxiomsWithInfo = emittedFunctionAxiomsWithInfo ++ cleanAxiom
     }
 
-    override def emitAxiomsAfterVerification(sink: ProverLike): Unit = sink match {
-      case daSink: DependencyAnalysisProverHandler =>
-        daSink.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(emittedFunctionAxiomsWithInfo), "Function axioms")
-      case _ => super.emitAxiomsAfterVerification(sink)
-    }
+    override def emitAxiomsAfterVerification(sink: ProverLike): Unit =
+      sink.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(emittedFunctionAxiomsWithInfo), "Function axioms")
 
   }
 

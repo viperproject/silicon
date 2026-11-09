@@ -61,6 +61,9 @@ trait Decider {
 
   def debuggerAssume(terms: Iterable[Term], de: DebugExp)
 
+  /** The interface for reporting to the analysis of this run, which does nothing if there is none. */
+  def analysisHooks: AnalysisHooks
+
   /**
    * Whether dependencies are recorded for the member currently being verified. This is the only per-member query.
    * It is false outside an analysis run, and in an analysis run for a member that disables the analysis.
@@ -191,6 +194,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     override def defaultAnalysisInfos: AnalysisInfos = DependencyAnalysisInfos.DefaultInfos
 
+    def analysisHooks: AnalysisHooks = NoAnalysisHooks
     def isAnalysisActiveForMember: Boolean = false
     def usesFreshCallArguments: Boolean = false
     def attachesContractMergeInfos: Boolean = false

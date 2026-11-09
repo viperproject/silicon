@@ -86,7 +86,7 @@ class DefaultMainVerifier(config: Config,
   protected val predicateAndWandSnapFunctionsContributor = new DefaultPredicateAndWandSnapFunctionsContributor(preambleReader, termConverter, predSnapGenerator, config)
   protected val magicWandSnapFunctionsContributor = new MagicWandSnapFunctionsContributor(preambleReader)
 
-  protected lazy val _verificationPoolManager: VerificationPoolManager = new VerificationPoolManager(this)
+  protected lazy val _verificationPoolManager: VerificationPoolManager = new DefaultVerificationPoolManager(this)
   def verificationPoolManager: VerificationPoolManager = _verificationPoolManager
 
   private lazy val statefulSubcomponents = List[StatefulComponent](

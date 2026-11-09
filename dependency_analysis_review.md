@@ -22,7 +22,7 @@ Updated on 2026-11-09, after the fixes on top of `e0fbd85b`. Line links in the f
 | L2, L3 | Done. See the verification note below. |
 | L5 | Partly done, see the L5 row. |
 | L10, C8 | Done. |
-| D3 | Done, see D3. Compiled only, not run. |
+| D3, C5 | Done, see those sections. Compiled only, not run. |
 | Everything else | Open. |
 
 **Verification of L2, L3, L5, L10 and C8.** Old and new builds ran on the 61 programs in `dependencyAnalysisTests/{all,real-world-examples,verificationProgressTests,guidance}`, using `silicon/silver`:
@@ -47,8 +47,8 @@ Most of the highest-value low-risk fixes are done. What remains is listed under 
 
 With `--dependencyAnalysis`, Silicon changes what it sends to Z3 and which paths it explores:
 
-- **Chunk permissions are rewritten.** They become `Ite(label, perm, NoPerm)` with a fresh label ([DependencyAnalyzer.scala:199](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L199), [:207](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L207)).
-- **Known-true checks are weakened.** `isKnownToBeTrue` only accepts `True`, so the path-condition lookup is skipped ([DependencyAnalysisAwareDeciderProvider.scala:92](src/main/scala/decider/DependencyAnalysisAwareDeciderProvider.scala#L92)).
+- **Chunk permissions are rewritten.** They become `Ite(label, perm, NoPerm)` with a fresh label ([DependencyAnalyzer.scala:161](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L161), [:169](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L169)).
+- **Known-true checks are weakened.** `isKnownToBeTrue` only accepts `True`, so the path-condition lookup is skipped ([DependencyAnalysisAwareDeciderProvider.scala:118](src/main/scala/decider/DependencyAnalysisAwareDeciderProvider.scala#L118)).
 - **More fresh symbols are created.** Assignments are always made SSA ([Executor.scala:825](src/main/scala/rules/Executor.scala#L825)), and call arguments get fresh variables ([Executor.scala:646](src/main/scala/rules/Executor.scala#L646)).
 - **Dead paths are explored,** unless `--disableInfeasiblePaths` is set (D2).
 
@@ -90,7 +90,7 @@ There are now two explicit concepts:
 
 **Decision on disabled members:** a member that disables the analysis keeps the encoding of the run and only records no nodes. Its result may therefore differ from a run without `--dependencyAnalysis`. This is documented in the analysis README.
 
-**Remaining:** the `decider match` mechanism is covered by C5. `analyzeInfeasiblePaths` is still read in the rules and belongs to D2. The interactive debugger's plain `WorkerVerifier` counts as not analysing, so in an analysis run `Brancher` no longer issues its extra smoke check there.
+**Remaining:** `analyzeInfeasiblePaths` is still read in the rules and belongs to D2. The interactive debugger's plain `WorkerVerifier` counts as not analysing, so in an analysis run `Brancher` no longer issues its extra smoke check there.
 
 ### D4. Silver annotates every AST, in every run, for every backend
 
@@ -127,7 +127,7 @@ The code's own documentation says that a missing source info or dependency type 
 [DependencyGraph.scala:117](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala#L117) is a mutable class with several weaknesses:
 
 - **Redundant state:** `allEdges` must stay equal to the union of three other maps, which only a comment states ([:121](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala#L121)).
-- **Weak phase markers:** `Init`, `IntraProcedural` and `Final` are phantom types, but all methods exist in every phase, and a cast changes the phase ([DependencyAnalyzer.scala:313](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L313)).
+- **Weak phase markers:** `Init`, `IntraProcedural` and `Final` are phantom types, but all methods exist in every phase, and a cast changes the phase ([DependencyAnalyzer.scala:276](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L276)).
 - **In-place building:** `buildFinalGraph` mutates the graph, so it can't safely be called twice.
 - **Remaining linear scans:** L1 to L3 removed the worst costs, but `getNodeIdsByTerm` still scans all nodes whenever it is given terms, and `getNodes` rebuilds a set from both node maps on every call.
 - **Deep keys:** source infos hold whole AST nodes and are used as `groupBy` keys, for example in `DependencyGraphJoiner`. Each lookup hashes and compares by those fields.
@@ -169,8 +169,8 @@ None of these has been reproduced.
 | B1 | On a newly detected dead path or with further errors, `consume` passes `None` as the snapshot even if `returnSnap` is true ([ChunkSupporter.scala:151](src/main/scala/rules/ChunkSupporter.scala#L151), [:163](src/main/scala/rules/ChunkSupporter.scala#L163)). Callers call `.get`, e.g. [Evaluator.scala:666](src/main/scala/rules/Evaluator.scala#L666), [PredicateSupporter.scala:85](src/main/scala/rules/PredicateSupporter.scala#L85) and [Executor.scala:683](src/main/scala/rules/Executor.scala#L683). | Possible `NoSuchElementException` while exploring a dead path | Test a function call or `fold` in a branch that becomes infeasible at that consume. Return a fresh snapshot when `returnSnap` is set, as `lookup` does. |
 | B2 | **Fixed.** `--assertionMode SoftConstraints` wasn't rejected, but it doesn't name the goal or refresh the unsat core. | First assert throws a `NullPointerException`. Later asserts reuse an old core, giving wrong edges and false vacuous-proof records. | Reject the combination in `Config`. |
 | B3 | **Fixed by rejecting the option.** `--maskHeapMode` wasn't rejected, but `createBasicMaskHeapChunk` adds no label ([DependencyAnalysisAwareChunkFactory.scala:113](src/main/scala/state/chunks/DependencyAnalysisAwareChunkFactory.scala#L113), `TODO ake`). `substitute` has a similar TODO. | Permission dependencies may be missing, which would make results incomplete | Reject the combination until it is supported, or add tests showing it's correct. |
-| B4 | **Resolved by deleting the parameter.** `createLabel` was ignored in `registerDerivedChunk` ([DependencyAnalysisAwareDeciderProvider.scala:158](src/main/scala/decider/DependencyAnalysisAwareDeciderProvider.scala#L158)), so callers passing `createLabel = false` still get a fresh label and node. | Extra overhead at the least. It may not match what those callers intended. | Decide the intent, then implement it or delete the parameter (L5). |
-| B5 | `getNodeIdsByTerm` finds source nodes by structural term equality across the whole member graph ([DependencyAnalyzer.scala:169](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L169)). | The same term assumed on another branch also becomes a dependency, which is imprecise rather than unsound | Check whether this appears in practice. |
+| B4 | **Resolved by deleting the parameter.** `createLabel` was ignored in `registerDerivedChunk` ([DependencyAnalysisAwareDeciderProvider.scala:184](src/main/scala/decider/DependencyAnalysisAwareDeciderProvider.scala#L184)), so callers passing `createLabel = false` still get a fresh label and node. | Extra overhead at the least. It may not match what those callers intended. | Decide the intent, then implement it or delete the parameter (L5). |
+| B5 | `getNodeIdsByTerm` finds source nodes by structural term equality across the whole member graph ([DependencyAnalyzer.scala:131](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L131)). | The same term assumed on another branch also becomes a dependency, which is imprecise rather than unsound | Check whether this appears in practice. |
 | B6 | **Fixed only in the uncommitted `carbon/silver` working copy.** `NoDependencyAnalysisSourceInfo.equals` is always false, even for the same object ([DependencyAnalysisSourceInfo.scala:71](silver/src/main/scala/viper/silver/dependencyAnalysis/DependencyAnalysisSourceInfo.scala#L71)). | Breaks the `equals` contract for a value used in sets and `groupBy` keys | Make it a plain class with identity equality (L6). |
 | B7 | `DecreasesCheck` now gives generated nodes a source position and info instead of the defaults, in all runs ([DecreasesCheck.scala:90](silver/src/main/scala/viper/silver/plugin/standard/termination/transformation/DecreasesCheck.scala#L90)). | Could change termination error locations outside the analysis | Compare termination error output with master. |
 
@@ -180,11 +180,11 @@ Listed in the order I'd do them.
 
 | ID | Change | Where | Benefit |
 |---|---|---|---|
-| L1 | **Done.** Return early from `getNodeIdsByTerm` when `terms` is empty. Every chunk creation used to scan all nodes, even though `getOrCreateAnalysisLabelNode()` passes no terms. | [DependencyAnalyzer.scala:169](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L169) | Removes a likely quadratic cost during verification |
+| L1 | **Done.** Return early from `getNodeIdsByTerm` when `terms` is empty. Every chunk creation used to scan all nodes, even though `getOrCreateAnalysisLabelNode()` passes no terms. | [DependencyAnalyzer.scala:131](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L131) | Removes a likely quadratic cost during verification |
 | L2 | **Done.** In graph queries, track queued nodes in a mutable set rather than `queue.toSet`, compute infeasibility IDs once, and avoid `toMap` copies of the edges. Build a reverse index for dependents instead of scanning all edges per layer. | [computeDependencies](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala#L279), [computeDependents](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala#L313), [getDirectDependenciesInternal](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala#L297), `DependencyGraphJoiner` | Faster queries, same results |
 | L3 | **Done,** for label and internal nodes. Remove nodes in one batch rather than scanning all four edge maps per node. One intended difference: when removed nodes form a cycle, the old code could leave edges pointing at already deleted nodes, and these are gone now (32 edges across 7 of the 61 test programs). Dependencies between remaining nodes are unchanged. | [removeAllEdgesForNodes](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala#L339) | Faster graph finalisation |
 | L4 | **Done.** Add `validateOpt` checks for `SoftConstraints` and `maskHeapMode` with the analysis. | [Config.scala:895](src/main/scala/Config.scala#L895) | Clear error instead of wrong results (B2, B3) |
-| L5 | **Partly done.** `createLabel` and the `sourceChunks` parameters of `registerInhaleChunk` and `registerExhaleChunk` are gone. `registerDerivedChunk` keeps `sourceChunks` because the B4 fix passes it to `getOrCreateAnalysisLabelNode`, but `createLabelNode` ignores it, so it still has no effect. Either link labels to their source chunks in `createLabelNode`, or remove the parameter along the whole path, where `registerDerivedChunk` then duplicates `registerChunk`. | [DependencyAnalyzer.scala:33](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L33), [DependencyAnalysisAwareDeciderProvider.scala:26](src/main/scala/decider/DependencyAnalysisAwareDeciderProvider.scala#L26) | Signatures stop implying tracking that doesn't happen |
+| L5 | **Partly done.** `createLabel` and the `sourceChunks` parameters of `registerInhaleChunk` and `registerExhaleChunk` are gone. `registerDerivedChunk` keeps `sourceChunks` because the B4 fix passes it to `getOrCreateAnalysisLabelNode`, but `createLabelNode` ignores it, so it still has no effect. Either link labels to their source chunks in `createLabelNode`, or remove the parameter along the whole path, where `registerDerivedChunk` then duplicates `registerChunk`. | [DependencyAnalyzer.scala:32](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L32), [DependencyAnalysisAwareDeciderProvider.scala:23](src/main/scala/decider/DependencyAnalysisAwareDeciderProvider.scala#L23) | Signatures stop implying tracking that doesn't happen |
 | L6 | **Fixed only in the uncommitted `carbon/silver` working copy** (see B6). Fix `NoDependencyAnalysisSourceInfo` equality. | [DependencyAnalysisSourceInfo.scala:71](silver/src/main/scala/viper/silver/dependencyAnalysis/DependencyAnalysisSourceInfo.scala#L71) | Correct contract (B6) |
 | L7 | Use one parameter order for `getAllEdges`. The trait says upward then downward, while the class says downward then upward. All current callers are inside the class, so nothing is wrong yet. | [DependencyGraph.scala:73](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala#L73), [:145](src/main/scala/dependencyAnalysis/graph/DependencyGraph.scala#L145) | Prevents a future swapped-flag bug |
 | L8 | Keep one infeasibility accessor on the path condition stack (`infeasibilityNodeId` and `getCurrentInfeasibilityNode` duplicate each other) and fix `Option[Mark]`, which should be `Option[Int]`. | [PathConditions.scala:543](src/main/scala/decider/PathConditions.scala#L543), [:661](src/main/scala/decider/PathConditions.scala#L661) | Removes duplication and a misleading type |
@@ -194,7 +194,7 @@ Listed in the order I'd do them.
 | L12 | Add a helper for the repeated failed-assertion pattern, after checking that the 33 `handleFailedAssertion` sites fit it. | `SymbolicExecutionRules` | Less duplicated logic and fewer infos arguments |
 | L13 | Revert unrelated import reordering in upstream files, such as `Config`, `DefaultMainVerifier`, `Ast`, `Program` and `CfgGenerator`. | Several | Smaller diff, fewer merge conflicts |
 | L14 | Move `neo4j_importer.py` out of `src/main/scala`, for example to `scripts/`. | [neo4j_importer.py](src/main/scala/dependencyAnalysis/neo4j_importer.py) | Cleaner source tree |
-| L15 | Resolve the open `TODO ake` and `XXX ake` comments, 27 in Silicon including test files. Start with those that question behaviour: "why do we need this?" ([DependencyAnalyzer.scala:332](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L332)), and the mask heap TODOs. | Several | Exposes undecided behaviour before merging |
+| L15 | Resolve the open `TODO ake` and `XXX ake` comments, 27 in Silicon including test files. Start with those that question behaviour: "why do we need this?" ([DependencyAnalyzer.scala:337](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L337)), and the mask heap TODOs. | Several | Exposes undecided behaviour before merging |
 
 ## Class structure and decoupling of the analysis code
 
@@ -217,14 +217,13 @@ This section looks only at analysis-specific code: `dependencyAnalysis/`, the `D
 |---|---|
 | SMT label encoding and decoding | `createAssumptionLabel`, `getIdFromLabel` |
 | Annotation parsing | `extractEnableAnalysisFromInfo` |
-| Static dispatch on the decider | `addAssumption`, `wrapWithDependencyAnalysisLabel` |
 | Recording nodes during verification | `addAssumption`, `createLabelNode` |
 | Building instrumented chunks | `registerInhaleChunk` and `registerExhaleChunk` build the `Ite` term |
 | Interpreting unsat cores | `processUnsatCoreAndAddDependencies` |
 | Finalising the graph | `buildFinalGraph`, `buildAndGetMergedGraph`, `addTransitiveEdges` |
 
 The interface is also too wide for its users:
-- `NoDependencyAnalyzer` needs a no-op for every method, invents a fake method for `getMember`, and still allocates a graph because the trait holds one ([:21](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L21)).
+- `NoDependencyAnalyzer` needs a no-op for every method, invents a fake method for `getMember`, and still allocates a graph because the trait holds one ([:20](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L20)).
 - The preamble analyzer is `new DefaultDependencyAnalyzer(None)` ([DependencyAnalysisAwareZ3ProverStdIO.scala:43](src/main/scala/decider/DependencyAnalysisAwareZ3ProverStdIO.scala#L43)), so `getMember`, which calls `member.get`, would throw if used there. Only the axiom methods are safe, which the types don't express.
 
 **Proposed split:**
@@ -267,9 +266,8 @@ Nodes are tied to the symbolic execution engine through `Term` and `Chunk`. The 
 
 ### C4. Dependencies point the wrong way
 
-- **Package cycle:** `dependencyAnalysis` imports `decider` to match on `DependencyAnalysisHandler` ([DependencyAnalyzer.scala:9](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L9)), and `decider` imports `dependencyAnalysis`.
 - **Value object with global dependencies:** `DependencyAnalysisInfos` logs through `SiliconRunner.logger` ([DependencyAnalysisInfos.scala:166](src/main/scala/dependencyAnalysis/DependencyAnalysisInfos.scala#L166)). A data class therefore depends on the command-line runner.
-- **Global config in algorithms:** `DependencyGraphJoiner` ([:71](src/main/scala/dependencyAnalysis/DependencyGraphJoiner.scala#L71)) and `buildFinalGraph` ([DependencyAnalyzer.scala:313](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L313)) read `Verifier.config` directly. They could be plain, independently testable functions.
+- **Global config in algorithms:** `DependencyGraphJoiner` ([:71](src/main/scala/dependencyAnalysis/DependencyGraphJoiner.scala#L71)) and `buildFinalGraph` ([DependencyAnalyzer.scala:276](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L276)) read `Verifier.config` directly. They could be plain, independently testable functions.
 - **Verifier calls a tool:** `afterVerification` calls `DependencyAnalysisTool` ([DependencyAnalysisAwareVerifier.scala](src/main/scala/verifier/DependencyAnalysisAwareVerifier.scala)), so the verifier depends on the CLI package. See D7.
 
 **Proposed change:**
@@ -279,40 +277,22 @@ Nodes are tied to the symbolic execution engine through `Term` and `Chunk`. The 
 
 **Risk:** low for passing options.
 
-### C5. Base code reaches the analysis through downcasts
+### C5. Base code reaches the analysis through downcasts (done)
 
-Rules use static helpers that pattern-match on the decider. The counts below cover `rules`, `supporters`, `resources`, `state`, `decider` and `verifier`:
+**Implemented:**
+- [AnalysisHooks](src/main/scala/dependencyAnalysis/AnalysisHooks.scala) is the single interface verification code uses to report to the analysis, available as `Decider.analysisHooks`. The default does nothing, and `DependencyAnalysisAwareDecider` provides the implementation. It replaces the static helpers on `DependencyAnalyzer` that matched on the decider, as well as the member start and end calls.
+- `enterNode` replaces `handleAndGetUpdatedAnalysisInfos`, and its documentation states the side effect.
+- `ProverLike.assumeAxiomsWithAnalysisInfo` ignores the infos by default, so `Domains` and the function provider no longer match on the prover.
+- `VerificationPoolManager` has a type member `Worker`, which removes the casts in `DependencyAnalysisAwareVerificationPoolManager`.
 
-| Helper | Uses |
-|---|---|
-| `handleAndGetUpdatedAnalysisInfos` | 10 |
-| `wrapWithDependencyAnalysisLabel` | 8 |
-| `addCustomDependenciesBetweenMergeInfos` | 3 |
-
-Provers and verifiers have similar checks: [Domains.scala:131](src/main/scala/supporters/Domains.scala#L131), [DependencyAnalysisAwareFunctionVerificationUnitProvider.scala:57](src/main/scala/supporters/functions/DependencyAnalysisAwareFunctionVerificationUnitProvider.scala#L57), [DependencyAnalysisAwareVerificationPoolManager.scala:18](src/main/scala/verifier/DependencyAnalysisAwareVerificationPoolManager.scala#L18) and [DependencyAnalysisAwareVerifier.scala:52](src/main/scala/verifier/DependencyAnalysisAwareVerifier.scala#L52).
-
-Also, `handleAndGetUpdatedAnalysisInfos` both computes a value and adds nodes as a side effect, which its name only partly suggests.
-
-**Proposed change:** replace the matches with one interface on the decider, with a no-op default and an analysis implementation:
-
-```scala
-trait AnalysisHooks {
-  def enterNode(infos: AnalysisInfos, info: ast.Info, node: ast.Node): AnalysisInfos
-  def withLabel(term: Term, sourceTerms: Iterable[Term]): Term
-  def linkMergeInfos(sources: Seq[ast.Exp], targets: Seq[ast.Exp]): Unit
-}
-```
-
-For axioms, give `ProverLike` an overridable method that takes the axiom infos and ignores them by default, so `Domains` no longer needs a match. Where the concrete type is known, as in the verifier classes, a type member could replace the casts, the same way `type P` replaced them in the decider.
-
-**Risk:** low. The change is mechanical and the compiler checks it, while behaviour stays the same.
+`dependencyAnalysis` no longer imports `decider`, which also removes the package cycle from C4.
 
 ### C6. `DependencyAnalysisHandler` and the chunk factory are tied to the decider
 
-[`DependencyAnalysisHandler`](src/main/scala/decider/DependencyAnalysisAwareDeciderProvider.scala#L19) combines three roles: analyzer lifecycle, chunk registration and label creation. `DependencyAnalysisAwareChunkFactory` then needs a whole `Decider with DependencyAnalysisHandler` ([:20](src/main/scala/state/chunks/DependencyAnalysisAwareChunkFactory.scala#L20)), although it only registers chunks. Similarly, `DependencyAnalysisProverHandler` mixes prover forwarding with owning an analyzer, and it lives in the Z3 prover's file.
+[`DependencyAnalysisHandler`](src/main/scala/decider/DependencyAnalysisAwareDeciderProvider.scala#L18) combines analyzer access, chunk registration and label creation. `DependencyAnalysisAwareChunkFactory` then needs a whole `Decider with DependencyAnalysisHandler` ([:20](src/main/scala/state/chunks/DependencyAnalysisAwareChunkFactory.scala#L20)), although it only registers chunks. Similarly, `DependencyAnalysisProverHandler` mixes prover forwarding with owning an analyzer, and it lives in the Z3 prover's file.
 
 **Proposed change:**
-- Split the handler into an analyzer lifecycle part and a `ChunkInstrumentation` part from C1.
+- Split the chunk registration out of the handler into the `ChunkInstrumentation` part from C1.
 - Give the chunk factory only `ChunkInstrumentation`.
 - Move the prover trait to its own file, using `PreambleAxiomRecorder` from C1 for the node storage.
 
@@ -370,10 +350,10 @@ Dependencies should point in one direction: `tools` → `query` → `graph`, and
 
 | Step | Changes | Why this order |
 |---|---|---|
-| 1 | C5 `AnalysisHooks`, C4 options | Removes the downcasts and the package cycle without changing behaviour, and the rest becomes easier to move |
+| 1 | C4 options | Removes the remaining global configuration reads without changing behaviour, and the rest becomes easier to move |
 | 2 | C1 `SmtLabels` and graph builder, C2 CSV object | Independent extractions with little risk |
 | 3 | C3 interpreter split | Prepares the tool separation in D7 |
-| 4 | C1 remaining split, C6 | Depends on the hooks from step 1 |
+| 4 | C1 remaining split, C6 | Builds on the hooks from C5 |
 | 5 | C7 `NodeMetadata`, optional debug data from C2 | Touches the most classes, and is easier once the code has moved |
 
 ## Suggested order

@@ -6,10 +6,9 @@
 
 package viper.silicon.dependencyAnalysis
 
-import viper.silicon.decider.{Decider, DependencyAnalysisHandler}
 import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.state.chunks.{Chunk, GeneralChunk}
-import viper.silicon.state.terms.{Implies, NoPerm, _}
+import viper.silicon.state.terms.{NoPerm, _}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast._
@@ -120,43 +119,6 @@ object DependencyAnalyzer {
     else
       None
   }
-
-  def addAssumption(decider: Decider, assumption: Term, analysisInfos: AnalysisInfos, description: Option[String] = None): Option[Int] = decider match {
-    case daDecider: DependencyAnalysisHandler => daDecider.getDependencyAnalyzer.addAssumption(assumption, analysisInfos, description)
-    case _ => None
-  }
-
-  def addCustomDependenciesBetweenMergeInfos(decider: Decider, sourceExps: Seq[Exp], targetExps: Seq[Exp]): Unit = decider match {
-    case daDecider: DependencyAnalysisHandler => daDecider.getDependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(sourceExps, targetExps)
-    case _ =>
-  }
-
-
-  def wrapWithDependencyAnalysisLabel(decider: Decider, term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term = decider match {
-    case daDecider: DependencyAnalysisHandler =>
-      if (!daDecider.isAnalysisActiveForMember || term.equals(True) || sourceChunks.size + sourceTerms.size == 0)
-        term
-      else {
-        val labelNode = daDecider.getOrCreateAnalysisLabelNode(sourceChunks, sourceTerms)
-        labelNode.map(n => Implies(n.term, term)).getOrElse(term)
-      }
-    case _ => term
-  }
-
-  def handleAndGetUpdatedAnalysisInfos(decider: Decider, analysisInfos: AnalysisInfos, info: Info, node: ast.Node): AnalysisInfos = decider match {
-    case daDecider: DependencyAnalysisHandler =>
-      val newAnalysisInfos = analysisInfos.addInfo(info, node)
-      info.getAllInfos[AdditionalDependencyNodeInfo].foreach {
-        case AdditionalAssertionNode() => daDecider.getDependencyAnalyzer.createAssertOrCheckNode(True, newAnalysisInfos, isCheck = false).foreach(n => {
-          daDecider.getDependencyAnalyzer.addAssertionNode(n)
-          if (daDecider.isPathMarkedInfeasible) daDecider.getDependencyAnalyzer.addDependency(daDecider.pcs.getCurrentInfeasibilityNode, Some(n.id))
-        })
-        case AdditionalAssumptionNode() => daDecider.getDependencyAnalyzer.addAssumption(True, newAnalysisInfos)
-      }
-      newAnalysisInfos
-    case _ => analysisInfos
-  }
-
 }
 
 class DefaultDependencyAnalyzer(member: Option[ast.Member]) extends DependencyAnalyzer {

@@ -46,7 +46,7 @@ trait DependencyAnalysisProverHandler extends ProverLike {
 
   def assume(term: Term, label: Option[String]): Unit
 
-  def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, DependencyAnalysisAxiomInfo)], description: String): Unit = {
+  override def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, DependencyAnalysisAxiomInfo)], description: String): Unit = {
     if (debugMode)
       preambleAssumptions :+= new DebugAxiom(description, axioms.map(_._1))
 

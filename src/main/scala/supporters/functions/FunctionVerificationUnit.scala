@@ -281,16 +281,16 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       val precondAnalysisSourceInfos = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo("preconditions", NoPosition), AssumptionType.Internal)
       val analysisInfosPostcondition = v.decider.defaultAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))
-      val analysisInfosBody = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, v.decider.defaultAnalysisInfos, body.info, body)
+      val analysisInfosBody = v.decider.analysisHooks.enterNode(v.decider.defaultAnalysisInfos, body.info, body)
         .withJoinInfo(SimpleDependencyAnalysisJoin(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(body), JoinType.Source, EdgeType.Down))
 
       val result = phase1data.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
         case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
-            val labelledBcsPre = terms.And(bcsPre map (t => DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v.decider, t, Set.empty, Set(t))))
+            val labelledBcsPre = terms.And(bcsPre map (t => v.decider.analysisHooks.withLabel(t, Set.empty, Set(t))))
             decider.setCurrentBranchCondition(labelledBcsPre, (BigAnd(bcsPreExp.map(_._1)), Option.when(debugOn)(BigAnd(bcsPreExp.map(_._2.get)))), precondAnalysisSourceInfos)
-            val labelledPcsPre = pcsPre map (t => DependencyAnalyzer.wrapWithDependencyAnalysisLabel(v.decider, t, Set.empty, Set(t)))
+            val labelledPcsPre = pcsPre map (t => v.decider.analysisHooks.withLabel(t, Set.empty, Set(t)))
             decider.assume(labelledPcsPre, Option.when(debugOn)(DebugExp.createInstance(s"precondition of ${function.name}", pcsPreExp.get)), enforceAssumption = false, precondAnalysisSourceInfos)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s1a = if (debugOn) v.startKeyHeap(s1, "nil", EvalExp(body)) else s1

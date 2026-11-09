@@ -10,7 +10,7 @@ import viper.silicon
 import viper.silicon.Config.JoinMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.{AnalysisInfos, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
 import viper.silicon.state._
@@ -88,7 +88,7 @@ object evaluator extends EvaluationRules {
           : VerificationResult = {
 
     val sepIdentifier = v.symbExLog.openScope(new EvaluateRecord(e, s, v.decider.pcs))
-    val analysisInfos1 = DependencyAnalyzer.handleAndGetUpdatedAnalysisInfos(v.decider, analysisInfos, e.info, e)
+    val analysisInfos1 = v.decider.analysisHooks.enterNode(analysisInfos, e.info, e)
 
     eval3(s, e, pve, v, analysisInfos1)((s1, t, eNew, v1) => {
       v1.symbExLog.closeScope(sepIdentifier)
@@ -700,8 +700,8 @@ object evaluator extends EvaluationRules {
              */
             })(join(func.typ, s"joined_${func.name}", joinFunctionArgs, joinExp, v1, analysisInfos))((s4, r, v4)
               => {
-                  DependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(v4.decider, eArgsWithDAInfO, presWithDAInfo)
-                  DependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(v4.decider, presWithDAInfo, Seq(DependencyAnalysisMergeInfo.attachExpMergeInfo(fapp, analysisInfos.getMergeInfo)))
+                  v4.decider.analysisHooks.linkMergeInfos(eArgsWithDAInfO, presWithDAInfo)
+                  v4.decider.analysisHooks.linkMergeInfos(presWithDAInfo, Seq(DependencyAnalysisMergeInfo.attachExpMergeInfo(fapp, analysisInfos.getMergeInfo)))
             Q(s4, r._1, r._2, v4)
           })}
         )
