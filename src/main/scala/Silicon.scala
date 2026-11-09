@@ -134,7 +134,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     setLogLevelsFromConfig()
 
-    verifier = if (config.isDependencyAnalysisRun) new DependencyAnalysisAwareMainVerifier(config, reporter, symbExLog) else new DefaultMainVerifier(config, reporter, symbExLog)
+    verifier = if (config.isDependencyAnalysisEnabled) new DependencyAnalysisAwareMainVerifier(config, reporter, symbExLog) else new DefaultMainVerifier(config, reporter, symbExLog)
     verifier.start()
   }
 

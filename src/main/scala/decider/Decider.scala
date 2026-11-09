@@ -65,24 +65,10 @@ trait Decider {
   def analysisHooks: AnalysisHooks
 
   /**
-   * Whether dependencies are recorded for the member currently being verified. This is the only per-member query.
-   * It is false outside an analysis run, and in an analysis run for a member that disables the analysis.
+   * Whether dependencies are recorded for the member currently being verified. Always false if the analysis is not
+   * enabled overall (Config#isDependencyAnalysisEnabled).
    */
-  def isAnalysisActiveForMember: Boolean
-
-  /* The following queries describe the encoding of an analysis run. They are fixed for the whole run and do not depend
-   * on the current member: a member that disables the analysis is still verified with this encoding, it merely records
-   * no dependencies.
-   */
-
-  /** Whether call arguments are assigned to fresh variables, so that each argument can be tracked individually. */
-  def usesFreshCallArguments: Boolean
-  /** Whether the conjuncts of a callee's contract get merge infos that tie them to the call. */
-  def attachesContractMergeInfos: Boolean
-  /** Whether every assignment introduces a fresh symbol, even if the right-hand side is a variable or literal. */
-  def ssaifiesAllAssignments: Boolean
-  /** Whether a smoke check is issued when entering a branch that was found to be infeasible. */
-  def checksSmokeOnInfeasibleBranches: Boolean
+  def isDependencyAnalysisEnabledForMember: Boolean
 
   def isPathMarkedInfeasible: Boolean
   def handleInfeasiblePath(hasAssertions: Boolean, hasAssumptions: Boolean, analysisInfos: AnalysisInfos): Unit
@@ -195,11 +181,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     override def defaultAnalysisInfos: AnalysisInfos = DependencyAnalysisInfos.DefaultInfos
 
     def analysisHooks: AnalysisHooks = NoAnalysisHooks
-    def isAnalysisActiveForMember: Boolean = false
-    def usesFreshCallArguments: Boolean = false
-    def attachesContractMergeInfos: Boolean = false
-    def ssaifiesAllAssignments: Boolean = false
-    def checksSmokeOnInfeasibleBranches: Boolean = false
+    def isDependencyAnalysisEnabledForMember: Boolean = false
 
     def setPcs(other: PathConditionStack) = {
       /* [BRANCH-PARALLELISATION] */

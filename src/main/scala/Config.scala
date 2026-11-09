@@ -780,10 +780,10 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   /**
-   * The analysis mode of the run: decides once which verifier, decider and chunk classes are used.
-   * Symbolic execution rules must not read this; they ask the decider instead. See Decider#isAnalysisActiveForMember.
+   * Whether the dependency analysis is enabled overall. See Decider#isDependencyAnalysisEnabledForMember for the
+   * per-member flag.
    */
-  lazy val isDependencyAnalysisRun: Boolean = dependencyAnalysis.isDefined
+  lazy val isDependencyAnalysisEnabled: Boolean = dependencyAnalysis.isDefined
 
   /**
    * If true, verification always steps through all paths; even if provably infeasible. Might have a huge performance penalty!

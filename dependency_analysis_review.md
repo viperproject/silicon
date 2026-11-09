@@ -49,7 +49,7 @@ Most of the highest-value low-risk fixes are done. What remains is listed under 
 With `--dependencyAnalysis`, Silicon changes what it sends to Z3 and which paths it explores:
 
 - **Chunk permissions are rewritten.** They become `Ite(label, perm, NoPerm)` with a fresh label ([DependencyAnalyzer.scala:161](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L161), [:169](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L169)).
-- **Known-true checks are weakened.** `isKnownToBeTrue` only accepts `True`, so the path-condition lookup is skipped ([DependencyAnalysisAwareDeciderProvider.scala:118](src/main/scala/decider/DependencyAnalysisAwareDeciderProvider.scala#L118)).
+- **Known-true checks are weakened.** `isKnownToBeTrue` only accepts `True`, so the path-condition lookup is skipped ([DependencyAnalysisAwareDeciderProvider.scala:113](src/main/scala/decider/DependencyAnalysisAwareDeciderProvider.scala#L113)).
 - **More fresh symbols are created.** Assignments are always made SSA ([Executor.scala:816](src/main/scala/rules/Executor.scala#L816)), and call arguments get fresh variables ([Executor.scala:637](src/main/scala/rules/Executor.scala#L637)).
 - **Dead paths are explored,** unless `--disableInfeasiblePaths` is set (D2).
 
@@ -79,19 +79,18 @@ With `--dependencyAnalysis`, Silicon changes what it sends to Z3 and which paths
 
 ### D3. Six overlapping on/off mechanisms (done)
 
-There are now two explicit concepts:
+There are now two flags:
 
-| Concept | Where |
+| Flag | Where |
 |---|---|
-| Analysis mode of the run, decided once | `Config.isDependencyAnalysisRun`, read when selecting the classes in `Silicon.scala` and by the few places outside symbolic execution that have no decider (`Domains`, `FunctionData`, `FunctionVerificationUnit`) |
-| Encoding of the run | Decider queries `usesFreshCallArguments`, `attachesContractMergeInfos`, `ssaifiesAllAssignments` and `checksSmokeOnInfeasibleBranches`, which replace the config checks in `Executor` and `Brancher` |
-| Analysis active for this member | `Decider.isAnalysisActiveForMember`, which is the only per-member query. `NoDependencyAnalyzer` remains its implementation detail. |
+| Analysis enabled overall | `Config.isDependencyAnalysisEnabled`, which selects the classes in `Silicon.scala` and is read by the rules and the few other places that depend on it |
+| Analysis enabled for this member | `Decider.isDependencyAnalysisEnabledForMember`. `NoDependencyAnalyzer` remains its implementation detail. |
 
-`analysisEnabled` alone now decides whether `AnalysisInfos` track anything. `DefaultInfos` starts disabled, and `Joiner`, `MagicWandSupporter` and `NonQuantifiedPropertyInterpreter` use `Decider.defaultAnalysisInfos`, so they follow the member's setting.
+`analysisEnabled` alone now decides whether `AnalysisInfos` track anything. `DefaultInfos` starts disabled, and `Joiner`, `MagicWandSupporter` and `NonQuantifiedPropertyInterpreter` use `Decider.defaultAnalysisInfos`, so they follow the member's flag.
 
-**Decision on disabled members:** a member that disables the analysis keeps the encoding of the run and only records no nodes. Its result may therefore differ from a run without `--dependencyAnalysis`. This is documented in the analysis README.
+**Decision on disabled members:** which encoding a member that disables the analysis is verified with is not significant. It currently keeps the encoding of the run and records no nodes.
 
-**Remaining:** `analyzeInfeasiblePaths` is still read in the rules and belongs to D2. The interactive debugger's plain `WorkerVerifier` counts as not analysing, so in an analysis run `Brancher` no longer issues its extra smoke check there.
+**Remaining:** `analyzeInfeasiblePaths` is a separate option derived from the overall flag and `--disableInfeasiblePaths`. It is still read in the rules and belongs to D2.
 
 ### D4. Silver annotates every AST, in every run, for every backend
 
@@ -170,7 +169,7 @@ None of these has been reproduced.
 | B1 | On a newly detected dead path or with further errors, `consume` passes `None` as the snapshot even if `returnSnap` is true ([ChunkSupporter.scala:151](src/main/scala/rules/ChunkSupporter.scala#L151), [:163](src/main/scala/rules/ChunkSupporter.scala#L163)). Callers call `.get`, e.g. [Evaluator.scala:666](src/main/scala/rules/Evaluator.scala#L666), [PredicateSupporter.scala:85](src/main/scala/rules/PredicateSupporter.scala#L85) and [Executor.scala:674](src/main/scala/rules/Executor.scala#L674). | Possible `NoSuchElementException` while exploring a dead path | Test a function call or `fold` in a branch that becomes infeasible at that consume. Return a fresh snapshot when `returnSnap` is set, as `lookup` does. |
 | B2 | **Fixed.** `--assertionMode SoftConstraints` wasn't rejected, but it doesn't name the goal or refresh the unsat core. | First assert throws a `NullPointerException`. Later asserts reuse an old core, giving wrong edges and false vacuous-proof records. | Reject the combination in `Config`. |
 | B3 | **Fixed by rejecting the option.** `--maskHeapMode` wasn't rejected, but `createBasicMaskHeapChunk` adds no label ([DependencyAnalysisAwareChunkFactory.scala:113](src/main/scala/state/chunks/DependencyAnalysisAwareChunkFactory.scala#L113), `TODO ake`). `substitute` has a similar TODO. | Permission dependencies may be missing, which would make results incomplete | Reject the combination until it is supported, or add tests showing it's correct. |
-| B4 | **Resolved by deleting the parameter.** `createLabel` was ignored in `registerDerivedChunk` ([DependencyAnalysisAwareDeciderProvider.scala:184](src/main/scala/decider/DependencyAnalysisAwareDeciderProvider.scala#L184)), so callers passing `createLabel = false` still get a fresh label and node. | Extra overhead at the least. It may not match what those callers intended. | Decide the intent, then implement it or delete the parameter (L5). |
+| B4 | **Resolved by deleting the parameter.** `createLabel` was ignored in `registerDerivedChunk` ([DependencyAnalysisAwareDeciderProvider.scala:179](src/main/scala/decider/DependencyAnalysisAwareDeciderProvider.scala#L179)), so callers passing `createLabel = false` still get a fresh label and node. | Extra overhead at the least. It may not match what those callers intended. | Decide the intent, then implement it or delete the parameter (L5). |
 | B5 | `getNodeIdsByTerm` finds source nodes by structural term equality across the whole member graph ([DependencyAnalyzer.scala:131](src/main/scala/dependencyAnalysis/DependencyAnalyzer.scala#L131)). | The same term assumed on another branch also becomes a dependency, which is imprecise rather than unsound | Check whether this appears in practice. |
 | B6 | **Fixed only in the uncommitted `carbon/silver` working copy.** `NoDependencyAnalysisSourceInfo.equals` is always false, even for the same object ([DependencyAnalysisSourceInfo.scala:71](silver/src/main/scala/viper/silver/dependencyAnalysis/DependencyAnalysisSourceInfo.scala#L71)). | Breaks the `equals` contract for a value used in sets and `groupBy` keys | Make it a plain class with identity equality (L6). |
 | B7 | `DecreasesCheck` now gives generated nodes a source position and info instead of the defaults, in all runs ([DecreasesCheck.scala:90](silver/src/main/scala/viper/silver/plugin/standard/termination/transformation/DecreasesCheck.scala#L90)). | Could change termination error locations outside the analysis | Compare termination error output with master. |

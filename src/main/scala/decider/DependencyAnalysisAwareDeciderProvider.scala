@@ -32,14 +32,9 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
 
   trait DependencyAnalysisAwareDecider extends AbstractDecider with DependencyAnalysisHandler {
 
-    override def isAnalysisActiveForMember: Boolean = !dependencyAnalyzer.isInstanceOf[NoDependencyAnalyzer]
+    override def isDependencyAnalysisEnabledForMember: Boolean = !dependencyAnalyzer.isInstanceOf[NoDependencyAnalyzer]
 
-    override def usesFreshCallArguments: Boolean = true
-    override def attachesContractMergeInfos: Boolean = true
-    override def ssaifiesAllAssignments: Boolean = true
-    override def checksSmokeOnInfeasibleBranches: Boolean = true
-
-    override def defaultAnalysisInfos: AnalysisInfos = DependencyAnalysisInfos.DefaultInfos.withEnabled(isAnalysisActiveForMember)
+    override def defaultAnalysisInfos: AnalysisInfos = DependencyAnalysisInfos.DefaultInfos.withEnabled(isDependencyAnalysisEnabledForMember)
 
     type P = DependencyAnalysisAwareZ3ProverStdIO
 
@@ -84,7 +79,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       }
 
       override def withLabel(term: Term, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): Term = {
-        if (!isAnalysisActiveForMember || term.equals(True) || sourceChunks.size + sourceTerms.size == 0)
+        if (!isDependencyAnalysisEnabledForMember || term.equals(True) || sourceChunks.size + sourceTerms.size == 0)
           term
         else
           getOrCreateAnalysisLabelNode(sourceChunks, sourceTerms).map(n => Implies(n.term, term)).getOrElse(term)
@@ -182,7 +177,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
     }
 
     override def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfos: AnalysisInfos, isExhale: Boolean): CH = {
-      if (!isAnalysisActiveForMember)
+      if (!isDependencyAnalysisEnabledForMember)
         return buildChunk(perm)
 
       val labelNodeOpt = getOrCreateAnalysisLabelNode(sourceChunks)
@@ -195,7 +190,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
     }
 
     override def getOrCreateAnalysisLabelNode(sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Option[LabelNode] = {
-      if (!isAnalysisActiveForMember)
+      if (!isDependencyAnalysisEnabledForMember)
         return None
 
       val (label, _) = fresh(ast.LocalVar(DependencyAnalyzer.analysisLabelName, ast.Bool)())
