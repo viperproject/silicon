@@ -22,7 +22,7 @@ Updated on 2026-11-09, after the fixes on top of `e0fbd85b`. Line links in the f
 | L2, L3 | Done. See the verification note below. |
 | L5 | Partly done, see the L5 row. |
 | L10, C8 | Done. |
-| D3, C3, C4, C5, C7 | Done, except for the two points listed under C7. Compiled only, not run. |
+| D3, C3, C4, C5, C7 | Done, except for the reporting point listed under C7. Compiled only, not run. |
 | L12 | Done. Compiled only, not run. |
 | L13 | Done in Silicon and in `silicon/silver`, compiled only. The Silver commit is local to `silicon/silver`, so `carbon/silver` and the submodule pointers still have the old imports. |
 | Everything else | Open. |
@@ -294,10 +294,10 @@ Nodes are tied to the symbolic execution engine through `Term` and `Chunk`. The 
 - The node hierarchy is sealed, and behaviour is decided by pattern matching. `getNodeType` remains only as the tag that identifies a node type in exported graphs.
 - The method and function providers share `addPreconditionNodes`, `addDependenciesForAbstractMember` and `attachIntraproceduralResult` on `DependencyAnalysisAwareVerifier`.
 - The unused `path` parameter of the reporter and the duplicate `toSourceMemberSet` are gone.
+- `matches`, which had no callers and always threw on `EvalStackDependencyAnalysisJoin`, is removed from the join infos. The placeholder is now only an unresolved join, and nodes store resolved `SimpleDependencyAnalysisJoin`s. The Silver commit is local to `silicon/silver`, so `carbon/silver` and the submodule pointers don't have it yet.
 
-**Still open, both need a change to Silver:**
+**Still open, needs a change to Silver:**
 - **Results via downcast:** `afterVerification` still matches on `DependencyAnalysisReporter` and sets a mutable field. Reporting the graph as a `viper.silver.reporter.Message` isn't possible from Silicon, because `Message` is a sealed trait. It would need a Silver change in both checkouts, a check that ViperServer and Gobra tolerate the new message, and it overlaps with D7.
-- **Placeholder join type:** `EvalStackDependencyAnalysisJoin` is defined in Silver, and its `matches` still throws.
 
 ### C8. The CLI has two command systems (done)
 
