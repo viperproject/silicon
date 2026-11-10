@@ -143,7 +143,7 @@ trait DependencyAnalysisTestFramework {
 
     def execute(): Unit = {
       val (expectedSpecQuality, expectedAvgProofQuality, expectedProgress) = readExpectedValues()
-      val actualProgress = new DependencyAnalysisProgressSupporter(fullGraphQueries).computeVerificationProgressOptimized()
+      val actualProgress = new DependencyAnalysisProgressSupporter(fullGraphQueries).computeVerificationProgress()
 
       // If a metric type does not exist, it is ignored 
       expectedSpecQuality.foreach { expected =>

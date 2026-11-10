@@ -92,8 +92,8 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
 
     override protected def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], analysisInfos: AnalysisInfos, isDefinition: Boolean = false): Unit = {
       /* Registered up front since assumptions on infeasible paths must be recorded too, even though they never reach the prover. */
-      val labels = registerAssumptions(terms, analysisInfos)
-      assumeWithoutSmokeChecksInternal(terms, isDefinition, labels)(t => prover.assume(t, DependencyAnalyzer.createAssumptionLabel(labels(t))))
+      val nodeIds = registerAssumptions(terms, analysisInfos)
+      assumeWithoutSmokeChecksInternal(terms, isDefinition, nodeIds)(t => prover.assume(t, DependencyAnalyzer.createAssumptionLabel(nodeIds(t))))
     }
 
     def assumeLabel(term: Term, nodeId: Option[Int]): Unit = {

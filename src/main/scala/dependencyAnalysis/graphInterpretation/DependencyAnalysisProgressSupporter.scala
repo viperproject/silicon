@@ -23,10 +23,6 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphQueries) {
   private lazy val edgesConnectingMethodsUpwards: Map[Int, Set[Int]] = dependencyGraph.getEdgesConnectingMethodsUpwards
   private lazy val edgesConnectingMethodsDownwards: Map[Int, Set[Int]] = dependencyGraph.getEdgesConnectingMethodsDownwards
 
-  def computeVerificationProgress(enableDebugging: Boolean = false, report: String => Unit = println): VerificationProgress = {
-    computeVerificationProgressOptimized(enableDebugging, report)
-  }
-
   /**
    * Computes all dependencies of a given dependency node. Intermediate results are cached at procedure-boundaries.
    * That is, the dependencies of each pre- and postcondition are cached and can thus be reused for subsequent computations.
@@ -101,9 +97,9 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphQueries) {
    */
   private def computeAssertionQuality(allDependencies: Set[CompactUserLevelDependencyAnalysisNode], assertion: DependencyAnalysisSourceInfo): Option[Double] = {
     val assertionNodes = sourceToAssertionNodesMap.getOrElse(assertion, Set.empty).collect { case node: GeneralAssertionNode => node }
-    val failedAssertionNodes = assertionNodes.filter(node => node.hasFailed || node.assumptionType.equals(AssumptionType.ExplicitPostcondition))
+    val zeroQualityAssertionNodes = assertionNodes.filter(node => node.hasFailed || node.assumptionType.equals(AssumptionType.ExplicitPostcondition))
     // assertions with failures have quality of 0.0
-    if (failedAssertionNodes.nonEmpty)
+    if (zeroQualityAssertionNodes.nonEmpty)
       Some(0.0)
     else if (allDependencies.isEmpty)
       None // we filter out trivial assertions, e.g. assertions that do not have any dependencies
@@ -129,7 +125,7 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphQueries) {
    *         assertion quality of 1, and the average proof quality is the average assertion quality over all proof obligations.
    *         Assertion quality of an assertion a is the fraction of non-assumption dependencies over all dependencies of the assertion a.
    */
-  def computeVerificationProgressOptimized(enableDebugOutput: Boolean = false, report: String => Unit = println): VerificationProgress = {
+  def computeVerificationProgress(enableDebugOutput: Boolean = false, report: String => Unit = println): VerificationProgress = {
 
     // compute all dependencies of each proof obligation
     val allAssertions = getAssertionsRelevantForProgress.keySet.toList

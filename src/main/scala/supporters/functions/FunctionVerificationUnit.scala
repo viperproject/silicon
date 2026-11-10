@@ -251,8 +251,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         produces(s1, toSf(`?s`), pres, ContractNotWellformed, v, analysisInfosPrecondition)((s2, _) => {
           val s2a = if (debugOn) v.finishKeyHeap(s2) else s2
           val relevantPathConditionStack = decider.pcs.after(preMark)
-          phase1Data :+= Phase1Data(s2a, relevantPathConditionStack.labelledBranchConditions, relevantPathConditionStack.branchConditionExps,
-            relevantPathConditionStack.labelledAssumptions, Option.when(debugOn)(relevantPathConditionStack.assumptionExps))
+          phase1Data :+= Phase1Data(s2a, relevantPathConditionStack.branchConditionsWithNodeIds, relevantPathConditionStack.branchConditionExps,
+            relevantPathConditionStack.assumptionsWithNodeIds, Option.when(debugOn)(relevantPathConditionStack.assumptionExps))
           // The postcondition must be produced with a fresh snapshot (different from `?s`) because
           // the postcondition's snapshot structure is most likely different than that of the
           // precondition
@@ -288,9 +288,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (fatalResult: FatalResult, _) => fatalResult
         case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
-            val labelledBcsPre = terms.And(bcsPre map { case (t, label) => v.decider.analysisHooks.withLabel(t, label) })
+            val labelledBcsPre = terms.And(bcsPre map { case (t, nodeId) => v.decider.analysisHooks.withLabel(t, nodeId) })
             decider.setCurrentBranchCondition(labelledBcsPre, (BigAnd(bcsPreExp.map(_._1)), Option.when(debugOn)(BigAnd(bcsPreExp.map(_._2.get)))), precondAnalysisSourceInfos)
-            val labelledPcsPre = pcsPre map { case (t, label) => v.decider.analysisHooks.withLabel(t, label) }
+            val labelledPcsPre = pcsPre map { case (t, nodeId) => v.decider.analysisHooks.withLabel(t, nodeId) }
             decider.assume(labelledPcsPre, Option.when(debugOn)(DebugExp.createInstance(s"precondition of ${function.name}", pcsPreExp.get)), enforceAssumption = false, precondAnalysisSourceInfos)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s1a = if (debugOn) v.startKeyHeap(s1, "nil", EvalExp(body)) else s1

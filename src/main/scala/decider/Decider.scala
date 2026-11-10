@@ -84,7 +84,7 @@ trait Decider {
   def check(t: Term, timeout: Int, analysisInfos: AnalysisInfos): Boolean
 
   /** Like `check`, but also returns the id of the dependency analysis node of a successful check, if there is one. */
-  def checkWithLabel(t: Term, timeout: Int, analysisInfos: AnalysisInfos): (Boolean, Option[Int])
+  def checkWithNodeId(t: Term, timeout: Int, analysisInfos: AnalysisInfos): (Boolean, Option[Int])
 
   /* TODO: Consider changing assert such that
    *         1. It passes State and Operations to the continuation
@@ -411,17 +411,17 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       assumeWithoutSmokeChecksInternal(terms, isDefinition, _ => None)(t => prover.assume(t))
 
     /* `proverAssume` determines how each term is passed to the prover; it is not invoked on infeasible paths.
-     * `labels` gives the label recorded with each term in the path conditions. */
-    protected def assumeWithoutSmokeChecksInternal(terms: InsertionOrderedSet[Term], isDefinition: Boolean, labels: Term => Option[Int])(proverAssume: Term => Unit): Unit =
+     * `nodeIds` gives the id of the dependency node recorded with each term in the path conditions. */
+    protected def assumeWithoutSmokeChecksInternal(terms: InsertionOrderedSet[Term], isDefinition: Boolean, nodeIds: Term => Option[Int])(proverAssume: Term => Unit): Unit =
       if (!isPathMarkedInfeasible) {
         val assumeRecord = new DeciderAssumeRecord(terms)
         val sepIdentifier = symbExLog.openScope(assumeRecord)
 
         /* Add terms to Silicon-managed path conditions */
         if (isDefinition) {
-          terms foreach (t => pathConditions.addDefinition(t, labels(t)))
+          terms foreach (t => pathConditions.addDefinition(t, nodeIds(t)))
         } else {
-          terms foreach (t => pathConditions.add(t, labels(t)))
+          terms foreach (t => pathConditions.add(t, nodeIds(t)))
         }
 
         /* Add terms to the prover's assumptions */
@@ -457,9 +457,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     protected def failedAssertionInfos(analysisInfos: AnalysisInfos): AnalysisInfos = analysisInfos
 
     def check(t: Term, timeout: Int, analysisInfos: AnalysisInfos): Boolean =
-      checkWithLabel(t, timeout, analysisInfos)._1
+      checkWithNodeId(t, timeout, analysisInfos)._1
 
-    def checkWithLabel(t: Term, timeout: Int, analysisInfos: AnalysisInfos): (Boolean, Option[Int]) =
+    def checkWithNodeId(t: Term, timeout: Int, analysisInfos: AnalysisInfos): (Boolean, Option[Int]) =
       deciderAssert(t, analysisInfos, Some(timeout), isCheck=true)
 
     def assert(t: Term, analysisInfos: AnalysisInfos)(Q:  Boolean => VerificationResult): VerificationResult = assert(t, analysisInfos,  timeout=Verifier.config.assertTimeout.toOption)(Q)

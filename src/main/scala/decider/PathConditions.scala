@@ -36,8 +36,8 @@ trait RecordedPathConditions {
   def isPathMarkedInfeasible: Boolean
 
   /** The assumptions and branch conditions, each with the id of the dependency analysis node that assumed it, if any. */
-  def labelledAssumptions: Seq[(Term, Option[Int])]
-  def labelledBranchConditions: Stack[(Term, Option[Int])]
+  def assumptionsWithNodeIds: Seq[(Term, Option[Int])]
+  def branchConditionsWithNodeIds: Stack[(Term, Option[Int])]
 
   def definitionsOnly: RecordedPathConditions
 
@@ -68,8 +68,8 @@ trait RecordedPathConditions {
 
 trait PathConditionStack extends RecordedPathConditions {
   def setCurrentBranchCondition(condition: Term, conditionExp: (ast.Exp, Option[ast.Exp])): Unit
-  def add(assumption: Term, label: Option[Int]): Unit
-  def addDefinition(assumption: Term, label: Option[Int]): Unit
+  def add(assumption: Term, nodeId: Option[Int]): Unit
+  def addDefinition(assumption: Term, nodeId: Option[Int]): Unit
   def add(declaration: Decl): Unit
   def pushScope(): Unit
   def popScope(): Unit
@@ -78,7 +78,7 @@ trait PathConditionStack extends RecordedPathConditions {
   def isPathMarkedInfeasible: Boolean
   def markPathInfeasible(infeasible: Boolean): Unit
   def setCurrentInfeasibilityNode(node: Option[Int]): Unit
-  def addAnalysisLabel(assumption: Term, label: Option[Int]): Unit
+  def addAnalysisLabel(assumption: Term, nodeId: Option[Int]): Unit
 
   def startDebugSubExp(): Unit
   def finishDebugSubExp(description : String): Unit
@@ -114,11 +114,11 @@ private class PathConditionStackLayer
   private var _nonGlobalDefiningAssumptionDebugExps: InsertionOrderedSet[DebugExp] = InsertionOrderedSet.empty
   private var _declarations: InsertionOrderedSet[Decl] = InsertionOrderedSet.empty
   private var _analysisLabels: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
-  private var _branchConditionLabel: Option[Int] = None
+  private var _branchConditionNodeId: Option[Int] = None
   /* Each assumption with the id of the dependency analysis node that assumed it, in the order they were assumed.
    * Only recorded if the analysis is enabled, such that other runs do not pay for it. */
-  private var _globalLabelledAssumptions: Vector[(Term, Option[Int])] = Vector.empty
-  private var _nonGlobalLabelledAssumptions: Vector[(Term, Option[Int])] = Vector.empty
+  private var _globalAssumptionsWithNodeIds: Vector[(Term, Option[Int])] = Vector.empty
+  private var _nonGlobalAssumptionsWithNodeIds: Vector[(Term, Option[Int])] = Vector.empty
 
   def branchCondition: Option[Term] = _branchCondition
   def branchConditionExp: Option[(ast.Exp, Option[ast.Exp])] = _branchConditionExp
@@ -134,10 +134,10 @@ private class PathConditionStackLayer
   def nonGlobalAssumptionDebugExps: InsertionOrderedSet[DebugExp] = _nonGlobalAssumptionDebugExps
   def declarations: InsertionOrderedSet[Decl] = _declarations
   def analysisLabels: InsertionOrderedSet[Term] = _analysisLabels
-  def labelledAssumptions: Seq[(Term, Option[Int])] =
-    if (recordsLabels) _globalLabelledAssumptions ++ _nonGlobalLabelledAssumptions
+  def assumptionsWithNodeIds: Seq[(Term, Option[Int])] =
+    if (recordsNodeIds) _globalAssumptionsWithNodeIds ++ _nonGlobalAssumptionsWithNodeIds
     else (_globalAssumptions.iterator ++ _nonGlobalAssumptions.iterator).map((_, None)).toVector
-  def labelledBranchCondition: Option[(Term, Option[Int])] = _branchCondition.map((_, _branchConditionLabel))
+  def branchConditionWithNodeId: Option[(Term, Option[Int])] = _branchCondition.map((_, _branchConditionNodeId))
 
   def isPathMarkedInfeasible: Boolean = _isPathMarkedInfeasible
   def markPathInfeasible(infeasible: Boolean): Unit = {
@@ -182,8 +182,8 @@ private class PathConditionStackLayer
     result._nonGlobalAssumptionDebugExps = _nonGlobalDefiningAssumptionDebugExps
     result._nonGlobalDefiningAssumptionDebugExps = _nonGlobalDefiningAssumptionDebugExps
     result._analysisLabels = _analysisLabels
-    result._globalLabelledAssumptions = _globalLabelledAssumptions.filter(a => _globalDefiningAssumptions.contains(a._1))
-    result._nonGlobalLabelledAssumptions = _nonGlobalLabelledAssumptions.filter(a => _nonGlobalDefiningAssumptions.contains(a._1))
+    result._globalAssumptionsWithNodeIds = _globalAssumptionsWithNodeIds.filter(a => _globalDefiningAssumptions.contains(a._1))
+    result._nonGlobalAssumptionsWithNodeIds = _nonGlobalAssumptionsWithNodeIds.filter(a => _nonGlobalDefiningAssumptions.contains(a._1))
     result
   }
 
@@ -203,7 +203,7 @@ private class PathConditionStackLayer
     _branchConditionExp = Some(condition)
   }
 
-  def add(assumption: Term, label: Option[Int]): Unit = {
+  def add(assumption: Term, nodeId: Option[Int]): Unit = {
     assert(
       !assumption.isInstanceOf[And],
       s"Unexpectedly found a conjunction (should have been split): $assumption")
@@ -212,28 +212,28 @@ private class PathConditionStackLayer
 
     if (PathConditions.isGlobal(assumption)) {
       _globalAssumptions += assumption
-      if (recordsLabels) _globalLabelledAssumptions :+= (assumption, label)
+      if (recordsNodeIds) _globalAssumptionsWithNodeIds :+= (assumption, nodeId)
     } else {
       _nonGlobalAssumptions += assumption
-      if (recordsLabels) _nonGlobalLabelledAssumptions :+= (assumption, label)
+      if (recordsNodeIds) _nonGlobalAssumptionsWithNodeIds :+= (assumption, nodeId)
     }
   }
 
-  private def recordsLabels: Boolean = Verifier.config.isDependencyAnalysisEnabled
+  private def recordsNodeIds: Boolean = Verifier.config.isDependencyAnalysisEnabled
 
   /* Branch conditions are assumed unsplit, right after being set, so the first matching assumption is theirs. */
-  def labelBranchCondition(assumption: Term, label: Option[Int]): Unit = {
-    if (label.isDefined && _branchConditionLabel.isEmpty && _branchCondition.contains(assumption)) _branchConditionLabel = label
+  def recordBranchConditionNodeId(assumption: Term, nodeId: Option[Int]): Unit = {
+    if (nodeId.isDefined && _branchConditionNodeId.isEmpty && _branchCondition.contains(assumption)) _branchConditionNodeId = nodeId
   }
 
-  def addAnalysisLabel(assumption: Term, label: Option[Int]): Unit = {
+  def addAnalysisLabel(assumption: Term, nodeId: Option[Int]): Unit = {
     assert(
       !assumption.isInstanceOf[And],
       s"Unexpectedly found a conjunction (should have been split): $assumption")
     _globalAssumptions += assumption // labels are always global
     _globalDefiningAssumptions += assumption
     _analysisLabels += assumption
-    if (recordsLabels) _globalLabelledAssumptions :+= (assumption, label)
+    if (recordsNodeIds) _globalAssumptionsWithNodeIds :+= (assumption, nodeId)
   }
 
   def addNonGlobalDebugExp(debugExp : DebugExp): Unit = {
@@ -276,7 +276,7 @@ private class PathConditionStackLayer
     }
   }
 
-  def addDefinition(assumption: Term, label: Option[Int]): Unit = {
+  def addDefinition(assumption: Term, nodeId: Option[Int]): Unit = {
     assert(
       !assumption.isInstanceOf[And],
       s"Unexpectedly found a conjunction (should have been split): $assumption")
@@ -284,11 +284,11 @@ private class PathConditionStackLayer
     if (PathConditions.isGlobal(assumption)) {
       _globalAssumptions += assumption
       _globalDefiningAssumptions += assumption
-      if (recordsLabels) _globalLabelledAssumptions :+= (assumption, label)
+      if (recordsNodeIds) _globalAssumptionsWithNodeIds :+= (assumption, nodeId)
     } else {
       _nonGlobalAssumptions += assumption
       _nonGlobalDefiningAssumptions += assumption
-      if (recordsLabels) _nonGlobalLabelledAssumptions :+= (assumption, label)
+      if (recordsNodeIds) _nonGlobalAssumptionsWithNodeIds :+= (assumption, nodeId)
     }
   }
 
@@ -346,11 +346,11 @@ private trait LayeredPathConditionStackLike {
   protected def analysisLabels(layers: Stack[PathConditionStackLayer]): InsertionOrderedSet[Term] =
     InsertionOrderedSet(layers.flatMap(_.analysisLabels))
 
-  protected def labelledAssumptions(layers: Stack[PathConditionStackLayer]): Seq[(Term, Option[Int])] =
-    layers.flatMap(_.labelledAssumptions)
+  protected def assumptionsWithNodeIds(layers: Stack[PathConditionStackLayer]): Seq[(Term, Option[Int])] =
+    layers.flatMap(_.assumptionsWithNodeIds)
 
-  protected def labelledBranchConditions(layers: Stack[PathConditionStackLayer]): Stack[(Term, Option[Int])] =
-    layers.flatMap(_.labelledBranchCondition)
+  protected def branchConditionsWithNodeIds(layers: Stack[PathConditionStackLayer]): Stack[(Term, Option[Int])] =
+    layers.flatMap(_.branchConditionWithNodeId)
 
   protected def isPathMarkedInfeasible(layers: Stack[PathConditionStackLayer]): Boolean = layers.exists(_.isPathMarkedInfeasible)
 
@@ -506,8 +506,8 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
   val infeasibilityNodeId: Option[Int] = infeasibilityNodeId(from)
   val isPathMarkedInfeasible: Boolean = isPathMarkedInfeasible(from)
 
-  lazy val labelledAssumptions: Seq[(Term, Option[Int])] = labelledAssumptions(from)
-  lazy val labelledBranchConditions: Stack[(Term, Option[Int])] = labelledBranchConditions(from)
+  lazy val assumptionsWithNodeIds: Seq[(Term, Option[Int])] = assumptionsWithNodeIds(from)
+  lazy val branchConditionsWithNodeIds: Stack[(Term, Option[Int])] = branchConditionsWithNodeIds(from)
 
   def contains(assumption: Term): Boolean = contains(from, assumption)
 
@@ -597,22 +597,22 @@ private[decider] class LayeredPathConditionStack
     layers.head.addGlobalDebugExp(assumptionDebugExp)
   }
 
-  def add(assumption: Term, label: Option[Int]): Unit = {
+  def add(assumption: Term, nodeId: Option[Int]): Unit = {
     /* TODO: Would be cleaner to not add assumptions that are already set as branch conditions */
 
     val tlcs = assumption.topLevelConjuncts
 
-    tlcs foreach (layers.head.add(_, label))
-    layers.head.labelBranchCondition(assumption, label)
+    tlcs foreach (layers.head.add(_, nodeId))
+    layers.head.recordBranchConditionNodeId(assumption, nodeId)
     allAssumptions ++= tlcs
   }
 
-  def addDefinition(assumption: Term, label: Option[Int]): Unit = {
+  def addDefinition(assumption: Term, nodeId: Option[Int]): Unit = {
     /* TODO: Would be cleaner to not add assumptions that are already set as branch conditions */
 
     val tlcs = assumption.topLevelConjuncts
 
-    tlcs foreach (layers.head.addDefinition(_, label))
+    tlcs foreach (layers.head.addDefinition(_, nodeId))
     allAssumptions ++= tlcs
   }
 
@@ -620,8 +620,8 @@ private[decider] class LayeredPathConditionStack
     layers.head.add(declaration)
   }
 
-  def addAnalysisLabel(assumption: Term, label: Option[Int]): Unit = {
-    layers.head.addAnalysisLabel(assumption, label)
+  def addAnalysisLabel(assumption: Term, nodeId: Option[Int]): Unit = {
+    layers.head.addAnalysisLabel(assumption, nodeId)
   }
 
   def pushScope(): Unit = {
@@ -696,9 +696,9 @@ private[decider] class LayeredPathConditionStack
 
   override def infeasibilityNodeId: Option[Mark] = layers.flatMap(_.infeasibilityNodeId).headOption
 
-  def labelledAssumptions: Seq[(Term, Option[Int])] = labelledAssumptions(layers)
+  def assumptionsWithNodeIds: Seq[(Term, Option[Int])] = assumptionsWithNodeIds(layers)
 
-  def labelledBranchConditions: Stack[(Term, Option[Int])] = labelledBranchConditions(layers)
+  def branchConditionsWithNodeIds: Stack[(Term, Option[Int])] = branchConditionsWithNodeIds(layers)
 
   def definingAssumptions: InsertionOrderedSet[Term] =
     InsertionOrderedSet(layers.flatMap(_.globalDefiningAssumptions) ++ layers.flatMap(_.nonGlobalDefiningAssumptions)) // Note: Performance?
