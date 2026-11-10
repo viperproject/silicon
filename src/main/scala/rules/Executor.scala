@@ -170,7 +170,7 @@ object executor extends ExecutionRules {
             val s2 = entries match {
               case Seq(entry) => // One branch is dead
                 entry.s
-              case Seq(entry1, _) if isPathMarkedInfeasibleBefore => // no need to merge since path is dead anyway
+              case Seq(entry1, _) if isPathMarkedInfeasibleBefore => // no need to merge since path is infeasible anyway
                 entry1.s
               case Seq(entry1, entry2) => // Both branches are alive
                 entry1.pathConditionAwareMerge(entry2, v1)
@@ -337,7 +337,7 @@ object executor extends ExecutionRules {
                       if (v2.decider.pcs.infeasibilityNodeId.isEmpty) v2.decider.pcs.setCurrentInfeasibilityNode(pcs.infeasibilityNodeId)
                       v2.decider.assume(pcs.labelledAssumptions map { case (t, label) => v.decider.analysisHooks.withLabel(t, label) }, Option.when(debugOn)(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, analysisInfosLoopInternal)
                       v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-                      if (deadPath.stopsEarly && v2.decider.checkSmoke(analysisInfosLoopInternal))
+                      if (infeasiblePath.stopsEarly && v2.decider.checkSmoke(analysisInfosLoopInternal))
                         Success()
                       else {
                         execs(s2, stmts, v2)((s3, v3) => {
@@ -499,7 +499,7 @@ object executor extends ExecutionRules {
         })
 
       case inhale @ ast.Inhale(a) => a match {
-        case _: ast.FalseLit if deadPath.stopsEarly =>
+        case _: ast.FalseLit if infeasiblePath.stopsEarly =>
           /* We're done */
           Success()
         case _: ast.TrueLit =>
@@ -532,7 +532,7 @@ object executor extends ExecutionRules {
             if (s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine QS(s1, v1) else failure
           }
         })((s2, v2) =>
-          deadPath.continue(Success())(Q(s2, v2))
+          infeasiblePath.continue(Success())(Q(s2, v2))
         )
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>

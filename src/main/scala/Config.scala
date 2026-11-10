@@ -774,7 +774,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   private val disableInfeasiblePaths: ScallopOption[Boolean] = opt[Boolean]("disableInfeasiblePaths",
-    descr = "This flag makes the dependency analysis faster by skipping the analysis of dead paths, but it may produce unsound results " +
+    descr = "This flag makes the dependency analysis faster by skipping the analysis of infeasible paths, but it may produce unsound results " +
       "where the dependencies of a proof obligation in an infeasible branch are not completely listed",
     default = Some(false),
     noshort = true

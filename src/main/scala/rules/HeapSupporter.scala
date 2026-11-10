@@ -258,7 +258,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                       analysisInfos: AnalysisInfos)
                      (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
-    if (deadPath.skipRule(v, true, true, analysisInfos)) {
+    if (infeasiblePath.skipRule(v, true, true, analysisInfos)) {
       return Q(s, v)
     }
 
@@ -350,7 +350,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                       analysisInfos: AnalysisInfos)
                      (Q: (State, Term, Verifier) => VerificationResult): VerificationResult =
     {
-      if (deadPath.skipRule(v, true, false, analysisInfos)) {
+      if (infeasiblePath.skipRule(v, true, false, analysisInfos)) {
         return Q(s, NoPerm, v)
       }
 
@@ -415,7 +415,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                       analysisInfos: AnalysisInfos)
                      (Q: (State, Term, Verifier) => VerificationResult)
   : VerificationResult = {
-    if (deadPath.skipRule(v, true, false, analysisInfos)) {
+    if (infeasiblePath.skipRule(v, true, false, analysisInfos)) {
 
       val sort = v.symbolConverter.toSort(fa.field.typ)
       val newVar = v.decider.fresh(sort, None) // just make sure the returned term typechecks
@@ -654,7 +654,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                     v: Verifier,
                     analysisInfos: AnalysisInfos)
                    (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
-    if (deadPath.skipRule(v, true, false, analysisInfos)) {
+    if (infeasiblePath.skipRule(v, true, false, analysisInfos)) {
       return Q(s, h, Some(Unit), v)
     }
 
@@ -769,7 +769,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                         v: Verifier,
                         analysisInfos: AnalysisInfos)
                        (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
-    if (deadPath.skipRule(v, true, false, analysisInfos)) {
+    if (infeasiblePath.skipRule(v, true, false, analysisInfos)) {
       return Q(s, h, Some(Unit), v)
     }
 
