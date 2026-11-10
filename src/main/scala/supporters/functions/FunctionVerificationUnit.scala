@@ -199,7 +199,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           emitAndRecordFunctionAxioms(data.limitedAxiomWithInfo)
           emitAndRecordFunctionAxioms(data.triggerAxiomWithInfo)
           functionEncoding.declsAfterWellDefinedness(data) map decider.prover.declare
-          emitAndRecordFunctionAxioms(functionEncoding.auxiliaryAxioms(data).map(a => (a, DependencyAnalysisAxiomInfo(DependencyAnalysisInfos.DefaultInfos.withEnabled(Verifier.config.isDependencyAnalysisEnabled), ""))): _*) // XXX ake: withInfo?
+          emitAndRecordFunctionAxioms(functionEncoding.auxiliaryAxioms(data).map(a => (a, data.auxiliaryAxiomInfo)): _*)
           emitAndRecordFunctionAxioms(data.postAxiomWithInfo: _*)
           emitAndRecordFunctionAxioms(data.postPreconditionPropagationAxiomWithInfo: _*)
           this.postConditionAxiomsWithInfo = this.postConditionAxiomsWithInfo ++ data.postAxiomWithInfo

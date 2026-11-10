@@ -6,7 +6,7 @@
 
 package viper.silicon.dependencyAnalysis
 
-import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphQueries
+import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphInterpreter
 import viper.silver.ast.Program
 
-case class DependencyAnalysisResult(program: Program, finalGraphQueries: FinalGraphQueries)
+case class DependencyAnalysisResult(program: Program, finalGraphQueries: FinalGraphInterpreter)

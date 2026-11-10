@@ -8,11 +8,12 @@ package viper.silicon.dependencyAnalysis.cliTool
 
 import viper.silicon.dependencyAnalysis.cliTool.DependencyGraphImporter.{importGraphFromCsv, importProgram}
 import viper.silicon.dependencyAnalysis.graph.AxiomAssumptionNode
-import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphQueries
+import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphInterpreter
 import viper.silicon.dependencyAnalysis.{DependencyAnalysisOptions, DependencyAnalysisResult, DependencyGraphJoiner}
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silver.ast
 
+// TODO ake: this is a standalone program, move it to a separate repository.
 object DependencyAnalysisTool {
 
   /**
@@ -33,7 +34,7 @@ object DependencyAnalysisTool {
     // TODO ake: doesn't fully work yet, because the exported program has a different line numbering than the program used for the analysis
     val program = importProgram(graphFolder)
 
-    val queries = new FinalGraphQueries("test", graph, List.empty)
+    val queries = new FinalGraphInterpreter("test", graph, List.empty)
     val userTool = DependencyAnalysisCliTool(queries, program, List.empty, DependencyAnalysisOptions())
 
     val cmdsIndex = args.indexOf("--cmds")

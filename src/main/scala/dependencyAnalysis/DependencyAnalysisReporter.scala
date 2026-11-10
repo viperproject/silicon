@@ -6,10 +6,10 @@
 
 package viper.silicon.dependencyAnalysis
 
-import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphQueries
+import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphInterpreter
 import viper.silver.reporter.{Message, Reporter}
 
 case class DependencyAnalysisReporter(name: String = "dependencyAnalysis_reporter") extends Reporter {
-  var finalGraphQueries: Option[FinalGraphQueries] = None
+  var finalGraphQueries: Option[FinalGraphInterpreter] = None
   override def report(msg: Message): Unit = {}
 }

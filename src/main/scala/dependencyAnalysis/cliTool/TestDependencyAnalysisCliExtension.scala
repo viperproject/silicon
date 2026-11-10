@@ -7,13 +7,13 @@
 package viper.silicon.dependencyAnalysis.cliTool
 
 import viper.silicon.dependencyAnalysis.UserLevelDependencyAnalysisNode
-import viper.silicon.dependencyAnalysis.graphInterpretation.{FinalGraphQueries, DependencyGraphTestSupporter}
+import viper.silicon.dependencyAnalysis.graphInterpretation.{FinalGraphInterpreter, DependencyGraphTestSupporter}
 
 /**
  * [[DependencyGraphTestSupporter]] fails with an assertion at the end of a test run, so these commands write to the
  * console while they run instead of returning a result, which would lose the findings reported before the failure.
  */
-class TestDependencyAnalysisCliExtension(queries: FinalGraphQueries, console: DependencyAnalysisCliConsole) extends DependencyAnalysisCliToolExtension{
+class TestDependencyAnalysisCliExtension(queries: FinalGraphInterpreter, console: DependencyAnalysisCliConsole) extends DependencyAnalysisCliToolExtension{
   override val name: String = "Test Features"
   override val commands: List[DependencyAnalysisCliCommand] = List(
     new TestAllCommand,

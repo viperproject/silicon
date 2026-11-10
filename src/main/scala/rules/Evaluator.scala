@@ -587,7 +587,18 @@ object evaluator extends EvaluationRules {
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val func = s.program.findFunction(funcName)
         val fappSourceInfo = DependencyAnalysisSourceInfo.createAnalysisSourceInfo(fapp)
-        val presWithDAInfo = DependencyAnalysisMergeInfo.attachExpMergeInfo(func.pres.flatMap(_.topLevelConjuncts), Some(fappSourceInfo))
+        val pres = func.pres.map(_.transform {
+          /* [Malte 2018-08-20] Two examples of the test suite, one of which is the regression
+           * for Carbon issue #210, fail if the subsequent code that strips out triggers from
+           * exhaled function preconditions, is commented. The code was originally a work-around
+           * for Silicon issue #276. Removing triggers from function preconditions is OK-ish
+           * because they are consumed (exhaled), i.e. asserted. However, the triggers are
+           * also used to internally generated quantifiers, e.g. related to QPs. My hope is that
+           * this hack is no longer needed once heap-dependent triggers are supported.
+           */
+          case q: ast.Forall => q.copy(triggers = Nil)(q.pos, q.info, q.errT)
+        })
+        val presWithDAInfo = DependencyAnalysisMergeInfo.attachExpMergeInfo(pres.flatMap(_.topLevelConjuncts), Some(fappSourceInfo))
         val eArgsWithDAInfO = DependencyAnalysisMergeInfo.attachExpMergeInfo(eArgs, None)
 
         evals2(s, eArgsWithDAInfO, Nil, _ => pve, v, analysisInfos)((s1, tArgs, eArgsNew, v1) => {
@@ -700,8 +711,8 @@ object evaluator extends EvaluationRules {
              */
             })(join(func.typ, s"joined_${func.name}", joinFunctionArgs, joinExp, v1, analysisInfos))((s4, r, v4)
               => {
-                  v4.decider.analysisHooks.linkMergeInfos(eArgsWithDAInfO, presWithDAInfo)
-                  v4.decider.analysisHooks.linkMergeInfos(presWithDAInfo, Seq(DependencyAnalysisMergeInfo.attachExpMergeInfo(fapp, analysisInfos.getMergeInfo)))
+                  v4.decider.analysisHooks.addCustomDependencies(eArgsWithDAInfO, presWithDAInfo)
+                  v4.decider.analysisHooks.addCustomDependencies(presWithDAInfo, Seq(DependencyAnalysisMergeInfo.attachExpMergeInfo(fapp, analysisInfos.getMergeInfo)))
             Q(s4, r._1, r._2, v4)
           })}
         )

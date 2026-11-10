@@ -23,8 +23,6 @@ class DependencyAnalysisAwareZ3ProverStdIO(uniqueId: String, termConverter: Term
   /* The labels in the UNSAT core of the most recent assertion or check that was proven. */
   def getLastUnsatCore: Seq[String] = lastUnsatCore
 
-  override protected def namesAllAssumptions: Boolean = true
-
   def assume(term: Term, label: Option[String]): Unit =
     assumeInternal(termConverter.convert(term), label)
 

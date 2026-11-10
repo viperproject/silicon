@@ -44,8 +44,8 @@ case class UserLevelDependencyAnalysisNode(source: DependencyAnalysisSourceInfo,
 
   def position: Position = source.getPosition
 
-  def assumptionTypes: Set[AssumptionType] = lowLevelAssumptionNodes.map(_.assumptionType)
-  def assertionTypes: Set[AssumptionType] = lowLevelAssertionNodes.map(_.assumptionType)
+  def assumptionTypes: Set[AssumptionType] = lowLevelAssumptionNodes.map(_.originType)
+  def assertionTypes: Set[AssumptionType] = lowLevelAssertionNodes.map(_.originType)
 
   lazy val lowLevelAssumptionNodes: Set[GeneralAssumptionNode] = lowerLevelNodes.collect { case node: GeneralAssumptionNode => node }
   lazy val lowLevelAssertionNodes: Set[GeneralAssertionNode] = lowerLevelNodes.collect { case node: GeneralAssertionNode => node }

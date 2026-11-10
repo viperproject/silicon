@@ -22,6 +22,7 @@ import viper.silver.frontend.SilFrontend
 import java.nio.file.Paths
 import scala.io.Source
 
+// TODO ake: this belongs to the standalone CLI tool, move it to a separate repository together with DependencyAnalysisTool.
 object DependencyGraphImporter {
   lazy val dummyVar: Var = Var.actualCreate((SimpleIdentifier("a"), Bool, false))
   lazy val frontend: SiliconFrontend = createFrontend(Seq.empty)
@@ -46,7 +47,7 @@ object DependencyGraphImporter {
       val fields = line.split("#").map(_.trim)
       val nodeIdStr = fields(0)
       val nodeType = fields(1)
-      val assumptionType = AssumptionType.fromString(fields(2)).get
+      val originType = AssumptionType.fromString(fields(2)).get
       val position = parsePositionString(fields(5))
       val sourceInfo = StringDependencyAnalysisSourceInfo(fields(7), position)
       val memberStr: String = fields(8)
@@ -59,7 +60,7 @@ object DependencyGraphImporter {
       val mergeInfo: SimpleDependencyAnalysisMerge = SimpleDependencyAnalysisMerge(sourceInfo)
       val labelNode: LabelNode = LabelNode(-1, dummyVar, memberStr)
       val joinNodeInfos: List[SimpleDependencyAnalysisJoin] = List.empty
-      val metadata = NodeMetadata(sourceInfo, assumptionType, mergeInfo, joinNodeInfos, memberStr)
+      val metadata = NodeMetadata(sourceInfo, originType, mergeInfo, joinNodeInfos, memberStr)
 
       val nodeId = nodeIdStr.toInt
       // Create node based on type
@@ -71,7 +72,7 @@ object DependencyGraphImporter {
         case "Inhale" => PermissionInhaleNode(nodeId, chunk, term, metadata, labelNode)
         case "Exhale" => PermissionExhaleNode(nodeId, chunk, term, metadata, labelNode, hasFailed)
         case "Label" => LabelNode(nodeId, dummyVar, memberStr)
-        case "Infeasible" => InfeasibilityNode(nodeId, sourceInfo, assumptionType, memberStr)
+        case "Infeasible" => InfeasibilityNode(nodeId, sourceInfo, originType, memberStr)
         case _ => throw new IllegalArgumentException(s"Unknown node type: $nodeType")
       }
 

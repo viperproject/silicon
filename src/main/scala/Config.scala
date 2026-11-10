@@ -761,12 +761,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val disableDependencyAnalysisJoinPrecisionOpt: ScallopOption[Boolean] = opt[Boolean]("disableDependencyAnalysisJoinPrecisionOpt",
-    descr = "Use a less precise but faster algorithm for computing dependencies.",
-    default = Some(false),
-    noshort = true
-  )
-
   val enableDependencyAnalysisDebugging: ScallopOption[Boolean] = opt[Boolean]("enableDependencyAnalysisDebugging",
     descr = "Enable debugging for the verification dependency analysis",
     default = Some(false),
@@ -787,7 +781,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   lazy val isDependencyAnalysisEnabled: Boolean = dependencyAnalysis.isDefined
 
   lazy val dependencyAnalysisOptions: DependencyAnalysisOptions =
-    DependencyAnalysisOptions(enableDependencyAnalysisDebugging(), !disableDependencyAnalysisJoinPrecisionOpt())
+    DependencyAnalysisOptions(enableDependencyAnalysisDebugging())
 
   /**
    * If true, verification always steps through all paths; even if provably infeasible. Might have a huge performance penalty!

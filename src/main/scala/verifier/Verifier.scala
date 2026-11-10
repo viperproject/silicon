@@ -28,8 +28,6 @@ import java.util.concurrent.atomic.AtomicInteger
 trait Verifier {
   def uniqueId: String
 
-  def config: Config
-
   def symbExLog: MemberSymbExLogger
   def openSymbExLogger(member: ast.Member): Unit
   def logger: Logger

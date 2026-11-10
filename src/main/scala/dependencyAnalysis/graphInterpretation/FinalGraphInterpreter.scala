@@ -24,7 +24,7 @@ object DATraversalMode extends Enumeration {
 /**
  * User-level queries on the final graph, which covers all members of a program.
  */
-class FinalGraphQueries(name: String, dependencyGraph: ReadOnlyDependencyGraph[Final], errors: List[Failure]) {
+class FinalGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependencyGraph[Final], errors: List[Failure]) {
 
   def getGraph: ReadOnlyDependencyGraph[Final] = dependencyGraph
 
@@ -94,7 +94,7 @@ class FinalGraphQueries(name: String, dependencyGraph: ReadOnlyDependencyGraph[F
   }
 
   private def isVisibleNode(node: DependencyAnalysisNode): Boolean =
-    !node.assumptionType.isInstanceOf[AssumptionType.InternalType]
+    !node.originType.isInstanceOf[AssumptionType.InternalType]
 
   def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = getNodes filter isNonInternalAssumptionNode
 
@@ -106,7 +106,7 @@ class FinalGraphQueries(name: String, dependencyGraph: ReadOnlyDependencyGraph[F
   }
 
   private def isExplicitAssumptionNode(node: DependencyAnalysisNode): Boolean = node match {
-    case node: GeneralAssumptionNode => node.assumptionType.isInstanceOf[AssumptionType.ExplicitAssumptionType]
+    case node: GeneralAssumptionNode => node.originType.isInstanceOf[AssumptionType.ExplicitAssumptionType]
     case _ => false
   }
 
@@ -121,7 +121,7 @@ class FinalGraphQueries(name: String, dependencyGraph: ReadOnlyDependencyGraph[F
   def getExplicitAssertionNodes: Set[GeneralAssertionNode] =
     getAssertionNodes filter isExplicitAssertionNode
 
-  private def isExplicitAssertionNode(node: DependencyAnalysisNode): Boolean = node.assumptionType.isInstanceOf[AssumptionType.ExplicitAssertionType]
+  private def isExplicitAssertionNode(node: DependencyAnalysisNode): Boolean = node.originType.isInstanceOf[AssumptionType.ExplicitAssertionType]
 
   def getAssertionNodesWithFailures: Set[GeneralAssertionNode] =
     getNonInternalAssertionNodes filter (_.hasFailed)

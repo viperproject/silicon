@@ -64,6 +64,10 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
         dependencyAnalyzer = new NoDependencyAnalyzer
       }
 
+      /**
+       * Adds the given info to the analysis infos and creates the additional assertion and assumption nodes it requests.
+       * An additional assertion on an infeasible path depends on the path's infeasibility node.
+       */
       override def enterNode(analysisInfos: AnalysisInfos, info: ast.Info, node: ast.Node): AnalysisInfos = {
         val newAnalysisInfos = analysisInfos.addInfo(info, node)
         info.getAllInfos[AdditionalDependencyNodeInfo].foreach {
@@ -76,6 +80,11 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
         newAnalysisInfos
       }
 
+      /**
+       * Guards the term with a fresh label, which appears in the unsat core whenever the term is used in a proof. The
+       * label's node depends on the given node, if any. Without an analysis of the current member, and for `True`, the
+       * term is returned unchanged.
+       */
       override def withLabel(term: Term, sourceNodeId: Option[Int]): Term = {
         if (!isDependencyAnalysisEnabledForMember || term.equals(True))
           term
@@ -83,7 +92,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
           createAnalysisLabelNode(sourceNodeId).map(n => Implies(n.term, term)).getOrElse(term)
       }
 
-      override def linkMergeInfos(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit =
+      override def addCustomDependencies(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit =
         dependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(sourceExps, targetExps)
 
       override def recordAssumption(assumption: Term, analysisInfos: AnalysisInfos, description: Option[String]): Unit =
@@ -91,7 +100,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
     }
 
     override protected def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], analysisInfos: AnalysisInfos, isDefinition: Boolean = false): Unit = {
-      /* Registered up front since assumptions on infeasible paths must be recorded too, even though they never reach the prover. */
+      /* The assumptions are registered first since the resulting node ids are needed to label the terms in the prover. */
       val nodeIds = registerAssumptions(terms, analysisInfos)
       assumeWithoutSmokeChecksInternal(terms, isDefinition, nodeIds)(t => prover.assume(t, DependencyAnalyzer.createAssumptionLabel(nodeIds(t))))
     }
@@ -104,6 +113,8 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
     private def registerAssumptions(terms: InsertionOrderedSet[Term], analysisInfos: AnalysisInfos): Map[Term, Option[Int]] =
       terms.toSeq.map(t => (t, dependencyAnalyzer.addAssumption(t, analysisInfos))).toMap
 
+    /* Unlike the default decider, terms that are already path conditions are not considered known: every occurrence of
+     * an assumption needs its own dependency node, and dropping a repeated term would lose the dependencies on it. */
     override protected def isKnownToBeTrue(t: Term): Boolean = t.equals(True)
 
     override protected def deciderAssertInternal(t: Term, timeout: Option[Int], analysisInfos: AnalysisInfos, isCheck: Boolean): (Boolean, Option[Int]) = {

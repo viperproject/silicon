@@ -7,7 +7,7 @@
 package viper.silicon.dependencyAnalysis.cliTool
 
 import viper.silicon.dependencyAnalysis.DependencyAnalysisOptions
-import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphQueries
+import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphInterpreter
 import viper.silicon.interfaces.Failure
 import viper.silver.ast
 
@@ -17,7 +17,7 @@ object DependencyAnalysisCliTool {
   /**
    * @return a CLI tool offering all available commands for the given analysis result
    */
-  def apply(queries: FinalGraphQueries, program: ast.Program, verificationErrors: List[Failure],
+  def apply(queries: FinalGraphInterpreter, program: ast.Program, verificationErrors: List[Failure],
             options: DependencyAnalysisOptions, console: DependencyAnalysisCliConsole = StdDependencyAnalysisCliConsole): DependencyAnalysisCliTool = {
     new DependencyAnalysisCliTool(
       new CoreDependencyAnalysisCliCommands(queries, program, verificationErrors).commands,

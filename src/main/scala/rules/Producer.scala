@@ -32,7 +32,7 @@ trait ProductionRules extends SymbolicExecutionRules {
     * @param a The assertion to produce.
     * @param pve The error to report in case the production fails.
     * @param v The verifier to use.
-    * @param assumptionType The assumption type used for analysis purposes
+    * @param analysisInfos The information attached to the dependency analysis nodes created during the production.
     * @param Q The continuation to invoke if the production succeeded, with the state and
     *          the verifier resulting from the production as arguments.
     * @return The result of the continuation.
@@ -58,7 +58,7 @@ trait ProductionRules extends SymbolicExecutionRules {
     * @param pvef The error to report in case the production fails. Given assertions `as`, an error
     *             `pvef(as_i)` will be reported if producing assertion `as_i` fails.
     * @param v @see [[produce]]
-    * @param assumptionType @see [[produce]]
+    * @param analysisInfos @see [[produce]]
     * @param Q @see [[produce]]
     * @return @see [[produce]]
     */

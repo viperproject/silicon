@@ -10,7 +10,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.cliTool.DependencyGraphImporter
 import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.dependencyAnalysis.graphInterpretation.{FinalGraphQueries, DependencyGraphTestSupporter}
+import viper.silicon.dependencyAnalysis.graphInterpretation.{FinalGraphInterpreter, DependencyGraphTestSupporter}
 import viper.silver.ast._
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier
@@ -68,7 +68,7 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
     val fullGraphQueries = if (TEST_IMPORTER) {
       println("--------\nTesting via the graph importer.")
       val importedGraph = DependencyGraphImporter.importGraphFromCsv(s"testExports")
-      new FinalGraphQueries(name, importedGraph, List.empty)
+      new FinalGraphInterpreter(name, importedGraph, List.empty)
     } else {
       frontend.reporter.asInstanceOf[DependencyAnalysisReporter].finalGraphQueries.get
     }

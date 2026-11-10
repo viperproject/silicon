@@ -30,7 +30,7 @@ object DependencyGraphHelper {
   def isRemovableInternalNode(node: DependencyAnalysisNode): Boolean = node match {
     case _: InfeasibilityNode => false // infeasibility nodes are required for some of the graph queries
     case _ =>
-      node.assumptionType.isInstanceOf[AssumptionType.InternalType] &&
+      node.originType.isInstanceOf[AssumptionType.InternalType] &&
         node.joinInfos.isEmpty // join nodes must not be removed because we need them for joining the graphs later on
   }
 }

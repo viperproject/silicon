@@ -8,7 +8,7 @@ package viper.silicon.dependencyAnalysis.cliTool
 
 import viper.silicon.dependencyAnalysis.UserLevelDependencyAnalysisNode
 import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphQueries
+import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphInterpreter
 
 /**
  * A parsed command line.
@@ -56,6 +56,18 @@ trait DependencyAnalysisCliCommand {
   def accept(inputs: Seq[String]): Boolean = inputs.nonEmpty && (cmdName :: aliases).exists(inputs.head.equalsIgnoreCase)
 }
 
+object DependencyAnalysisCliCommand {
+  def apply(name: String, descr: String, alternativeNames: List[String] = List.empty, isListedInHelp: Boolean = true)
+           (command: DependencyAnalysisCliInput => DependencyAnalysisCliResult): DependencyAnalysisCliCommand =
+    new DependencyAnalysisCliCommand {
+      override val cmdName: String = name
+      override val aliases: List[String] = alternativeNames
+      override val listedInHelp: Boolean = isListedInHelp
+      override val cmd: DependencyAnalysisCliInput => DependencyAnalysisCliResult = command
+      override val description: String = descr
+    }
+}
+
 /**
  * A named group of commands that is listed separately in the command overview.
  */
@@ -71,7 +83,7 @@ object DependencyAnalysisCliSupport {
     UserLevelDependencyAnalysisNode.mkUserLevelString(nodes, "\n\t")
   }
 
-  def getQueriedNodesFromInput(queries: FinalGraphQueries, inputs: Set[String]): Set[DependencyAnalysisNode] = {
+  def getQueriedNodesFromInput(queries: FinalGraphInterpreter, inputs: Set[String]): Set[DependencyAnalysisNode] = {
     inputs flatMap (input => {
       val parts = input.split("@")
       if (parts.size == 2)

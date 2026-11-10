@@ -8,7 +8,7 @@ package viper.silicon.dependencyAnalysis.cliTool
 
 import viper.silicon.dependencyAnalysis.cliTool.DependencyAnalysisCliSupport.{getSourceInfoString, measureTime}
 import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisProgressSupporter, DependencyAnalysisPruningSupporter, FinalGraphQueries}
+import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisProgressSupporter, DependencyAnalysisPruningSupporter, FinalGraphInterpreter}
 import viper.silicon.interfaces.Failure
 import viper.silver.ast
 
@@ -18,37 +18,33 @@ import scala.collection.mutable
 /**
  * The commands for querying, exporting, and pruning the final dependency graph.
  */
-class CoreDependencyAnalysisCliCommands(queries: FinalGraphQueries,
+class CoreDependencyAnalysisCliCommands(queries: FinalGraphInterpreter,
                                         program: ast.Program, verificationErrors: List[Failure]) {
 
   private lazy val progressSupporter = new DependencyAnalysisProgressSupporter(queries)
   private lazy val pruningSupporter = new DependencyAnalysisPruningSupporter(queries)
 
-  private class CoreCommand(override val cmdName: String, override val description: String,
-                            override val aliases: List[String] = List.empty, override val listedInHelp: Boolean = true)
-                           (override val cmd: DependencyAnalysisCliInput => DependencyAnalysisCliResult) extends DependencyAnalysisCliCommand
-
   val commands: List[DependencyAnalysisCliCommand] = List(
-    new CoreCommand("dep", "'dep [line numbers]' to print the direct, explicit, and all dependencies of the given line numbers")(
+    DependencyAnalysisCliCommand("dep", "'dep [line numbers]' to print the direct, explicit, and all dependencies of the given line numbers")(
       input => handleDependencyQuery(input.args.toSet)),
-    new CoreCommand("allDeps", "'allDeps [line numbers]' (short: 'ad') to print all dependencies of the given line numbers", aliases = List("ad"))(
+    DependencyAnalysisCliCommand("allDeps", "'allDeps [line numbers]' (short: 'ad') to print all dependencies of the given line numbers", alternativeNames = List("ad"))(
       input => handleAllDependenciesQuery(input.args.toSet)),
-    new CoreCommand("downDep", "'downDep [line numbers]' to print the dependents of the given line numbers")(
+    DependencyAnalysisCliCommand("downDep", "'downDep [line numbers]' to print the dependents of the given line numbers")(
       input => handleDependentsQuery(input.args.toSet)),
-    new CoreCommand("progress", "'progress' to compute the verification progress of the program", aliases = List("prog"))(
+    DependencyAnalysisCliCommand("progress", "'progress' to compute the verification progress of the program", alternativeNames = List("prog"))(
       input => handleVerificationProgressQuery(input.args, input.exportTarget)),
-    new CoreCommand("guide", "'guide' to compute verification guidance", aliases = List("guidance"))(
+    DependencyAnalysisCliCommand("guide", "'guide' to compute verification guidance", alternativeNames = List("guidance"))(
       input => handleVerificationGuidanceQuery(input.args)),
-    new CoreCommand("prune", "'prune [line numbers] > [file]' to prune the program with respect to the given line numbers and export the new program to file")(
+    DependencyAnalysisCliCommand("prune", "'prune [line numbers] > [file]' to prune the program with respect to the given line numbers and export the new program to file")(
       input => handlePruningRequest(input.args, input.exportTarget.get)),
-    new CoreCommand("export", "'export > [folder]' to export the dependency graph to the given folder")(
+    DependencyAnalysisCliCommand("export", "'export > [folder]' to export the dependency graph to the given folder")(
       input => {
         queries.exportGraph(program, input.exportTarget.get)
         DependencyAnalysisCliResult.empty
       }),
-    new CoreCommand("failures", "'failures' to print the verification failures")(
+    DependencyAnalysisCliCommand("failures", "'failures' to print the verification failures")(
       _ => handleFailuresRequest()),
-    new CoreCommand("computeGraphOnly", "", listedInHelp = false)(
+    DependencyAnalysisCliCommand("computeGraphOnly", "", isListedInHelp = false)(
       _ => DependencyAnalysisCliResult("Command computeGraphOnly executed."))
   )
 

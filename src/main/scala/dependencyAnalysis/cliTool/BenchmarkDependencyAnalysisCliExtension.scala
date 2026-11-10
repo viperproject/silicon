@@ -9,7 +9,7 @@ package viper.silicon.dependencyAnalysis.cliTool
 import viper.silicon.dependencyAnalysis.UserLevelDependencyAnalysisNode
 import viper.silicon.dependencyAnalysis.cliTool.DependencyAnalysisCliSupport.{getQueriedNodesFromInput, measureTime}
 import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphQueries
+import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphInterpreter
 import viper.silver.ast
 import viper.silver.ast.{AnnotationInfo, AnonymousDomainAxiom, Assume, Goto, If, Inhale, Label, LocalVarDeclStmt, MakeInfoPair, NamedDomainAxiom, Package, Seqn, While}
 
@@ -20,7 +20,8 @@ import java.time.format.DateTimeFormatter
 import scala.io.Source
 import scala.util.matching.Regex
 
-class BenchmarkDependencyAnalysisCliExtension(queries: FinalGraphQueries, program: ast.Program, console: DependencyAnalysisCliConsole) extends DependencyAnalysisCliToolExtension {
+// TODO ake: remove this class, it was only needed for the benchmarking.
+class BenchmarkDependencyAnalysisCliExtension(queries: FinalGraphInterpreter, program: ast.Program, console: DependencyAnalysisCliConsole) extends DependencyAnalysisCliToolExtension {
 
   override val name: String = "Benchmark Features"
   override val commands: List[DependencyAnalysisCliCommand] =

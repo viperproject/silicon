@@ -12,10 +12,11 @@ import viper.silver.dependencyAnalysis.AssumptionType
 
 import scala.util.matching.Regex
 
+// TODO ake: move this class to the tests. This requires removing the CLI commands in TestDependencyAnalysisCliExtension, which Gobra's DependencyAnalysisTests relies on.
 /**
  * @param report receives the test outcomes while the tests run
  */
-class DependencyGraphTestSupporter(queries: FinalGraphQueries, report: String => Unit = println) {
+class DependencyGraphTestSupporter(queries: FinalGraphInterpreter, report: String => Unit = println) {
 
   private val assumptionTypeRegex = """assumptionType:([^\s,)\"]+)""".r
   private val assertionTypeRegex: Regex = """assertionType:([^\s,)\"]+)""".r

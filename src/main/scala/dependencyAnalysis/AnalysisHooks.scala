@@ -27,11 +27,14 @@ trait AnalysisHooks {
    */
   def enterNode(analysisInfos: AnalysisInfos, info: ast.Info, node: ast.Node): AnalysisInfos = analysisInfos
 
-  /** @return the term, guarded by a fresh label that depends on the given node if the analysis tracks it */
+  /** @return the term, guarded by a label used for correctly tracking the term in the analysis */
   def withLabel(term: Term, sourceNodeId: Option[Int] = None): Term = term
 
-  /** Connects all nodes with a merge info in `sourceExps` to all nodes with a merge info in `targetExps`. */
-  def linkMergeInfos(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {}
+  /**
+   * Adds custom dependencies from all nodes with a merge info in `sourceExps` to all nodes with a merge info in
+   * `targetExps`, e.g. from the arguments of a call to its preconditions.
+   */
+  def addCustomDependencies(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {}
 
   def recordAssumption(assumption: Term, analysisInfos: AnalysisInfos, description: Option[String] = None): Unit = {}
 }

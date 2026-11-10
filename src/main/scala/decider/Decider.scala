@@ -76,7 +76,6 @@ trait Decider {
   def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: AnalysisInfos): Unit
   def assume(t: Term, debugExp: Option[DebugExp], analysisInfos: AnalysisInfos): Unit
   def assume(terms: Seq[Term], debugExps: Option[Seq[DebugExp]], analysisInfos: AnalysisInfos): Unit
-  def assume(assumptions: Iterable[Term], debugExps: Option[Iterable[DebugExp]], description: String, enforceAssumption: Boolean, analysisInfos: AnalysisInfos): Unit
   def assumeDefinition(terms: Iterable[Term], debugExp: Option[DebugExp], analysisInfos: AnalysisInfos): Unit
   def assumeDefinition(t: Term, debugExp: Option[DebugExp], analysisInfos: AnalysisInfos): Unit
   def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean, analysisInfos: AnalysisInfos): Unit
@@ -142,6 +141,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
      */
   def identifierFactory: IdentifierFactory
 
+  /* A def rather than an object such that DependencyAnalysisAwareDeciderProvider can replace the decider. */
   def decider: AbstractDecider = DefaultDecider
 
   object DefaultDecider extends AbstractDecider {
@@ -159,6 +159,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
   }
 
   trait AbstractDecider extends Decider with StatefulComponent {
+    /* The type of the prover. DependencyAnalysisAwareDecider refines it since it needs a prover supporting labels and unsat cores. */
     type P <: Prover
 
     protected var _prover: P = _
@@ -312,6 +313,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def isPathMarkedInfeasible: Boolean = Verifier.config.analyzeInfeasiblePaths && pcs.isPathMarkedInfeasible
 
+    /**
+     * Called by [[viper.silicon.rules.InfeasiblePath.canPathBeSkipped]] when a rule skips its usual work because the
+     * current path is known to be infeasible, in order to record what the rule would have contributed to the analysis.
+     * Does nothing here since infeasible paths are only handled if the dependency analysis is enabled; see
+     * DependencyAnalysisAwareDecider.
+     */
     def handleInfeasiblePath(hasAssertions: Boolean, hasAssumptions: Boolean, analysisInfos: AnalysisInfos): Unit = {}
 
     def addDebugExp(e: DebugExp): Unit = {
@@ -366,23 +373,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
     }
 
-    def assume(assumptions: Iterable[Term], debugExps: Option[Iterable[DebugExp]], description: String, enforceAssumption: Boolean, analysisInfos: AnalysisInfos): Unit = {
-      val debugExp = Option.when(debugExps.isDefined)(DebugExp.createInstance(description, InsertionOrderedSet(debugExps.get)))
-
-      val filteredTerms =
-        if (enforceAssumption) assumptions
-        else assumptions filterNot isKnownToBeTrue
-
-      if (filteredTerms.nonEmpty) {
-        assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms), analysisInfos)
-
-        if (debugMode && debugExp.isDefined) {
-          addDebugExp(debugExp.get)
-        }
-      }
-    }
-
-
     def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean, analysisInfos: AnalysisInfos): Unit = {
       val filteredTerms =
         if (enforceAssumption) terms
@@ -411,7 +401,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       assumeWithoutSmokeChecksInternal(terms, isDefinition, _ => None)(t => prover.assume(t))
 
     /* `proverAssume` determines how each term is passed to the prover; it is not invoked on infeasible paths.
-     * `nodeIds` gives the id of the dependency node recorded with each term in the path conditions. */
+     * `nodeIds` gives the id of each term's dependency node. The path conditions record these ids since some path
+     * conditions are assumed again later (loop invariants, function axioms) and must then remain linked to their
+     * original nodes. */
     protected def assumeWithoutSmokeChecksInternal(terms: InsertionOrderedSet[Term], isDefinition: Boolean, nodeIds: Term => Option[Int])(proverAssume: Term => Unit): Unit =
       if (!isPathMarkedInfeasible) {
         val assumeRecord = new DeciderAssumeRecord(terms)
@@ -500,11 +492,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       case _ => false
     }
 
-    protected def proverAssert(t: Term, timeout: Option[Int])(queryProver: => Boolean): Boolean = {
+    protected def proverAssert(t: Term, timeout: Option[Int])(invokeProver: => Boolean): Boolean = {
       val assertRecord = new ProverAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
-      val result = isPathMarkedInfeasible || queryProver
+      val result = isPathMarkedInfeasible || invokeProver
 
       symbExLog.whenEnabled {
         assertRecord.statistics = Some(symbExLog.deltaStatistics(prover.statistics()))

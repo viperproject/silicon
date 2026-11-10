@@ -15,7 +15,7 @@ import viper.silver.dependencyAnalysis.DependencyAnalysisSourceInfo
 
 import java.io.PrintWriter
 
-class DependencyAnalysisPruningSupporter(queries: FinalGraphQueries) {
+class DependencyAnalysisPruningSupporter(queries: FinalGraphInterpreter) {
 
   /**
    * Prunes the program. That is, all statements and expressions that are not a crucial node are removed from the program.

@@ -15,7 +15,7 @@ import viper.silver.dependencyAnalysis.{AssumptionType, DependencyAnalysisSource
 
 import scala.collection.mutable
 
-class DependencyAnalysisProgressSupporter(queries: FinalGraphQueries) {
+class DependencyAnalysisProgressSupporter(queries: FinalGraphInterpreter) {
 
   private val dependencyGraph = queries.getGraph
   private lazy val sourceToAssertionNodesMap: Map[DependencyAnalysisSourceInfo, Set[GeneralAssertionNode]] = queries.getNonInternalAssertionNodes.groupBy(_.sourceInfo)
@@ -29,7 +29,7 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphQueries) {
    * We do not cache intraprocedural dependencies to allow for precise computation of dependencies using the low-level graph.
    */
   val deps: DAMemo[(DependencyAnalysisSourceInfo, DATraversalMode), Set[CompactUserLevelDependencyAnalysisNode]] = DAMemo { case (assertionNode, mode) =>
-    // TODO ake: maybe this should be moved to the FinalGraphQueries such that other queries can be optimized as well.
+    // TODO ake: maybe this should be moved to the FinalGraphInterpreter such that other queries can be optimized as well.
     def computeDependencies(currentNode: DependencyAnalysisSourceInfo, visited: Set[(DependencyAnalysisSourceInfo, DATraversalMode)], traversalMode: DATraversalMode): Set[CompactUserLevelDependencyAnalysisNode] = {
       if (visited.contains((currentNode, traversalMode))) {
         Set.empty // break cycles to avoid infinite loops
@@ -83,8 +83,8 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphQueries) {
     lowLevelNodes.groupBy(_.sourceInfo).map { case (source, nodes) =>
       val assertionNodes = nodes.collect { case node: GeneralAssertionNode => node }
       CompactUserLevelDependencyAnalysisNode(source,
-        nodes.collect { case node: GeneralAssumptionNode => node.assumptionType },
-        assertionNodes.map(_.assumptionType),
+        nodes.collect { case node: GeneralAssumptionNode => node.originType },
+        assertionNodes.map(_.originType),
         assertionNodes.exists(_.hasFailed)
       )}.toSet
   }
@@ -97,7 +97,7 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphQueries) {
    */
   private def computeAssertionQuality(allDependencies: Set[CompactUserLevelDependencyAnalysisNode], assertion: DependencyAnalysisSourceInfo): Option[Double] = {
     val assertionNodes = sourceToAssertionNodesMap.getOrElse(assertion, Set.empty).collect { case node: GeneralAssertionNode => node }
-    val zeroQualityAssertionNodes = assertionNodes.filter(node => node.hasFailed || node.assumptionType.equals(AssumptionType.ExplicitPostcondition))
+    val zeroQualityAssertionNodes = assertionNodes.filter(node => node.hasFailed || node.originType.equals(AssumptionType.ExplicitPostcondition))
     // assertions with failures have quality of 0.0
     if (zeroQualityAssertionNodes.nonEmpty)
       Some(0.0)
@@ -113,7 +113,7 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphQueries) {
   private def getAssertionsRelevantForProgress: Map[DependencyAnalysisSourceInfo, Set[GeneralAssertionNode]] = {
     sourceToAssertionNodesMap.filter {
       case (_, assertionNodes) => !assertionNodes.exists(node =>
-        node.assumptionType.isInstanceOf[AssumptionType.ImportedType] || node.assumptionType.isInstanceOf[PreconditionType])
+        node.originType.isInstanceOf[AssumptionType.ImportedType] || node.originType.isInstanceOf[PreconditionType])
     }
   }
 
@@ -229,7 +229,7 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphQueries) {
 
     val explicitAssertions = queries.getExplicitAssertionNodes.groupBy(_.sourceInfo)
     val allNodes = queries.getNonInternalAssumptionNodes.groupBy(n => (n.sourceInfo, n.memberStr))
-    val allSourceCodeStmts = allNodes.filter(_._2.exists(_.assumptionType.isInstanceOf[AssumptionType.SourceCodeType])).filterNot(n => explicitAssertions.contains(n._1._1)).keySet
+    val allSourceCodeStmts = allNodes.filter(_._2.exists(_.originType.isInstanceOf[AssumptionType.SourceCodeType])).filterNot(n => explicitAssertions.contains(n._1._1)).keySet
 
     val uncoveredSourceCodeStmts = allSourceCodeStmts.filterNot(n => allDependencies.contains(n._1))
     uncoveredSourceCodeStmts.groupBy(_._2).map { case (member, sources) =>

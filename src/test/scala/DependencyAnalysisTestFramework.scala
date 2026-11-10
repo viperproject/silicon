@@ -9,7 +9,7 @@ package viper.silicon.tests
 import viper.silicon.SiliconFrontend
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisProgressSupporter, DependencyAnalysisPruningSupporter, FinalGraphQueries}
+import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisProgressSupporter, DependencyAnalysisPruningSupporter, FinalGraphInterpreter}
 import viper.silver.ast.Program
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.verifier.VerificationResult
@@ -87,7 +87,7 @@ trait DependencyAnalysisTestFramework {
    *
    * Statements that are only required as a trigger need to be manually annotated with @trigger() by the user.
    */
-  class PruningTest(fileName: String, program: Program, fullGraphQueries: FinalGraphQueries) {
+  class PruningTest(fileName: String, program: Program, fullGraphQueries: FinalGraphInterpreter) {
     lazy val pruningSupporter = new DependencyAnalysisPruningSupporter(fullGraphQueries)
 
     def execute(): Unit = {
@@ -138,7 +138,7 @@ trait DependencyAnalysisTestFramework {
    *
    * [value] can be either a decimal number (e.g., 0.75) or a fraction (e.g., 5/6)
    */
-  class VerificationProgressTest(fileName: String, fullGraphQueries: FinalGraphQueries) {
+  class VerificationProgressTest(fileName: String, fullGraphQueries: FinalGraphInterpreter) {
     private val epsilon = 1e-6
 
     def execute(): Unit = {
@@ -228,7 +228,7 @@ trait DependencyAnalysisTestFramework {
    * rank higher (i.e., appear earlier) in the actual uncovered-statements-per-method ranking.
    */
   class GuidanceTest(program: Program,
-                     fullGraphQueries: FinalGraphQueries) {
+                     fullGraphQueries: FinalGraphInterpreter) {
 
     val guidedAssumptionKeyword = "guidedAssumption"
     val uncoveredKeyword = "uncovered"

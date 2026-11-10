@@ -8,11 +8,11 @@ package viper.silicon.dependencyAnalysis.cliTool
 
 import viper.silicon.dependencyAnalysis.DependencyAnalysisOptions
 import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphQueries
+import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphInterpreter
 import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silver.dependencyAnalysis.{AssumptionType, DependencyAnalysisSourceInfo}
 
-class DebugDependencyAnalysisCliExtension(queries: FinalGraphQueries, options: DependencyAnalysisOptions) extends DependencyAnalysisCliToolExtension{
+class DebugDependencyAnalysisCliExtension(queries: FinalGraphInterpreter, options: DependencyAnalysisOptions) extends DependencyAnalysisCliToolExtension{
   override val name: String = "Debug Features"
   override val commands: List[DependencyAnalysisCliCommand] = List(
                                                                 new AssumptionTypesCommand,
@@ -32,14 +32,14 @@ class DebugDependencyAnalysisCliExtension(queries: FinalGraphQueries, options: D
     override val description: String = s"'$cmdName [line numbers]' to print the assumption types of all nodes or just the provided lines"
 
     private def getAssumptionTypesByLine(line: Int): Set[AssumptionType] = {
-      queries.getNodesByLine(line).collect { case n: GeneralAssumptionNode => n.assumptionType }
+      queries.getNodesByLine(line).collect { case n: GeneralAssumptionNode => n.originType }
     }
 
     private def getAssumptionTypesPerNode: Map[DependencyAnalysisSourceInfo, Set[AssumptionType]] =
       getAssumptionTypesPerNode(queries.getAssumptionNodes)
 
     private def getAssumptionTypesPerNode(nodes: Set[GeneralAssumptionNode]): Map[DependencyAnalysisSourceInfo, Set[AssumptionType]] =
-      nodes.groupBy(_.sourceInfo).view.mapValues(_.map(_.assumptionType)).toMap
+      nodes.groupBy(_.sourceInfo).view.mapValues(_.map(_.originType)).toMap
   }
 
   private class AssertionTypesCommand extends DependencyAnalysisCliCommand {
@@ -53,14 +53,14 @@ class DebugDependencyAnalysisCliExtension(queries: FinalGraphQueries, options: D
     override val description: String = s"'$cmdName [line numbers]' to print the assertion types of all nodes or just the provided lines"
 
     private def getAssertionTypesByLine(line: Int): Set[AssumptionType] = {
-      queries.getNodesByLine(line).collect { case n: GeneralAssertionNode => n.assumptionType }
+      queries.getNodesByLine(line).collect { case n: GeneralAssertionNode => n.originType }
     }
 
     private def getAssertionTypesPerNode: Map[DependencyAnalysisSourceInfo, Set[AssumptionType]] =
       getAssertionTypesPerNode(queries.getAssertionNodes)
 
     private def getAssertionTypesPerNode(nodes: Set[GeneralAssertionNode]): Map[DependencyAnalysisSourceInfo, Set[AssumptionType]] =
-      nodes.groupBy(_.sourceInfo).view.mapValues(_.map(_.assumptionType)).toMap
+      nodes.groupBy(_.sourceInfo).view.mapValues(_.map(_.originType)).toMap
   }
 
   private class LowLevelNodesCommand extends DependencyAnalysisCliCommand {
@@ -83,7 +83,7 @@ class DebugDependencyAnalysisCliExtension(queries: FinalGraphQueries, options: D
     private val weirdNodePattern = """\b(function|func|method|requires|ensures|preserves|pure|axiom|if|else|while|for|interface|domain|adt|struct|package|import|type)\b""".r
 
     private def getWeirdNodeStrings: Seq[String] = {
-      queries.getNodes.filter(n => !n.assumptionType.isInstanceOf[AssumptionType.InternalType]).groupBy(_.sourceInfo)
+      queries.getNodes.filter(n => !n.originType.isInstanceOf[AssumptionType.InternalType]).groupBy(_.sourceInfo)
         .filter{case (sourceInfo, _) => weirdNodePattern.findFirstIn(sourceInfo.toString).isDefined}
         .toSeq.map(getSingleNodeString)
     }
@@ -91,7 +91,7 @@ class DebugDependencyAnalysisCliExtension(queries: FinalGraphQueries, options: D
     private def getSingleNodeString(infoAndNodes: (DependencyAnalysisSourceInfo, Set[DependencyAnalysisNode])): String = {
       val (sourceInfo, nodes) = infoAndNodes
       val lowLevelNodesStr = if (options.enableDebugging)
-        s"\n\t${nodes.map(n => s"${n.getNodeString} | ${n.assumptionType}").mkString("\n\t")}"
+        s"\n\t${nodes.map(n => s"${n.getNodeString} | ${n.originType}").mkString("\n\t")}"
         else ""
       s"\n--\n${sourceInfo.toString}$lowLevelNodesStr\n--"
     }

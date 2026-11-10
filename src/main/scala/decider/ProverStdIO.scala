@@ -242,13 +242,10 @@ abstract class ProverStdIO(uniqueId: String,
     label
   }
 
-  /* Whether assumptions without an explicit label are named as well. */
-  protected def namesAllAssumptions: Boolean = Verifier.config.enableUnsatCores()
-
   protected def assumeInternal(term: String, label: Option[String]): Unit = {
 //    bookkeeper.assumptionCounter += 1
 
-    writeAssert(term, label.orElse(Option.when(namesAllAssumptions)(nextProverLabel())))
+    writeAssert(term, label.orElse(Option.when(Verifier.config.enableUnsatCores())(nextProverLabel())))
   }
 
   private def writeAssert(term: String, name: Option[String]): Unit = {

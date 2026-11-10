@@ -335,7 +335,7 @@ object executor extends ExecutionRules {
                       v2.decider.declareAndRecordAsFreshMacros(fm1.filter(!v2.decider.freshMacros.contains(_))) /* [BRANCH-PARALLELISATION] */
                       v2.decider.pcs.markPathInfeasible(v2.decider.pcs.isPathMarkedInfeasible || pcs.isPathMarkedInfeasible)
                       if (v2.decider.pcs.infeasibilityNodeId.isEmpty) v2.decider.pcs.setCurrentInfeasibilityNode(pcs.infeasibilityNodeId)
-                      v2.decider.assume(pcs.assumptionsWithNodeIds map { case (t, nodeId) => v.decider.analysisHooks.withLabel(t, nodeId) }, Option.when(debugOn)(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, analysisInfosLoopInternal)
+                      v2.decider.assume(pcs.assumptionsWithNodeIds map { case (t, nodeId) => v.decider.analysisHooks.withLabel(t, nodeId) }, Option.when(debugOn)(DebugExp.createInstance("Loop invariant", pcs.assumptionExps)), enforceAssumption=false, analysisInfosLoopInternal)
                       v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
                       if (InfeasiblePath.skipInfeasiblePaths && v2.decider.checkSmoke(analysisInfosLoopInternal))
                         Success()
@@ -401,6 +401,26 @@ object executor extends ExecutionRules {
       v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, v1)
     })
+  }
+
+  /**
+   * @return the values to bind a called method's formal arguments to. With the dependency analysis, the call is encoded
+   *         as a sequence of assignments to fresh variables (one for each argument) and a call using these variables
+   *         as arguments, such that the dependencies of the arguments can be tracked.
+   */
+  private def callArgumentBindings(tArgs: Seq[Term], eArgsWithDAInfo: Seq[ast.Exp], eArgsNew: Option[Seq[ast.Exp]],
+                                   analysisInfos: AnalysisInfos, v: Verifier): Seq[(Term, Option[ast.Exp])] = {
+    if (Verifier.config.isDependencyAnalysisEnabled) {
+      tArgs.zip(eArgsWithDAInfo).map { case (tArg, eArg) =>
+        val argNew = v.decider.fresh(tArg.sort, None)
+        v.decider.assume(Equals(argNew, tArg), None, analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(eArg))))
+        (argNew, None)
+      }
+    } else if (debugOn) {
+      tArgs zip eArgsNew.get.map(Some(_))
+    } else {
+      tArgs zip Seq.fill(tArgs.size)(None)
+    }
   }
 
   def exec2(state: State, stmt: ast.Stmt, v: Verifier, analysisInfos: AnalysisInfos)
@@ -620,24 +640,7 @@ object executor extends ExecutionRules {
           val pvePre = ErrorWrapperWithExampleTransformer(PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer), exampleTrafo)
           val preCondLog = new CommentRecord("Precondition", s1, v1.decider.pcs)
           val preCondId = v1.symbExLog.openScope(preCondLog)
-          val argsWithExp: Seq[(Term, Option[ast.Exp])] = {
-            if (Verifier.config.isDependencyAnalysisEnabled) {
-              tArgs zip eArgsWithDAInfo.map(Some(_))
-            } else if (debugOn)
-              tArgs zip (eArgsNew.get.map(Some(_)))
-            else
-              tArgs zip Seq.fill(tArgs.size)(None)
-            }
-          // encode the method call as a sequence of assignments to fresh variables (one for each argument) and a method call using the fresh variables as arguments
-          val argsFreshVar =
-            if (Verifier.config.isDependencyAnalysisEnabled) {
-              argsWithExp.map(arg => {
-                val argNew = v1.decider.fresh(arg._1.sort, None)
-                v1.decider.assume(Equals(argNew, arg._1), None, analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(arg._2.get))))
-                (argNew, None)
-              })
-            } else argsWithExp
-          val s1a = s1.copy(g = Store(fargs.zip(argsFreshVar)),
+          val s1a = s1.copy(g = Store(fargs.zip(callArgumentBindings(tArgs, eArgsWithDAInfo, eArgsNew, analysisInfos, v1))),
                            recordVisited = true)
           // Check if we need to reconstruct an old heap for producing the postcondition, which is
           // the case if we're inside a package statement and the postcondition contains and old expression.
@@ -685,7 +688,7 @@ object executor extends ExecutionRules {
             }
             val s2a = s2.copy(g = s2.g + gOuts, oldHeaps = newOldHeaps)
             val postsWithDAInfo = if (!Verifier.config.isDependencyAnalysisEnabled) meth.posts else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.posts.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
-            // TODO ake: Assuming the postcondition should not introduce any proof obligations as they are guaranteed by the fact / assumption that the callee verifies. Hence, we mark them as internal assertions.
+            // Assuming the postcondition should not introduce any proof obligations as they are guaranteed by the fact / assumption that the callee verifies. Hence, we mark them as internal assertions.
             val analysisInfos2 = analysisInfos.withAssertionType(AssumptionType.Internal).withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Down))
             produces(s2a, freshSnap, postsWithDAInfo, _ => pveCallTransformed, v2, analysisInfos2)((s3, v3) => {
               v3.symbExLog.closeScope(postCondId)
@@ -695,7 +698,7 @@ object executor extends ExecutionRules {
               val s3a = s3.copy(g = s1.g + gLhs,
                                oldHeaps = s1.oldHeaps,
                                recordVisited = s1.recordVisited)
-              v3.decider.analysisHooks.linkMergeInfos(presWithDAInfo, postsWithDAInfo)
+              v3.decider.analysisHooks.addCustomDependencies(presWithDAInfo, postsWithDAInfo)
               v3.symbExLog.closeScope(sepIdentifier)
               val s3b = if (debugOn) v3.finishKeyHeap(s3a) else s3a
               Q(s3b, v3)})})})

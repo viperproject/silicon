@@ -7,7 +7,7 @@
 package viper.silicon.dependencyAnalysis
 
 import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.dependencyAnalysis.graphInterpretation.{FinalGraphQueries, IntraproceduralGraphResult}
+import viper.silicon.dependencyAnalysis.graphInterpretation.{FinalGraphInterpreter, IntraproceduralGraphResult}
 import viper.silver.dependencyAnalysis.EdgeType.EdgeType
 import viper.silver.dependencyAnalysis.JoinType.JoinType
 import viper.silver.dependencyAnalysis.{DependencyAnalysisSourceInfo, EdgeType, JoinType}
@@ -27,7 +27,7 @@ class DependencyGraphJoiner(name: String, memberResults: Set[IntraproceduralGrap
    * The new graph is built by adding all existing nodes and edges of all input graphs and joining them
    * via the join information stored in each node.
    */
-  def joinGraphs(): FinalGraphQueries = {
+  def joinGraphs(): FinalGraphInterpreter = {
     val newGraph = new DependencyGraph[Final]
 
     val keptAxiomNodes = if (options.enableDebugging) axiomNodes else axiomNodes.filterNot(DependencyGraphHelper.isRemovableInternalNode)
@@ -66,19 +66,13 @@ class DependencyGraphJoiner(name: String, memberResults: Set[IntraproceduralGrap
       addEdgesConnectingMethods(newGraph, joinKey._2, matchingSourceNodes, sinkNodes, sourceInfoToNodeIds, intraMethodEdges)
     }
 
-    new FinalGraphQueries(name, newGraph, memberResults.toList.flatMap(_.errors))
+    new FinalGraphInterpreter(name, newGraph, memberResults.toList.flatMap(_.errors))
   }
 
   private def addEdgesConnectingMethods(newGraph: DependencyGraph[Final], edgeType: EdgeType, sourceNodes: Set[DependencyAnalysisNode], sinkNodes: Set[DependencyAnalysisNode], sourceInfoToNodeIds: Map[DependencyAnalysisSourceInfo, Set[Int]], intraMethodEdges: Map[Int, Set[Int]]): Unit = {
     if (edgeType.equals(EdgeType.Up)) {
-      val directDepsOfSources = if (options.useJoinPrecisionOpt) {
-        // Preconditions are connected to the dependencies required to prove them at all call sites. However, they do not depend on the calls themselves.
-        sourceNodes.groupBy(_.sourceInfo).flatMap(t => getDirectIntraMethodDependencies(t._2.map(_.id), sourceInfoToNodeIds(t._1), intraMethodEdges))
-      } else {
-        // Connect preconditions directly to call and therefore, indirectly to all its dependencies -> imprecise but might be faster and
-        // more user-friendly since it becomes apparent which call introduced these indirect dependencies.
-        sourceNodes.map(_.id)
-      }
+      // Preconditions are connected to the dependencies required to prove them at all call sites. However, they do not depend on the calls themselves.
+      val directDepsOfSources = sourceNodes.groupBy(_.sourceInfo).flatMap(t => getDirectIntraMethodDependencies(t._2.map(_.id), sourceInfoToNodeIds(t._1), intraMethodEdges))
       newGraph.addEdgesConnectingMethodsUpwards(directDepsOfSources.toSet, sinkNodes.map(_.id))
     } else {
       newGraph.addEdgesConnectingMethodsDownwards(sourceNodes.map(_.id), sinkNodes.map(_.id))
