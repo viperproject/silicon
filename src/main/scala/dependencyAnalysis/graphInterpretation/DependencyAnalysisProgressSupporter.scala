@@ -19,6 +19,9 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphQueries) {
 
   private val dependencyGraph = queries.getGraph
   private lazy val sourceToAssertionNodesMap: Map[DependencyAnalysisSourceInfo, Set[GeneralAssertionNode]] = queries.getNonInternalAssertionNodes.groupBy(_.sourceInfo)
+  // The graph's getters copy these maps, so they are read once rather than for every visited node.
+  private lazy val edgesConnectingMethodsUpwards: Map[Int, Set[Int]] = dependencyGraph.getEdgesConnectingMethodsUpwards
+  private lazy val edgesConnectingMethodsDownwards: Map[Int, Set[Int]] = dependencyGraph.getEdgesConnectingMethodsDownwards
 
   def computeVerificationProgress(enableDebugging: Boolean = false, report: String => Unit = println): VerificationProgress = {
     computeVerificationProgressOptimized(enableDebugging, report)
@@ -46,8 +49,8 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphQueries) {
 
         // recursively compute all interprocedural dependencies and cache results at procedure-boundaries
         val relevantInterProceduralEdges = traversalMode match {
-          case DATraversalMode.Upwards => dependencyGraph.getEdgesConnectingMethodsUpwards
-          case DATraversalMode.Downwards => dependencyGraph.getEdgesConnectingMethodsDownwards
+          case DATraversalMode.Upwards => edgesConnectingMethodsUpwards
+          case DATraversalMode.Downwards => edgesConnectingMethodsDownwards
         }
         val interProceduralNodeIds = intraMethodDependencies.flatMap(n => relevantInterProceduralEdges.getOrElse(n.id, Set.empty))
         val interProceduralNodes = interProceduralNodeIds.flatMap(queries.getGraph.getNodeById)
