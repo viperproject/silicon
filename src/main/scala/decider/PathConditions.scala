@@ -115,6 +115,8 @@ private class PathConditionStackLayer
   private var _declarations: InsertionOrderedSet[Decl] = InsertionOrderedSet.empty
   private var _analysisLabels: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
   private var _branchConditionLabel: Option[Int] = None
+  /* Each assumption with the id of the dependency analysis node that assumed it, in the order they were assumed.
+   * Only recorded if the analysis is enabled, such that other runs do not pay for it. */
   private var _globalLabelledAssumptions: Vector[(Term, Option[Int])] = Vector.empty
   private var _nonGlobalLabelledAssumptions: Vector[(Term, Option[Int])] = Vector.empty
 
@@ -132,7 +134,9 @@ private class PathConditionStackLayer
   def nonGlobalAssumptionDebugExps: InsertionOrderedSet[DebugExp] = _nonGlobalAssumptionDebugExps
   def declarations: InsertionOrderedSet[Decl] = _declarations
   def analysisLabels: InsertionOrderedSet[Term] = _analysisLabels
-  def labelledAssumptions: Vector[(Term, Option[Int])] = _globalLabelledAssumptions ++ _nonGlobalLabelledAssumptions
+  def labelledAssumptions: Seq[(Term, Option[Int])] =
+    if (recordsLabels) _globalLabelledAssumptions ++ _nonGlobalLabelledAssumptions
+    else (_globalAssumptions.iterator ++ _nonGlobalAssumptions.iterator).map((_, None)).toVector
   def labelledBranchCondition: Option[(Term, Option[Int])] = _branchCondition.map((_, _branchConditionLabel))
 
   def isPathMarkedInfeasible: Boolean = _isPathMarkedInfeasible
@@ -208,16 +212,18 @@ private class PathConditionStackLayer
 
     if (PathConditions.isGlobal(assumption)) {
       _globalAssumptions += assumption
-      _globalLabelledAssumptions :+= (assumption, label)
+      if (recordsLabels) _globalLabelledAssumptions :+= (assumption, label)
     } else {
       _nonGlobalAssumptions += assumption
-      _nonGlobalLabelledAssumptions :+= (assumption, label)
+      if (recordsLabels) _nonGlobalLabelledAssumptions :+= (assumption, label)
     }
   }
 
+  private def recordsLabels: Boolean = Verifier.config.isDependencyAnalysisEnabled
+
   /* Branch conditions are assumed unsplit, right after being set, so the first matching assumption is theirs. */
   def labelBranchCondition(assumption: Term, label: Option[Int]): Unit = {
-    if (_branchConditionLabel.isEmpty && _branchCondition.contains(assumption)) _branchConditionLabel = label
+    if (label.isDefined && _branchConditionLabel.isEmpty && _branchCondition.contains(assumption)) _branchConditionLabel = label
   }
 
   def addAnalysisLabel(assumption: Term, label: Option[Int]): Unit = {
@@ -227,7 +233,7 @@ private class PathConditionStackLayer
     _globalAssumptions += assumption // labels are always global
     _globalDefiningAssumptions += assumption
     _analysisLabels += assumption
-    _globalLabelledAssumptions :+= (assumption, label)
+    if (recordsLabels) _globalLabelledAssumptions :+= (assumption, label)
   }
 
   def addNonGlobalDebugExp(debugExp : DebugExp): Unit = {
@@ -278,11 +284,11 @@ private class PathConditionStackLayer
     if (PathConditions.isGlobal(assumption)) {
       _globalAssumptions += assumption
       _globalDefiningAssumptions += assumption
-      _globalLabelledAssumptions :+= (assumption, label)
+      if (recordsLabels) _globalLabelledAssumptions :+= (assumption, label)
     } else {
       _nonGlobalAssumptions += assumption
       _nonGlobalDefiningAssumptions += assumption
-      _nonGlobalLabelledAssumptions :+= (assumption, label)
+      if (recordsLabels) _nonGlobalLabelledAssumptions :+= (assumption, label)
     }
   }
 
@@ -500,8 +506,8 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
   val infeasibilityNodeId: Option[Int] = infeasibilityNodeId(from)
   val isPathMarkedInfeasible: Boolean = isPathMarkedInfeasible(from)
 
-  val labelledAssumptions: Seq[(Term, Option[Int])] = labelledAssumptions(from)
-  val labelledBranchConditions: Stack[(Term, Option[Int])] = labelledBranchConditions(from)
+  lazy val labelledAssumptions: Seq[(Term, Option[Int])] = labelledAssumptions(from)
+  lazy val labelledBranchConditions: Stack[(Term, Option[Int])] = labelledBranchConditions(from)
 
   def contains(assumption: Term): Boolean = contains(from, assumption)
 
