@@ -6,7 +6,6 @@
 
 package viper.silicon.dependencyAnalysis
 
-import viper.silicon.dependencyAnalysis.graph.DependencyAnalysisNode
 import viper.silicon.state.terms.Term
 import viper.silver.ast
 
@@ -15,8 +14,8 @@ import viper.silver.ast
  * is the behaviour of a run without an analysis.
  */
 trait AnalysisHooks {
-  /** Starts analyzing the given member. The preamble nodes describe axioms emitted to the provers of all verifiers. */
-  def beginMember(member: ast.Member, preambleNodes: Iterable[DependencyAnalysisNode]): Unit = {}
+  /** Starts analyzing the given member. */
+  def beginMember(member: ast.Member): Unit = {}
 
   def endMember(): Unit = {}
 

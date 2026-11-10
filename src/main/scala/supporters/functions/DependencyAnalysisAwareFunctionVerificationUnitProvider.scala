@@ -27,7 +27,7 @@ trait DependencyAnalysisAwareFunctionVerificationUnitProvider extends DefaultFun
       val result = super.handleFunction(sInit, function)
 
       if (function.body.isEmpty) {
-        decider.getDependencyAnalyzer.addNodes(decider.prover.getPreambleAnalysisNodes)
+        decider.getDependencyAnalyzer.setAxiomNodes(axiomNodeRegistry.current)
         addDependenciesForAbstractMember(function.pres, function.posts)
       }
 

@@ -17,8 +17,9 @@ import scala.collection.mutable
 /**
  * * @param name Optional name for the joined graph.
  * * @param memberResults The analysis results of the members to be joined.
+ * * @param axiomNodes The axiom nodes of all provers, which the graphs of the members refer to by id only.
  */
-class DependencyGraphJoiner(name: String, memberResults: Set[IntraproceduralGraphResult], options: DependencyAnalysisOptions) {
+class DependencyGraphJoiner(name: String, memberResults: Set[IntraproceduralGraphResult], axiomNodes: Iterable[AxiomAssumptionNode], options: DependencyAnalysisOptions) {
 
   /**
    * @return Queries operating on a new dependency graph that represents all input graphs and
@@ -29,12 +30,16 @@ class DependencyGraphJoiner(name: String, memberResults: Set[IntraproceduralGrap
   def joinGraphs(): FinalGraphQueries = {
     val newGraph = new DependencyGraph[Final]
 
+    val keptAxiomNodes = if (options.enableDebugging) axiomNodes else axiomNodes.filterNot(DependencyGraphHelper.isRemovableInternalNode)
+    val axiomJoinNodes = keptAxiomNodes.filter(_.joinInfos.nonEmpty)
+
+    newGraph.addAssumptionNodes(keptAxiomNodes)
     newGraph.addAssumptionNodes(memberResults.flatMap (_.graph.getAssumptionNodes))
     newGraph.addAssertionNodes(memberResults.flatMap (_.graph.getAssertionNodes))
     memberResults foreach (result => result.graph.getAllEdges foreach {case (t, deps) => newGraph.addEdges(deps, t)})
 
-    val joinSourceNodes = memberResults.flatMap(_.joinSourceNodes)
-    val joinSinkNodes   = memberResults.flatMap(_.joinSinkNodes)
+    val joinSourceNodes = memberResults.flatMap(_.joinSourceNodes) ++ axiomJoinNodes
+    val joinSinkNodes   = memberResults.flatMap(_.joinSinkNodes) ++ axiomJoinNodes
 
     def getJoinNodesByJoinInfo(candidateNodes: Set[DependencyAnalysisNode], joinType: JoinType): Map[(DependencyAnalysisSourceInfo, EdgeType), Set[DependencyAnalysisNode]] = {
       val acc: mutable.Map[(DependencyAnalysisSourceInfo, EdgeType), Set[DependencyAnalysisNode]] = mutable.Map.empty

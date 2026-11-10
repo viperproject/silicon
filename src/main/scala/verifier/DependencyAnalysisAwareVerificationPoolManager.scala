@@ -8,8 +8,7 @@ package viper.silicon.verifier
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.DependencyAnalysisProverHandler
-import viper.silicon.dependencyAnalysis.DependencyAnalysisAxiomInfo
-import viper.silicon.dependencyAnalysis.graph._
+import viper.silicon.dependencyAnalysis.{AxiomNodeRegistry, DependencyAnalysisAxiomInfo}
 import viper.silicon.state.terms.Term
 
 class DependencyAnalysisAwareVerificationPoolManager(mainVerifier: DependencyAnalysisAwareMainVerifier) extends VerificationPoolManager(mainVerifier) {
@@ -17,11 +16,11 @@ class DependencyAnalysisAwareVerificationPoolManager(mainVerifier: DependencyAna
 
   override protected def createWorker(): DependencyAnalysisAwareWorkerVerifier = mainVerifier.createWorkerVerifier()
 
-  def getAllDAAxiomNodes: Seq[DependencyAnalysisNode] = workerVerifiers.flatMap(_.decider.prover.getPreambleAnalysisNodes)
-
   override def pooledVerifiers: DefaultPooledVerifiers with DependencyAnalysisProverHandler = DependencyAnalysisAwarePooledVerifiers
 
   private object DependencyAnalysisAwarePooledVerifiers extends DefaultPooledVerifiers with DependencyAnalysisProverHandler {
+    override protected def axiomNodeRegistry: AxiomNodeRegistry = mainVerifier.axiomNodeRegistry
+
     def assume(term: Term, label: Option[String]): Unit =
       workerVerifiers foreach (_.decider.prover.assume(term, label))
 

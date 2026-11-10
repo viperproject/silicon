@@ -38,7 +38,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
     type P = DependencyAnalysisAwareZ3ProverStdIO
 
     override protected def getProver(prover: String): DependencyAnalysisAwareZ3ProverStdIO = prover match {
-      case Z3ProverStdIO.name => new DependencyAnalysisAwareZ3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
+      case Z3ProverStdIO.name => new DependencyAnalysisAwareZ3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter, v.axiomNodeRegistry)
       case prover =>
         val msg1 = s"Prover '$prover' not supported in combination with the dependency analysis. Defaulting to ${Z3ProverStdIO.name}."
         logger warn msg1
@@ -51,11 +51,10 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
     override def analysisHooks: AnalysisHooks = DependencyAnalysisHooks
 
     private object DependencyAnalysisHooks extends AnalysisHooks {
-      override def beginMember(member: ast.Member, preambleNodes: Iterable[DependencyAnalysisNode]): Unit = {
+      override def beginMember(member: ast.Member): Unit = {
         val isAnalysisEnabled = DependencyAnalyzer.extractEnableAnalysisFromInfo(member.info).getOrElse(true)
         if (isAnalysisEnabled) {
-          dependencyAnalyzer = new DefaultDependencyAnalyzer(Some(member), Verifier.config.dependencyAnalysisOptions)
-          dependencyAnalyzer.addNodes(preambleNodes ++ prover.getPreambleAnalysisNodes)
+          dependencyAnalyzer = new DefaultDependencyAnalyzer(member, Verifier.config.dependencyAnalysisOptions, v.axiomNodeRegistry.current)
         } else {
           dependencyAnalyzer = new NoDependencyAnalyzer
         }

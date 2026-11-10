@@ -22,13 +22,15 @@ trait DependencyAnalyzer {
 
   def getMember: ast.Member
 
-  def getNodes: Iterable[DependencyAnalysisNode]
+  /**
+   * Replaces the axiom nodes considered when finalizing the graph.
+   * Needed for axioms that are emitted while the member is verified and that the member's graph must take into account.
+   */
+  def setAxiomNodes(axiomNodes: AxiomNodes): Unit
 
-  def addNodes(nodes: Iterable[DependencyAnalysisNode]): Unit
   def addAssertionNode(node: GeneralAssertionNode): Unit
   def addAssumptionNode(node: GeneralAssumptionNode): Unit
   def addAssumption(assumption: Term, analysisInfos: AnalysisInfos, description: Option[String] = None): Option[Int]
-  def addAxiom(assumption: Term, analysisAxiomInfo: DependencyAnalysisAxiomInfo, description: Option[String] = None): Option[Int]
   def registerInhaleChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, labelNode: Option[LabelNode], analysisInfos: AnalysisInfos): CH = buildChunk(perm)
   def registerExhaleChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, labelNodeOpt: Option[LabelNode], analysisInfos: AnalysisInfos): CH = buildChunk(perm)
   def createLabelNode(label: Var, sourceNodeId: Option[Int]): Option[LabelNode]
@@ -75,7 +77,7 @@ trait DependencyAnalyzer {
   def addCustomDependenciesBetweenMergeInfos(sourceExps: Seq[Exp], targetExps: Seq[Exp]): Unit
 }
 
-object DependencyAnalyzer {
+object DependencyAnalyzer extends LazyLogging {
   val analysisLabelName: String = "$$analysisLabel$$"
   private val assumptionLabelPrefix = "assumption"
   private val assertionLabelPrefix = "assertion"
@@ -86,6 +88,16 @@ object DependencyAnalyzer {
     info.getAllInfos[ast.AnnotationInfo]
       .filter(_.values.contains(annotationKey))
       .map(_.values(annotationKey)).headOption
+  }
+
+  /** Every node is built from infos that passed through here, so that incomplete infos are reported. */
+  def checkedInfos(analysisInfos: AnalysisInfos, memberName: String, options: DependencyAnalysisOptions): AnalysisInfos = {
+    val missingInfos = analysisInfos.missingInfos
+    if (missingInfos.nonEmpty) {
+      val message = s"Dependency analysis results might be unsound because of incomplete infos in member $memberName: ${missingInfos.mkString("; ")}"
+      if (options.enableDebugging) sys.error(message) else logger.warn(message)
+    }
+    analysisInfos
   }
 
   def extractEnableAnalysisFromInfo(info: ast.Info): Option[Boolean] = {
@@ -121,29 +133,20 @@ object DependencyAnalyzer {
   }
 }
 
-class DefaultDependencyAnalyzer(member: Option[ast.Member], options: DependencyAnalysisOptions) extends DependencyAnalyzer with LazyLogging {
+class DefaultDependencyAnalyzer(member: ast.Member, options: DependencyAnalysisOptions, private var axiomNodes: AxiomNodes) extends DependencyAnalyzer {
   protected var customMergeDependencies: Set[(Set[DependencyAnalysisMergeInfo], Set[DependencyAnalysisMergeInfo])] = Set.empty
 
-  override def getMember: ast.Member = member.get
+  override def getMember: ast.Member = member
 
-  /* Every node is built from infos that passed through here, so that incomplete infos are reported. */
-  private def checked(analysisInfos: AnalysisInfos): AnalysisInfos = {
-    val missingInfos = analysisInfos.missingInfos
-    if (missingInfos.nonEmpty) {
-      val message = s"Dependency analysis results might be unsound because of incomplete infos in member ${member.map(_.name).getOrElse("<none>")}: ${missingInfos.mkString("; ")}"
-      if (options.enableDebugging) sys.error(message) else logger.warn(message)
-    }
-    analysisInfos
-  }
+  private def checked(analysisInfos: AnalysisInfos): AnalysisInfos =
+    DependencyAnalyzer.checkedInfos(analysisInfos, member.name, options)
 
   private def assumptionMetadata(analysisInfos: AnalysisInfos): NodeMetadata = NodeMetadata.forAssumption(checked(analysisInfos), getMember.name)
 
   private def assertionMetadata(analysisInfos: AnalysisInfos): NodeMetadata = NodeMetadata.forAssertion(checked(analysisInfos), getMember.name)
 
-  override def getNodes: Iterable[DependencyAnalysisNode] = dependencyGraph.getNodes
-
-  override def addNodes(nodes: Iterable[DependencyAnalysisNode]): Unit = {
-    nodes foreach dependencyGraph.addNode
+  override def setAxiomNodes(axiomNodes: AxiomNodes): Unit = {
+    this.axiomNodes = axiomNodes
   }
 
   override def addAssumptionNode(node: GeneralAssumptionNode): Unit =
@@ -153,12 +156,6 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member], options: DependencyA
 
   override def addAssumption(assumption: Term, analysisInfos: AnalysisInfos, description: Option[String]): Option[Int] = {
     val node = DependencyNodeFactory.createSimpleAssumptionNode(assumption, description, assumptionMetadata(analysisInfos))
-    addAssumptionNode(node)
-    Some(node.id)
-  }
-
-  override def addAxiom(assumption: Term, analysisAxiomInfo: DependencyAnalysisAxiomInfo, description: Option[String]): Option[Int] = {
-    val node = DependencyNodeFactory.createAxiomAssumptionNode(assumption, description, NodeMetadata.forAssumption(checked(analysisAxiomInfo.analysisInfos), analysisAxiomInfo.memberStr))
     addAssumptionNode(node)
     Some(node.id)
   }
@@ -260,10 +257,11 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member], options: DependencyA
   }
 
   protected def addCustomMergeDependencies(mergedGraph: DependencyGraph[IntraProcedural]): Unit = {
+    def nodeIdsWithMergeInfos(mergeInfos: Set[DependencyAnalysisMergeInfo]): Set[Int] =
+      mergedGraph.getNodes.filter(node => mergeInfos.contains(node.mergeInfo)).map(_.id) ++ mergeInfos.flatMap(axiomNodes.idsWithMergeInfo)
+
     customMergeDependencies.foreach{ case (sourceMergeInfos, targetMergeInfos) =>
-      val sourceNodes = mergedGraph.getNodes.filter(node => sourceMergeInfos.contains(node.mergeInfo)).map(_.id)
-      val targetNodes = mergedGraph.getNodes.filter(node => targetMergeInfos.contains(node.mergeInfo)).map(_.id)
-      mergedGraph.addEdges(sourceNodes, targetNodes)
+      mergedGraph.addEdges(nodeIdsWithMergeInfos(sourceMergeInfos), nodeIdsWithMergeInfos(targetMergeInfos))
     }
   }
 
@@ -278,7 +276,7 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member], options: DependencyA
     dependencyGraph.removeLabelNodes()
     val mergedGraph = if (options.enableDebugging) dependencyGraph.asInstanceOf[DependencyGraph[IntraProcedural]] else buildAndGetMergedGraph()
     addTransitiveEdges(mergedGraph)
-    if (!options.enableDebugging) mergedGraph.removeInternalNodes()
+    if (!options.enableDebugging) mergedGraph.removeInternalNodes(axiomNodes.isRemovableInternalNode)
     Some(mergedGraph)
   }
 
@@ -289,20 +287,21 @@ class DefaultDependencyAnalyzer(member: Option[ast.Member], options: DependencyA
    */
   private def addTransitiveEdges(mergedGraph: DependencyGraph[IntraProcedural]): Unit = {
     val nodesPerSourceInfo = mergedGraph.getNodes.filter(_.mergeInfo.isMerge).groupBy(_.mergeInfo)
-    nodesPerSourceInfo foreach {case (_, nodes) =>
+    nodesPerSourceInfo foreach {case (mergeInfo, nodes) =>
+      val axiomIds = axiomNodes.idsWithMergeInfo(mergeInfo)
       val asserts = nodes.collect { case n: GeneralAssertionNode => n }
       val assumes = nodes.filter {
         case _: LabelNode => false
         case _: GeneralAssumptionNode => true
         case _ => false
       }
-      mergedGraph.addEdges(asserts.map(_.id), assumes.map(_.id))
+      mergedGraph.addEdges(asserts.map(_.id), assumes.map(_.id) ++ axiomIds)
       val checks = nodes.collect { case n: SimpleCheckNode => n }
       val notChecks = nodes.filter {
         case _: SimpleCheckNode => false
         case _ => true
       }
-      mergedGraph.addEdges(checks.map(_.id), notChecks.map(_.id)) // TODO ake: why do we need this?
+      mergedGraph.addEdges(checks.map(_.id), notChecks.map(_.id) ++ axiomIds) // TODO ake: why do we need this?
     }
 
     addCustomMergeDependencies(mergedGraph)
@@ -375,13 +374,10 @@ class NoDependencyAnalyzer extends DependencyAnalyzer {
 
   override def getMember: ast.Member = ast.Method("none", Seq.empty, Seq.empty, Seq.empty, Seq.empty, None)()
 
-  override def getNodes: Iterable[DependencyAnalysisNode] = Set.empty
-
-  override def addNodes(nodes: Iterable[DependencyAnalysisNode]): Unit = {}
+  override def setAxiomNodes(axiomNodes: AxiomNodes): Unit = {}
   override def addAssertionNode(node: GeneralAssertionNode): Unit = {}
   override def addAssumptionNode(node: GeneralAssumptionNode): Unit = {}
   override def addAssumption(assumption: Term, analysisInfos: AnalysisInfos, description: Option[String] = None): Option[Int] = None
-  override def addAxiom(assumption: Term, analysisAxiomInfo: DependencyAnalysisAxiomInfo, description: Option[String]): Option[Int] = None
   override def createLabelNode(labelTerm: Var, sourceNodeId: Option[Int]): Option[LabelNode] = None
 
   override def createAssertOrCheckNode(term: Term, analysisInfos: AnalysisInfos, isCheck: Boolean): Option[GeneralAssertionNode] = None

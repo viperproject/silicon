@@ -8,15 +8,14 @@ package viper.silicon.decider
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugAxiom
-import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.dependencyAnalysis.{DefaultDependencyAnalyzer, DependencyAnalysisAxiomInfo, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis.{AxiomNodeRegistry, DependencyAnalysisAxiomInfo, DependencyAnalyzer}
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms.Term
-import viper.silicon.verifier.Verifier
 import viper.silver.reporter.Reporter
 
-class DependencyAnalysisAwareZ3ProverStdIO(uniqueId: String, termConverter: TermToSMTLib2Converter, identifierFactory: IdentifierFactory, reporter: Reporter)
+class DependencyAnalysisAwareZ3ProverStdIO(uniqueId: String, termConverter: TermToSMTLib2Converter, identifierFactory: IdentifierFactory, reporter: Reporter,
+                                           override protected val axiomNodeRegistry: AxiomNodeRegistry)
   extends Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter) with DependencyAnalysisProverHandler {
 
   private var lastUnsatCore: Seq[String] = _
@@ -41,9 +40,7 @@ class DependencyAnalysisAwareZ3ProverStdIO(uniqueId: String, termConverter: Term
 }
 
 trait DependencyAnalysisProverHandler extends ProverLike {
-  protected val preambleDependencyAnalyzer: DependencyAnalyzer = new DefaultDependencyAnalyzer(None, Verifier.config.dependencyAnalysisOptions)
-
-  def getPreambleAnalysisNodes: Iterable[DependencyAnalysisNode] = preambleDependencyAnalyzer.getNodes
+  protected def axiomNodeRegistry: AxiomNodeRegistry
 
   def assume(term: Term, label: Option[String]): Unit
 
@@ -54,8 +51,8 @@ trait DependencyAnalysisProverHandler extends ProverLike {
     axioms.foreach(axiom => {
       val analysisAxiomInfo = axiom._2
       if (analysisAxiomInfo.analysisInfos.analysisEnabled) {
-        val id = preambleDependencyAnalyzer.addAxiom(axiom._1, analysisAxiomInfo)
-        assume(axiom._1, DependencyAnalyzer.createAxiomLabel(id))
+        val id = axiomNodeRegistry.addAxiom(axiom._1, analysisAxiomInfo)
+        assume(axiom._1, DependencyAnalyzer.createAxiomLabel(Some(id)))
       } else {
         assume(axiom._1)
       }

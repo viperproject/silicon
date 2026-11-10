@@ -23,6 +23,16 @@ object DependencyGraphHelper {
   def nextId(): Int = {
     idCounter.getAndIncrement()
   }
+
+  /**
+   * @return whether the node is removed from the final graph of a member, unless debugging is enabled.
+   */
+  def isRemovableInternalNode(node: DependencyAnalysisNode): Boolean = node match {
+    case _: InfeasibilityNode => false // infeasibility nodes are required for some of the graph queries
+    case _ =>
+      node.assumptionType.isInstanceOf[AssumptionType.InternalType] &&
+        node.joinInfos.isEmpty // join nodes must not be removed because we need them for joining the graphs later on
+  }
 }
 
 sealed trait DependencyGraphState
@@ -383,16 +393,12 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
 
   /**
    * Removes internal nodes while perceiving the transitive closure by adding edges between the predecessors and successors.
+   *
+   * @param isExternalInternalNode identifies internal nodes that edges refer to, but that are not part of this graph
    */
-  def removeInternalNodes(): Unit = {
-    def filterCriteria(n: DependencyAnalysisNode) = n match {
-      case _: InfeasibilityNode => false // infeasibility nodes are required for some of the graph queries
-      case _ =>
-        n.assumptionType.isInstanceOf[AssumptionType.InternalType] &&
-          n.joinInfos.isEmpty // join nodes must not be removed because we need them for joining the graphs later on
-    }
-
-    val idsToRemove = getNodes.filter(filterCriteria).map(_.id)
+  def removeInternalNodes(isExternalInternalNode: Int => Boolean = _ => false): Unit = {
+    val externalIdsToRemove = (allEdges.keysIterator ++ allEdges.valuesIterator.flatten).filter(isExternalInternalNode).toSet
+    val idsToRemove = getNodes.filter(DependencyGraphHelper.isRemovableInternalNode).map(_.id) ++ externalIdsToRemove
     removeAllEdgesForNodes(idsToRemove)
     removeNodes(idsToRemove)
   }
