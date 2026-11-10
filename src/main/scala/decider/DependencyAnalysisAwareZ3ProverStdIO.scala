@@ -33,8 +33,7 @@ class DependencyAnalysisAwareZ3ProverStdIO(uniqueId: String, termConverter: Term
 
   override protected def onUnsat(): Unit = {
     writeLine("(get-unsat-core)")
-    val unsatCore = input.readLine()
-    comment("unsat core: " + unsatCore)
+    val unsatCore = readLine()
     lastUnsatCore = unsatCore.replace("(", "").replace(")", "").split(" ").toSeq
   }
 }

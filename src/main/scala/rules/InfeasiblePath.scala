@@ -32,7 +32,7 @@ object infeasiblePath extends SymbolicExecutionRules {
 
   /** True if the data of a path with the given path conditions must be joined. Infeasible paths do not contribute if they are explored. */
   def contributesToJoin(pathConditions: RecordedPathConditions): Boolean =
-    !isExplored || pathConditions.infeasibilityNodeId.isEmpty
+    !isExplored || !pathConditions.isPathMarkedInfeasible
 
   /**
    * Checks whether the current path is known to be infeasible and the rule can therefore skip its usual work.
