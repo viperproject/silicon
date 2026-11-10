@@ -212,11 +212,11 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     if (relevantChunks.isEmpty) {
       if (v.decider.checkSmoke(analysisInfos, isAssert = true)) {
-        infeasiblePath.continue(Success() /* TODO: Mark branch as dead? */, alwaysContinue = s.isInPackage)(Q(s, infeasiblePath.freshSnapshot(resource, s, v), v))
+        InfeasiblePath.continueIfExplorationEnabled(Success() /* TODO: Mark branch as dead? */, alwaysContinue = s.isInPackage)(Q(s, InfeasiblePath.freshSnapshot(resource, s, v), v))
       } else {
         val failure = createFailure(ve, v, s, False, "branch is dead")
         recordFailedFalseAssertion(s, v, analysisInfos)
-        infeasiblePath.continueAfterFailure(failure, s, v)(Q(s, infeasiblePath.freshSnapshot(resource, s, v), v))
+        InfeasiblePath.continueAfterFailure(failure, s, v)(Q(s, InfeasiblePath.freshSnapshot(resource, s, v), v))
       }
     } else {
       summarise(s, relevantChunks, resource, args, argsExp, None, v)((s1, snap, permSum, permSumExp, v1) => {

@@ -337,7 +337,7 @@ object executor extends ExecutionRules {
                       if (v2.decider.pcs.infeasibilityNodeId.isEmpty) v2.decider.pcs.setCurrentInfeasibilityNode(pcs.infeasibilityNodeId)
                       v2.decider.assume(pcs.assumptionsWithNodeIds map { case (t, nodeId) => v.decider.analysisHooks.withLabel(t, nodeId) }, Option.when(debugOn)(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, analysisInfosLoopInternal)
                       v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-                      if (infeasiblePath.stopsEarly && v2.decider.checkSmoke(analysisInfosLoopInternal))
+                      if (InfeasiblePath.skipInfeasiblePaths && v2.decider.checkSmoke(analysisInfosLoopInternal))
                         Success()
                       else {
                         execs(s2, stmts, v2)((s3, v3) => {
@@ -499,7 +499,7 @@ object executor extends ExecutionRules {
         })
 
       case inhale @ ast.Inhale(a) => a match {
-        case _: ast.FalseLit if infeasiblePath.stopsEarly =>
+        case _: ast.FalseLit if InfeasiblePath.skipInfeasiblePaths =>
           /* We're done */
           Success()
         case _: ast.TrueLit =>
@@ -532,7 +532,7 @@ object executor extends ExecutionRules {
             if (s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine QS(s1, v1) else failure
           }
         })((s2, v2) =>
-          infeasiblePath.continue(Success())(Q(s2, v2))
+          InfeasiblePath.continueIfExplorationEnabled(Success())(Q(s2, v2))
         )
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>

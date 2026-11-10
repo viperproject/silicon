@@ -207,7 +207,7 @@ object consumer extends ConsumptionRules {
      * time permissions have been consumed.
      */
 
-    if (infeasiblePath.skipRule(v, true, false, analysisInfos)) {
+    if (InfeasiblePath.canPathBeSkipped(v, true, false, analysisInfos)) {
       return Q(s, h, Option.when(returnSnap)(Unit), v)
     }
 

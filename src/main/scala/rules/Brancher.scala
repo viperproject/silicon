@@ -45,7 +45,7 @@ object brancher extends BranchingRules {
              fElse: (State, Verifier) => VerificationResult)
             : VerificationResult = {
 
-    if (infeasiblePath.skipRule(v, false, true, v.decider.analysisHooks.enterNode(analysisInfos, conditionExp._1.info, conditionExp._1))) {
+    if (InfeasiblePath.canPathBeSkipped(v, false, true, v.decider.analysisHooks.enterNode(analysisInfos, conditionExp._1.info, conditionExp._1))) {
       return fThen(s, v).combine(fElse(s, v))
     }
 
@@ -111,7 +111,7 @@ object brancher extends BranchingRules {
     var noOfErrors = 0
 
     val elseBranchVerificationTask: Verifier => VerificationResult =
-      if (infeasiblePath.exploresBranch(executeElseBranch)) {
+      if (InfeasiblePath.exploreBranch(executeElseBranch)) {
         /* [BRANCH-PARALLELISATION] */
         /* Compute the following sets
          *   1. only if the else-branch needs to be explored
@@ -188,7 +188,7 @@ object brancher extends BranchingRules {
       }
 
     val elseBranchFuture: Future[Seq[VerificationResult]] =
-      if (infeasiblePath.exploresBranch(executeElseBranch)) {
+      if (InfeasiblePath.exploreBranch(executeElseBranch)) {
         if (parallelizeElseBranch) {
           /* [BRANCH-PARALLELISATION] */
           v.verificationPoolManager.queueVerificationTask(v0 => {
@@ -204,7 +204,7 @@ object brancher extends BranchingRules {
       }
 
     val res = {
-      val thenRes = if (infeasiblePath.exploresBranch(executeThenBranch)) {
+      val thenRes = if (InfeasiblePath.exploreBranch(executeThenBranch)) {
           v.symbExLog.markReachable(uidBranchPoint)
           executionFlowController.locally(s, v)((s1, v1) => {
             v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
