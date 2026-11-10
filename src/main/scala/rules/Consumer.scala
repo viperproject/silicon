@@ -13,7 +13,7 @@ import viper.silicon.dependencyAnalysis._
 import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silver.dependencyAnalysis.{AssumptionType, StringDependencyAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{OriginType, StringDependencyAnalysisSourceInfo}
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons._
 import viper.silicon.interfaces.VerificationResult
@@ -444,7 +444,7 @@ object consumer extends ConsumptionRules {
         }
         v2.decider.assert(termToAssert, analysisInfos) {
           case true =>
-            v2.decider.assume(t, Option.when(debugOn)(e), eNew, analysisInfos.overrideDependencyType(AssumptionType.Internal))
+            v2.decider.assume(t, Option.when(debugOn)(e), eNew, analysisInfos.overrideDependencyType(OriginType.Internal))
             QS(s2, v2)
           case false =>
             val failure = createFailure(pve dueTo AssertionFalse(e), v2, s2, termToAssert, eNew)

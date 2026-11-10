@@ -8,7 +8,7 @@ package viper.silicon.dependencyAnalysis.graphInterpretation
 
 import viper.silicon.dependencyAnalysis.UserLevelDependencyAnalysisNode
 import viper.silicon.dependencyAnalysis.graph._
-import viper.silver.dependencyAnalysis.AssumptionType
+import viper.silver.dependencyAnalysis.OriginType
 
 import scala.util.matching.Regex
 
@@ -53,13 +53,13 @@ class DependencyGraphTestSupporter(queries: FinalGraphInterpreter, report: Strin
 
 
   /* returns (testSucceeded?, tested?) */
-  def testTypeInternal(dependencyInfo: String, pattern: Regex, reportedTypes: Set[AssumptionType.AssumptionType]): (Boolean, Boolean) =
+  def testTypeInternal(dependencyInfo: String, pattern: Regex, reportedTypes: Set[OriginType.OriginType]): (Boolean, Boolean) =
     pattern.findFirstMatchIn(dependencyInfo).map(_.group(1)) match {
       case Some(expectedTypeStr) =>
-        val expectedTypeOpt = AssumptionType.fromString(expectedTypeStr)
+        val expectedTypeOpt = OriginType.fromString(expectedTypeStr)
         expectedTypeOpt match {
           case Some(expectedType) =>
-            (reportedTypes.filterNot(_.isInstanceOf[AssumptionType.InternalType]).equals(Set(expectedType)), true)
+            (reportedTypes.filterNot(_.isInstanceOf[OriginType.InternalType]).equals(Set(expectedType)), true)
           case None =>
             report(s"ERROR: could not parse assumption type $expectedTypeStr.")
             (false, true)

@@ -154,26 +154,26 @@ class FunctionData(val programFunction: ast.Function,
       defaultAnalysisInfo.addInfo(programFunction.body.get.info, programFunction.body.get)
         .withJoinInfo(SimpleDependencyAnalysisJoin(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(programFunction.body.get), JoinType.Sink, EdgeType.Down))
     } else
-      defaultAnalysisInfo.withInfo(StringDependencyAnalysisSourceInfo("unverified function body"), AssumptionType.Internal)
+      defaultAnalysisInfo.withInfo(StringDependencyAnalysisSourceInfo("unverified function body"), OriginType.Internal)
 
     DependencyAnalysisAxiomInfo(analysisInfos, programFunction.name)
   }
 
 
   val auxiliaryAxiomInfo: DependencyAnalysisAxiomInfo =
-    DependencyAnalysisAxiomInfo(defaultAnalysisInfo.withInfo(StringDependencyAnalysisSourceInfo("Auxiliary Axiom"), AssumptionType.Internal), programFunction.name) // TODO ake
+    DependencyAnalysisAxiomInfo(defaultAnalysisInfo.withInfo(StringDependencyAnalysisSourceInfo("Auxiliary Axiom"), OriginType.Internal), programFunction.name) // TODO ake
 
   val limitedAxiomWithInfo: (Quantification, DependencyAnalysisAxiomInfo) =    
     (Forall(arguments,
            BuiltinEquals(limitedFunctionApplication, functionApplication),
            Trigger(functionApplication)),
-      DependencyAnalysisAxiomInfo(defaultAnalysisInfo.withInfo(StringDependencyAnalysisSourceInfo("Limited Axiom"), AssumptionType.Internal), programFunction.name))
+      DependencyAnalysisAxiomInfo(defaultAnalysisInfo.withInfo(StringDependencyAnalysisSourceInfo("Limited Axiom"), OriginType.Internal), programFunction.name))
 
   val limitedAxiom: Quantification = limitedAxiomWithInfo._1
 
   val triggerAxiomWithInfo: (Quantification, DependencyAnalysisAxiomInfo) =
     (Forall(arguments, triggerFunctionApplication, Trigger(limitedFunctionApplication)),
-      DependencyAnalysisAxiomInfo(defaultAnalysisInfo.withInfo(StringDependencyAnalysisSourceInfo("Trigger Axiom"), AssumptionType.Trigger), programFunction.name))
+      DependencyAnalysisAxiomInfo(defaultAnalysisInfo.withInfo(StringDependencyAnalysisSourceInfo("Trigger Axiom"), OriginType.Trigger), programFunction.name))
 
   val triggerAxiom: Quantification = triggerAxiomWithInfo._1
 

@@ -30,7 +30,7 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.TrueLit
 import viper.silver.ast.NoPosition
-import viper.silver.dependencyAnalysis.{AssumptionType, NoDependencyAnalysisMerge, StringDependencyAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{OriginType, NoDependencyAnalysisMerge, StringDependencyAnalysisSourceInfo}
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.InternalWarningMessage
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
@@ -701,7 +701,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                smDef: SnapshotMapDefinition,
                                v: Verifier)
                               : (PermMapDefinition, PmCache) = {
-    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo.createUnique("summarizing heap"), AssumptionType.Internal)
+    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo.createUnique("summarizing heap"), OriginType.Internal)
     Verifier.config.mapCache(s.pmCache.get(resource, relevantChunks)) match {
       case Some(pmDef) =>
         v.decider.assume(pmDef.valueDefinitions, Option.when(debugOn)(DebugExp.createInstance("value definitions", isInternal_ = true)), enforceAssumption = false, analysisInfos=analysisInfos)
@@ -739,7 +739,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                              optSmDomainDefinitionCondition: Option[Term] = None,
                              optQVarsInstantiations: Option[Seq[Term]] = None)
                             : (SnapshotMapDefinition, SnapshotMapCache) = {
-    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo.createUnique("summarizing heap"), AssumptionType.Internal)
+    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo.createUnique("summarizing heap"), OriginType.Internal)
 
     def emitSnapshotMapDefinition(s: State,
                                   smDef: SnapshotMapDefinition,
@@ -960,7 +960,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val commentGlobals = "Nested auxiliary terms: globals"
     v.decider.prover.comment(commentGlobals)
-    val analysisInfosGlobals = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo(commentGlobals, NoPosition), AssumptionType.Internal).withMergeInfo(NoDependencyAnalysisMerge())
+    val analysisInfosGlobals = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo(commentGlobals, NoPosition), OriginType.Internal).withMergeInfo(NoDependencyAnalysisMerge())
     v.decider.assume(auxGlobals, Option.when(debugOn)(DebugExp.createInstance(description=commentGlobals, children=auxGlobalsExp.get)),
       enforceAssumption = false, analysisInfos=analysisInfosGlobals)
 
@@ -970,7 +970,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       auxNonGlobals.map(_.copy(
         vars = effectiveTriggersQVars,
         triggers = effectiveTriggers)),
-      Option.when(debugOn)(DebugExp.createInstance(description=commentNonGlobals, children=auxNonGlobalsExp.get)), enforceAssumption = false, analysisInfos=analysisInfos.overrideDependencyType(AssumptionType.Internal))
+      Option.when(debugOn)(DebugExp.createInstance(description=commentNonGlobals, children=auxNonGlobalsExp.get)), enforceAssumption = false, analysisInfos=analysisInfos.overrideDependencyType(OriginType.Internal))
 
     val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
     val nonNegImplicationExp = eCond.map(c => ast.Implies(c, ast.PermGeCmp(ePerm.get, ast.NoPerm()())())(c.pos, c.info, c.errT))
@@ -1025,7 +1025,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 triggers = effectiveTriggers,
                 qidPrefix = qid
               )
-              v.decider.assume(pcsForChunk, pcsForChunkExp, pcsForChunkExp, analysisInfos.overrideDependencyType(AssumptionType.Internal))
+              v.decider.assume(pcsForChunk, pcsForChunkExp, pcsForChunkExp, analysisInfos.overrideDependencyType(OriginType.Internal))
             })
             val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v, v.decider.defaultAnalysisInfos)
 
@@ -1050,7 +1050,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               val qvarsToInv = inv.qvarsToInversesOf(codomainVars)
               val condOfInv = tCond.replace(qvarsToInv)
               v.decider.assume(Forall(codomainVars, Implies(condOfInv, trigger), Trigger(inv.inversesOf(codomainVars))),
-                Option.when(debugOn)(DebugExp.createInstance("Inverse Trigger", true)), analysisInfos.overrideDependencyType(AssumptionType.Trigger))
+                Option.when(debugOn)(DebugExp.createInstance("Inverse Trigger", true)), analysisInfos.overrideDependencyType(OriginType.Trigger))
               val newFuncRec = fr1.recordFvfAndDomain(smDef1)
               (smCache1, newFuncRec)
             } else {
@@ -1111,7 +1111,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val (smDef1, smCache1) =
           quantifiedChunkSupporter.summarisingSnapshotMap(
             s, resource, formalQVars, relevantChunks, v)
-        v.decider.assume(resourceTriggerFactory(smDef1.sm), Option.when(debugOn)(DebugExp.createInstance("Resource Trigger", true)), analysisInfos.overrideDependencyType(AssumptionType.Trigger))
+        v.decider.assume(resourceTriggerFactory(smDef1.sm), Option.when(debugOn)(DebugExp.createInstance("Resource Trigger", true)), analysisInfos.overrideDependencyType(OriginType.Trigger))
         smCache1
       } else {
         s.smCache
@@ -1189,7 +1189,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val comment = "Nested auxiliary terms: globals"
     v.decider.prover.comment(comment)
-    v.decider.assume(auxGlobals, Option.when(debugOn)(DebugExp.createInstance(description=comment, children=auxGlobalsExp.get)), enforceAssumption = false, analysisInfos=v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo.createUnique(comment), AssumptionType.Internal))
+    v.decider.assume(auxGlobals, Option.when(debugOn)(DebugExp.createInstance(description=comment, children=auxGlobalsExp.get)), enforceAssumption = false, analysisInfos=v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo.createUnique(comment), OriginType.Internal))
 
     val comment2 = "Nested auxiliary terms: non-globals"
     v.decider.prover.comment(comment2)
@@ -1199,10 +1199,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v.decider.assume(
           auxNonGlobals.map(_.copy(
             vars = effectiveTriggersQVars,
-            triggers = effectiveTriggers)), Option.when(debugOn)(DebugExp.createInstance(description=comment2, children=auxNonGlobalsExp.get)), enforceAssumption = false, analysisInfos=analysisInfos.overrideDependencyType(AssumptionType.Internal))
+            triggers = effectiveTriggers)), Option.when(debugOn)(DebugExp.createInstance(description=comment2, children=auxNonGlobalsExp.get)), enforceAssumption = false, analysisInfos=analysisInfos.overrideDependencyType(OriginType.Internal))
       case Some(_) =>
         /* Explicit triggers were provided. */
-        v.decider.assume(auxNonGlobals, Option.when(debugOn)(DebugExp.createInstance(description=comment2, children=auxNonGlobalsExp.get)), enforceAssumption = false, analysisInfos=analysisInfos.overrideDependencyType(AssumptionType.Internal))
+        v.decider.assume(auxNonGlobals, Option.when(debugOn)(DebugExp.createInstance(description=comment2, children=auxNonGlobalsExp.get)), enforceAssumption = false, analysisInfos=analysisInfos.overrideDependencyType(OriginType.Internal))
     }
 
     val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
@@ -1760,10 +1760,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               remainingChunks :+ v.chunkFactory.permMinus(ch, permsTaken, permsTakenExp, analysisInfos)
           } else {
             v.decider.prover.comment(s"Chunk depleted?")
-            val chunkDepleted = v.decider.check(depletedCheck, Verifier.config.splitTimeout(), analysisInfos.overrideDependencyType(AssumptionType.Internal))
+            val chunkDepleted = v.decider.check(depletedCheck, Verifier.config.splitTimeout(), analysisInfos.overrideDependencyType(OriginType.Internal))
             if (!chunkDepleted) {
               val unusedCheck = Forall(codomainQVars, permsTaken === NoPerm, Nil)
-              val chunkUnused = v.decider.check(unusedCheck, Verifier.config.checkTimeout(), analysisInfos.overrideDependencyType(AssumptionType.Internal))
+              val chunkUnused = v.decider.check(unusedCheck, Verifier.config.checkTimeout(), analysisInfos.overrideDependencyType(OriginType.Internal))
               if (chunkUnused) {
                 untouchedChunks = untouchedChunks :+ ch
               } else {
@@ -2211,7 +2211,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               if (result) {
                 // Learn the equality
                 val debugExp = Option.when(debugOn)(DebugExp.createInstance("Chunks alias", isInternal_ = true))
-                v.decider.assume(equalityTerm, debugExp, analysisInfos.overrideDependencyType(AssumptionType.Internal))
+                v.decider.assume(equalityTerm, debugExp, analysisInfos.overrideDependencyType(OriginType.Internal))
               }
               result
             case _ => false
@@ -2237,7 +2237,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               if (result) {
                 // Learn the equality
                 val debugExp = Option.when(debugOn)(DebugExp.createInstance("Chunks alias", isInternal_ = true))
-                v.decider.assume(equalityTerm, debugExp, analysisInfos.overrideDependencyType(AssumptionType.Internal))
+                v.decider.assume(equalityTerm, debugExp, analysisInfos.overrideDependencyType(OriginType.Internal))
               }
               result
             } else {

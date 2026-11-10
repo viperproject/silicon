@@ -6,7 +6,7 @@
 
 package viper.silicon.dependencyAnalysis.graph
 
-import viper.silver.dependencyAnalysis.{AssumptionType, DependencyAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{OriginType, DependencyAnalysisSourceInfo}
 
 import java.io.PrintWriter
 import java.nio.file.Paths
@@ -30,7 +30,7 @@ object DependencyGraphHelper {
   def isRemovableInternalNode(node: DependencyAnalysisNode): Boolean = node match {
     case _: InfeasibilityNode => false // infeasibility nodes are required for some of the graph queries
     case _ =>
-      node.originType.isInstanceOf[AssumptionType.InternalType] &&
+      node.originType.isInstanceOf[OriginType.InternalType] &&
         node.joinInfos.isEmpty // join nodes must not be removed because we need them for joining the graphs later on
   }
 }

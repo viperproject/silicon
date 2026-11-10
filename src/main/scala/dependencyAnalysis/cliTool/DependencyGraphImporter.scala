@@ -16,7 +16,7 @@ import viper.silicon.state.terms.sorts.Bool
 import viper.silicon.state.terms.{NoPerm, Term, True, Var}
 import viper.silver.ast
 import viper.silver.ast._
-import viper.silver.dependencyAnalysis.{AssumptionType, SimpleDependencyAnalysisJoin, SimpleDependencyAnalysisMerge, StringDependencyAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{OriginType, SimpleDependencyAnalysisJoin, SimpleDependencyAnalysisMerge, StringDependencyAnalysisSourceInfo}
 import viper.silver.frontend.SilFrontend
 
 import java.nio.file.Paths
@@ -47,7 +47,7 @@ object DependencyGraphImporter {
       val fields = line.split("#").map(_.trim)
       val nodeIdStr = fields(0)
       val nodeType = fields(1)
-      val originType = AssumptionType.fromString(fields(2)).get
+      val originType = OriginType.fromString(fields(2)).get
       val position = parsePositionString(fields(5))
       val sourceInfo = StringDependencyAnalysisSourceInfo(fields(7), position)
       val memberStr: String = fields(8)

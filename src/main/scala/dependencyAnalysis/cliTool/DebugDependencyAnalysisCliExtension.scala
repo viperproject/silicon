@@ -9,8 +9,8 @@ package viper.silicon.dependencyAnalysis.cliTool
 import viper.silicon.dependencyAnalysis.DependencyAnalysisOptions
 import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphInterpreter
-import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silver.dependencyAnalysis.{AssumptionType, DependencyAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.OriginType.OriginType
+import viper.silver.dependencyAnalysis.{OriginType, DependencyAnalysisSourceInfo}
 
 class DebugDependencyAnalysisCliExtension(queries: FinalGraphInterpreter, options: DependencyAnalysisOptions) extends DependencyAnalysisCliToolExtension{
   override val name: String = "Debug Features"
@@ -31,14 +31,14 @@ class DebugDependencyAnalysisCliExtension(queries: FinalGraphInterpreter, option
     }
     override val description: String = s"'$cmdName [line numbers]' to print the assumption types of all nodes or just the provided lines"
 
-    private def getAssumptionTypesByLine(line: Int): Set[AssumptionType] = {
+    private def getAssumptionTypesByLine(line: Int): Set[OriginType] = {
       queries.getNodesByLine(line).collect { case n: GeneralAssumptionNode => n.originType }
     }
 
-    private def getAssumptionTypesPerNode: Map[DependencyAnalysisSourceInfo, Set[AssumptionType]] =
+    private def getAssumptionTypesPerNode: Map[DependencyAnalysisSourceInfo, Set[OriginType]] =
       getAssumptionTypesPerNode(queries.getAssumptionNodes)
 
-    private def getAssumptionTypesPerNode(nodes: Set[GeneralAssumptionNode]): Map[DependencyAnalysisSourceInfo, Set[AssumptionType]] =
+    private def getAssumptionTypesPerNode(nodes: Set[GeneralAssumptionNode]): Map[DependencyAnalysisSourceInfo, Set[OriginType]] =
       nodes.groupBy(_.sourceInfo).view.mapValues(_.map(_.originType)).toMap
   }
 
@@ -52,14 +52,14 @@ class DebugDependencyAnalysisCliExtension(queries: FinalGraphInterpreter, option
     }
     override val description: String = s"'$cmdName [line numbers]' to print the assertion types of all nodes or just the provided lines"
 
-    private def getAssertionTypesByLine(line: Int): Set[AssumptionType] = {
+    private def getAssertionTypesByLine(line: Int): Set[OriginType] = {
       queries.getNodesByLine(line).collect { case n: GeneralAssertionNode => n.originType }
     }
 
-    private def getAssertionTypesPerNode: Map[DependencyAnalysisSourceInfo, Set[AssumptionType]] =
+    private def getAssertionTypesPerNode: Map[DependencyAnalysisSourceInfo, Set[OriginType]] =
       getAssertionTypesPerNode(queries.getAssertionNodes)
 
-    private def getAssertionTypesPerNode(nodes: Set[GeneralAssertionNode]): Map[DependencyAnalysisSourceInfo, Set[AssumptionType]] =
+    private def getAssertionTypesPerNode(nodes: Set[GeneralAssertionNode]): Map[DependencyAnalysisSourceInfo, Set[OriginType]] =
       nodes.groupBy(_.sourceInfo).view.mapValues(_.map(_.originType)).toMap
   }
 
@@ -83,7 +83,7 @@ class DebugDependencyAnalysisCliExtension(queries: FinalGraphInterpreter, option
     private val weirdNodePattern = """\b(function|func|method|requires|ensures|preserves|pure|axiom|if|else|while|for|interface|domain|adt|struct|package|import|type)\b""".r
 
     private def getWeirdNodeStrings: Seq[String] = {
-      queries.getNodes.filter(n => !n.originType.isInstanceOf[AssumptionType.InternalType]).groupBy(_.sourceInfo)
+      queries.getNodes.filter(n => !n.originType.isInstanceOf[OriginType.InternalType]).groupBy(_.sourceInfo)
         .filter{case (sourceInfo, _) => weirdNodePattern.findFirstIn(sourceInfo.toString).isDefined}
         .toSeq.map(getSingleNodeString)
     }

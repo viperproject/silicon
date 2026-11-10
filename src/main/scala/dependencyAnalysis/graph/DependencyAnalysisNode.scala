@@ -9,7 +9,7 @@ package viper.silicon.dependencyAnalysis.graph
 import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.state.chunks.Chunk
 import viper.silicon.state.terms.{False, Term, Var}
-import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silver.dependencyAnalysis.OriginType.OriginType
 import viper.silver.dependencyAnalysis._
 
 
@@ -26,7 +26,7 @@ import viper.silver.dependencyAnalysis._
  * @param joinInfos     The join infos specify how the node should be joined with nodes of other verification component's graphs.
  * @param memberStr     The program member (method, function) that the node belongs to
  */
-case class NodeMetadata(sourceInfo: DependencyAnalysisSourceInfo, originType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo,
+case class NodeMetadata(sourceInfo: DependencyAnalysisSourceInfo, originType: OriginType, mergeInfo: DependencyAnalysisMergeInfo,
                         joinInfos: List[SimpleDependencyAnalysisJoin], memberStr: String)
 
 object NodeMetadata {
@@ -49,7 +49,7 @@ sealed trait DependencyAnalysisNode {
   val metadata: NodeMetadata
 
   def sourceInfo: DependencyAnalysisSourceInfo = metadata.sourceInfo
-  def originType: AssumptionType = metadata.originType
+  def originType: OriginType = metadata.originType
   def mergeInfo: DependencyAnalysisMergeInfo = metadata.mergeInfo
   def joinInfos: List[SimpleDependencyAnalysisJoin] = metadata.joinInfos
   def memberStr: String = metadata.memberStr
@@ -146,7 +146,7 @@ case class PermissionExhaleNode private[graph] (override val id: Int, override v
  */
 case class LabelNode private[graph] (override val id: Int, override val term: Var, labelMemberStr: String) extends GeneralAssumptionNode {
   override val metadata: NodeMetadata =
-    NodeMetadata(new NoDependencyAnalysisSourceInfo(), AssumptionType.Internal, NoDependencyAnalysisMerge(), List.empty, labelMemberStr)
+    NodeMetadata(new NoDependencyAnalysisSourceInfo(), OriginType.Internal, NoDependencyAnalysisMerge(), List.empty, labelMemberStr)
   val description: String = term.toString
   override def getNodeType: String = "Label"
   override def getNodeString: String = "assume " + description
@@ -161,7 +161,7 @@ case class LabelNode private[graph] (override val id: Int, override val term: Va
  * All subsequent assertions on the infeasible path should depend on the infeasibility node.
  */
 case class InfeasibilityNode private[graph] (override val id: Int, infeasibleSourceInfo: DependencyAnalysisSourceInfo,
-                                             infeasibleOriginType: AssumptionType, infeasibleMemberStr: String) extends GeneralAssumptionNode {
+                                             infeasibleOriginType: OriginType, infeasibleMemberStr: String) extends GeneralAssumptionNode {
   override val term: Term = False
   override val metadata: NodeMetadata =
     NodeMetadata(infeasibleSourceInfo, infeasibleOriginType, NoDependencyAnalysisMerge(), List.empty, infeasibleMemberStr)
@@ -194,6 +194,6 @@ object DependencyNodeFactory {
   def createLabelNode(term: Var, memberStr: String): LabelNode =
     LabelNode(DependencyGraphHelper.nextId(), term, memberStr)
 
-  def createInfeasibilityNode(sourceInfo: DependencyAnalysisSourceInfo, originType: AssumptionType, memberStr: String): InfeasibilityNode =
+  def createInfeasibilityNode(sourceInfo: DependencyAnalysisSourceInfo, originType: OriginType, memberStr: String): InfeasibilityNode =
     InfeasibilityNode(DependencyGraphHelper.nextId(), sourceInfo, originType, memberStr)
 }

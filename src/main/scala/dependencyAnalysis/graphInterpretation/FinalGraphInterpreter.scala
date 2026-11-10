@@ -11,7 +11,7 @@ import viper.silicon.dependencyAnalysis.graph._
 import viper.silicon.interfaces.Failure
 import viper.silver.ast
 import viper.silver.ast.Program
-import viper.silver.dependencyAnalysis.AssumptionType
+import viper.silver.dependencyAnalysis.OriginType
 
 import java.io.PrintWriter
 import java.nio.file.Paths
@@ -94,7 +94,7 @@ class FinalGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependencyGra
   }
 
   private def isVisibleNode(node: DependencyAnalysisNode): Boolean =
-    !node.originType.isInstanceOf[AssumptionType.InternalType]
+    !node.originType.isInstanceOf[OriginType.InternalType]
 
   def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = getNodes filter isNonInternalAssumptionNode
 
@@ -106,7 +106,7 @@ class FinalGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependencyGra
   }
 
   private def isExplicitAssumptionNode(node: DependencyAnalysisNode): Boolean = node match {
-    case node: GeneralAssumptionNode => node.originType.isInstanceOf[AssumptionType.ExplicitAssumptionType]
+    case node: GeneralAssumptionNode => node.originType.isInstanceOf[OriginType.ExplicitAssumptionType]
     case _ => false
   }
 
@@ -121,7 +121,7 @@ class FinalGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependencyGra
   def getExplicitAssertionNodes: Set[GeneralAssertionNode] =
     getAssertionNodes filter isExplicitAssertionNode
 
-  private def isExplicitAssertionNode(node: DependencyAnalysisNode): Boolean = node.originType.isInstanceOf[AssumptionType.ExplicitAssertionType]
+  private def isExplicitAssertionNode(node: DependencyAnalysisNode): Boolean = node.originType.isInstanceOf[OriginType.ExplicitAssertionType]
 
   def getAssertionNodesWithFailures: Set[GeneralAssertionNode] =
     getNonInternalAssertionNodes filter (_.hasFailed)

@@ -25,7 +25,7 @@ import viper.silicon.utils.ast.{BigAnd, replaceVarsInExp}
 import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.dependencyAnalysis.{AssumptionType, DependencyAnalysisSourceInfo, SimpleDependencyAnalysisMerge}
+import viper.silver.dependencyAnalysis.{OriginType, DependencyAnalysisSourceInfo, SimpleDependencyAnalysisMerge}
 import viper.silver.parser.PUnknown
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silver.verifier.{ErrorReason, PartialVerificationError, VerificationError}
@@ -299,10 +299,10 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             val debugExp = Option.when(debugOn)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
             v1.decider.assumeDefinition(smValueDef, debugExp, analysisInfos)
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(debugOn)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
-              field, Seq(tRcvr), Option.when(debugOn)(Seq(eRcvrNew.get)), FullPerm, Option.when(debugOn)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, newTag, s1.program, v, lhsSourceInfos.overrideDependencyType(AssumptionType.Internal), isExhale=false)
+              field, Seq(tRcvr), Option.when(debugOn)(Seq(eRcvrNew.get)), FullPerm, Option.when(debugOn)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, newTag, s1.program, v, lhsSourceInfos.overrideDependencyType(OriginType.Internal), isExhale=false)
             if (s3.heapDependentTriggers.contains(field)) {
               val debugExp2 = Option.when(debugOn)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString}.${field.name})"))
-              v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2, lhsSourceInfos.overrideDependencyType(AssumptionType.Trigger))
+              v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2, lhsSourceInfos.overrideDependencyType(OriginType.Trigger))
             }
             val s4 = s3.copy(h = h3 + ch)
             val s5 = if (debugOn && s4.isRecordingHeaps) v.recordIntermediateHeap(s4) else s4
@@ -330,7 +330,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val lhsSourceInfos = analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(ass.lhs))) // splitting lhs and rhs to make permission flow analysis more precise
       chunkSupporter.consume(s, s.h, field, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(debugOn)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v, description, lhsSourceInfos)((s3, h3, _, v3) => {
         val id = BasicChunkIdentifier(field.name)
-        val newChunk = v3.chunkFactory.createBasicChunk(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tRhs, eRhsNew, FullPerm, Option.when(debugOn)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), s3.qpTag, lhsSourceInfos.overrideDependencyType(AssumptionType.Internal))
+        val newChunk = v3.chunkFactory.createBasicChunk(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tRhs, eRhsNew, FullPerm, Option.when(debugOn)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), s3.qpTag, lhsSourceInfos.overrideDependencyType(OriginType.Internal))
         chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
           val s5 = s4.copy(h = h4)
           val s6 = if (debugOn && s5.isRecordingHeaps) v.recordIntermediateHeap(s5) else s5
@@ -379,7 +379,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                 case w: ast.MagicWand => MagicWandIdentifier(w, s2.program).toString
               }
               DebugExp.createInstance(s"Resource trigger(${name}($argsString))", isInternal_ = true)
-            }), analysisInfos.overrideDependencyType(AssumptionType.Trigger))
+            }), analysisInfos.overrideDependencyType(OriginType.Trigger))
           }
 
           val currentPermAmount = ResourcePermissionLookup(res, pmDef.pm, tArgs, s2.program)
@@ -389,7 +389,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
               v.decider.prover.comment(s"perm($resAcc)  ~~>  assume upper permission bound")
               val debugLabel = v.getDebugOldLabel(s2, resAcc.pos, Some(h))
               val exp = Option.when(debugOn)(ast.PermLeCmp(ast.DebugLabelledOld(ast.CurrentPerm(resAcc)(), debugLabel)(), ast.FullPerm()())())
-              v.decider.assume(PermAtMost(currentPermAmount, FullPerm), exp, exp.map(s2.substituteVarsInExp(_)), analysisInfos.overrideDependencyType(AssumptionType.Internal))
+              v.decider.assume(PermAtMost(currentPermAmount, FullPerm), exp, exp.map(s2.substituteVarsInExp(_)), analysisInfos.overrideDependencyType(OriginType.Internal))
             case _ =>
           }
 
@@ -436,11 +436,11 @@ class DefaultHeapSupportRules extends HeapSupportRules {
            * quantifier in whose body field 'fa.field' was accessed)
            * which is protected by a trigger term that we currently don't have.
            */
-          v.decider.assume(And(fvfDef.valueDefinitions), Option.when(debugOn)(DebugExp.createInstance("Value definitions", isInternal_ = true)), analysisInfos.overrideDependencyType(AssumptionType.Internal))
+          v.decider.assume(And(fvfDef.valueDefinitions), Option.when(debugOn)(DebugExp.createInstance("Value definitions", isInternal_ = true)), analysisInfos.overrideDependencyType(OriginType.Internal))
           if (s.heapDependentTriggers.contains(fa.field)) {
             val trigger = FieldTrigger(fa.field.name, fvfDef.sm, tRcvr)
             val triggerExp = Option.when(debugOn)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
-            v.decider.assume(trigger, triggerExp, analysisInfos.overrideDependencyType(AssumptionType.Trigger))
+            v.decider.assume(trigger, triggerExp, analysisInfos.overrideDependencyType(OriginType.Trigger))
           }
           if (s.triggerExp) {
             val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
@@ -488,7 +488,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
           if (s2.heapDependentTriggers.contains(fa.field)) {
             val trigger = FieldTrigger(fa.field.name, sm, tRcvr)
             val triggerExp = Option.when(debugOn)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
-            v.decider.assume(trigger, triggerExp, analysisInfos.overrideDependencyType(AssumptionType.Trigger))
+            v.decider.assume(trigger, triggerExp, analysisInfos.overrideDependencyType(OriginType.Trigger))
           }
           val (permCheck, permCheckExp, s3) =
             if (s2.triggerExp) {
@@ -555,7 +555,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val eArgsStr = eArgs.mkString(", ")
       val debugExp = Option.when(debugOn)(DebugExp.createInstance(Some(s"Resource trigger(${name}($eArgsStr))"), Some(resAcc),
         Some(resAcc), None, isInternal_ = true, InsertionOrderedSet.empty))
-      v.decider.assume(trigger(smDef1.sm), debugExp, analysisInfos.overrideDependencyType(AssumptionType.Trigger))
+      v.decider.assume(trigger(smDef1.sm), debugExp, analysisInfos.overrideDependencyType(OriginType.Trigger))
       s.copy(smCache = smCache1, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef1))
     } else {
       s
@@ -631,7 +631,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                 val predicate = resource.asInstanceOf[ast.Predicate]
                 val argsString = eArgs.mkString(", ")
                 val debugExp = Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))", isInternal_ = true))
-                v2.decider.assume(App(s2.predicateData(predicate.name).triggerFunction, snap1 +: tArgs), debugExp, analysisInfos.overrideDependencyType(AssumptionType.Trigger))
+                v2.decider.assume(App(s2.predicateData(predicate.name).triggerFunction, snap1 +: tArgs), debugExp, analysisInfos.overrideDependencyType(OriginType.Trigger))
               }
               Q(s2.copy(h = h2), v2)
             })

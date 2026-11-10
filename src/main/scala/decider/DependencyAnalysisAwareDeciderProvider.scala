@@ -13,7 +13,7 @@ import viper.silicon.state.chunks.GeneralChunk
 import viper.silicon.state.terms.{False, Implies, Term, True}
 import viper.silicon.verifier.{DependencyAnalysisAwareVerifier, Verifier}
 import viper.silver.ast
-import viper.silver.dependencyAnalysis.{AdditionalAssertionNode, AdditionalAssumptionNode, AdditionalDependencyNodeInfo, AssumptionType}
+import viper.silver.dependencyAnalysis.{AdditionalAssertionNode, AdditionalAssumptionNode, AdditionalDependencyNodeInfo, OriginType}
 
 trait DependencyAnalysisHandler {
 
@@ -136,7 +136,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
     }
 
     override protected def failedAssertionInfos(analysisInfos: AnalysisInfos): AnalysisInfos =
-      analysisInfos.overrideDependencyType(AssumptionType.Explicit)
+      analysisInfos.overrideDependencyType(OriginType.Explicit)
 
     override def checkSmoke(analysisInfos: AnalysisInfos, isAssert: Boolean = false): Boolean = {
       val checkNode = dependencyAnalyzer.createAssertOrCheckNode(False, analysisInfos, !isAssert)

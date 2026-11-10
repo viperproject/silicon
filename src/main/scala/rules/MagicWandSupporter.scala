@@ -23,7 +23,7 @@ import viper.silver.ast
 import viper.silver.ast.{Exp, NoPosition, Stmt}
 import viper.silver.cfg.Edge
 import viper.silver.cfg.silver.SilverCfg.SilverBlock
-import viper.silver.dependencyAnalysis.{AssumptionType, ExpDependencyAnalysisSourceInfo, StringDependencyAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{OriginType, ExpDependencyAnalysisSourceInfo, StringDependencyAnalysisSourceInfo}
 import viper.silver.parser.PUnknown
 import viper.silver.verifier.PartialVerificationError
 
@@ -585,7 +585,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
        * heap. After a statement is executed those permissions are transferred to hOps.
        */
 
-      val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo("merge", NoPosition), AssumptionType.Internal)
+      val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo("merge", NoPosition), OriginType.Internal)
       val emptyHeap = v.heapSupporter.getEmptyHeap(newState.program, v)
       val (fr, hOpsJoinUsed) = v.stateConsolidator(newState).merge(newState.functionRecorder, newState, newState.reserveHeaps(1), newState.h, v, analysisInfos)
       newState.copy(functionRecorder = fr, h = emptyHeap,

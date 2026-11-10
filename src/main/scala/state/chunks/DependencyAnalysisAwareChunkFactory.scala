@@ -13,7 +13,7 @@ import viper.silicon.resources.{BaseID, ResourceID}
 import viper.silicon.rules.InverseFunctions
 import viper.silicon.state.terms.{MagicWandSnapshot, Term, Var}
 import viper.silver.ast
-import viper.silver.dependencyAnalysis.AssumptionType
+import viper.silver.dependencyAnalysis.OriginType
 
 import scala.annotation.unused
 
@@ -122,7 +122,7 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
   def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos): GeneralChunk = {
     val newChunk = decider.registerChunk({finalPerm =>
       chunk.permMinus(finalPerm, newPermExp)},
-      newPerm, analysisInfos.overrideDependencyType(AssumptionType.Internal), isExhale=false)
+      newPerm, analysisInfos.overrideDependencyType(OriginType.Internal), isExhale=false)
     @unused // we need to register the chunk to have a sound analysis
     val exhaledChunk = decider.registerChunk({ finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},
@@ -133,7 +133,7 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
   def permMinus(chunk: QuantifiedBasicChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos): QuantifiedBasicChunk = {
     val newChunk = decider.registerChunk({finalPerm =>
       chunk.permMinus(finalPerm, newPermExp)},
-      newPerm, analysisInfos.overrideDependencyType(AssumptionType.Internal), isExhale=false)
+      newPerm, analysisInfos.overrideDependencyType(OriginType.Internal), isExhale=false)
     @unused // we need to register the chunk to have a sound analysis
     val exhaledChunk = decider.registerChunk({ finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},

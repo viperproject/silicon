@@ -21,7 +21,7 @@ import viper.silicon.supporters.{PredicateBranchNode, PredicateContentsTree, Pre
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.dependencyAnalysis.AssumptionType
+import viper.silver.dependencyAnalysis.OriginType
 import viper.silver.verifier.PartialVerificationError
 
 trait PredicateSupportRules extends SymbolicExecutionRules {
@@ -220,7 +220,7 @@ object predicateSupporter extends PredicateSupportRules {
               App(s2.predicateData(predicate.name).triggerFunction,
                 v2.heapSupporter.predicateTriggerSnapArg(s2, predicate, snap.get, hPreUnfold) +: tArgs)
             val eargs = eArgs.mkString(", ")
-            v2.decider.assume(predicateTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), analysisInfos.overrideDependencyType(AssumptionType.Trigger))
+            v2.decider.assume(predicateTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), analysisInfos.overrideDependencyType(OriginType.Trigger))
           }
           Q(s2.copy(g = s.g,
             permissionScalingFactor = s.permissionScalingFactor,
@@ -235,7 +235,7 @@ object predicateSupporter extends PredicateSupportRules {
               App(s2.predicateData(predicate.name).triggerFunction,
                 v2.heapSupporter.predicateTriggerSnapArg(s2, predicate, snap.get, hPreUnfold) +: tArgs)
             val eargs = eArgs.mkString(", ")
-            v2.decider.assume(predicateTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), analysisInfos.overrideDependencyType(AssumptionType.Trigger))
+            v2.decider.assume(predicateTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), analysisInfos.overrideDependencyType(OriginType.Trigger))
           }
           Q(s2.copy(g = s.g,
             permissionScalingFactor = s.permissionScalingFactor,

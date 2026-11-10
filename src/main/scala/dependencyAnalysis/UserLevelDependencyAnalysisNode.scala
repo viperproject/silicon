@@ -8,7 +8,7 @@ package viper.silicon.dependencyAnalysis
 
 import viper.silicon.dependencyAnalysis.graph._
 import viper.silver.ast.Position
-import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silver.dependencyAnalysis.OriginType.OriginType
 import viper.silver.dependencyAnalysis.DependencyAnalysisSourceInfo
 
 object UserLevelDependencyAnalysisNode {
@@ -20,7 +20,7 @@ object UserLevelDependencyAnalysisNode {
     }.toSet
 
 
-  def extractByAssumptionType(nodes: Set[UserLevelDependencyAnalysisNode], filterCriteria: AssumptionType => Boolean): Set[UserLevelDependencyAnalysisNode] = {
+  def extractByAssumptionType(nodes: Set[UserLevelDependencyAnalysisNode], filterCriteria: OriginType => Boolean): Set[UserLevelDependencyAnalysisNode] = {
     nodes.filter(node => node.assumptionTypes exists filterCriteria)
   }
 
@@ -44,8 +44,8 @@ case class UserLevelDependencyAnalysisNode(source: DependencyAnalysisSourceInfo,
 
   def position: Position = source.getPosition
 
-  def assumptionTypes: Set[AssumptionType] = lowLevelAssumptionNodes.map(_.originType)
-  def assertionTypes: Set[AssumptionType] = lowLevelAssertionNodes.map(_.originType)
+  def assumptionTypes: Set[OriginType] = lowLevelAssumptionNodes.map(_.originType)
+  def assertionTypes: Set[OriginType] = lowLevelAssertionNodes.map(_.originType)
 
   lazy val lowLevelAssumptionNodes: Set[GeneralAssumptionNode] = lowerLevelNodes.collect { case node: GeneralAssumptionNode => node }
   lazy val lowLevelAssertionNodes: Set[GeneralAssertionNode] = lowerLevelNodes.collect { case node: GeneralAssertionNode => node }
@@ -58,6 +58,6 @@ case class UserLevelDependencyAnalysisNode(source: DependencyAnalysisSourceInfo,
 
 }
 
-case class CompactUserLevelDependencyAnalysisNode(source: DependencyAnalysisSourceInfo, assumptionTypes: Set[AssumptionType], assertionTypes: Set[AssumptionType], hasFailures: Boolean) {
+case class CompactUserLevelDependencyAnalysisNode(source: DependencyAnalysisSourceInfo, assumptionTypes: Set[OriginType], assertionTypes: Set[OriginType], hasFailures: Boolean) {
   def position: Position = source.getPosition
 }

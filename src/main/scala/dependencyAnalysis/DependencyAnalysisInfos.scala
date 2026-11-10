@@ -8,7 +8,7 @@ package viper.silicon.dependencyAnalysis
 
 import viper.silver.ast
 import viper.silver.ast._
-import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silver.dependencyAnalysis.OriginType.OriginType
 import viper.silver.dependencyAnalysis._
 
 /*
@@ -50,7 +50,7 @@ abstract class AnalysisInfos {
   def addInfo(infoString: String, pos: ast.Position, dependencyType: DependencyType): AnalysisInfos
 
   def overrideDependencyType(dependencyType: DependencyType): AnalysisInfos
-  def overrideDependencyType(assumptionType: AssumptionType): AnalysisInfos
+  def overrideDependencyType(assumptionType: OriginType): AnalysisInfos
   def overrideSourceInfo(source: DependencyAnalysisSourceInfo): AnalysisInfos
 
   /** Descriptions of the information that is missing from these infos and was replaced by placeholders. */
@@ -66,12 +66,12 @@ abstract class AnalysisInfos {
   def removeSinkJoinInfos(): AnalysisInfos
   def withEnabled(analysisEnabled: Boolean): AnalysisInfos
   def withInfo(sourceInfo: DependencyAnalysisSourceInfo, dependencyType: DependencyType): AnalysisInfos
-  def withInfo(sourceInfo: DependencyAnalysisSourceInfo, assumptionType: AssumptionType): AnalysisInfos
+  def withInfo(sourceInfo: DependencyAnalysisSourceInfo, assumptionType: OriginType): AnalysisInfos
 
   /** Forgets all source infos encountered so far. */
   def withoutSourceInfos(): AnalysisInfos
   /** Replaces all dependency types by the current one, with its assertion type set to `assertionType`. */
-  def withAssertionType(assertionType: AssumptionType): AnalysisInfos
+  def withAssertionType(assertionType: OriginType): AnalysisInfos
 }
 
 /**
@@ -136,7 +136,7 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
     else this
   }
 
-  def overrideDependencyType(assumptionType: AssumptionType): DependencyAnalysisInfos = {
+  def overrideDependencyType(assumptionType: OriginType): DependencyAnalysisInfos = {
     if (analysisEnabled) this.copy(dependencyTypes = DependencyTypeInfo(DependencyType(assumptionType)) +: dependencyTypes)
     else this
   }
@@ -180,9 +180,9 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
 
   def getDependencyType: DependencyType = {
     if (analysisEnabled) {
-      dependencyTypes.headOption.map(_.dependencyType).getOrElse(AssumptionType.Unknown.asDepType())
+      dependencyTypes.headOption.map(_.dependencyType).getOrElse(OriginType.Unknown.asDepType())
     } else {
-      AssumptionType.Unknown.asDepType()
+      OriginType.Unknown.asDepType()
     }
   }
 
@@ -215,12 +215,12 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
   def withInfo(sourceInfo: DependencyAnalysisSourceInfo, dependencyType: DependencyType): DependencyAnalysisInfos =
     this.overrideSourceInfo(sourceInfo).overrideDependencyType(dependencyType)
 
-  def withInfo(sourceInfo: DependencyAnalysisSourceInfo, assumptionType: AssumptionType): DependencyAnalysisInfos =
+  def withInfo(sourceInfo: DependencyAnalysisSourceInfo, assumptionType: OriginType): DependencyAnalysisInfos =
     this.overrideSourceInfo(sourceInfo).overrideDependencyType(assumptionType)
 
   def withoutSourceInfos(): DependencyAnalysisInfos = this.copy(sourceInfos = List.empty)
 
-  def withAssertionType(assertionType: AssumptionType): DependencyAnalysisInfos =
+  def withAssertionType(assertionType: OriginType): DependencyAnalysisInfos =
     this.copy(dependencyTypes = List(DependencyTypeInfo(DependencyType(getDependencyType.assumptionType, assertionType))))
 }
 

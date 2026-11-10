@@ -18,12 +18,12 @@ import viper.silicon.utils.ast.{BigAnd, BigOr}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.NoPosition
-import viper.silver.dependencyAnalysis.{AssumptionType, StringDependencyAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{OriginType, StringDependencyAnalysisSourceInfo}
 
 case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathConditions) {
 
   private def analysisInfos(v: Verifier): AnalysisInfos =
-    v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo("merge", NoPosition), AssumptionType.Internal)
+    v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo("merge", NoPosition), OriginType.Internal)
 
   // Instead of merging states by calling State.merge,
   // we can directly merge JoinDataEntries to obtain new States,

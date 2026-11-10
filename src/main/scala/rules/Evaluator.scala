@@ -314,7 +314,7 @@ object evaluator extends EvaluationRules {
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
         eval(s, e0, pve, v, analysisInfos)((s1, t0, e0New, v1) =>
           joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1, v1, analysisInfos)((s2, v2, QB) =>
-            brancher.branch(s2.copy(parallelizeBranches = false), t0, (e0, e0New), v2, analysisInfos.overrideDependencyType(AssumptionType.Internal))(
+            brancher.branch(s2.copy(parallelizeBranches = false), t0, (e0, e0New), v2, analysisInfos.overrideDependencyType(OriginType.Internal))(
               (s3, v3) => eval(s3.copy(parallelizeBranches = s2.parallelizeBranches), e1, pve, v3, analysisInfos)((s4, t4, e4, v4) => QB(s4, (t4, e4), v4)),
               (s3, v3) => eval(s3.copy(parallelizeBranches = s2.parallelizeBranches), e2, pve, v3, analysisInfos)((s4, t4, e4, v4) => QB(s4, (t4, e4), v4)))
           )(entries => {
@@ -545,7 +545,7 @@ object evaluator extends EvaluationRules {
             val auxNonGlobalsExp = auxExps.map(_._2)
             val commentGlobal = "Nested auxiliary terms: globals (aux)"
             v1.decider.prover.comment(commentGlobal)
-            val auxAnalysisInfos = analysisInfos.overrideDependencyType(AssumptionType.Internal).withMergeInfo(NoDependencyAnalysisMerge())
+            val auxAnalysisInfos = analysisInfos.overrideDependencyType(OriginType.Internal).withMergeInfo(NoDependencyAnalysisMerge())
             v1.decider.assume(tAuxGlobal, Option.when(debugOn)(DebugExp.createInstance(description=commentGlobal, children=auxGlobalsExp.get)), enforceAssumption = false, auxAnalysisInfos)
             val commentNonGlobals = "Nested auxiliary terms: non-globals (aux)"
             v1.decider.prover.comment(commentNonGlobals)
@@ -762,7 +762,7 @@ object evaluator extends EvaluationRules {
                       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
                         val eArgsString = eArgsNew.mkString(", ")
                         val debugExp = Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))", isInternal_ = true))
-                        v4.decider.assume(App(s.predicateData(predicate.name).triggerFunction, v4.heapSupporter.predicateTriggerSnapArg(s4, predicate, snap.get, s4.h) +: tArgs), debugExp, analysisInfos.overrideDependencyType(AssumptionType.Trigger))
+                        v4.decider.assume(App(s.predicateData(predicate.name).triggerFunction, v4.heapSupporter.predicateTriggerSnapArg(s4, predicate, snap.get, s4.h) +: tArgs), debugExp, analysisInfos.overrideDependencyType(OriginType.Trigger))
                       }
                       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
                       val s4b = s4a.scalePermissionFactor(tPerm, ePermNew)
@@ -772,7 +772,7 @@ object evaluator extends EvaluationRules {
 
                       if (s4c.predicateData(predicate.name).predContents.isDefined) {
                         val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s4c.predicateData(predicate.name).params.get.zip(Seq(snap.get) ++ tArgs))
-                        predicateSupporter.producePredicateContents(s4c, s4c.predicateData(predicate.name).predContents.get, toReplace, v4, analysisInfos.overrideDependencyType(AssumptionType.Internal), true)((s5, v5) => {
+                        predicateSupporter.producePredicateContents(s4c, s4c.predicateData(predicate.name).predContents.get, toReplace, v4, analysisInfos.overrideDependencyType(OriginType.Internal), true)((s5, v5) => {
                           val s5a = s5.copy(g = s4b.g,
                             functionRecorder = s5.functionRecorder.changeDepthBy(-1),
                             recordVisited = s3.recordVisited,
@@ -1408,7 +1408,7 @@ object evaluator extends EvaluationRules {
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
         // TODO ake: wrap pcDelta with labels?
-        v.decider.assume(pcDelta, Option.when(debugOn)(DebugExp.createInstance("pcDeltaExp", children = pcDeltaExp)), enforceAssumption = false, analysisInfos.overrideDependencyType(AssumptionType.Internal))
+        v.decider.assume(pcDelta, Option.when(debugOn)(DebugExp.createInstance("pcDeltaExp", children = pcDeltaExp)), enforceAssumption = false, analysisInfos.overrideDependencyType(OriginType.Internal))
         Q(s.copy(functionRecorder = functionRecorder), v.heapSupporter.adaptTriggerTerms(cachedTriggerTerms ++ remainingTriggerTerms, s), v)
       case _ =>
         for (e <- remainingTriggerExpressions)
@@ -1487,7 +1487,7 @@ object evaluator extends EvaluationRules {
     }
 
     val triggerString = exps.mkString(", ")
-    v.decider.assume(triggerAxioms, Option.when(debugOn)(DebugExp.createInstance(s"Heap Triggers ($triggerString)")), enforceAssumption = false, analysisInfos.overrideDependencyType(AssumptionType.Trigger))
+    v.decider.assume(triggerAxioms, Option.when(debugOn)(DebugExp.createInstance(s"Heap Triggers ($triggerString)")), enforceAssumption = false, analysisInfos.overrideDependencyType(OriginType.Trigger))
     var fr = sCur.functionRecorder
     for (smDef <- smDefs){
       fr = fr.recordFvfAndDomain(smDef)
@@ -1523,7 +1523,7 @@ object evaluator extends EvaluationRules {
         case _ =>
           val expPair = if (constructor == Or) (exps.head, e0New) else (ast.Not(exps.head)(), e0New.map(ast.Not(_)()))
           joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1, v1, analysisInfos)((s2, v2, QB) =>
-            brancher.branch(s2.copy(parallelizeBranches = false), if (constructor == Or) t0 else Not(t0), expPair, v2, analysisInfos.overrideDependencyType(AssumptionType.Internal), fromShortCircuitingAnd = true)(
+            brancher.branch(s2.copy(parallelizeBranches = false), if (constructor == Or) t0 else Not(t0), expPair, v2, analysisInfos.overrideDependencyType(OriginType.Internal), fromShortCircuitingAnd = true)(
               (s3, v3) => QB(s3.copy(parallelizeBranches = s2.parallelizeBranches), (t0, e0New), v3),
               (s3, v3) => evalSeqShortCircuit(constructor, s3.copy(parallelizeBranches = s2.parallelizeBranches), exps.tail, pve, v3, analysisInfos)((s2, t2, e2, v2) => QB(s2, (t2, e2), v2)))
             ){case Seq(ent) =>

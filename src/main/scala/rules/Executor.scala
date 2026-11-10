@@ -290,7 +290,7 @@ object executor extends ExecutionRules {
             val sBody = sLocal.copy(g = gBody, h = v.heapSupporter.getEmptyHeap(s.program, v))
 
             val analysisInfosInv = v.decider.defaultAnalysisInfos
-            val analysisInfosLoopInternal = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo(s"Loop ${block.id}\"", NoPosition), AssumptionType.Internal)
+            val analysisInfosLoopInternal = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo(s"Loop ${block.id}\"", NoPosition), OriginType.Internal)
 
             val edges = sLocal.methodCfg.outEdges(block)
             val (outEdges, otherEdges) = edges partition(_.kind == cfg.Kind.Out)
@@ -688,8 +688,8 @@ object executor extends ExecutionRules {
             }
             val s2a = s2.copy(g = s2.g + gOuts, oldHeaps = newOldHeaps)
             val postsWithDAInfo = if (!Verifier.config.isDependencyAnalysisEnabled) meth.posts else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.posts.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
-            // Assuming the postcondition should not introduce any proof obligations as they are guaranteed by the fact / assumption that the callee verifies. Hence, we mark them as internal assertions.
-            val analysisInfos2 = analysisInfos.withAssertionType(AssumptionType.Internal).withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Down))
+            // The postcondition should not introduce any proof obligations as they are guaranteed by the fact / assumption that the callee verifies. Hence, we mark them as internal assertions.
+            val analysisInfos2 = analysisInfos.withAssertionType(OriginType.Internal).withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Down))
             produces(s2a, freshSnap, postsWithDAInfo, _ => pveCallTransformed, v2, analysisInfos2)((s3, v3) => {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
