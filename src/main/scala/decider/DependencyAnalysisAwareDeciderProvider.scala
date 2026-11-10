@@ -21,7 +21,7 @@ trait DependencyAnalysisHandler {
 
   def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfos: AnalysisInfos, isExhale: Boolean): CH
 
-  def getOrCreateAnalysisLabelNode(sourceNodeId: Option[Int] = None): Option[LabelNode]
+  def createAnalysisLabelNode(sourceNodeId: Option[Int] = None): Option[LabelNode]
 }
 
 trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v: DependencyAnalysisAwareVerifier =>
@@ -80,7 +80,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
         if (!isDependencyAnalysisEnabledForMember || term.equals(True))
           term
         else
-          getOrCreateAnalysisLabelNode(sourceNodeId).map(n => Implies(n.term, term)).getOrElse(term)
+          createAnalysisLabelNode(sourceNodeId).map(n => Implies(n.term, term)).getOrElse(term)
       }
 
       override def linkMergeInfos(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit =
@@ -170,7 +170,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       if (!isDependencyAnalysisEnabledForMember)
         return buildChunk(perm)
 
-      val labelNodeOpt = getOrCreateAnalysisLabelNode()
+      val labelNodeOpt = createAnalysisLabelNode()
 
       if (isExhale)
         dependencyAnalyzer.registerExhaleChunk(buildChunk, perm, labelNodeOpt, analysisInfos)
@@ -179,7 +179,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       }
     }
 
-    override def getOrCreateAnalysisLabelNode(sourceNodeId: Option[Int] = None): Option[LabelNode] = {
+    override def createAnalysisLabelNode(sourceNodeId: Option[Int] = None): Option[LabelNode] = {
       if (!isDependencyAnalysisEnabledForMember)
         return None
 
