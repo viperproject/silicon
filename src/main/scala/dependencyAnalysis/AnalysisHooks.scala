@@ -31,8 +31,7 @@ trait AnalysisHooks {
   def withLabel(term: Term, sourceNodeId: Option[Int] = None): Term = term
 
   /**
-   * Adds custom dependencies from all nodes with a merge info in `sourceExps` to all nodes with a merge info in
-   * `targetExps`, e.g. from the arguments of a call to its preconditions.
+   * Hook to add custom dependencies (i.e. dependencies that would not be tracked otherwise) from all nodes in `sourceExps` to all nodes inv `targetExps`.
    */
   def addCustomDependencies(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {}
 

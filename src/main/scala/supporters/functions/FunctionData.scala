@@ -161,7 +161,7 @@ class FunctionData(val programFunction: ast.Function,
 
 
   val auxiliaryAxiomInfo: DependencyAnalysisAxiomInfo =
-    DependencyAnalysisAxiomInfo(defaultAnalysisInfo.withInfo(StringDependencyAnalysisSourceInfo("Auxiliary Axiom"), AssumptionType.Internal), programFunction.name)
+    DependencyAnalysisAxiomInfo(defaultAnalysisInfo.withInfo(StringDependencyAnalysisSourceInfo("Auxiliary Axiom"), AssumptionType.Internal), programFunction.name) // TODO ake
 
   val limitedAxiomWithInfo: (Quantification, DependencyAnalysisAxiomInfo) =    
     (Forall(arguments,

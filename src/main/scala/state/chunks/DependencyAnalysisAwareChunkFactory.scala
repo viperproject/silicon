@@ -122,7 +122,7 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
   def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos): GeneralChunk = {
     val newChunk = decider.registerChunk({finalPerm =>
       chunk.permMinus(finalPerm, newPermExp)},
-      newPerm, analysisInfos.overrideDependencyType(AssumptionType.Internal), isExhale=false) // TODO ake: assumption type? maybe for exhale we want to have Implicit?
+      newPerm, analysisInfos.overrideDependencyType(AssumptionType.Internal), isExhale=false)
     @unused // we need to register the chunk to have a sound analysis
     val exhaledChunk = decider.registerChunk({ finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},
@@ -133,7 +133,7 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
   def permMinus(chunk: QuantifiedBasicChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos): QuantifiedBasicChunk = {
     val newChunk = decider.registerChunk({finalPerm =>
       chunk.permMinus(finalPerm, newPermExp)},
-      newPerm, analysisInfos.overrideDependencyType(AssumptionType.Internal), isExhale=false) // TODO ake: assumption type? maybe for exhale we want to have Implicit?
+      newPerm, analysisInfos.overrideDependencyType(AssumptionType.Internal), isExhale=false)
     @unused // we need to register the chunk to have a sound analysis
     val exhaledChunk = decider.registerChunk({ finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},

@@ -141,7 +141,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
      */
   def identifierFactory: IdentifierFactory
 
-  /* A def rather than an object such that DependencyAnalysisAwareDeciderProvider can replace the decider. */
   def decider: AbstractDecider = DefaultDecider
 
   object DefaultDecider extends AbstractDecider {
@@ -159,7 +158,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
   }
 
   trait AbstractDecider extends Decider with StatefulComponent {
-    /* The type of the prover. DependencyAnalysisAwareDecider refines it since it needs a prover supporting labels and unsat cores. */
     type P <: Prover
 
     protected var _prover: P = _
@@ -400,10 +398,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     protected def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], analysisInfos: AnalysisInfos, isDefinition: Boolean = false): Unit =
       assumeWithoutSmokeChecksInternal(terms, isDefinition, _ => None)(t => prover.assume(t))
 
-    /* `proverAssume` determines how each term is passed to the prover; it is not invoked on infeasible paths.
-     * `nodeIds` gives the id of each term's dependency node. The path conditions record these ids since some path
-     * conditions are assumed again later (loop invariants, function axioms) and must then remain linked to their
-     * original nodes. */
     protected def assumeWithoutSmokeChecksInternal(terms: InsertionOrderedSet[Term], isDefinition: Boolean, nodeIds: Term => Option[Int])(proverAssume: Term => Unit): Unit =
       if (!isPathMarkedInfeasible) {
         val assumeRecord = new DeciderAssumeRecord(terms)
