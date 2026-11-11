@@ -82,7 +82,6 @@ object DependencyAnalyzer extends LazyLogging {
   private val assumptionLabelPrefix = "assumption"
   private val assertionLabelPrefix = "assertion"
   private val axiomLabelPrefix = "axiom"
-  private val enableDependencyAnalysisAnnotationKey = "enableDependencyAnalysis"
 
   private def extractAnnotationFromInfo(info: ast.Info, annotationKey: String): Option[Seq[String]] = {
     info.getAllInfos[ast.AnnotationInfo]
@@ -101,7 +100,7 @@ object DependencyAnalyzer extends LazyLogging {
   }
 
   def extractEnableAnalysisFromInfo(info: ast.Info): Option[Boolean] = {
-    val annotation = extractAnnotationFromInfo(info, enableDependencyAnalysisAnnotationKey)
+    val annotation = extractAnnotationFromInfo(info, DependencyAnalysisAnnotations.enableDependencyAnalysisKey)
     if (annotation.isDefined && annotation.get.nonEmpty) annotation.get.head.toBooleanOption else None
   }
 
