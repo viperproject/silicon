@@ -1,0 +1,21 @@
+// Spec quality: 1
+// Proof quality: 61/72
+// Progress: 61/72
+
+method gaussianSum(n: Int) returns (res: Int)
+    requires n <= 1000
+    ensures res == n * (n + 1) / 2          // PQ: 7/8
+{
+    res := 0
+    var i: Int := 0
+
+    assume i <= n
+
+    while (i < n)
+        invariant i <= n                    // PQ: 2/3
+        invariant res == i * (i + 1) / 2    // PQ: 4/4
+    {
+        i := i + 1
+        res := res + i
+    }
+}

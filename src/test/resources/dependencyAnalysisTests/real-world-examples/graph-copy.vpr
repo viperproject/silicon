@@ -1,0 +1,175 @@
+field val: Int
+field edges: IEdges
+
+// Total function that returns null for those elements that are not present.
+domain IEdges {
+  function edge_lookup(e: IEdges, i: Int): Ref
+  function has_edge(e: IEdges, i: Int): Bool
+  function insert_edge(e: IEdges, i: Int, node: Ref): IEdges
+  function edges_domain(e: IEdges): Set[Int]
+  function empty_edges(): IEdges
+
+  // INSERTION
+
+  axiom inserted_edge_present {
+    forall e: IEdges, i: Int, node: Ref :: edge_lookup(insert_edge(e, i, node), i) == node
+  }
+
+  axiom other_edges_preserved_after_insertion {
+    forall e: IEdges, i: Int, node: Ref, j: Int :: i != j ==> edge_lookup(e, j) == edge_lookup(insert_edge(e, i, node), j)
+  }
+
+  axiom inserted_edge_defined {
+    forall e: IEdges, i: Int, node: Ref :: has_edge(insert_edge(e, i, node), i)
+  }
+
+  // HAS EDGE
+
+  axiom has_edge_complete {
+    forall e: IEdges, i: Int :: has_edge(e, i) <==> edge_lookup(e, i) != null
+  }
+
+  // DOMAIN
+
+  axiom edges_domain_defined {
+    forall e: IEdges, i: Int :: i in edges_domain(e) <==> has_edge(e, i)
+  }
+
+  // EMPTY MAP
+
+  axiom empty_edges_has_no_nodes {
+    forall i: Int :: !(has_edge(empty_edges(), i))
+  }
+}
+
+domain INodeMap {
+  function lookup(node_map: INodeMap, node: Ref): Ref
+  function has_node(node_map: INodeMap, node: Ref): Bool
+  function insert(node_map: INodeMap, key_node: Ref, val_node: Ref): INodeMap
+  function map_domain(node_map: INodeMap): Seq[Ref]
+  function empty_map(): INodeMap
+
+  // INSERTION
+
+  axiom inserted_node_present {
+   forall node_map: INodeMap, key_node: Ref, val_node: Ref :: lookup(insert(node_map, key_node, val_node), key_node) == val_node
+  }
+
+  axiom other_nodes_preserved_after_insertion {
+    forall node_map: INodeMap, key_node: Ref, val_node: Ref, node: Ref :: node != key_node ==> lookup(node_map, node) == lookup(insert(node_map, key_node, val_node), node)
+  }
+
+  axiom inserted_node_defined {
+    forall node_map: INodeMap, key_node: Ref, val_node: Ref :: has_node(insert(node_map, key_node, val_node), key_node)
+  }
+
+  // HAS NODE
+
+  axiom has_node_complete {
+    forall node_map: INodeMap, node: Ref :: has_node(node_map, node) <==> lookup(node_map, node) != null
+  }
+
+  // DOMAIN
+
+  axiom domain_is_defined {
+    forall node_map: INodeMap, key: Ref:: key in map_domain(node_map) <==> has_node(node_map, key)
+  }
+
+  // EMPTY MAP
+
+  axiom empty_map_has_no_nodes {
+    forall node: Ref :: !(has_node(empty_map(), node))
+  }
+}
+
+method graph_copy_rec(this: Ref, node_map: INodeMap, setOfRef: Set[Ref], node_map_image: Set[Ref], rd: Perm)
+    returns (nodeCopy: Ref, res_node_map: INodeMap, res_copy_nodes: Set[Ref])
+
+  requires none < rd
+  requires this != null
+  // Precondition about setOfRef
+  requires this in setOfRef
+  requires |setOfRef intersection node_map_image| == 0
+  requires forall x: Ref :: x in setOfRef ==> acc(x.val, rd)
+  requires forall x: Ref :: x in setOfRef ==> acc(x.edges, rd)
+  requires forall x: Ref, i: Int :: x in setOfRef && i in edges_domain(x.edges) ==> edge_lookup(x.edges, i) in setOfRef
+  // Precondition about node_map_image
+  requires forall x: Ref :: x in map_domain(node_map) ==> lookup(node_map, x) in node_map_image
+  requires forall x: Ref :: x in node_map_image ==> acc(x.val)
+  requires forall x: Ref :: x in node_map_image ==> acc(x.edges)
+
+  ensures nodeCopy != null && nodeCopy in res_copy_nodes
+  ensures |setOfRef intersection res_copy_nodes| == 0
+  ensures forall x: Ref :: x in setOfRef ==> acc(x.val, rd)
+  ensures forall x: Ref :: x in setOfRef ==> x.val == old(x.val)
+  ensures forall x: Ref :: x in setOfRef ==> acc(x.edges, rd)
+  ensures forall x: Ref :: x in setOfRef ==> x.edges == old(x.edges)
+  ensures forall x: Ref, i: Int :: x in setOfRef && i in edges_domain(x.edges) ==> edge_lookup(x.edges, i) in setOfRef
+  ensures res_copy_nodes == res_copy_nodes union old(node_map_image)
+  ensures forall x: Ref :: x in map_domain(res_node_map) ==> lookup(res_node_map,x) in res_copy_nodes
+  ensures forall x: Ref :: x in res_copy_nodes ==> acc(x.val)
+  ensures forall x: Ref :: x in res_copy_nodes ==> acc(x.edges)
+{
+  var i: Int // an edge index
+  var S: Set[Int]
+
+  if (has_node(node_map, this)) {
+    nodeCopy := lookup(node_map, this)
+    res_node_map := node_map
+    res_copy_nodes := node_map_image
+  } else {
+    nodeCopy := new(val, edges)
+    nodeCopy.val := this.val
+
+    res_node_map := insert(node_map, this, nodeCopy)
+
+    res_copy_nodes := node_map_image union Set(nodeCopy)
+
+    /* The next assert is needed in order to prove that the loop invariant
+     *   assert |setOfRef intersection res_copy_nodes| == 0
+     * holds before the loop.
+     *
+     * See https://bitbucket.org/viperproject/silver/issues/111
+     */
+    @trigger()
+    assert (setOfRef intersection node_map_image) union (setOfRef intersection Set(nodeCopy))
+           == setOfRef intersection res_copy_nodes
+
+    S := edges_domain(this.edges)
+
+    while (|S| > 0)
+      invariant nodeCopy in res_copy_nodes
+      invariant this in setOfRef
+      invariant forall x: Ref :: x in setOfRef ==> acc(x.val, rd)
+      invariant forall x: Ref :: x in setOfRef ==> x.val == old(x.val)
+      invariant forall x: Ref :: x in setOfRef ==> acc(x.edges, rd)
+      invariant forall x: Ref :: x in setOfRef ==> x.edges == old(x.edges)
+      invariant forall j: Int :: j in S ==> edge_lookup(this.edges, j) in setOfRef
+      invariant forall r: Ref, j: Int :: r in setOfRef && j in edges_domain(r.edges) ==> edge_lookup(r.edges, j) in setOfRef
+      invariant node_map_image subset res_copy_nodes
+      invariant |setOfRef intersection res_copy_nodes| == 0
+      invariant forall r: Ref :: r in map_domain(res_node_map) ==> lookup(res_node_map,r) in res_copy_nodes
+      invariant forall r: Ref :: r in res_copy_nodes ==> acc(r.val)
+      invariant forall r: Ref :: r in res_copy_nodes ==> acc(r.edges)
+    {
+      S, i := pop(S)
+
+      var newNode: Ref
+      var newResultMap: INodeMap
+      var nodeForId: Ref
+
+      nodeForId := edge_lookup(this.edges, i)
+
+      newNode, res_node_map, res_copy_nodes := graph_copy_rec(nodeForId, res_node_map, setOfRef, res_copy_nodes, rd/2)
+
+      nodeCopy.edges := insert_edge(nodeCopy.edges, i, newNode)
+    }
+  }
+}
+
+/* Non-deterministically remove an int from s1, yielding an updated s2 and the removed int i */
+method pop(s1: Set[Int]) returns (s2: Set[Int], i: Int)
+  requires 0 < |s1|
+  ensures i in s1
+  ensures  s2 == s1 setminus Set(i)
+{ assume false /* Effectively an unimplemented helper method */ }

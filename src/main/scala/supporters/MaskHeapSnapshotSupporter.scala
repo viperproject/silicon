@@ -13,7 +13,9 @@ import viper.silicon.rules.{magicWandSupporter, maskHeapSupporter}
 import viper.silicon.state.{Heap, State, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort, WandHeapSort}
+import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.verifier.Verifier
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 
 /** Snapshot format of the maskHeap encoding: while consuming, snapshots are per-resource
   * masks describing the consumed footprint (MaskMapTerm); a completed consume packs them
@@ -61,7 +63,7 @@ class MaskHeapSnapshotSupporter(symbolConverter: SymbolConverter)
       val heapParts = snapParts.zip(resources).map(tpl => (tpl._2,
         v.decider.createAlias(SnapToHeap(tpl._1, tpl._2, tpl._2 match {
           case field: Field => HeapSort(v.symbolConverter.toSort(field.typ))
-          case _: viper.silicon.state.MagicWandIdentifier => WandHeapSort
+          case _: MagicWandIdentifier => WandHeapSort
           case _ => PredHeapSort
         }), s)))
       HeapMapTerm(immutable.ListMap.from(heapParts))
@@ -78,7 +80,8 @@ class MaskHeapSnapshotSupporter(symbolConverter: SymbolConverter)
                                   sf: (Sort, Verifier) => Term,
                                   a0: ast.Exp,
                                   a1: ast.Exp,
-                                  v: Verifier)
+                                  v: Verifier,
+                                  analysisInfos: AnalysisInfos)
                                  : ((Sort, Verifier) => Term, (Sort, Verifier) => Term) =
     (sf, sf)
 }

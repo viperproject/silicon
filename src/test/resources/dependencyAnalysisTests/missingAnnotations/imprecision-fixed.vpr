@@ -1,0 +1,99 @@
+field f: Int
+
+method permTest(a: Ref, b: Ref, n: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L2")(acc(a.f))
+    requires @dependencyInfo("assumptionType:Precondition, label:L3")(acc(b.f))
+    requires @dependencyInfo("assumptionType:Precondition, label:L3")(b.f > 0)
+{
+    assume @dependencyInfo("assumptionType:Explicit, label:L4")(n > 0)
+    // fixed imprecision (field assign)
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L6")
+    a.f := b.f + 2
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L7")
+    a.f := n
+    @dependencyInfo("assertionType:Explicit, label:L8, expectedDependencies:[L4,L7]")
+    assert a.f >= 0
+}
+
+
+method quantifiedPerm4(xs: Seq[Ref], ys: Seq[Ref])
+  requires @dependencyInfo("assumptionType:Precondition, label:L9")(|xs| > 5)
+  requires @dependencyInfo("assumptionType:Precondition, label:L10")(|ys| > 3)
+{
+  inhale @dependencyInfo("assumptionType:Explicit, assertionType:Implicit, label:L11")(forall x: Ref :: x in xs ==> acc(x.f) && x.f > 0)
+
+  // fixed imprecision (heap summary)
+  inhale @dependencyInfo("assumptionType:Explicit, label:L13")(forall y: Ref :: y in ys ==> acc(y.f))
+
+  @dependencyInfo("assertionType:Explicit, label:L14, expectedDependencies:[L11]")
+  assert xs[0].f > 0
+}
+
+// issue #02 - imprecision due to field assign with qp
+// issue: access to a quantified field depended on all writes to any location covered by this qp resource
+// expl:  when exhaling permission to a single location of a qp resource (e.g. for field assign),
+//        permissions for other locations are inhaled. The inhale of full permission after the field assign
+//        depends on this inhale.
+// solution:
+// - inhale of remaining permissions / full permission after assignments are labelled internal
+// - exhale is implicit
+// - lhs and rhs are split such that transitive edges only go from lhs to rhs
+method quantifiedPerm5(xs: Seq[Ref], ys: Seq[Ref])
+  requires @dependencyInfo("assumptionType:Precondition, label:L15")(|xs| > 5)
+  requires @dependencyInfo("assumptionType:Precondition, label:L16")(|ys| > 3)
+{
+  inhale @dependencyInfo("assumptionType:Explicit, label:L17")(forall x: Ref :: x in xs ==> acc(x.f))
+  inhale @dependencyInfo("assumptionType:Explicit, label:L18")(forall y: Ref :: y in ys ==> acc(y.f))
+
+  // fixed imprecision (field assign with qp)
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L20")
+  xs[0].f := ys[0].f + 2
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L21")
+  xs[0].f := 2
+}
+
+// issue #03
+// Imprecision due to state consolidation triggered by assertion
+// state consolidation infers pair-wise non-aliasing of all 3 resources in one assumption.
+// This assumption depends on all preconditions.
+// The assertion depends on this assumption.
+// solution: wrap with analysis labels (see viper.silicon.resources.NonQuantifiedPropertyInterpreter.buildForEach)
+// and disable transitive edges (see viper.silicon.rules.DefaultStateConsolidator.consolidate)
+method noAlias(a: Ref, b: Ref, c: Ref)
+    requires @dependencyInfo("assumptionType:Precondition, label:L22")(acc(a.f))
+    requires @dependencyInfo("assumptionType:Precondition, label:L23")(acc(b.f, 1/2))
+    requires @dependencyInfo("assumptionType:Precondition, label:L24")(acc(c.f, 1/2)) // fixed imprecision (state consolidation))
+{
+    @dependencyInfo("assertionType:Explicit, label:L25, expectedDependencies:[]")
+    assert a != b
+}
+
+method fieldAccessPrecision(){
+    var x: Ref
+    var y: Ref
+
+    inhale @dependencyInfo("assumptionType:Explicit, label:L26")(acc(x.f))
+    inhale @dependencyInfo("assumptionType:Explicit, assertionType:Implicit, label:L27")(x.f > 0)
+
+    inhale @dependencyInfo("assumptionType:Explicit, label:L28")(acc(y.f))
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L29")
+    y.f := y.f + 1
+
+    @dependencyInfo("assertionType:Explicit, label:L30, expectedDependencies:[L26,L27]")
+    assert x.f >= 0
+}
+
+method fieldAccessPrecision2(){
+    var x: Ref
+    var y: Ref
+
+    inhale @dependencyInfo("assumptionType:Explicit, label:L31")(acc(x.f))
+    inhale @dependencyInfo("assumptionType:Explicit, assertionType:Implicit, label:L32")(x.f > 0)
+
+    inhale @dependencyInfo("assumptionType:Explicit, label:L33")(acc(y.f))
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L34")
+    x.f := y.f + 1
+
+    @dependencyInfo("assertionType:Explicit, label:L35, expectedDependencies:[L31]")
+    exhale acc(x.f)
+}

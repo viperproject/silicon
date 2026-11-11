@@ -1,0 +1,90 @@
+# Dependency Analysis
+
+# Running Silicon with Dependency Analysis
+
+Dependency Analysis is enabled thorough the following configuration options:
+`--dependencyAnalysis [CMDS] --proverArgs "proof=true unsat-core=true"`
+The available commands are `interactive` and any command supported by the CLI tool. For example,
+- `--dependencyAnalysis=interactive` 
+  - Automatically starts the command-line tool once verification terminates.
+- `--dependencyAnalysis=export>[folder]`
+  - e.g., `--dependencyAnalysis=export>graphExports`
+  - Exports the graph to a folder named after the verified program under the given path (e.g. `graphExports/src_test_resources_andrea_quickTest` for input program `src/test/resources/andrea/quickTest.vpr`)
+- Several modes can be combined by `;`
+  - e.g. `--dependencyAnalysis=export>graphExports/viperTest;progress;interactive`
+
+For debugging dependency analysis results, the option `--enableDependencyAnalysisDebugging` can be used which disables the merging of nodes.
+As a result, the graph used for query computation and the exported graph contain all low-level details.
+
+The analysis is controlled by two flags:
+- `Config.isDependencyAnalysisEnabled` says whether the analysis is enabled overall, which is the case if `--dependencyAnalysis` is set.
+- `Decider.isDependencyAnalysisEnabledForMember` says whether dependencies are recorded for the member currently being verified. A member can opt out with the annotation `@enableDependencyAnalysis("false")`.
+
+Which encoding a member that opted out is verified with is not significant. Currently, it is the same encoding as for all other members of the run.
+
+The dependency analysis steps through all paths (including provably infeasible paths).
+This behavior can be disabled by setting the flat `--disableInfeasiblePaths`, which might be faster but results in unsound dependency results.
+
+
+# Command-Line Tool
+
+Requires `--dependencyAnalysis=interactive`.
+
+Example queries for program `src/test/resources/dependencyAnalysisTests/unitTests/B-permissions.vpr`:
+- `dep 99` 
+  - Returns all dependencies of assertions on line 99.
+- `dep B-permissions@19` 
+  - Uniquely identifies the given line when there are many source files.
+  - This notation can be used in every command.
+- `dep 66 71` 
+  - Query multiple lines.
+- `downDep 14` 
+  - Returns all dependents of assumptions on line 14.
+- `hasDep 64 66 71` 
+  - Returns true iff there is any dependency between any two queried lines and false otherwise.
+- `prune 66 71` 
+  - Exports the program pruned with respect to lines 66 and 71.
+  - exportFileName: path and file name for the pruned program (e.g. `prunedPrograms/test.vpr`
+- `progress`
+  - Prints the verification progress of the program
+- `guide`
+  - Prints verification guidance
+
+
+# Neo4j Scripts and Usage
+
+Graphs exported when using `--dependencyAnalysis=export>[PATH TO EXPORT FOLDER]` can be imported to a [Neo4j database]({https://neo4j.com/) using the `neo4j_importer.py` script.
+
+Importing dependency graphs to Neo4j:
+
+1. [Create your own Neo4j instance](https://neo4j.com/docs/aura/getting-started/create-account/).
+
+1. Replace `[NEO4J_URI]` with the URI to your instance (e.g., `neo4j+ssc://df123ab4.databases.neo4j.io`)
+ 
+1. Set your environment variable `NEO4J-PW` to the password of your instance.
+
+1. Make sure the instance is up and running.
+ 
+1. Execute `python src/main/scala/dependencyAnalysis/neo4j_importer.py` and when queried provide the following inputs:
+   1. foldername: relative path to the export folder of the dependency graph (e.g. `graphExports/src_test_resources_andrea_quickTest`)
+   1. node_label: label to be given to the nodes created in Neo4j
+   1. Note that existing nodes with the same label are deleted!
+   
+1. Login to Neo4j are explore the graphs. The script creates three graphs, each using a different label for its nodes:
+   1. \[label\]: Graph as defined in the export files.
+   1. \[label\]_NonInternal: Graph that does not contain any internal nodes and low-level nodes with identical source are already merged into one node.
+   1. \[label\]_Explicit: Graph that only contains explicit assumption nodes (and all assertions) and low-level nodes with identical source are already merged into one node.
+   1. For a quick start, open the Explore tool and search for `label_NonInternal-(any)-label_NonInternal`. The tool presents the graph described in (ii).
+   1. Some query templates, which can be imported to Neo4j, can be found in `neo4j_query_saved_cypher_2025-9-17.csv`.
+
+# Graph Importer and Stand-Alone Interpreter
+
+Once a graph has been exported, it can also be loaded and analyzed using a stand-along importer and interpreter, namely `viper.silicon.dependencyAnalysis.DependencyGraphImporter`.
+
+Example arguments:
+- `--graphFolder "C:\Users\andre\dev\viper\gobra\viperserver\silicon\graphExports\src_test_resources_dependencyAnalysisTests_viperTest" --cmds "dep 16;downDep 14;progress"`
+  - executes each of the semicolon-separated commands.
+- `--graphFolder "C:\Users\andre\dev\viper\gobra\viperserver\silicon\graphExports\src_test_resources_dependencyAnalysisTests_viperTest"`
+  - starts the interactive command line tool.
+
+Note that currently the pruning is not supported.

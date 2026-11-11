@@ -20,13 +20,11 @@ import viper.silver.verifier.{AbstractVerificationError => SilAbstractVerificati
 import viper.silicon.interfaces.Failure
 import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
-import viper.silicon.verifier.DefaultMainVerifier
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverStdIO}
+import viper.silicon.verifier.{DefaultMainVerifier, DependencyAnalysisAwareMainVerifier}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
-import viper.silver.utility.{FileProgramSubmitter}
-
-import scala.util.chaining._
+import viper.silver.utility.FileProgramSubmitter
 
 object Silicon {
   val name = BuildInfo.projectName
@@ -136,7 +134,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     setLogLevelsFromConfig()
 
-    verifier = new DefaultMainVerifier(config, reporter, symbExLog)
+    verifier = if (config.isDependencyAnalysisEnabled) new DependencyAnalysisAwareMainVerifier(config, reporter, symbExLog) else new DefaultMainVerifier(config, reporter, symbExLog)
     verifier.start()
   }
 

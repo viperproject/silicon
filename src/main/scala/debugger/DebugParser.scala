@@ -2,6 +2,7 @@ package viper.silicon.debugger
 
 import fastparse._
 import viper.silver.ast._
+import viper.silver.dependencyAnalysis.DependencyType
 import viper.silver.parser._
 
 import scala.collection.mutable
@@ -36,7 +37,7 @@ class DebugParser extends FastParser {
 
 class DebugTranslator(p: PProgram, override val members: mutable.Map[String, Node]) extends Translator(p) {
 
-  override protected def expInternal(pexp: PExp, pos: PExp, info: Info): Exp = {
+  override protected def expInternal(pexp: PExp, pos: PExp, info: Info, dependencyType: Option[DependencyType]): Exp = {
     pexp match {
       case pviu@PVersionedIdnUseExp(_, _, _) =>
         pexp.typ match {
@@ -45,7 +46,7 @@ class DebugTranslator(p: PProgram, override val members: mutable.Map[String, Nod
         }
       case PDebugLabelledOldExp(_, lbl, e) =>
         DebugLabelledOld(exp(e), lbl.versionedName)(pos, info)
-      case _ => super.expInternal(pexp, pos, info)
+      case _ => super.expInternal(pexp, pos, info, dependencyType)
     }
   }
 

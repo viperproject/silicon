@@ -11,8 +11,9 @@ import viper.silver.ast.pretty.FastPrettyPrinterBase
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.TermConverter
-import viper.silicon.state.{Identifier, MagicWandIdentifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
 import viper.silicon.state.terms._
+import viper.silicon.state.chunks.MagicWandIdentifier
+import viper.silicon.state.{Identifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
 
 class TermToSMTLib2Converter 
     extends FastPrettyPrinterBase

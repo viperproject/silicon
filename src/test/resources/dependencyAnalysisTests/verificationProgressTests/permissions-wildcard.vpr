@@ -1,0 +1,16 @@
+// Spec quality: 0
+// Proof quality: 11/12
+// Progress: 0
+
+field f: Int
+field g: Int
+
+method setFive(x: Ref)
+    requires acc(x.f)
+    requires acc(x.g)
+    ensures acc(x.f, wildcard)  // PQ: 1/1
+    ensures x.f == 5            // PQ: 2/3
+{
+    assume x.f == 5             // PQ: 1/1
+    x.g := 5                    // PQ: 1/1
+}

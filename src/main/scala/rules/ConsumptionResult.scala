@@ -10,6 +10,7 @@ import viper.silicon.state.terms.{Forall, Term, Var}
 import viper.silicon.state.terms.perms.IsNonPositive
 import viper.silver.ast
 import viper.silicon.verifier.Verifier
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 
 sealed trait ConsumptionResult {
   def isComplete: Boolean
@@ -27,13 +28,13 @@ private case class Incomplete(permsNeeded: Term, permsNeededExp: Option[ast.Exp]
 }
 
 object ConsumptionResult {
-  def apply(term: Term, exp: Option[ast.Exp], qvars: Seq[Var],  v: Verifier, timeout: Int): ConsumptionResult = {
+  def apply(term: Term, exp: Option[ast.Exp], qvars: Seq[Var],  v: Verifier, timeout: Int, analysisInfos: AnalysisInfos): ConsumptionResult = {
     val toCheck = if (qvars.isEmpty) {
       IsNonPositive(term)
     } else {
       Forall(qvars, IsNonPositive(term), Seq())
     }
-    if (v.decider.check(toCheck, timeout))
+    if (v.decider.check(toCheck, timeout, analysisInfos))
       Complete()
     else
       Incomplete(term, exp)

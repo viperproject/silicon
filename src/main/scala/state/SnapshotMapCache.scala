@@ -10,6 +10,7 @@ import viper.silver.ast
 import scala.collection.immutable.HashMap
 import viper.silicon.rules.SnapshotMapDefinition
 import viper.silicon.state.terms.Term
+import viper.silicon.state.chunks.QuantifiedBasicChunk
 
 object SnapshotMapCache {
   /* Keys are tuples of

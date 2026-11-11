@@ -6,7 +6,6 @@
 
 package viper.silicon.decider
 
-import viper.silicon.decider.SmtlibNameSanitizer
 import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.terms._
 import viper.silicon.state.{Identifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}

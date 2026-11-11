@@ -7,6 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
 import viper.silicon.reporting.{SiliconRawCounterexample, SiliconResolvedCounterexample}
 import viper.silicon.state.State
@@ -20,6 +21,17 @@ import viper.silver.reporter.BlockFailureMessage
 
 trait SymbolicExecutionRules {
   lazy val debugOn: Boolean = Verifier.config.enableDebugging()
+
+  /** Records that `failedAssert` could not be proven. Does nothing on a retry, since the failure may not be final. */
+  protected def recordFailedAssertion(s: State, v: Verifier, failedAssert: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: AnalysisInfos): Unit = {
+    if (s.retryLevel == 0) v.decider.handleFailedAssertion(failedAssert, e, finalExp, analysisInfos, v.reportFurtherErrors())
+  }
+
+  /** Records a failure for which no specific assertion is available, such as missing permissions, by using `false`. */
+  protected def recordFailedFalseAssertion(s: State, v: Verifier, analysisInfos: AnalysisInfos): Unit = {
+    val falseExp = Option.when(debugOn)(ast.FalseLit()())
+    recordFailedAssertion(s, v, False, falseExp, falseExp, analysisInfos)
+  }
 
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssert: Term, failedAssertDescription: String, generateNewModel: Boolean): Failure = {
     createFailure(ve, v, s, failedAssert, Option.when(debugOn)(DebugExp.createInstance(failedAssertDescription)), generateNewModel)

@@ -1,0 +1,75 @@
+method m1()
+{
+    var a: Int, b: Int, c: Int, d: Int
+    a := 2
+    b := 3
+    c := 4
+    d := 5
+
+    a := a + 1
+    b := b + 1
+    c := c + 1
+    d := d + 1
+
+    assert a != d
+    assert b != c
+}
+
+method m2()
+{
+    var a: Int, b: Int, c: Int, d: Int
+    a := 2
+    @uncovered()
+    b := 3
+    @uncovered()
+    c := 4
+    d := 5
+
+    a := a + 1
+    @uncovered()
+    b := b + 1
+    @uncovered()
+    c := c + 1
+    d := d + 1
+
+    assert a != d
+}
+
+method m3()
+{
+    var a: Int, b: Int, c: Int, d: Int
+    a := 2
+    b := 3
+    c := 4
+    d := 5
+
+    assert a != d
+
+    a := a + 1
+    b := b + 1
+    c := c + 1
+    @uncovered()
+    d := d + 1
+
+    assert b != c
+    assert a != 0
+}
+
+method m4()
+{
+    var a: Int, b: Int, c: Int, d: Int
+    a := 2
+    @uncovered()
+    b := 3
+    c := 4
+    d := 5
+
+    a := a + 1
+    @uncovered()
+    b := b + 1
+    c := c + 1
+    d := d + 1
+
+    assert a != d
+    assert c == 5
+}

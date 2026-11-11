@@ -1,0 +1,63 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2026 ETH Zurich.
+
+package viper.silicon.dependencyAnalysis
+
+import viper.silicon.dependencyAnalysis.graph._
+import viper.silver.ast.Position
+import viper.silver.dependencyAnalysis.OriginType.OriginType
+import viper.silver.dependencyAnalysis.DependencyAnalysisSourceInfo
+
+object UserLevelDependencyAnalysisNode {
+
+  def from(dependencyNodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] =
+    dependencyNodes
+      .groupBy(_.sourceInfo).map { case (key, nodes) =>
+      UserLevelDependencyAnalysisNode(key, nodes.toSet)
+    }.toSet
+
+
+  def extractByAssumptionType(nodes: Set[UserLevelDependencyAnalysisNode], filterCriteria: OriginType => Boolean): Set[UserLevelDependencyAnalysisNode] = {
+    nodes.filter(node => node.assumptionTypes exists filterCriteria)
+  }
+
+  def mkUserLevelString(nodes: Set[DependencyAnalysisNode], sep: String = "\n"): String = {
+    from(nodes).toList.sortBy(n => (n.source.getLineNumber, n.source.toString)).mkString(sep)
+  }
+
+  implicit class SetNodeOps(private val left: Set[UserLevelDependencyAnalysisNode]) extends AnyVal {
+    def diffBySource(right: Set[UserLevelDependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = {
+      val sources = right.map(_.groupingCondition)
+      left.filterNot(n => sources.contains(n.groupingCondition))
+    }
+
+    def toSourceSet(): Set[DependencyAnalysisSourceInfo] = {
+      left.map(_.source)
+    }
+  }
+}
+
+case class UserLevelDependencyAnalysisNode(source: DependencyAnalysisSourceInfo, lowerLevelNodes: Set[DependencyAnalysisNode]) {
+
+  def position: Position = source.getPosition
+
+  def assumptionTypes: Set[OriginType] = lowLevelAssumptionNodes.map(_.originType)
+  def assertionTypes: Set[OriginType] = lowLevelAssertionNodes.map(_.originType)
+
+  lazy val lowLevelAssumptionNodes: Set[GeneralAssumptionNode] = lowerLevelNodes.collect { case node: GeneralAssumptionNode => node }
+  lazy val lowLevelAssertionNodes: Set[GeneralAssertionNode] = lowerLevelNodes.collect { case node: GeneralAssertionNode => node }
+
+  lazy val hasFailures: Boolean = lowLevelAssertionNodes.exists(_.hasFailed)
+
+  override def toString: String = source.toString
+
+  def groupingCondition: (String, Position) = (source.toString, position)
+
+}
+
+case class CompactUserLevelDependencyAnalysisNode(source: DependencyAnalysisSourceInfo, assumptionTypes: Set[OriginType], assertionTypes: Set[OriginType], hasFailures: Boolean) {
+  def position: Position = source.getPosition
+}

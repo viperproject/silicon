@@ -1,0 +1,33 @@
+method add(a: Int, b: Int) returns (res: Int)
+    requires b != 0
+    ensures @guidedAssumption("1")(res == a + b)
+
+
+method sub(a: Int, b: Int) returns (res: Int)
+    requires b != 0
+    ensures @guidedAssumption("2")(res == a - b)
+
+
+method client()
+{
+    var a: Int, b: Int, c: Int, d: Int
+    a := 2
+    b := 3
+    @uncovered()
+    d := 5
+
+    c := add(a, b)
+    c := add(a, c)
+    c := sub(c, b)
+
+    assert c == 4
+}
+
+method uncoveredClient()
+{
+    var e: Int, f: Int
+    @uncovered()
+    e := 6
+    @uncovered()
+    f := 7
+}

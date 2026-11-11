@@ -11,11 +11,12 @@ import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.ExhaleMode
 import viper.silicon.Map
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces.VerificationResult
-import viper.silicon.interfaces.state._
 import viper.silicon.logger.records.data.CommentRecord
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, QuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
+import viper.silicon.state.chunks._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{BigPermSum, IsPositive}
 import viper.silicon.state.terms.predef.`?r`
@@ -28,6 +29,8 @@ import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.TrueLit
+import viper.silver.ast.NoPosition
+import viper.silver.dependencyAnalysis.{OriginType, NoDependencyAnalysisMerge, StringDependencyAnalysisSourceInfo}
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.InternalWarningMessage
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
@@ -204,7 +207,10 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                                      permissionsExp: Option[ast.Exp],
                                      sm: Term,
                                      tag: Option[Int],
-                                     program: ast.Program)
+                                     program: ast.Program,
+                                     v: Verifier,
+                                     analysisInfos: AnalysisInfos,
+                                     isExhale: Boolean)
                                     : QuantifiedBasicChunk
 
   /** Creates a quantified chunk corresponding to the assertion
@@ -245,7 +251,9 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                             qidPrefix: String,
                             tag: Option[Int],
                             v: Verifier,
-                            program: ast.Program)
+                            program: ast.Program,
+                            analysisInfos: AnalysisInfos,
+                            isExhale: Boolean)
                            : (QuantifiedBasicChunk, InverseFunctions)
 
   def splitHeap[CH <: QuantifiedBasicChunk : NotNothing : ClassTag]
@@ -257,7 +265,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
   def hintBasedChunkOrderHeuristic(hints: Seq[Term])
                                   : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]
 
-  def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier): Option[QuantifiedChunk]
+  def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier, analysisInfos: AnalysisInfos): Option[QuantifiedChunk]
 
   /** Merge the snapshots of two quantified heap chunks that denote the same field locations
    *
@@ -303,7 +311,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                      permissionsExp: Option[ast.Exp],
                                      sm: Term,
                                      tag: Option[Int],
-                                     program: ast.Program)
+                                     program: ast.Program,
+                                     v: Verifier,
+                                     analysisInfos: AnalysisInfos,
+                                     isExhale: Boolean)
                                     : QuantifiedBasicChunk = {
 
     val condition =
@@ -332,7 +343,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       argumentsExp,
       tag,
       hints,
-      program)
+      program,
+      v,
+      analysisInfos,
+      isExhale)
   }
 
   /** @inheritdoc [[QuantifiedChunkSupport.createQuantifiedChunk]] */
@@ -355,7 +369,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             qidPrefix: String,
                             tag: Option[Int],
                             v: Verifier,
-                            program: ast.Program)
+                            program: ast.Program,
+                            analysisInfos: AnalysisInfos,
+                            isExhale: Boolean)
                            : (QuantifiedBasicChunk, InverseFunctions) = {
 
     val (inverseFunctions, imagesOfCodomain) =
@@ -395,7 +411,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         None,
         tag,
         hints,
-        program)
+        program,
+        v,
+        analysisInfos,
+        isExhale)
 
     (ch, inverseFunctions)
   }
@@ -438,7 +457,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                      optSingletonArgumentsExp: Option[Seq[ast.Exp]],
                                      tag: Option[Int],
                                      hints: Seq[Term],
-                                     program: ast.Program)
+                                     program: ast.Program,
+                                     v: Verifier,
+                                     analysisInfos: AnalysisInfos,
+                                     isExhale: Boolean)
                                     : QuantifiedBasicChunk = {
 
     resource match {
@@ -447,7 +469,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         assert(optSingletonArguments.fold(true)(_.length == 1))
         assert(optSingletonArgumentsExp.fold(true)(_.length == 1))
 
-        QuantifiedFieldChunk(
+        v.chunkFactory.createQuantifiedFieldChunk(
           BasicChunkIdentifier(field.name),
           sm,
           condition,
@@ -459,10 +481,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           optSingletonArguments.map(_.head),
           optSingletonArgumentsExp.map(_.head),
           tag,
-          hints)
+          hints,
+          analysisInfos,
+          isExhale)
 
       case predicate: ast.Predicate =>
-        QuantifiedPredicateChunk(
+        v.chunkFactory.createQuantifiedPredicateChunk(
           BasicChunkIdentifier(predicate.name),
           codomainQVars,
           codomainQVarExps,
@@ -476,12 +500,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           optSingletonArguments,
           optSingletonArgumentsExp,
           tag,
-          hints)
+          hints,
+          analysisInfos,
+          isExhale)
 
       case wand: ast.MagicWand =>
         val conditionalizedPermissions = Ite(condition, permissions, NoPerm)
         val conditionalizedPermissionsExp = conditionExp.map(ce => ast.CondExp(ce, permissionsExp.get, ast.NoPerm()())(ce.pos, ce.info, ce.errT))
-        QuantifiedMagicWandChunk(
+        v.chunkFactory.createQuantifiedMagicWandChunk(
           MagicWandIdentifier(wand, program),
           codomainQVars,
           codomainQVarExps,
@@ -493,7 +519,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           optSingletonArguments,
           optSingletonArgumentsExp,
           tag,
-          hints)
+          hints,
+          analysisInfos,
+          isExhale)
 
       case other =>
         sys.error(s"Found yet unsupported resource $other (${other.getClass.getSimpleName})")
@@ -673,16 +701,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                smDef: SnapshotMapDefinition,
                                v: Verifier)
                               : (PermMapDefinition, PmCache) = {
-
+    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo.createUnique("summarizing heap"), OriginType.Internal)
     Verifier.config.mapCache(s.pmCache.get(resource, relevantChunks)) match {
       case Some(pmDef) =>
-        v.decider.assume(pmDef.valueDefinitions, Option.when(debugOn)(DebugExp.createInstance("value definitions", isInternal_ = true)), enforceAssumption = false)
+        v.decider.assume(pmDef.valueDefinitions, Option.when(debugOn)(DebugExp.createInstance("value definitions", isInternal_ = true)), enforceAssumption = false, analysisInfos=analysisInfos)
         (pmDef, s.pmCache)
       case _ =>
         val (pm, valueDef) =
           quantifiedChunkSupporter.summarisePerm(s, relevantChunks, formalQVars, resource, smDef, v)
         val pmDef = PermMapDefinition(resource, pm, valueDef)
-        v.decider.assume(valueDef, Option.when(debugOn)(DebugExp.createInstance("value definitions", isInternal_ = true)), enforceAssumption = false)
+        v.decider.assume(valueDef, Option.when(debugOn)(DebugExp.createInstance("value definitions", isInternal_ = true)), enforceAssumption = false, analysisInfos=analysisInfos)
         (pmDef, s.pmCache + ((resource, relevantChunks) -> pmDef))
     }
   }
@@ -711,6 +739,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                              optSmDomainDefinitionCondition: Option[Term] = None,
                              optQVarsInstantiations: Option[Seq[Term]] = None)
                             : (SnapshotMapDefinition, SnapshotMapCache) = {
+    val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo.createUnique("summarizing heap"), OriginType.Internal)
 
     def emitSnapshotMapDefinition(s: State,
                                   smDef: SnapshotMapDefinition,
@@ -723,7 +752,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           case None =>
             val comment = "Definitional axioms for snapshot map domain"
             v.decider.prover.comment(comment)
-            v.decider.assume(smDef.domainDefinitions, Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
+            v.decider.assume(smDef.domainDefinitions, Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false, analysisInfos=analysisInfos)
           case Some(_instantiations) =>
             // TODO: Avoid pattern matching on resource
             val instantiations = resource match {
@@ -735,7 +764,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             v.decider.prover.comment(comment)
             // TODO: Avoid cast to Quantification
             v.decider.assume(smDef.domainDefinitions.map(_.asInstanceOf[Quantification].instantiate(instantiations)),
-              Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
+              Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false, analysisInfos=analysisInfos)
         }
       }
 
@@ -743,7 +772,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         case None =>
           val comment = "Definitional axioms for snapshot map values"
           v.decider.prover.comment(comment)
-          v.decider.assume(smDef.valueDefinitions, Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
+          v.decider.assume(smDef.valueDefinitions, Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false, analysisInfos=analysisInfos)
         case Some(_instantiations) =>
           // TODO: Avoid pattern matching on resource
           val instantiations = resource match {
@@ -755,7 +784,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           v.decider.prover.comment(comment)
           // TODO: Avoid cast to Quantification
           v.decider.assume(smDef.valueDefinitions.map(_.asInstanceOf[Quantification].instantiate(instantiations)),
-            Option.when(debugOn)(DebugExp.createInstance(comment, true)), enforceAssumption = false)
+            Option.when(debugOn)(DebugExp.createInstance(comment, true)), enforceAssumption = false, analysisInfos=analysisInfos)
       }
     }
 
@@ -781,7 +810,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       }
 
     emitSnapshotMapDefinition(s, smDef, v, optQVarsInstantiations)
-
     (smDef, smCache)
   }
 
@@ -793,7 +821,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                           optSmDomainDefinitionCondition: Option[Term] = None,
                           optQVarsInstantiations: Option[Seq[Term]] = None)
                          : (State, SnapshotMapDefinition, PermMapDefinition) = {
-
     val (smDef, smCache) =
       summarisingSnapshotMap(
         s, resource, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition, optQVarsInstantiations)
@@ -805,7 +832,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         s1, resource, codomainQVars, relevantChunks, smDef, v)
 
     val s2 = s1.copy(pmCache = pmCache, functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef).recordPermMap(pmDef))
-
     (s2, smDef, pmDef)
   }
 
@@ -818,14 +844,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                           relevantChunks: Seq[QuantifiedBasicChunk],
                           v: Verifier)
   : (State, PermMapDefinition) = {
-
     val s1 = s
     val (pmDef, pmCache) =
       quantifiedChunkSupporter.summarisingPermissionMap(
         s1, resource, codomainQVars, relevantChunks, null, v)
 
     val s2 = s1.copy(pmCache = pmCache)
-
     (s2, pmDef)
   }
 
@@ -857,7 +881,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               pve: PartialVerificationError,
               negativePermissionReason: => ErrorReason,
               notInjectiveReason: => ErrorReason,
-              v: Verifier)
+              v: Verifier,
+              analysisInfos: AnalysisInfos)
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult = {
 
@@ -888,7 +913,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         qidPrefix            = qid,
         tag                  = Some(v.counter(this).next()),
         v                    = v,
-        program              = s.program)
+        program              = s.program,
+        analysisInfos       = analysisInfos,
+        isExhale             = false)
     val (effectiveTriggers, effectiveTriggersQVars, effectiveTriggersQVarExps) =
       optTrigger match {
         case Some(_) =>
@@ -933,8 +960,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val commentGlobals = "Nested auxiliary terms: globals"
     v.decider.prover.comment(commentGlobals)
+    val analysisInfosGlobals = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo(commentGlobals, NoPosition), OriginType.Internal).withMergeInfo(NoDependencyAnalysisMerge())
     v.decider.assume(auxGlobals, Option.when(debugOn)(DebugExp.createInstance(description=commentGlobals, children=auxGlobalsExp.get)),
-      enforceAssumption = false)
+      enforceAssumption = false, analysisInfos=analysisInfosGlobals)
 
     val commentNonGlobals = "Nested auxiliary terms: non-globals"
     v.decider.prover.comment(commentNonGlobals)
@@ -942,13 +970,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       auxNonGlobals.map(_.copy(
         vars = effectiveTriggersQVars,
         triggers = effectiveTriggers)),
-      Option.when(debugOn)(DebugExp.createInstance(description=commentNonGlobals, children=auxNonGlobalsExp.get)), enforceAssumption = false)
+      Option.when(debugOn)(DebugExp.createInstance(description=commentNonGlobals, children=auxNonGlobalsExp.get)), enforceAssumption = false, analysisInfos=analysisInfos.overrideDependencyType(OriginType.Internal))
 
     val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
     val nonNegImplicationExp = eCond.map(c => ast.Implies(c, ast.PermGeCmp(ePerm.get, ast.NoPerm()())())(c.pos, c.info, c.errT))
     val nonNegTerm = Forall(qvars, Implies(FunctionPreconditionTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
-    v.decider.assert(nonNegTerm) {
+    v.decider.assert(nonNegTerm, analysisInfos) {
       case true =>
 
         /* TODO: Can we omit/simplify the injectivity check in certain situations? */
@@ -970,15 +998,15 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v.decider.prover.comment(comment)
         val completeReceiverInjectivityCheck = Implies(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program),
           receiverInjectivityCheck)
-        v.decider.assert(completeReceiverInjectivityCheck) {
+        v.decider.assert(completeReceiverInjectivityCheck, analysisInfos) {
           case true =>
             val ax = inverseFunctions.axiomInversesOfInvertibles
             val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers, s"$qid-invOfFct"))
             val comment = "Definitional axioms for inverse functions"
             v.decider.prover.comment(comment)
             v.decider.assumeDefinition(inv.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)),
-              Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)))
-            v.decider.assumeDefinition(inv.definitionalAxioms, Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)))
+              Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)), analysisInfos=analysisInfos)
+            v.decider.assumeDefinition(inv.definitionalAxioms, Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)), analysisInfos=analysisInfos)
 
             val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
             val interpreter = new QuantifiedPropertyInterpreter
@@ -997,9 +1025,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 triggers = effectiveTriggers,
                 qidPrefix = qid
               )
-              v.decider.assume(pcsForChunk, pcsForChunkExp, pcsForChunkExp)
+              v.decider.assume(pcsForChunk, pcsForChunkExp, pcsForChunkExp, analysisInfos.overrideDependencyType(OriginType.Internal))
             })
-            val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v)
+            val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v, v.decider.defaultAnalysisInfos)
 
 
             val (smCache1, fr2) = if (s.isUsedAsTrigger(resource)){
@@ -1022,7 +1050,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               val qvarsToInv = inv.qvarsToInversesOf(codomainVars)
               val condOfInv = tCond.replace(qvarsToInv)
               v.decider.assume(Forall(codomainVars, Implies(condOfInv, trigger), Trigger(inv.inversesOf(codomainVars))),
-                Option.when(debugOn)(DebugExp.createInstance("Inverse Trigger", true)))
+                Option.when(debugOn)(DebugExp.createInstance("Inverse Trigger", true)), analysisInfos.overrideDependencyType(OriginType.Trigger))
               val newFuncRec = fr1.recordFvfAndDomain(smDef1)
               (smCache1, newFuncRec)
             } else {
@@ -1033,12 +1061,17 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                      functionRecorder = fr2.recordFieldInv(inv),
                      smCache = smCache1)
             Q(s1, v)
-          case false => {
-            createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver is injective")
-          }
+          case false =>
+            val failure = createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver is injective")
+            recordFailedAssertion(s, v, completeReceiverInjectivityCheck, None, None, analysisInfos)
+            if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, v) else failure
         }
       case false =>
-        createFailure(pve dueTo negativePermissionReason, v, s, nonNegImplication, nonNegImplicationExp)}
+        val failure = createFailure(pve dueTo negativePermissionReason, v, s, nonNegImplication, nonNegImplicationExp)
+        recordFailedAssertion(s, v, nonNegTerm, nonNegImplicationExp, nonNegImplicationExp, analysisInfos)
+        if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, v) else failure
+    }
+
   }
 
   def produceSingleLocation(s: State,
@@ -1052,7 +1085,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             ePerm: Option[ast.Exp],
                             resourceTriggerFactory: Term => Term, /* Trigger with some snapshot */
                             mergeAndTrigger: Boolean,
-                            v: Verifier)
+                            v: Verifier,
+                            analysisInfos: AnalysisInfos)
                            (Q: (State, Verifier) => VerificationResult)
                            : VerificationResult = {
 
@@ -1060,16 +1094,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val smDef2 = SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq())
     val comment = "Definitional axioms for singleton-SM's value"
     v.decider.prover.comment(comment)
-    v.decider.assumeDefinition(smValueDef, Option.when(debugOn)(DebugExp.createInstance(comment, true)))
-    val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalQVars, formalQVarsExp, resource, tArgs, eArgs, tPerm, ePerm, sm, Some(s.qpTag.getOrElse(v.counter(this).next())), s.program)
+    v.decider.assumeDefinition(smValueDef, Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)), analysisInfos)
+    val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalQVars, formalQVarsExp, resource, tArgs, eArgs, tPerm, ePerm, sm, Some(s.qpTag.getOrElse(v.counter(this).next())), s.program, v, analysisInfos, isExhale=false)
 
     val s1 = if (mergeAndTrigger) {
-      val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v)
+      val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v, v.decider.defaultAnalysisInfos)
 
       val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
       val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
       val pcs = interpreter.buildPathConditionsForChunk(ch, resourceDescription.instanceProperties(s.mayAssumeUpperBounds))
-      pcs.foreach(p => v.decider.assume(p._1, Option.when(debugOn)(DebugExp.createInstance(p._2, p._2))))
+      pcs.foreach(p => v.decider.assume(p._1, Option.when(debugOn)(DebugExp.createInstance(p._2, p._2)), analysisInfos))
 
       val smCache1 = if (s.isUsedAsTrigger(resource)) {
         val (relevantChunks, _) =
@@ -1077,7 +1111,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val (smDef1, smCache1) =
           quantifiedChunkSupporter.summarisingSnapshotMap(
             s, resource, formalQVars, relevantChunks, v)
-        v.decider.assume(resourceTriggerFactory(smDef1.sm), Option.when(debugOn)(DebugExp.createInstance("Resource Trigger", true)))
+        v.decider.assume(resourceTriggerFactory(smDef1.sm), Option.when(debugOn)(DebugExp.createInstance("Resource Trigger", true)), analysisInfos.overrideDependencyType(OriginType.Trigger))
         smCache1
       } else {
         s.smCache
@@ -1118,7 +1152,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               negativePermissionReason: => ErrorReason,
               notInjectiveReason: => ErrorReason,
               insufficientPermissionReason: => ErrorReason,
-              v: Verifier)
+              v: Verifier,
+              analysisInfos: AnalysisInfos)
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
 
@@ -1154,7 +1189,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val comment = "Nested auxiliary terms: globals"
     v.decider.prover.comment(comment)
-    v.decider.assume(auxGlobals, Option.when(debugOn)(DebugExp.createInstance(description=comment, children=auxGlobalsExp.get)), enforceAssumption = false)
+    v.decider.assume(auxGlobals, Option.when(debugOn)(DebugExp.createInstance(description=comment, children=auxGlobalsExp.get)), enforceAssumption = false, analysisInfos=v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo.createUnique(comment), OriginType.Internal))
 
     val comment2 = "Nested auxiliary terms: non-globals"
     v.decider.prover.comment(comment2)
@@ -1164,10 +1199,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v.decider.assume(
           auxNonGlobals.map(_.copy(
             vars = effectiveTriggersQVars,
-            triggers = effectiveTriggers)), Option.when(debugOn)(DebugExp.createInstance(description=comment2, children=auxNonGlobalsExp.get)), enforceAssumption = false)
+            triggers = effectiveTriggers)), Option.when(debugOn)(DebugExp.createInstance(description=comment2, children=auxNonGlobalsExp.get)), enforceAssumption = false, analysisInfos=analysisInfos.overrideDependencyType(OriginType.Internal))
       case Some(_) =>
         /* Explicit triggers were provided. */
-        v.decider.assume(auxNonGlobals, Option.when(debugOn)(DebugExp.createInstance(description=comment2, children=auxNonGlobalsExp.get)), enforceAssumption = false)
+        v.decider.assume(auxNonGlobals, Option.when(debugOn)(DebugExp.createInstance(description=comment2, children=auxNonGlobalsExp.get)), enforceAssumption = false, analysisInfos=analysisInfos.overrideDependencyType(OriginType.Internal))
     }
 
     val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
@@ -1175,11 +1210,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val nonNegTerm = Forall(qvars, Implies(FunctionPreconditionTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
     val nonNegExp = qvarExps.map(qv => ast.Forall(qv, Nil, nonNegImplicationExp.get)())
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
-    v.decider.assert(nonNegTerm) {
+    v.decider.assert(nonNegTerm, analysisInfos) {
       case true =>
         val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
         val chunkOrderHeuristics =
-          qpAppChunkOrderHeuristics(inverseFunctions.invertibles, qvars, hints, v)
+          qpAppChunkOrderHeuristics(inverseFunctions.invertibles, qvars, hints, v, analysisInfos)
         val loss = if (!Verifier.config.unsafeWildcardOptimization() ||
             (resource.isInstanceOf[ast.Location] && s.permLocations.contains(resource.asInstanceOf[ast.Location])))
           PermTimes(tPerm, s.permissionScalingFactor)
@@ -1211,7 +1246,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             program = s.program)
         v.decider.prover.comment("Check receiver injectivity")
         val completeReceiverInjectivityCheck = Implies(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), receiverInjectivityCheck)
-        v.decider.assert(completeReceiverInjectivityCheck) {
+        v.decider.assert(completeReceiverInjectivityCheck, analysisInfos) {
           case true =>
             val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
             val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
@@ -1225,8 +1260,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             v.decider.prover.comment("Definitional axioms for inverse functions")
 
             v.decider.assume(inverseFunctions.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)),
-              Option.when(debugOn)(DebugExp.createInstance("Inverse Function Axioms", isInternal_ = true)), enforceAssumption = false)
-            v.decider.assume(inverseFunctions.definitionalAxioms, Option.when(debugOn)(DebugExp.createInstance("Inverse function axiom", isInternal_ = true)), enforceAssumption = false)
+              Option.when(debugOn)(DebugExp.createInstance("Inverse Function Axioms", isInternal_ = true)), enforceAssumption = false, analysisInfos = analysisInfos)
+            v.decider.assume(inverseFunctions.definitionalAxioms, Option.when(debugOn)(DebugExp.createInstance("Inverse function axiom", isInternal_ = true)), enforceAssumption = false, analysisInfos=analysisInfos)
 
             if (s.isUsedAsTrigger(resource)){
               v.decider.assume(
@@ -1234,7 +1269,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   formalQVars,
                   Implies(condOfInvOfLoc, ResourceTriggerFunction(resource, smDef1.get.sm, formalQVars, s.program)),
                   Trigger(inverseFunctions.inversesOf(formalQVars)))),
-                Option.when(debugOn)(DebugExp.createInstance("Inverse Function", isInternal_ = true)), enforceAssumption = false)
+                Option.when(debugOn)(DebugExp.createInstance("Inverse Function", isInternal_ = true)), enforceAssumption = false, analysisInfos=analysisInfos)
             }
 
 
@@ -1249,7 +1284,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                             lossExp,
                                             createFailure(pve dueTo insufficientPermissionReason/*InsufficientPermission(acc.loc)*/, v1, s1, "consuming QP"),
                                             formalQVars,
-                                            v1)((s2, heap, rPerm, rPermExp, v2) => {
+                                            v1,
+                                            analysisInfos)((s2, heap, rPerm, rPermExp, v2) => {
                   val (relevantChunks, otherChunks) =
                     quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
                       heap, ChunkIdentifier(resource, s2.program))
@@ -1266,7 +1302,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                       rPerm,
                       rPermExp,
                       chunkOrderHeuristics,
-                      v2)
+                      v2,
+                      analysisInfos)
                   val optSmDomainDefinitionCondition2 =
                       if (s3.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(imagesOfFormalQVars)))
                       else None
@@ -1299,14 +1336,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                     qid,
                     newTag,
                     v2,
-                    s3.program
+                    s3.program,
+                    analysisInfos,
+                    isExhale = true
                   )
                   val debugExp = Option.when(debugOn)(DebugExp.createInstance("Inverse functions for quantified permission", true))
-                  v.decider.assume(FunctionPreconditionTransformer.transform(inverseFunctions.axiomInvertiblesOfInverses, s3.program), debugExp)
-                  v.decider.assume(inverseFunctions.axiomInvertiblesOfInverses, debugExp)
+                  v.decider.assume(FunctionPreconditionTransformer.transform(inverseFunctions.axiomInvertiblesOfInverses, s3.program), debugExp, analysisInfos)
+                  v.decider.assume(inverseFunctions.axiomInvertiblesOfInverses, debugExp, analysisInfos)
                   val substitutedAxiomInversesOfInvertibles = inverseFunctions.axiomInversesOfInvertibles.replace(formalQVars, tArgs)
-                  v.decider.assume(FunctionPreconditionTransformer.transform(substitutedAxiomInversesOfInvertibles, s3.program), debugExp)
-                  v.decider.assume(substitutedAxiomInversesOfInvertibles, debugExp)
+                  v.decider.assume(FunctionPreconditionTransformer.transform(substitutedAxiomInversesOfInvertibles, s3.program), debugExp, analysisInfos)
+                  v.decider.assume(substitutedAxiomInversesOfInvertibles, debugExp, analysisInfos)
                   val h2 = Heap(remainingChunks ++ untouchedChunks ++ otherChunks)
                   val s4 = s3.copy(smCache = smCache2,
                                    constrainableARPs = s.constrainableARPs)
@@ -1340,7 +1379,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                     lossOfInvOfLoc,
                     lossExp,
                     chunkOrderHeuristics,
-                    v1
+                    v1,
+                    analysisInfos
                   )
                 permissionRemovalResult match {
                   case (Complete(), s2, remainingChunks, untouchedChunks) =>
@@ -1369,7 +1409,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                       QS(s2, h3, None, v)
                     }
                   case (Incomplete(_, _), s2, _, _) =>
-                    createFailure(pve dueTo insufficientPermissionReason, v, s2, "QP consume")}
+                    val failure = createFailure(pve dueTo insufficientPermissionReason, v, s2, "QP consume")
+                    recordFailedFalseAssertion(s2, v, analysisInfos)
+                    InfeasiblePath.continueAfterFailure(failure, s2, v)(Q(s2, s2.h, Option.when(returnSnap)(Unit), v))
+                }
               }
             }
             /* In the greedy QP modes, the consume is wrapped in tryOrFail (whose semantics --
@@ -1391,9 +1434,25 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               executionFlowController.tryOrFail2[Heap, Option[Term]](s.copy(h = h), v)((s0, v0, QS) =>
                 consumeQP(s0.copy(h = s.h), s0.h, v0)(QS))(Q)
             case false =>
-              createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver injective")}
+            val failure = createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver injective")
+            recordFailedAssertion(s, v, receiverInjectivityCheck, None, None, analysisInfos)
+            if (s.retryLevel == 0 && v.reportFurtherErrors()) {
+              val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(debugOn)(PUnknown()))
+              failure combine Q(s, s.h, if (returnSnap) Some(snap) else None, v)
+            } else {
+              failure
+            }
+          }
         case false =>
-          createFailure(pve dueTo negativePermissionReason, v, s, nonNegTerm, nonNegExp)}
+          val failure = createFailure(pve dueTo negativePermissionReason, v, s, nonNegTerm, nonNegExp)
+          recordFailedAssertion(s, v, nonNegTerm, nonNegExp, nonNegExp, analysisInfos)
+          if (s.retryLevel == 0 && v.reportFurtherErrors()) {
+            val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(debugOn)(PUnknown()))
+            failure combine Q(s, s.h, if (returnSnap) Some(snap) else None, v)
+          } else {
+            failure
+          }
+    }
   }
 
   def consumeSingleLocation(s: State,
@@ -1408,7 +1467,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             returnSnap: Boolean,
                             optChunkOrderHeuristic: Option[Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]],
                             pve: PartialVerificationError,
-                            v: Verifier)
+                            v: Verifier,
+                            analysisInfos: AnalysisInfos)
                            (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                            : VerificationResult = {
 
@@ -1420,7 +1480,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         heuristics
       case None =>
         quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(arguments,
-          quantifiedChunkSupporter.extractHints(None, arguments), v)
+          quantifiedChunkSupporter.extractHints(None, arguments), v, analysisInfos)
     }
     def consumeQP(s0: State, h0: Heap, v0: Verifier)
                  (QS: (State, Heap, Option[Term], Verifier) => VerificationResult)
@@ -1431,7 +1491,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v0, s0, "single QP consume inside package")
           case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
         }
-        magicWandSupporter.transfer(s0, permissions, permissionsExp, failure, Seq(), v0)((s1, h1, rPerm, rPermExp, v1) => {
+        magicWandSupporter.transfer(s0, permissions, permissionsExp, failure, Seq(), v0, analysisInfos)((s1, h1, rPerm, rPermExp, v1) => {
           val (relevantChunks, otherChunks) =
             quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, chunkIdentifier)
           val (result, s2, remainingChunks, untouchedChunks) = quantifiedChunkSupporter.removePermissions(
@@ -1446,7 +1506,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             rPerm,
             rPermExp,
             chunkOrderHeuristics,
-            v
+            v,
+            analysisInfos
           )
           val h2 = Heap(remainingChunks ++ untouchedChunks ++ otherChunks)
           val (smDef1, smCache1) =
@@ -1465,7 +1526,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           }
           val consumedChunk =
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(
-              codomainQVars, codomainQVarsExp, resource, arguments, argumentsExp, permsTaken, permsTakenExp, smDef1.sm, None, s.program)
+              codomainQVars, codomainQVarsExp, resource, arguments, argumentsExp, permsTaken, permsTakenExp, smDef1.sm, None, s.program, v1, analysisInfos, isExhale=true)
           val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef1),
                            smCache = smCache1)
           (result, s3, h2, Some(consumedChunk))
@@ -1500,7 +1561,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           permissions,
           permissionsExp,
           chunkOrderHeuristics,
-          v
+          v,
+          analysisInfos
         )
         result match {
           case (Complete(), s1, remainingChunks, untouchedChunks) =>
@@ -1527,11 +1589,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               QS(s1, h1, None, v)
             }
           case (Incomplete(_, _), _, _, _) =>
-            resourceAccess match {
+            val failure = resourceAccess match {
               case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s, "single QP consume")
               case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s, "single QP consume")
               case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
             }
+            recordFailedFalseAssertion(s, v, analysisInfos)
+            if (s.retryLevel == 0 && v.reportFurtherErrors()) {
+              val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(debugOn)(PUnknown()))
+              failure combine Q(s, s.h, Some(snap), v)
+            } else failure
         }
       }
     }
@@ -1552,7 +1619,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                            condition: Term,
                            perms: Term,
                            permsExp: Option[ast.Exp],
-                           v: Verifier)
+                           v: Verifier,
+                           analysisInfos: AnalysisInfos)
   : ConsumptionResult = {
 
     var permsAvailable: Term = NoPerm
@@ -1569,7 +1637,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     // final check
     val result =
-      if (v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0)) /* This check is a must-check, i.e. an assert */ )
+      if (v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0), analysisInfos) /* This check is a must-check, i.e. an assert */ )
         Complete()
       else
         Incomplete(PermMinus(permsAvailable, perms), permsAvailableExp.map(pa => ast.PermSub(pa, permsExp.get)()))
@@ -1598,7 +1666,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                         perms: Term, // p(rs)
                         permsExp: Option[ast.Exp], // p(rs)
                         chunkOrderHeuristic: Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk],
-                        v: Verifier)
+                        v: Verifier,
+                        analysisInfos: AnalysisInfos)
   : (ConsumptionResult, State, Seq[QuantifiedBasicChunk], Seq[QuantifiedBasicChunk]) = {
     val rmPermRecord = new CommentRecord("removePermissions", s, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(rmPermRecord)
@@ -1614,7 +1683,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val constrainPermissions = !consumeExactRead(perms, s.constrainableARPs)
     if (s.assertReadAccessOnly) {
-      val result = assertReadPermission(s, candidates, codomainQVars, condition, perms, permsExp, v)
+      val result = assertReadPermission(s, candidates, codomainQVars, condition, perms, permsExp, v, analysisInfos)
       return (result, s, relevantChunks, Seq())
     }
 
@@ -1657,8 +1726,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val chunkRelevant = s.moreCompleteExhaleQP || {
           val superSetCheck = Forall(codomainQVars, Implies(And(condition, IsPositive(permsNeeded)), IsPositive(permsProvided)), Nil)
           val subSetCheck = Forall(codomainQVars, Implies(IsPositive(permsProvided), And(condition, IsPositive(permsNeeded))), Nil)
-          v.decider.check(subSetCheck, 10*Verifier.config.checkTimeout()) ||
-            v.decider.check(superSetCheck, 10*Verifier.config.checkTimeout())
+          v.decider.check(subSetCheck, 10*Verifier.config.checkTimeout(), analysisInfos) ||
+            v.decider.check(superSetCheck, 10*Verifier.config.checkTimeout(), analysisInfos)
         }
 
         if (chunkRelevant) {
@@ -1686,25 +1755,27 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           if (constrainPermissions) {
             v.decider.prover.comment(s"Constrain original permissions $perms")
 
-            v.decider.assume(permissionConstraint, permissionConstraintExp, permissionConstraintExp)
+            v.decider.assume(permissionConstraint, permissionConstraintExp, permissionConstraintExp, analysisInfos)
             remainingChunks =
-              remainingChunks :+ ch.permMinus(permsTaken, permsTakenExp)
+              remainingChunks :+ v.chunkFactory.permMinus(ch, permsTaken, permsTakenExp, analysisInfos)
           } else {
             v.decider.prover.comment(s"Chunk depleted?")
-            val chunkDepleted = v.decider.check(depletedCheck, Verifier.config.splitTimeout())
+            val chunkDepleted = v.decider.check(depletedCheck, Verifier.config.splitTimeout(), analysisInfos.overrideDependencyType(OriginType.Internal))
             if (!chunkDepleted) {
               val unusedCheck = Forall(codomainQVars, permsTaken === NoPerm, Nil)
-              val chunkUnused = v.decider.check(unusedCheck, Verifier.config.checkTimeout())
+              val chunkUnused = v.decider.check(unusedCheck, Verifier.config.checkTimeout(), analysisInfos.overrideDependencyType(OriginType.Internal))
               if (chunkUnused) {
                 untouchedChunks = untouchedChunks :+ ch
               } else {
-                remainingChunks = remainingChunks :+ ch.permMinus(permsTaken, permsTakenExp)
+                remainingChunks = remainingChunks :+ v.chunkFactory.permMinus(ch, permsTaken, permsTakenExp, analysisInfos)
               }
+            } else {
+              val _ = v.chunkFactory.withPerm(ch, permsTaken, None, analysisInfos, isExhale=true)
             }
           }
           val tookEnoughCheck = Forall(codomainQVars, Implies(condition, permsNeeded === NoPerm), Nil)
           v.decider.prover.comment(s"Intermediate check if already taken enough permissions")
-          success = if (v.decider.check(tookEnoughCheck, Verifier.config.splitTimeout())) {
+          success = if (v.decider.check(tookEnoughCheck, Verifier.config.splitTimeout(), analysisInfos)) {
             Complete()
           } else {
             Incomplete(permsNeeded, permsNeededExp)
@@ -1724,7 +1795,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       Forall(codomainQVars, Implies(condition, permsNeeded === NoPerm), Nil)
     v.decider.prover.comment("Final check if taken enough permissions")
     success =
-      if (success.isComplete || v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0)) /* This check is a must-check, i.e. an assert */)
+      if (success.isComplete || v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0), analysisInfos) /* This check is a must-check, i.e. an assert */)
         Complete()
       else
         success
@@ -2044,18 +2115,18 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
   }
 
-  override def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier): Option[QuantifiedChunk] = {
+  override def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier, analysisInfos: AnalysisInfos): Option[QuantifiedChunk] = {
     if (Verifier.config.exhaleModeQP == ExhaleMode.MoreComplete)
-      findChunkWithProvenAliases(chunks, chunk, v)
+      findChunkWithProvenAliases(chunks, chunk, v, analysisInfos)
     else
-      findChunkGreedy(chunks, chunk, v)
+      findChunkGreedy(chunks, chunk, v, analysisInfos)
   }
 
   /* Chunk matching used with the greedy QP exhale algorithm: merge chunks that stem from the
    * same original QP assertion, identified cheaply via syntactically equal original conditions
    * or equal tags, and otherwise via prover-checked subset relations between one chunk's
    * permission footprint and the other chunk's original condition. */
-  private def findChunkGreedy(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier): Option[QuantifiedChunk] = {
+  private def findChunkGreedy(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier, analysisInfos: AnalysisInfos): Option[QuantifiedChunk] = {
     val relevantChunks: Iterable[QuantifiedBasicChunk] = chunks.flatMap {
       case ch: QuantifiedBasicChunk if ch.id == chunk.id => Some(ch)
       case _ => None
@@ -2080,8 +2151,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       val replacedOrgCond = ch.orgCondition.replace(ch.quantifiedVars, codomainQVars)
       val supersetCheck = Forall(codomainQVars, Implies(IsPositive(replacedPerm), chunk.orgCondition), Nil)
       val subsetCheck = Forall(codomainQVars, Implies(IsPositive(chunk.perm), replacedOrgCond), Nil)
-      if (v.decider.check(supersetCheck, 10*Verifier.config.checkTimeout())  ||
-        v.decider.check(subsetCheck, 10 * Verifier.config.checkTimeout())) {
+      if (v.decider.check(supersetCheck, 10*Verifier.config.checkTimeout(), analysisInfos)  ||
+        v.decider.check(subsetCheck, 10 * Verifier.config.checkTimeout(), analysisInfos)) {
         return Some(ch)
       }
     }
@@ -2100,7 +2171,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
   /* Chunk matching used with the standard QP exhale algorithm: merge only chunks that provably
    * denote the same location(s), i.e. singleton chunks with provably equal receivers, or
    * quantified chunks with provably equal receiver expressions and conditions. */
-  private def findChunkWithProvenAliases(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier): Option[QuantifiedChunk] = {
+  private def findChunkWithProvenAliases(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier, analysisInfos: AnalysisInfos): Option[QuantifiedChunk] = {
     val lr = chunk match {
       case qfc: QuantifiedFieldChunk if qfc.invs.nonEmpty =>
         Left(invertiblesWithInversesApplied(qfc.invs, qfc.quantifiedVars), qfc.quantifiedVars, qfc.condition)
@@ -2136,11 +2207,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               // Hence, we need to compare the conditions for equality in addition to verifying that the receivers match.
               val equalityCond = And(cond.replace(chunk.quantifiedVars, singletonArguments),
                 cCond.replace(ch.quantifiedVars, cSingletonArguments))
-              val result = v.decider.check(And(equalityCond, equalityTerm), Verifier.config.checkTimeout())
+              val result = v.decider.check(And(equalityCond, equalityTerm), Verifier.config.checkTimeout(), analysisInfos)
               if (result) {
                 // Learn the equality
-                val debugExp = Option.when(debugOn)(DebugExp.createInstance("Chunks alias", true))
-                v.decider.assume(equalityTerm, debugExp)
+                val debugExp = Option.when(debugOn)(DebugExp.createInstance("Chunks alias", isInternal_ = true))
+                v.decider.assume(equalityTerm, debugExp, analysisInfos.overrideDependencyType(OriginType.Internal))
               }
               result
             case _ => false
@@ -2162,11 +2233,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               val condReplaced = cCond.replace(cQvars, quantVars)
               val secondReplaced = p._2.replace(cQvars, quantVars)
               val equalityTerm = SimplifyingForall(quantVars, And(Seq(p._1 === secondReplaced, cond === condReplaced)), Seq())
-              val result = v.decider.check(equalityTerm, Verifier.config.checkTimeout())
+              val result = v.decider.check(equalityTerm, Verifier.config.checkTimeout(), analysisInfos)
               if (result) {
                 // Learn the equality
-                val debugExp = Option.when(debugOn)(DebugExp.createInstance("Chunks alias", true))
-                v.decider.assume(equalityTerm, debugExp)
+                val debugExp = Option.when(debugOn)(DebugExp.createInstance("Chunks alias", isInternal_ = true))
+                v.decider.assume(equalityTerm, debugExp, analysisInfos.overrideDependencyType(OriginType.Internal))
               }
               result
             } else {
@@ -2229,7 +2300,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     (fr2, sm, Forall(qVars, smDef, triggers))
   }
 
-  def qpAppChunkOrderHeuristics(receiverTerms: Seq[Term], quantVars: Seq[Var], hints: Seq[Term], v: Verifier)
+  def qpAppChunkOrderHeuristics(receiverTerms: Seq[Term], quantVars: Seq[Var], hints: Seq[Term], v: Verifier, analysisInfos: AnalysisInfos)
                                : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk] = {
     // Heuristics that looks for quantified chunks that have the same shape (as in, the same number and types of
     // quantified variables) and identical receiver terms.
@@ -2255,7 +2326,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             receiverTerms.zip(cInvertibles).forall(p => {
               if (cQvars.length == quantVars.length && cQvars.zip(quantVars).forall(vars => vars._1.sort == vars._2.sort)) {
                 val secondReplaced = p._2.replace(cQvars, quantVars)
-                val tmp = v.decider.check(SimplifyingForall(quantVars, p._1 === secondReplaced, Seq()), Verifier.config.checkTimeout())
+                val tmp = v.decider.check(SimplifyingForall(quantVars, p._1 === secondReplaced, Seq()), Verifier.config.checkTimeout(), analysisInfos)
                 tmp
               } else {
                 false
@@ -2272,7 +2343,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
   }
 
-  def singleReceiverChunkOrderHeuristic(receiver: Seq[Term], hints: Seq[Term], v: Verifier)
+  def singleReceiverChunkOrderHeuristic(receiver: Seq[Term], hints: Seq[Term], v: Verifier, analysisInfos: AnalysisInfos)
                                        : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk] = {
     // Heuristic that emulates greedy Silicon behavior for consuming single-receiver permissions.
     // First:  Find singleton chunks that have the same receiver syntactically.
@@ -2291,7 +2362,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       } else {
         val greedyMatch = chunks.find(c => c.singletonArguments match {
           case Some(args) if args.length == receiver.length =>
-            args.zip(receiver).forall(ts => v.decider.check(ts._1 === ts._2, Verifier.config.checkTimeout()))
+            args.zip(receiver).forall(ts => v.decider.check(ts._1 === ts._2, Verifier.config.checkTimeout(), analysisInfos))
           case _ =>
             false
         }).toSeq

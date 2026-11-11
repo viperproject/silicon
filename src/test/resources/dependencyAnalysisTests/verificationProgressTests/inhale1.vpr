@@ -1,0 +1,14 @@
+// Spec quality: 1
+// Proof quality: 3/4
+// Progress: 3/4
+
+field f: Int
+
+method exhaleInhale(a: Ref)
+    requires acc(a.f)
+{
+    exhale acc(a.f, 1/2)       // PQ: 1/1
+    inhale acc(a.f, 1/2)
+
+    assert perm(a.f) == write  // PQ: 1/2
+}

@@ -26,10 +26,11 @@ import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.rules.maskHeapSupporter
 import viper.silicon.state._
+import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
-import viper.silicon.supporters.{AnnotationSupporter, DefaultDomainsContributor, DefaultMapsContributor, DefaultMultisetsContributor, DefaultPredicateVerificationUnitProvider, DefaultSequencesContributor, DefaultSetsContributor, MagicWandSnapFunctionsContributor, PredicateData}
 import viper.silicon.supporters.qps._
 import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
+import viper.silicon.supporters._
 import viper.silicon.utils.Counter
 import viper.silver.ast.utility.QuantifiedPermissions.collectInDependencies
 import viper.silver.ast.utility.rewriter.Traverse
@@ -48,6 +49,7 @@ trait MainVerifier extends Verifier {
   def nextUniqueVerifierId(): String
   def verificationPoolManager: VerificationPoolManager
   def rootSymbExLogger: SymbExLogger[_ <: MemberSymbExLogger]
+  def createWorkerVerifier(): WorkerVerifier
 }
 
 class DefaultMainVerifier(config: Config,
@@ -69,6 +71,8 @@ class DefaultMainVerifier(config: Config,
     symbExLog = rootSymbExLogger.openMemberScope(member, decider.pcs)
   }
 
+  def createWorkerVerifier(): WorkerVerifier = new WorkerVerifier(this, nextUniqueVerifierId(), reporter, debugMode)
+
   protected val preambleReader = new SMTLib2PreambleReader
 
   protected val sequencesContributor = new DefaultSequencesContributor(domainTranslator, config)
@@ -82,10 +86,10 @@ class DefaultMainVerifier(config: Config,
   protected val predicateAndWandSnapFunctionsContributor = new DefaultPredicateAndWandSnapFunctionsContributor(preambleReader, termConverter, predSnapGenerator, config)
   protected val magicWandSnapFunctionsContributor = new MagicWandSnapFunctionsContributor(preambleReader)
 
-  private val _verificationPoolManager: VerificationPoolManager = new VerificationPoolManager(this)
+  protected lazy val _verificationPoolManager: VerificationPoolManager = new DefaultVerificationPoolManager(this)
   def verificationPoolManager: VerificationPoolManager = _verificationPoolManager
 
-  private val statefulSubcomponents = List[StatefulComponent](
+  private lazy val statefulSubcomponents = List[StatefulComponent](
     uniqueIdCounter,
     sequencesContributor, setsContributor, multisetsContributor, mapsContributor, domainsContributor,
     fieldValueFunctionsContributor,
@@ -94,7 +98,7 @@ class DefaultMainVerifier(config: Config,
     maskHeapSupporter,
     magicWandSnapFunctionsContributor,
     functionsSupporter, predicateSupporter,
-    _verificationPoolManager,
+    verificationPoolManager,
     MultiRunRecorders /* In lieu of a better place, include MultiRunRecorders singleton here */
   )
 
@@ -121,7 +125,11 @@ class DefaultMainVerifier(config: Config,
 
   /* Verifier orchestration */
 
-  private object allProvers extends ProverLike {
+  def allProvers: AllProvers = DefaultAllProvers
+
+  protected object DefaultAllProvers extends AllProvers
+
+  trait AllProvers extends ProverLike {
     def emit(content: String): Unit = {
       decider.prover.emit(content)
       _verificationPoolManager.pooledVerifiers.emit(content)
@@ -170,6 +178,10 @@ class DefaultMainVerifier(config: Config,
   }
 
   /* Program verification */
+
+  def verifyMember(doVerify: Unit => Seq[VerificationResult], v: Verifier, member: ast.Member): Seq[VerificationResult] = {
+    doVerify()
+  }
 
   def verify(originalProgram: ast.Program, cfgs: Seq[SilverCfg], inputFile: Option[String]): List[VerificationResult] = {
     /** Trigger computation is currently not thread-safe; hence, all triggers are computed
@@ -231,8 +243,8 @@ class DefaultMainVerifier(config: Config,
       val startTime = System.currentTimeMillis()
       var results: Seq[VerificationResult] = null
       try {
-        results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
-          .flatMap(extractAllVerificationResults)
+        results = verifyMember(_ => functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
+          .flatMap(extractAllVerificationResults), this, function)
       } catch {
         case e : Throwable =>
           logger error s"An exception was thrown while verifying function `${function.name}`."
@@ -248,8 +260,8 @@ class DefaultMainVerifier(config: Config,
       val startTime = System.currentTimeMillis()
       var results: Seq[VerificationResult] = null
       try {
-        results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
-          .flatMap(extractAllVerificationResults)
+        results = verifyMember(_ => predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
+          .flatMap(extractAllVerificationResults), this, predicate)
       } catch {
         case e: Throwable =>
           logger error s"An exception was thrown while verifying predicate `${predicate.name}`."
@@ -283,8 +295,7 @@ class DefaultMainVerifier(config: Config,
           val startTime = System.currentTimeMillis()
           var results: Seq[VerificationResult] = null
           try {
-            results = v.methodSupporter.verify(s, method)
-              .flatMap(extractAllVerificationResults)
+            results = verifyMember(_ => v.methodSupporter.verify(s, method).flatMap(extractAllVerificationResults), v, method)
           } catch {
             case e: Throwable =>
               logger error s"An exception was thrown while verifying method `${method.name}`."
@@ -331,17 +342,21 @@ class DefaultMainVerifier(config: Config,
     }
     reporter report VerificationTerminationMessage()
 
-    val verificationResults = (   functionVerificationResults
-     ++ predicateVerificationResults
-     ++ methodVerificationResults)
+    val verificationResults = (functionVerificationResults
+      ++ predicateVerificationResults
+      ++ methodVerificationResults)
 
     if (Verifier.config.enableDebugging()){
       val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
       debugger.startDebugger()
     }
 
+    afterVerification(verificationResults, program, inputFile)
+
     verificationResults
   }
+
+  def afterVerification(verificationResults: List[VerificationResult], program: ast.Program, inputFile: Option[String]): Unit = {}
 
     private def createInitialState(member: ast.Member,
                                  program: ast.Program,

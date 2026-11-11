@@ -6,9 +6,9 @@
 
 package viper.silicon.resources
 
-import viper.silicon.interfaces.state.QuantifiedChunk
 import viper.silicon.state.terms
 import viper.silicon.state.terms.{Term, Trigger, Var}
+import viper.silicon.state.chunks.QuantifiedChunk
 import viper.silicon.utils.ast.replaceVarsInExp
 import viper.silver.ast
 

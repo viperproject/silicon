@@ -1,0 +1,37 @@
+// Spec quality: 3/4
+// Proof quality: 155/168
+// Progress: 155/224
+
+field val: Int
+define access(a)
+  (forall j: Int :: 0 <= j && j < len(a) ==> acc(slot(a,j).val))
+
+domain IArray {
+  function slot(a: IArray, i: Int): Ref
+  function len(a: IArray): Int
+  function first(r: Ref): IArray
+  function second(r: Ref): Int
+
+  axiom all_diff {
+    forall a: IArray, i: Int :: { slot(a,i) }
+      first(slot(a,i)) == a && second(slot(a,i)) == i
+  }
+}
+
+
+method domain3()
+{
+  var a: IArray
+  inhale len(a) == 3
+  inhale access(a)          // PQ: 1/1
+
+  var i: Int
+  i := 0
+  while (i < len(a))
+    invariant access(a)     // PQ: 5/6
+    invariant 0 <= i        // PQ: 1/1
+  {
+    slot(a,i).val := -i     // PQ: 6/7
+    i := i + 1
+  }
+}

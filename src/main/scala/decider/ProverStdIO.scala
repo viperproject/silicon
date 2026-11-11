@@ -9,17 +9,17 @@ package viper.silicon.decider
 import java.io._
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
-import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
+import viper.silicon.interfaces.decider._
 import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
-import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
 import viper.silicon.{Config, Map, toMap}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, QuantifierInstantiationsMessage, Reporter}
-import viper.silver.verifier.Model
+import viper.silver.verifier.{Model, DefaultDependency => SilDefaultDependency}
 
 import scala.collection.mutable
 
@@ -39,6 +39,7 @@ abstract class ProverStdIO(uniqueId: String,
   protected var output: PrintWriter = _
   protected var allDecls: Seq[Decl] = Seq()
   protected var allEmits: Seq[String] = Seq()
+  protected var proverLabelId: AtomicInteger = new AtomicInteger(0)
 
   var proverPath: Path = _
   var lastReasonUnknown : String = _
@@ -233,26 +234,38 @@ abstract class ProverStdIO(uniqueId: String,
 //        problems.foreach(p => quantificationLogger.println(s"  $p"))
 //      }
 //    })
-
-    assume(termConverter.convert(term))
+    assumeInternal(termConverter.convert(term), None)
   }
 
-  def assume(term: String): Unit = {
+  def nextProverLabel(): String = {
+    val label = "prover_" + proverLabelId.getAndIncrement()
+    label
+  }
+
+  protected def assumeInternal(term: String, label: Option[String]): Unit = {
 //    bookkeeper.assumptionCounter += 1
 
-    writeLine("(assert " + term + ")")
+    writeAssert(term, label.orElse(Option.when(Verifier.config.enableUnsatCores())(nextProverLabel())))
+  }
+
+  private def writeAssert(term: String, name: Option[String]): Unit = {
+    name match {
+      case Some(n) => writeLine("(assert (! " + term + " :named " + n + "))")
+      case None => writeLine("(assert " + term + ")")
+    }
+
     readSuccess()
   }
 
   def assert(goal: Term, timeout: Option[Int] = None): Boolean =
-    assert(termConverter.convert(goal), timeout)
+    assertInternal(termConverter.convert(goal), timeout, None)
 
-  def assert(goal: String, timeout: Option[Int]): Boolean = {
+  protected def assertInternal(goal: String, timeout: Option[Int], label: Option[String]): Boolean = {
 //    bookkeeper.assertionCounter += 1
 
     val (result, duration) = Verifier.config.assertionMode() match {
       case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal, timeout)
-      case Config.AssertionMode.PushPop => assertUsingPushPop(goal, timeout)
+      case Config.AssertionMode.PushPop => assertUsingPushPop(goal, timeout, label)
     }
 
     comment(s"${viper.silver.reporter.format.formatMillisReadably(duration)}")
@@ -261,12 +274,11 @@ abstract class ProverStdIO(uniqueId: String,
     result
   }
 
-  protected def assertUsingPushPop(goal: String, timeout: Option[Int]): (Boolean, Long) = {
+  protected def assertUsingPushPop(goal: String, timeout: Option[Int], label: Option[String]): (Boolean, Long) = {
     push()
     setTimeout(timeout)
 
-    writeLine("(assert (not " + goal + "))")
-    readSuccess()
+    writeAssert("(not " + goal + ")", label.orElse(Option.when(Verifier.config.enableUnsatCores())(nextProverLabel())))
 
     val startTime = System.currentTimeMillis()
     writeLine("(check-sat)")
@@ -276,12 +288,17 @@ abstract class ProverStdIO(uniqueId: String,
     if (!result) {
       retrieveAndSaveModel()
       retrieveReasonUnknown()
+    } else {
+      onUnsat()
     }
 
     pop()
 
     (result, endTime - startTime)
   }
+
+  /* Invoked right after the prover reported unsat for an assertion checked via push/pop or for a check. */
+  protected def onUnsat(): Unit = {}
 
   def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {
     data match {
@@ -353,11 +370,16 @@ abstract class ProverStdIO(uniqueId: String,
 
     writeLine("(check-sat)")
 
-    readLine() match {
+    val result = readLine() match {
       case "sat" => Sat
       case "unsat" => Unsat
       case "unknown" => Unknown
     }
+
+    if (result == Unsat)
+      onUnsat()
+
+    result
   }
 
   def statistics(): Map[String, String] = {

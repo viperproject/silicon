@@ -1,0 +1,17 @@
+// Spec quality: 1
+// Proof quality: 29/36
+// Progress: 29/36
+
+predicate greater0(n: Int){
+  n > 0
+}
+
+method unfoldFoldP(a: Int, b: Int)      // 29/36
+    requires greater0(b)
+    ensures greater0(a + b) // PQ: 3/4
+{
+    assume a >= 0
+    unfold greater0(b)      // PQ: 1/1
+
+    fold greater0(a + b)    // PQ: 2/3
+}

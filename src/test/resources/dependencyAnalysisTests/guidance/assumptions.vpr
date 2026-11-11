@@ -1,0 +1,13 @@
+method client()
+{
+    var a: Int, b: Int, c: Int, d: Int
+    assume @guidedAssumption("3")(a == 1)   // used for last assert
+    assume @guidedAssumption("1")(b == 2)   // used for every assert
+    assume @guidedAssumption("2")(c == 3)   // used for last two asserts
+
+    d := a + b
+
+    assert b == 2
+    assert b + c == 5
+    assert d + c == 6
+}

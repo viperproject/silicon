@@ -14,10 +14,12 @@ import viper.silicon.{utils, _}
 import viper.silicon.decider.{DefaultDeciderProvider, TermToSMTLib2Converter}
 import viper.silicon.logger.{MemberSymbExLogger, NoopMemberSymbExLog}
 import viper.silicon.state._
+import viper.silicon.state.chunks.{ChunkFactory, DefaultChunkFactory}
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.supporters._
 import viper.silicon.reporting.DefaultStateFormatter
 import viper.silicon.rules.{DefaultStateConsolidator, HeapSupportRules, LastRetryFailOnlyStateConsolidator, LastRetryStateConsolidator, MaskHeapStateConsolidator, MinimalRetryingStateConsolidator, MinimalStateConsolidator, MoreComplexExhaleStateConsolidator, RetryingFailOnlyStateConsolidator, RetryingStateConsolidator, StateConsolidationRules, defaultHeapSupporter, maskHeapSupporter}
+import viper.silicon.rules._
 import viper.silicon.utils.Counter
 
 import scala.collection.mutable
@@ -54,6 +56,7 @@ abstract class BaseVerifier(val config: Config,
   val termConverter = new TermToSMTLib2Converter(/*bookkeeper*/)
   val domainTranslator = new DefaultDomainsTranslator()
   val identifierFactory = new DefaultIdentifierFactory(uniqueId)
+  val chunkFactory: ChunkFactory = new DefaultChunkFactory()
   val triggerGenerator = new TriggerGenerator()
   val axiomRewriter = new AxiomRewriter(new utils.Counter()/*, bookkeeper.logfiles(s"axiomRewriter")*/, triggerGenerator)
   val quantifierSupporter = new DefaultQuantifierSupporter(triggerGenerator)

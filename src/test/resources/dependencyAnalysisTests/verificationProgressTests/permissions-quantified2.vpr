@@ -1,0 +1,17 @@
+// Spec quality: 1
+// Proof quality: 3/4
+// Progress: 3/4
+
+field f: Int
+
+method quantifiedExhaleFully() {
+  var r1: Ref, r2: Ref, r3: Ref
+  r1 := new(f)
+  r2 := new(f)
+  inhale acc(r3.f)
+
+  var xs: Seq[Ref]
+  xs := Seq(r1, r2, r3)
+
+  assert forall x: Ref :: x in xs ==> acc(x.f)  // PQ: 3/4
+}
