@@ -339,6 +339,12 @@ private trait LayeredPathConditionStackLike {
     unconditionalTerms ++ conditionalTerms
   }
 
+  /** For each layer (in the order of `layers`), the conjunction of its own branch condition and those of
+    * all layers below it, outermost first.
+    */
+  private def cumulativeBranchConditions(layers: Stack[PathConditionStackLayer]): Seq[Term] =
+    layers.scanRight(Vector.empty[Term])((layer, outer) => outer ++ layer.branchCondition).init.map(And(_))
+
   protected def quantified(layers: Stack[PathConditionStackLayer],
                            quantifier: Quantifier,
                            qvars: Seq[Var],
@@ -353,8 +359,11 @@ private trait LayeredPathConditionStackLike {
 
     val ignores = ignore.topLevelConjuncts
 
-    for (layer <- layers) {
-      val actualBranchCondition = layer.branchCondition.getOrElse(True)
+    /* The assumptions of a layer hold only under the branch conditions of that layer *and* all layers
+     * below it (cf. conditionalized). Using only the layer's own branch condition would drop the guard
+     * for layers that don't have one, e.g. layers pushed by marks inside a quantifier body (#1020).
+     */
+    for ((layer, actualBranchCondition) <- layers.zip(cumulativeBranchConditions(layers))) {
       val relevantNonGlobals = layer.nonGlobalAssumptions -- ignores
       val (trueNonGlobals, additionalGlobals) = if (!actualBranchCondition.existsDefined{ case t if qvars.contains(t) => }) {
         // The branch condition is independent of all quantified variables
@@ -393,16 +402,24 @@ private trait LayeredPathConditionStackLike {
     var globals = InsertionOrderedSet.empty[DebugExp]
     var nonGlobals = InsertionOrderedSet.empty[DebugExp]
 
-    for ((layer, layerNonGlobals) <- layers.zip(nonGlobalDebugExps(layers))) {
+    /* As in quantified: a layer's assumptions are guarded by the branch conditions of all layers below it, too. */
+    val cumulativeConditions: Seq[Vector[PathConditionStackLayer]] =
+      layers.scanRight(Vector.empty[PathConditionStackLayer])((layer, outer) =>
+        if (layer.branchConditionExp.isDefined) outer :+ layer else outer).init
+
+    for (((layer, layerNonGlobals), conditionLayers) <- layers.zip(nonGlobalDebugExps(layers)).zip(cumulativeConditions)) {
       globals ++= layer.globalAssumptionDebugExps
 
-      val branchConditionExp = layer.branchConditionExp
-        if (branchConditionExp.isDefined){
+        if (conditionLayers.nonEmpty){
+          val nonTrivial = conditionLayers.filterNot(_.branchConditionExp.get._1.equals(ast.TrueLit()()))
           var quantBody: InsertionOrderedSet[DebugExp] = InsertionOrderedSet.empty
-          if (branchConditionExp.get._1.equals(ast.TrueLit()())) {
+          if (nonTrivial.isEmpty) {
             quantBody = layerNonGlobals
           } else {
-            quantBody = InsertionOrderedSet(DebugExp.createImplicationInstance(description = None, originalExp = Some(branchConditionExp.get._1), finalExp = Some(branchConditionExp.get._2.get), term = layer.branchCondition, isInternal_ = false,
+            quantBody = InsertionOrderedSet(DebugExp.createImplicationInstance(description = None,
+              originalExp = Some(viper.silicon.utils.ast.BigAnd(nonTrivial.map(_.branchConditionExp.get._1))),
+              finalExp = Some(viper.silicon.utils.ast.BigAnd(nonTrivial.map(_.branchConditionExp.get._2.get))),
+              term = Some(And(nonTrivial.map(_.branchCondition.get))), isInternal_ = false,
               children = layerNonGlobals))
           }
 
