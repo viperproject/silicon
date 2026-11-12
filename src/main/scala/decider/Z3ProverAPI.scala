@@ -318,15 +318,19 @@ class Z3ProverAPI(uniqueId: String,
   protected def assertUsingPushPop(goal: Term, timeout: Option[Int]): (Boolean, Long) = {
     endPreamblePhase()
     push()
-    setTimeout(timeout)
+    val (res, startTime, endTime) = try {
+      setTimeout(timeout)
 
-    val negatedGoal = ctx.mkNot(termConverter.convert(goal).asInstanceOf[BoolExpr])
-    prover.add(negatedGoal)
-    val startTime = System.currentTimeMillis()
-    val res = prover.check()
-    val endTime = System.currentTimeMillis()
+      val negatedGoal = ctx.mkNot(termConverter.convert(goal).asInstanceOf[BoolExpr])
+      prover.add(negatedGoal)
+      val startTime = System.currentTimeMillis()
+      val res = prover.check()
+      (res, startTime, System.currentTimeMillis())
+    } finally {
+      pop()
+    }
+
     val result = res == Status.UNSATISFIABLE
-    pop()
 
     if (!result) {
       retrieveAndSaveModel()
