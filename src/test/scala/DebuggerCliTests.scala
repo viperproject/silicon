@@ -70,6 +70,22 @@ class DebuggerCliTests extends AnyFunSuite {
     assert(!output.contains("Unfolded cell(x"), output)
   }
 
+  test("adds impure assumptions to the heap, and proves impure assertions") {
+    val output = runCli("fold")(
+      line("af"), line("acc(x.f) && x.f > 0"),
+      line("p"),
+      line("ap"), line("acc(x.f, 1/2)"),
+      line("ap"), line("acc(x.f) && x.f > 1"),
+      line("af"), line("acc(x.f)"))
+    assert(output.contains("Added acc(x.f, write) && x.f > 0 to the state."), output)
+    assert(output.contains("(added by: assume acc(x.f, write) && x.f > 0)"), output)
+    assert(output.contains("PASS"), "x.f > 0 follows from the assumption")
+    assert(output.contains("Proved acc(x.f, 1 / 2) and added it"), output)
+    assert(output.contains("Fail! Could not prove acc(x.f, write) && x.f > 1"), output)
+    // A second full permission to x.f is impossible.
+    assert(output.contains("The state is infeasible after adding acc(x.f, write)"), output)
+  }
+
   test("reports a predicate instance that cannot be unfolded") {
     val output = runCli("fold")(line("u cell(null)"))
     assert(output.contains("Unfolding cell(null) failed"), output)

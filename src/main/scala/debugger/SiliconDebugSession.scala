@@ -244,32 +244,66 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
         "IDE: disable the setting viper.debugger.restrictToFailingMember, or start the debugger with F5).")
     }
     val stmt = if (unfold) ast.Unfold(pap)(pap.pos) else ast.Fold(pap)(pap.pos)
+    val command = s"${if (unfold) "unfold" else "fold"} ${if (pap.perm.isInstanceOf[ast.FullPerm]) pap.loc else pap}"
+    execStatement(stmt, command, o, msgs)(
+      failed = reason => s"${if (unfold) "Unfolding" else "Folding"} ${pap.loc} failed: $reason",
+      succeeded = s"${if (unfold) "Unfolded" else "Folded"} ${pap.loc}.",
+      infeasible = s"No case of ${pap.loc} is feasible: the assumptions are contradictory after this statement.")
+  }
+
+  /**
+    * Adds an impure assertion such as `acc(x.f) && x.f > 0` to the state: if `free`, as if `inhale e` was executed,
+    * which adds its permissions to the heap and its pure parts to the assumptions; otherwise as if `assert e` was
+    * executed, which checks that the state has the permissions and that the pure parts hold, and then adds the pure
+    * parts. Like an unfold, a conditional assertion may produce several cases.
+    */
+  private def addImpureAssumption(e: ast.Exp, free: Boolean, o: ProofObligation,
+                                  msgs: mutable.ListBuffer[DebugMessage]): DebugCommandResult = {
+    val stmt = if (free) ast.Inhale(e)(e.pos) else ast.Assert(e)(e.pos)
+    execStatement(stmt, s"${if (free) "assume" else "assert"} $e", o, msgs)(
+      failed = reason => s"Fail! Could not prove $e: $reason",
+      succeeded = if (free) s"Added $e to the state." else s"Proved $e and added it to the assumptions.",
+      infeasible = s"The state is infeasible after adding $e, e.g. because it adds more permission than the state " +
+        "can hold. The assumption was not added.")
+  }
+
+  /**
+    * Executes `stmt` in the current state, as if it occurred there in the program, and records what it changed as done
+    * by the debugger command `command`. This is done on the obligation's own prover, so the verification is not
+    * affected. Each feasible outcome becomes a case (see [[selectCase]]), the first of which becomes the current
+    * obligation; if the statement fails, the obligation is left unchanged.
+    *
+    * Since the heap may change, the failed assertion the obligation was opened for may no longer describe the failed
+    * check; [[prove]] checks it again in the current state.
+    */
+  private def execStatement(stmt: ast.Stmt, command: String, o: ProofObligation, msgs: mutable.ListBuffer[DebugMessage])
+                           (failed: String => String, succeeded: String, infeasible: String): DebugCommandResult = {
     val v = o.v
     val emitsBefore = v.decider.prover.getAllEmits().size
     val mark = v.decider.setPathConditionMark()
     val outcomes = mutable.ListBuffer.empty[(State, RecordedPathConditions)]
     // exec2 rather than exec, which would also call the debug hook.
     val res = executor.exec2(o.s, stmt, v)((s1, v1) => {
-      // The path conditions of each case are popped again once the case is done, so they are recorded here.
-      outcomes += ((s1, v1.decider.pcs.after(mark)))
+      // The path conditions of each case are popped again once the case is done, so they are recorded here. An
+      // outcome whose path conditions are contradictory, e.g. after adding permission the state already has, is
+      // dropped.
+      if (!v1.decider.checkSmoke()) outcomes += ((s1, v1.decider.pcs.after(mark)))
       Success()
     })
-    // Everything the fold or unfold declared, e.g. the snapshots of the new chunks.
+    // Everything the statement declared, e.g. the snapshots of new chunks.
     val newEmits = v.decider.prover.getAllEmits().drop(emitsBefore)
 
     res match {
       case f: Failure =>
-        msgs += DebugMessage.error(s"${if (unfold) "Unfolding" else "Folding"} ${pap.loc} failed: ${f.message.reason.readableMessage}")
+        msgs += DebugMessage.error(failed(f.message.reason.readableMessage))
         // The attempt may have left assumptions in the prover; start from the obligation again.
         obl = Some(initVerifier(o, v.decider.prover.name, lastSolverOptions, msgs))
         result(msgs, ok = false)
       case _ if outcomes.isEmpty =>
-        msgs += DebugMessage.warning(
-          s"No case of ${pap.loc} is feasible: the assumptions are contradictory after this statement.")
+        msgs += DebugMessage.warning(infeasible)
         obl = Some(initVerifier(o, v.decider.prover.name, lastSolverOptions, msgs))
         result(msgs)
       case _ =>
-        val command = s"${if (unfold) "unfold" else "fold"} ${if (pap.perm.isInstanceOf[ast.FullPerm]) pap.loc else pap}"
         val newCases = outcomes.toSeq.map { case (s1, pcs) =>
           val conditions = pcs.branchConditionExps.toSeq.map(bce => bce._1 -> bce._2.getOrElse(bce._1))
           val description = conditions.map(_._2.toString).filterNot(_ == "true").mkString(" && ")
@@ -279,11 +313,11 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
             branchConditions = o.branchConditions ++ pcs.branchConditions.toSeq,
             branchConditionExps = o.branchConditionExps ++ conditions,
             assumptionsExp = o.assumptionsExp ++ pcs.assumptionExps,
-            assertionOutdated = o.assertionOutdated || !isPaused))
+            assertionOutdated = o.assertionOutdated || (!isPaused && s1.h.values != o.s.h.values)))
         }
         cases = newCases
         invalidateCounterexample()
-        msgs += DebugMessage.info(s"${if (unfold) "Unfolded" else "Folded"} ${pap.loc}.")
+        msgs += DebugMessage.info(succeeded)
         if (newCases.size > 1) {
           msgs += DebugMessage.info(s"This produced ${newCases.size} cases; showing case 1. Use :case <n> to switch:\n" +
             newCases.zipWithIndex.map { case ((d, _), i) => s"  [${i + 1}] $d" }.mkString("\n"))
@@ -368,9 +402,12 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
   /**
     * Evaluates the given expression in the current state and adds it to the assumptions. If `free` is false,
     * the expression must be provable from the current assumptions, otherwise it is not added.
+    *
+    * An impure expression, e.g. `acc(x.f) && x.f > 0`, is added like an `inhale` (or checked like an `assert` if `free`
+    * is false) instead; see [[addImpureAssumption]]. Its permissions can be removed again with [[remove]].
     */
   def addAssumption(text: String, free: Boolean): DebugCommandResult = withObligation { (o, msgs) =>
-    addAssumption(translateStringToExp(text, o), free, o, msgs)
+    addAssumption(translateStringToExp(text, o, impure = true), free, o, msgs)
   }
 
   /**
@@ -542,8 +579,9 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
   }
 
   private def addAssumption(assumptionE: ast.Exp, free: Boolean, o: ProofObligation,
-                            msgs: mutable.ListBuffer[DebugMessage]): DebugCommandResult = {
-    evalAssumption(assumptionE, o, free, o.v, msgs) match {
+                            msgs: mutable.ListBuffer[DebugMessage]): DebugCommandResult =
+    if (!assumptionE.isPure) addImpureAssumption(assumptionE, free, o, msgs)
+    else evalAssumption(assumptionE, o, free, o.v, msgs) match {
       case Some((resS, resT, resE, evalAssumptions)) =>
         val allAssumptions = o.assumptionsExp ++ evalAssumptions + DebugExp.createInstance(assumptionE, resE).withTerm(resT)
         invalidateCounterexample()
@@ -553,7 +591,6 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
       case None =>
         result(msgs, ok = false)
     }
-  }
 
   /**
     * Checks whether the proof obligation holds in its current state.
@@ -789,6 +826,12 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     v.debugHookEnabled = false
     currentWorker = Some(v)
     v.start()
+    // Fresh identifiers are numbered per verifier id, e.g. $t@12@08, and this verifier has the id of the one that
+    // produced the obligation (which names such as x@1 rely on). Continue after every number the replayed declarations
+    // use, or a command that declares something (e.g. an inhale) would declare an existing identifier again.
+    val numbered = s"@(\\d+)@${java.util.regex.Pattern.quote(v.uniqueId)}(?![0-9])".r
+    obl.proverEmits.iterator.flatMap(e => numbered.findAllMatchIn(e).map(_.group(1).toInt)).maxOption
+      .foreach(max => v.identifierFactory.skipTo(max + 1))
     v.decider.createProver(proverName, userArgsString)
     v.decider.prover.emit(obl.proverEmits)
 
@@ -808,7 +851,7 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     * @param anyType         whether the expression may be of any type, like the value of a variable.
     */
   private def translateStringToExp(str: String, obl: ProofObligation, predicateAccess: Option[String] = None,
-                                   anyType: Boolean = false): ast.Exp = {
+                                   anyType: Boolean = false, impure: Boolean = false): ast.Exp = {
     val resolver = obl.resolver.getOrElse(throw new RuntimeException(
       "This program was not parsed from Viper source, so expressions cannot be entered as Viper text. " +
         "The frontend has to translate the expression itself and use addAssumptionExp/assertExp."))
@@ -836,6 +879,9 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
             resolver.typechecker.check(pexp, TypeHelper.Predicate)
           case None if anyType =>
             resolver.typechecker.checkTopTyped(pexp, None)
+          case None if impure =>
+            // Like the assertion of an inhale: Bool, or containing permissions.
+            resolver.typechecker.check(pexp, TypeHelper.Impure)
           case None =>
             resolver.typechecker.check(pexp, PPrimitiv(PReserved(PKw.Bool)((NoPosition, NoPosition)))())
         }

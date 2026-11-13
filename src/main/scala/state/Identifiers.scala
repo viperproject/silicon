@@ -88,9 +88,15 @@ class DefaultIdentifierFactory(namespace: String)
     extends IdentifierFactory
        with StatefulComponent {
 
-  private val ids: Counter = new Counter
+  private var ids: Counter = new Counter
 
   val separator: String = Identifier.defaultSeparator
+
+  /**
+    * Makes the next identifiers start at number `n`, e.g. for a verifier that replays the declarations of another one
+    * with the same namespace and must not declare their identifiers again.
+    */
+  def skipTo(n: Int): Unit = { ids = new Counter(n) }
 
   def fresh(name: String): Identifier = {
     SuffixedIdentifier(name, separator, s"${ids.next()}$separator$namespace")
