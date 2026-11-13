@@ -588,6 +588,10 @@ object Converter {
         case ast.LocalVar(n, typ) =>
           localSort = typeToSort(typ)
           n
+        // E.g. the witnesses the debugger adds to the store, such as i_witness@1.
+        case ast.LocalVarWithVersion(n, typ) =>
+          localSort = typeToSort(typ)
+          n
         case ast.Result(typ) =>
           localSort = typeToSort(typ)
           "Result()"
