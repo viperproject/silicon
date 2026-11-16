@@ -603,7 +603,23 @@ object executor extends ExecutionRules {
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
 
-            val newOldHeaps = if (needsOldHeapReconstruct) {
+            // Produces the postcondition using the given old heap and continues with Q.
+            def producePost(sPre: State, oldHeap: Heap, vPre: Verifier): VerificationResult = {
+              val s2a = sPre.copy(g = sPre.g + gOuts, oldHeaps = sPre.oldHeaps + (Verifier.PRE_STATE_LABEL -> oldHeap))
+              produces(s2a, freshSnap, meth.posts, _ => pveCallTransformed, vPre)((s3, v3) => {
+                v3.symbExLog.closeScope(postCondId)
+                v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
+                val gLhs = Store(lhs.zip(outs)
+                                .map(p => (p._1, s3.g.values(p._2))).toMap)
+                val s3a = s3.copy(g = s1.g + gLhs,
+                                 oldHeaps = s1.oldHeaps,
+                                 recordVisited = s1.recordVisited)
+                v3.symbExLog.closeScope(sepIdentifier)
+                val s3b = if (debugOn) v3.finishKeyHeap(s3a) else s3a
+                Q(s3b, v3)})
+            }
+
+            if (needsOldHeapReconstruct) {
               // We're in the process of packaging a wand, which means that we cannot simply use the
               // heap before the call as the old heap for producing the postcondition.
               // Instead, we produce the preconditions again to get an evalHeap that contains all permissions
@@ -615,35 +631,17 @@ object executor extends ExecutionRules {
               // e.g. duplicate permissions for the same field (from the wand lhs and the surrounding
               // context), which would be inconsistent, so that if state consolidation happens during
               // the postcondition consume, we'll assume false.
-              var oldHeapState: Option[State] = None
-              produces(s2, toSf(preSnap.get), meth.pres, _ => pveCallTransformed, v2)((so, _) => {
-                oldHeapState = Some(so)
-                Success()
+              // The rest of the call is executed inside the continuation of the re-production, such that
+              // every branch of the precondition gets its own old heap, together with its branch
+              // conditions (see issue #1021).
+              produces(s2, toSf(preSnap.get), meth.pres, _ => pveCallTransformed, v2)((so, vo) => {
+                val oldHeap = magicWandSupporter.getEvalHeap(so, vo)
+                producePost(s2.copy(functionRecorder = so.functionRecorder), oldHeap, vo)
               })
-              val oldHeap = oldHeapState match {
-                case Some(so) => magicWandSupporter.getEvalHeap(so, v2)
-                case None => {
-                  // This basically should not happen, but to fail gracefully if it does because
-                  // of some incompleteness, we use an incomplete heap instead.
-                  magicWandSupporter.getEvalHeap(s1, v2)
-                }
-              }
-              s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> oldHeap)
             } else {
-              s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1, v2))
+              producePost(s2, magicWandSupporter.getEvalHeap(s1, v2), v2)
             }
-            val s2a = s2.copy(g = s2.g + gOuts, oldHeaps = newOldHeaps)
-            produces(s2a, freshSnap, meth.posts, _ => pveCallTransformed, v2)((s3, v3) => {
-              v3.symbExLog.closeScope(postCondId)
-              v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-              val gLhs = Store(lhs.zip(outs)
-                              .map(p => (p._1, s3.g.values(p._2))).toMap)
-              val s3a = s3.copy(g = s1.g + gLhs,
-                               oldHeaps = s1.oldHeaps,
-                               recordVisited = s1.recordVisited)
-              v3.symbExLog.closeScope(sepIdentifier)
-              val s3b = if (debugOn) v3.finishKeyHeap(s3a) else s3a
-              Q(s3b, v3)})})})
+          })})
 
       case fold @ ast.Fold(pap @ ast.PredicateAccessPredicate(predAcc @ ast.PredicateAccess(eArgs, _), _)) =>
         assert(s.constrainableARPs.isEmpty)
