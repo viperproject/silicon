@@ -44,11 +44,8 @@ final class MapBackedStore private[state] (map: Map[ast.AbstractLocalVar, (Term,
   def termValues = values.map{case (localVar, pair) => localVar -> pair._1}
   def expValues = values.map{case (localVar, pair) => localVar -> pair._2}
   def apply(key: ast.AbstractLocalVar) = map(key)._1
-  def get(key: ast.AbstractLocalVar) = termValues.get(key)
-  def getExp(key: ast.AbstractLocalVar) = expValues.get(key) match {
-    case Some(e) => e
-    case None => None
-  }
+  def get(key: ast.AbstractLocalVar) = map.get(key).map(_._1)
+  def getExp(key: ast.AbstractLocalVar) = map.get(key).flatMap(_._2)
   def +(entry: (ast.AbstractLocalVar, (Term, Option[ast.Exp]))) = new MapBackedStore(map + entry)
   def +(other: Store) = new MapBackedStore(map ++ other.values)
 }
