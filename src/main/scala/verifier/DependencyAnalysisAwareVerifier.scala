@@ -74,9 +74,9 @@ class DependencyAnalysisAwareMainVerifier(config: Config,
     }
   }
 
-  override def verifyMember(doVerify: Unit => Seq[VerificationResult], v: Verifier, member: ast.Member): Seq[VerificationResult] = {
+  override def verifyMember[V <: Verifier, M <: ast.Member](v: V, member: M)(doVerify: (V, M) => Seq[VerificationResult]): Seq[VerificationResult] = {
     v.decider.analysisHooks.beginMember(member)
-    val result = super.verifyMember(doVerify, v, member)
+    val result = super.verifyMember(v, member)(doVerify)
     v.decider.analysisHooks.endMember()
     result
   }

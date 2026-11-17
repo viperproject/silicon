@@ -402,7 +402,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         val branchesToMerge = recordedBranches.map({ case (sBranch, pcs) =>
           val unknownLhs = freshSnap(sorts.Snap, v)
           val replaceLhs = (t: Term) => t.replace(freshSnapRoot, unknownLhs)
-          val replaceLhsInHeap = (h: Heap) => Heap(h.values.map(hv => v.chunkFactory.substitute(hv, Map(freshSnapRoot -> unknownLhs), analysisInfos, isExhale=false)))
+          val replaceLhsInHeap = (h: Heap) => Heap(h.values.map(hv => v.chunkFactory.substitute(hv, Map(freshSnapRoot -> unknownLhs), analysisInfos, isExhaledChunk=false)))
           val sBranchWithUnknownLhs = sBranch.copy(h = replaceLhsInHeap(sBranch.h),
                                                    reserveHeaps = sBranch.reserveHeaps.map(replaceLhsInHeap))
           val condition = replaceLhs(And(pcs.branchConditions))

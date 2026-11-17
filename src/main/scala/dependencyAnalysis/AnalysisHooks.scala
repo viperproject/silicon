@@ -31,7 +31,7 @@ trait AnalysisHooks {
   def withLabel(term: Term, sourceNodeId: Option[Int] = None): Term = term
 
   /**
-   * Hook to add custom dependencies (i.e. dependencies that would not be tracked otherwise) from all nodes in `sourceExps` to all nodes inv `targetExps`.
+   * Hook to add custom dependencies (i.e. dependencies that would not be tracked otherwise) from all nodes in `sourceExps` to all nodes in `targetExps`.
    */
   def addCustomDependencies(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {}
 

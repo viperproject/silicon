@@ -13,7 +13,7 @@ import scala.util.Properties._
 import org.rogach.scallop._
 import viper.silicon.Config.JoinMode.JoinMode
 import viper.silicon.Config.StateConsolidationMode.StateConsolidationMode
-import viper.silicon.Config.AssertionMode.{PushPop, SoftConstraints}
+import viper.silicon.Config.AssertionMode.PushPop
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverAPI, Z3ProverStdIO}
 import viper.silicon.dependencyAnalysis.DependencyAnalysisOptions
 import viper.silver.frontend.SilFrontendConfig
@@ -745,7 +745,9 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val enableUnsatCores: ScallopOption[Boolean] = opt[Boolean]("enableUnsatCores",
-    descr = "Compute UNSAT cores. Useful for evaluating the overhead of this feature in an isolated manner.",
+    descr = "Name all assertions sent to the prover and retrieve (but discard) the UNSAT core after each successful " +
+      "proof. The cores are not reported. Useful for evaluating the overhead of this feature in an isolated manner. " +
+      "Requires the prover argument unsat-core=true.",
     default = Some(false),
     noshort = true
   )
@@ -919,6 +921,19 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case (Some(args), dam) if dam.isDefined && args.toLowerCase.contains("proof=true") && args.toLowerCase.contains("unsat-core=true") => Right(())
     case (_, _) =>
       Left(s"Option ${dependencyAnalysis.name} requires ${rawProverArgs.name} with \"proof=true unsat-core=true\"")
+  }
+
+  validateOpt(rawProverArgs, enableUnsatCores) {
+    case (Some(args), Some(true)) if args.toLowerCase.contains("unsat-core=true") => Right(())
+    case (_, Some(true)) =>
+      Left(s"Option ${enableUnsatCores.name} requires ${rawProverArgs.name} with \"unsat-core=true\"")
+    case _ => Right(())
+  }
+
+  validateOpt(prover, enableUnsatCores) {
+    case (p, Some(true)) if !p.contains(Z3ProverStdIO.name) =>
+      Left(s"Option ${enableUnsatCores.name} is only supported with ${Z3ProverStdIO.name}")
+    case _ => Right(())
   }
 
   validateOpt(prover, dependencyAnalysis) {

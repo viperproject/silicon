@@ -299,7 +299,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             val debugExp = Option.when(debugOn)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
             v1.decider.assumeDefinition(smValueDef, debugExp, analysisInfos)
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(debugOn)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
-              field, Seq(tRcvr), Option.when(debugOn)(Seq(eRcvrNew.get)), FullPerm, Option.when(debugOn)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, newTag, s1.program, v, lhsSourceInfos.overrideDependencyType(OriginType.Internal), isExhale=false)
+              field, Seq(tRcvr), Option.when(debugOn)(Seq(eRcvrNew.get)), FullPerm, Option.when(debugOn)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, newTag, s1.program, v, lhsSourceInfos.overrideDependencyType(OriginType.Internal), isExhaledChunk=false)
             if (s3.heapDependentTriggers.contains(field)) {
               val debugExp2 = Option.when(debugOn)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString}.${field.name})"))
               v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2, lhsSourceInfos.overrideDependencyType(OriginType.Trigger))
@@ -578,7 +578,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val debugExp = Option.when(debugOn)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
       v.decider.assumeDefinition(smValueDef, debugExp, analysisInfos)
       val chunk = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, tArgs,
-        eArgs, FullPerm, Option.when(debugOn)(ast.FullPerm()()), sm, None, s.program, v, analysisInfos, isExhale=false)
+        eArgs, FullPerm, Option.when(debugOn)(ast.FullPerm()()), sm, None, s.program, v, analysisInfos, isExhaledChunk=false)
       (chunk, Seq(smValueDef), Option.when(debugOn)(Seq(debugExp.get)))
     } else {
       val chunk = v.chunkFactory.createMagicWandChunk(MagicWandIdentifier(wand, s.program), s.g.values, tArgs, eArgs, snapshot, FullPerm,

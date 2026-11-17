@@ -9,7 +9,6 @@ package viper.silicon.decider
 import java.io._
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider._
@@ -39,7 +38,7 @@ abstract class ProverStdIO(uniqueId: String,
   protected var output: PrintWriter = _
   protected var allDecls: Seq[Decl] = Seq()
   protected var allEmits: Seq[String] = Seq()
-  protected var proverLabelId: AtomicInteger = new AtomicInteger(0)
+  protected var proverLabelId: Int = 0
 
   var proverPath: Path = _
   var lastReasonUnknown : String = _
@@ -238,7 +237,8 @@ abstract class ProverStdIO(uniqueId: String,
   }
 
   def nextProverLabel(): String = {
-    val label = "prover_" + proverLabelId.getAndIncrement()
+    val label = "prover_" + proverLabelId
+    proverLabelId += 1
     label
   }
 
@@ -297,8 +297,15 @@ abstract class ProverStdIO(uniqueId: String,
     (result, endTime - startTime)
   }
 
-  /* Invoked right after the prover reported unsat for an assertion checked via push/pop or for a check. */
-  protected def onUnsat(): Unit = {}
+  /**
+   * Invoked right after the prover reported unsat for an assertion checked via push/pop or for a check.
+   */
+  protected def onUnsat(): Unit = {
+    if (Verifier.config.enableUnsatCores()) {
+      writeLine("(get-unsat-core)")
+      readLine()
+    }
+  }
 
   def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {
     data match {

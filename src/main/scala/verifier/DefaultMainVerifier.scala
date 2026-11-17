@@ -179,9 +179,12 @@ class DefaultMainVerifier(config: Config,
 
   /* Program verification */
 
-  def verifyMember(doVerify: Unit => Seq[VerificationResult], v: Verifier, member: ast.Member): Seq[VerificationResult] = {
-    doVerify()
-  }
+  /**
+   * Verifies `member` using the verifier `v` by invoking `doVerify(v, member)`. This is a hook for subclasses that need
+   * to set up and tear down per-member state around the verification of each member.
+   */
+  def verifyMember[V <: Verifier, M <: ast.Member](v: V, member: M)(doVerify: (V, M) => Seq[VerificationResult]): Seq[VerificationResult] =
+    doVerify(v, member)
 
   def verify(originalProgram: ast.Program, cfgs: Seq[SilverCfg], inputFile: Option[String]): List[VerificationResult] = {
     /** Trigger computation is currently not thread-safe; hence, all triggers are computed
@@ -243,8 +246,9 @@ class DefaultMainVerifier(config: Config,
       val startTime = System.currentTimeMillis()
       var results: Seq[VerificationResult] = null
       try {
-        results = verifyMember(_ => functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
-          .flatMap(extractAllVerificationResults), this, function)
+        results = verifyMember(this, function)((_, f) =>
+          functionsSupporter.verify(createInitialState(f, program, functionData, predicateData), f)
+            .flatMap(extractAllVerificationResults))
       } catch {
         case e : Throwable =>
           logger error s"An exception was thrown while verifying function `${function.name}`."
@@ -260,8 +264,9 @@ class DefaultMainVerifier(config: Config,
       val startTime = System.currentTimeMillis()
       var results: Seq[VerificationResult] = null
       try {
-        results = verifyMember(_ => predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
-          .flatMap(extractAllVerificationResults), this, predicate)
+        results = verifyMember(this, predicate)((_, p) =>
+          predicateSupporter.verify(createInitialState(p, program, functionData, predicateData), p)
+            .flatMap(extractAllVerificationResults))
       } catch {
         case e: Throwable =>
           logger error s"An exception was thrown while verifying predicate `${predicate.name}`."
@@ -295,7 +300,8 @@ class DefaultMainVerifier(config: Config,
           val startTime = System.currentTimeMillis()
           var results: Seq[VerificationResult] = null
           try {
-            results = verifyMember(_ => v.methodSupporter.verify(s, method).flatMap(extractAllVerificationResults), v, method)
+            results = verifyMember(v, method)((v1, m) =>
+              v1.methodSupporter.verify(s, m).flatMap(extractAllVerificationResults))
           } catch {
             case e: Throwable =>
               logger error s"An exception was thrown while verifying method `${method.name}`."

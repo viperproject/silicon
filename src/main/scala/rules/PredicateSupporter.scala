@@ -129,7 +129,7 @@ object predicateSupporter extends PredicateSupportRules {
                   case _ => s.predicateFormalVarMap(resource.asInstanceOf[ast.Predicate].name)
                 }
                 newFr = newFr.recordFvfAndDomain(SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq()))
-                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, resource, bc.args, None, bc.perm, None, sm, bc.tag, s.program, v, analysisInfos, isExhale=false)
+                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, resource, bc.args, None, bc.perm, None, sm, bc.tag, s.program, v, analysisInfos, isExhaledChunk=false)
               case mwc: MagicWandChunk =>
                 val wand = mwc.id.ghostFreeWand
                 val bodyVars = wand.subexpressionsToEvaluate(s.program)
@@ -137,7 +137,7 @@ object predicateSupporter extends PredicateSupportRules {
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, wand, mwc.args, mwc.snap, v)
                 v.decider.assumeDefinition(smValueDef, None, analysisInfos)
                 newFr = newFr.recordFvfAndDomain(SnapshotMapDefinition(wand, sm, Seq(smValueDef), Seq()))
-                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, wand, mwc.args, None, mwc.perm, None, sm, mwc.tag, s.program, v, analysisInfos, isExhale=false)
+                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, wand, mwc.args, None, mwc.perm, None, sm, mwc.tag, s.program, v, analysisInfos, isExhaledChunk=false)
             }
           } else {
             c

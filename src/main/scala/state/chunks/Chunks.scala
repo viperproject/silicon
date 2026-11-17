@@ -391,8 +391,8 @@ case class BasicMaskHeapChunk private[state] (resourceID: ResourceID, resource: 
 
   override def substitute(terms: silicon.Map[Term, Term]): Chunk = BasicMaskHeapChunk(resourceID, resource, mask.replace(terms), heap.replace(terms))
 
-  override val permExp: Option[Exp] = None // TODO ake
-  override val perm: Term = mask // TODO ake
+  override val permExp: Option[Exp] = None
+  override val perm: Term = mask
 }
 
 object BasicMaskHeapChunk {

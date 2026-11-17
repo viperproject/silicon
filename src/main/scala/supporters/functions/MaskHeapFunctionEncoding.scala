@@ -128,7 +128,7 @@ class MaskHeapFunctionEncoding(symbolConverter: SymbolConverter, identifierFacto
   override def auxiliaryFunctions(data: FunctionData): Seq[Fun] =
     Seq(frameFunction(data), preconditionFrameFunction(data))
 
-  override def auxiliaryAxioms(data: FunctionData): Seq[Term] = { // TODO ake: track this in the dependency analysis?
+  override def auxiliaryAxioms(data: FunctionData): Seq[Term] = {
     /* Like the value of the function, the truth of its precondition only depends on the
      * footprint snapshot (preconditions are self-framing). The precondition frame axiom
      * transfers precondition facts assumed at a call site's heaps to any other heaps with

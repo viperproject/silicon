@@ -8,9 +8,7 @@ package viper.silicon.tests
 
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.dependencyAnalysis._
-import viper.silicon.dependencyAnalysis.cliTool.DependencyGraphImporter
-import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.dependencyAnalysis.graphInterpretation.{FinalGraphInterpreter, DependencyGraphTestSupporter}
+import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphTestSupporter
 import viper.silver.ast._
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier
@@ -18,12 +16,9 @@ import viper.silver.verifier
 class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFramework {
 
   val EXECUTE_TEST = true
-  val TEST_IMPORTER = false // if true, the tests are executed on the graph that got exported and then imported via the GraphImporter
   override val EXPORT_PRUNED_PROGRAMS: Boolean = false
   val ignores: Seq[String] = Seq()
-  val depAnalysisModeArg =
-    if(TEST_IMPORTER) Seq("--dependencyAnalysis=export>testExports")
-    else Seq("--dependencyAnalysis=computeGraphOnly")
+  val depAnalysisModeArg = Seq("--dependencyAnalysis=computeGraphOnly")
 
   analysisCommandLineArguments = analysisCommandLineArguments ++ depAnalysisModeArg
   val testDirectories: Seq[String] = Seq(
@@ -63,15 +58,7 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
       return
     }
 
-    val name = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].finalGraphQueries.map(_.getName).getOrElse("graph")
-
-    val fullGraphQueries = if (TEST_IMPORTER) {
-      println("--------\nTesting via the graph importer.")
-      val importedGraph = DependencyGraphImporter.importGraphFromCsv(s"testExports")
-      new FinalGraphInterpreter(name, importedGraph, List.empty)
-    } else {
-      frontend.reporter.asInstanceOf[DependencyAnalysisReporter].finalGraphQueries.get
-    }
+    val fullGraphQueries = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].finalGraphQueries.get
 
     val testSupporter = new DependencyGraphTestSupporter(fullGraphQueries)
     testSupporter.testDependencies()

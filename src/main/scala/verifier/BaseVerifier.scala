@@ -19,7 +19,6 @@ import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.supporters._
 import viper.silicon.reporting.DefaultStateFormatter
 import viper.silicon.rules.{DefaultStateConsolidator, HeapSupportRules, LastRetryFailOnlyStateConsolidator, LastRetryStateConsolidator, MaskHeapStateConsolidator, MinimalRetryingStateConsolidator, MinimalStateConsolidator, MoreComplexExhaleStateConsolidator, RetryingFailOnlyStateConsolidator, RetryingStateConsolidator, StateConsolidationRules, defaultHeapSupporter, maskHeapSupporter}
-import viper.silicon.rules._
 import viper.silicon.utils.Counter
 
 import scala.collection.mutable

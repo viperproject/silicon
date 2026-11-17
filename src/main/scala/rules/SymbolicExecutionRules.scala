@@ -22,7 +22,10 @@ import viper.silver.reporter.BlockFailureMessage
 trait SymbolicExecutionRules {
   lazy val debugOn: Boolean = Verifier.config.enableDebugging()
 
-  /** Records that `failedAssert` could not be proven. Does nothing on a retry, since the failure may not be final. */
+  /**
+   * Records that `failedAssert` could not be proven. Only the final attempt (see [[State.isLastRetry]]) records the
+   * failure: a failure in an earlier attempt may still be resolved by a subsequent retry and is thus not final.
+   */
   protected def recordFailedAssertion(s: State, v: Verifier, failedAssert: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: AnalysisInfos): Unit = {
     if (s.retryLevel == 0) v.decider.handleFailedAssertion(failedAssert, e, finalExp, analysisInfos, v.reportFurtherErrors())
   }

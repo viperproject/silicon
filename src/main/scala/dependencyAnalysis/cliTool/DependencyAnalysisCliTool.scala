@@ -23,8 +23,7 @@ object DependencyAnalysisCliTool {
       new CoreDependencyAnalysisCliCommands(queries, program, verificationErrors).commands,
       List(
         new DebugDependencyAnalysisCliExtension(queries, options),
-        new TestDependencyAnalysisCliExtension(queries, console),
-        new BenchmarkDependencyAnalysisCliExtension(queries, program, console)
+        new TestDependencyAnalysisCliExtension(queries, console)
       ),
       verificationErrors.nonEmpty || queries.getAssertionNodesWithFailures.nonEmpty,
       console

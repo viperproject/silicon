@@ -218,10 +218,12 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
   def withInfo(sourceInfo: DependencyAnalysisSourceInfo, assumptionType: OriginType): DependencyAnalysisInfos =
     this.overrideSourceInfo(sourceInfo).overrideDependencyType(assumptionType)
 
-  def withoutSourceInfos(): DependencyAnalysisInfos = this.copy(sourceInfos = List.empty)
+  def withoutSourceInfos(): DependencyAnalysisInfos =
+    if (analysisEnabled) this.copy(sourceInfos = List.empty) else this
 
   def withAssertionType(assertionType: OriginType): DependencyAnalysisInfos =
-    this.copy(dependencyTypes = List(DependencyTypeInfo(DependencyType(getDependencyType.assumptionType, assertionType))))
+    if (analysisEnabled) this.copy(dependencyTypes = List(DependencyTypeInfo(DependencyType(getDependencyType.assumptionType, assertionType))))
+    else this
 }
 
 object DependencyAnalysisInfos {

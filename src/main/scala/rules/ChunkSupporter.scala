@@ -194,7 +194,7 @@ object chunkSupporter extends ChunkSupportRules {
           val toTakeExp = permsExp.map(pe => buildMinExp(Seq(ch.permExp.get, pe), ast.Perm))
           val newPermExp = permsExp.map(pe => ast.PermSub(ch.permExp.get, toTakeExp.get)(pe.pos, pe.info, pe.errT))
           val newChunk = v.chunkFactory.withPermNonQuantifiedChunk(ch, PermMinus(ch.perm, toTake), newPermExp, analysisInfos)
-          val takenChunk = Some(v.chunkFactory.withPermNonQuantifiedChunk(ch, toTake, toTakeExp, analysisInfos, isExhale=true))
+          val takenChunk = Some(v.chunkFactory.withPermNonQuantifiedChunk(ch, toTake, toTakeExp, analysisInfos, isExhaledChunk=true))
           var newHeap = h - ch
           if (!v.decider.check(newChunk.perm === NoPerm, Verifier.config.checkTimeout(), analysisInfos.overrideDependencyType(OriginType.Internal))) {
             newHeap = newHeap + newChunk
@@ -208,7 +208,7 @@ object chunkSupporter extends ChunkSupportRules {
             v.decider.assume(PermLess(perms, ch.perm), Option.when(debugOn)(DebugExp.createInstance(constraintExp, constraintExp)), analysisInfos)
             val newPermExp = permsExp.map(pe => ast.PermSub(ch.permExp.get, pe)(pe.pos, pe.info, pe.errT))
             val newChunk = v.chunkFactory.withPermNonQuantifiedChunk(ch, PermMinus(ch.perm, perms), newPermExp, analysisInfos)
-            val takenChunk = v.chunkFactory.withPermNonQuantifiedChunk(ch, perms, permsExp, analysisInfos, isExhale=true)
+            val takenChunk = v.chunkFactory.withPermNonQuantifiedChunk(ch, perms, permsExp, analysisInfos, isExhaledChunk=true)
             val newHeap = h - ch + newChunk
             assumeProperties(newChunk, newHeap)
             (Complete(), s, newHeap, Some(takenChunk))

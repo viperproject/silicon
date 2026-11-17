@@ -182,7 +182,7 @@ object producer extends ProductionRules {
           // We will get an IllegalArgumentException from createSnapshotPair if sf(...) returns Unit.
           // This should never happen if we're in a reachable state, so here we check for that
           // (without timeout, since there is no fallback) and stop verifying the current branch.
-          case _: IllegalArgumentException if v.decider.checkSmoke(analysisInfos) =>
+          case _: IllegalArgumentException if v.decider.checkSmoke(analysisInfos, isAssert=true) =>
             InfeasiblePath.continueIfExplorationEnabled(Unreachable())(Q(s, v))
         }
 
