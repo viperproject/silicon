@@ -33,7 +33,7 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
 
     override def isDependencyAnalysisEnabledForMember: Boolean = !dependencyAnalyzer.isInstanceOf[NoDependencyAnalyzer]
 
-    override def defaultAnalysisInfos: AnalysisInfos = DependencyAnalysisInfos.DefaultInfos.withEnabled(isDependencyAnalysisEnabledForMember)
+    override def defaultAnalysisInfos: AnalysisInfos = AnalysisInfos.default(isDependencyAnalysisEnabledForMember)
 
     type P = DependencyAnalysisAwareZ3ProverStdIO
 

@@ -180,7 +180,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     var debugVariableTypes : Map[String, PType] = Map.empty
 
-    override def defaultAnalysisInfos: AnalysisInfos = DependencyAnalysisInfos.DefaultInfos
+    override def defaultAnalysisInfos: AnalysisInfos = NoopAnalysisInfos
 
     def analysisHooks: AnalysisHooks = NoAnalysisHooks
     def isDependencyAnalysisEnabledForMember: Boolean = false

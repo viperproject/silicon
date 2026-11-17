@@ -2,7 +2,7 @@ package viper.silicon.debugger
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.{Cvc5ProverStdIO, RecordedPathConditions, Z3ProverStdIO}
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
+import viper.silicon.dependencyAnalysis.NoopAnalysisInfos
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, Success, VerificationResult}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.evaluator
@@ -500,7 +500,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       var resE: ast.Exp = null
       var resV: Verifier = null
       val pve: PartialVerificationError = PartialVerificationError(r => ContractNotWellformed(assertionE, r))
-      val verificationResult = evaluator.eval3(obl.s, assertionE, pve, obl.v, DependencyAnalysisInfos.DefaultInfos.withEnabled(false))((_, t, newE, newV) => {
+      val verificationResult = evaluator.eval3(obl.s, assertionE, pve, obl.v, NoopAnalysisInfos)((_, t, newE, newV) => {
         resT = t
         resE = newE.get
         resV = newV

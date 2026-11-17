@@ -40,7 +40,7 @@ import viper.silver.dependencyAnalysis._
 
 /**
  * Information about the currently evaluated/executed Viper AST node that is passed down through the symbolic execution rules.
- * An analysis provides its own instantiation.
+ * An analysis provides its own instantiation. If no analysis is enabled, [[NoopAnalysisInfos]] is used.
  */
 abstract class AnalysisInfos {
   def analysisEnabled: Boolean
@@ -64,7 +64,6 @@ abstract class AnalysisInfos {
   def withMergeInfo(mergeInfo: DependencyAnalysisMergeInfo): AnalysisInfos
   def withJoinInfo(joinInfo: DependencyAnalysisJoinInfo): AnalysisInfos
   def removeSinkJoinInfos(): AnalysisInfos
-  def withEnabled(analysisEnabled: Boolean): AnalysisInfos
   def withInfo(sourceInfo: DependencyAnalysisSourceInfo, dependencyType: DependencyType): AnalysisInfos
   def withInfo(sourceInfo: DependencyAnalysisSourceInfo, assumptionType: OriginType): AnalysisInfos
 
@@ -79,6 +78,16 @@ abstract class AnalysisInfos {
   def forExhaledChunk: AnalysisInfosForChunks = AnalysisInfosForChunks(this, isExhaledChunk = true)
 }
 
+object AnalysisInfos {
+  /**
+   * Empty infos for the dependency analysis if `analysisEnabled` holds, [[NoopAnalysisInfos]] otherwise.
+   * During symbolic execution, use Decider#defaultAnalysisInfos instead.
+   */
+  def default(analysisEnabled: Boolean): AnalysisInfos =
+    if (analysisEnabled) DependencyAnalysisInfos(List.empty, List.empty, List.empty, List.empty, List.empty)
+    else NoopAnalysisInfos
+}
+
 /**
  * Analysis infos passed to the [[viper.silicon.state.chunks.ChunkFactory]].
  *
@@ -90,7 +99,39 @@ abstract class AnalysisInfos {
 case class AnalysisInfosForChunks(analysisInfos: AnalysisInfos, isExhaledChunk: Boolean)
 
 /**
+ * Analysis infos used while no analysis is enabled: they do not record anything and all getters return placeholders.
+ */
+case object NoopAnalysisInfos extends AnalysisInfos {
+  val analysisEnabled: Boolean = false
+
+  def addInfo(info: ast.Info, node: ast.Node): AnalysisInfos = this
+  def addInfo(info: ast.Info): AnalysisInfos = this
+  def addInfo(infoString: String, pos: ast.Position, dependencyType: DependencyType): AnalysisInfos = this
+
+  def overrideDependencyType(dependencyType: DependencyType): AnalysisInfos = this
+  def overrideDependencyType(assumptionType: OriginType): AnalysisInfos = this
+  def overrideSourceInfo(source: DependencyAnalysisSourceInfo): AnalysisInfos = this
+
+  def missingInfos: List[String] = List.empty
+
+  def getSourceInfo: DependencyAnalysisSourceInfo = StringDependencyAnalysisSourceInfo("Unknown", NoPosition)
+  def getDependencyType: DependencyType = OriginType.Unknown.asDepType()
+  def getMergeInfo: DependencyAnalysisMergeInfo = NoDependencyAnalysisMerge()
+  def getJoinInfo: List[SimpleDependencyAnalysisJoin] = List.empty
+
+  def withMergeInfo(mergeInfo: DependencyAnalysisMergeInfo): AnalysisInfos = this
+  def withJoinInfo(joinInfo: DependencyAnalysisJoinInfo): AnalysisInfos = this
+  def removeSinkJoinInfos(): AnalysisInfos = this
+  def withInfo(sourceInfo: DependencyAnalysisSourceInfo, dependencyType: DependencyType): AnalysisInfos = this
+  def withInfo(sourceInfo: DependencyAnalysisSourceInfo, assumptionType: OriginType): AnalysisInfos = this
+
+  def withoutSourceInfos(): AnalysisInfos = this
+  def withAssertionType(assertionType: OriginType): AnalysisInfos = this
+}
+
+/**
  * Stores all information about the currently evaluated/executed Viper AST node. This info is used to derive the parameters for the low-level dependency nodes.
+ * Only used while the dependency analysis is enabled, see [[AnalysisInfos.default]].
  *
  * @param sourceInfos list of sourceInfos encountered during execution/evaluation of the current Viper AST node.
  *                    The head of the list corresponds to the first source info that was encountered (unless it got overridden at some point).
@@ -111,57 +152,36 @@ case class AnalysisInfosForChunks(analysisInfos: AnalysisInfos, isExhaledChunk: 
  *                  If join infos is empty, dependency nodes are created without join infos, thus they are irrelevant for joining graphs.
  * @param nodes  list of Viper AST nodes indicating the evaluation stack. The head of this list corresponds to the current Viper AST node being evaluated/executed.
  *              The tail indicates its subexpressions in the order they got evaluated.
- * @param analysisEnabled boolean flag indicating whether the analysis is currently enabled; might change at runtime.
- *                        While it is false, the infos stay empty and all getters return placeholders.
  */
 case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInfo], dependencyTypes: List[DependencyTypeInfo],
-    mergeInfos: List[DependencyAnalysisMergeInfo], joinInfos: List[DependencyAnalysisJoinInfo], nodes: List[ast.Node],
-    analysisEnabled: Boolean = false) extends AnalysisInfos {
+    mergeInfos: List[DependencyAnalysisMergeInfo], joinInfos: List[DependencyAnalysisJoinInfo], nodes: List[ast.Node])
+    extends AnalysisInfos {
 
-  def addInfo(info: ast.Info, node: ast.Node): DependencyAnalysisInfos = {
-    if (analysisEnabled) {
-      val newSourceInfos = sourceInfos ++ info.getUniqueInfo[DependencyAnalysisSourceInfo].toList
-      val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
-      val newMergeInfos = mergeInfos ++ info.getUniqueInfo[DependencyAnalysisMergeInfo].toList
-      val newJoinInfos = joinInfos ++ info.getUniqueInfo[DependencyAnalysisJoinInfo].toList
-      this.copy(sourceInfos=newSourceInfos, dependencyTypes=newDependencyInfos, mergeInfos=newMergeInfos,
-        joinInfos=newJoinInfos, nodes=nodes ++ List(node))
-    } else {
-      this
-    }
-  }
+  val analysisEnabled: Boolean = true
+
+  def addInfo(info: ast.Info, node: ast.Node): DependencyAnalysisInfos =
+    addInfo(info).copy(nodes = nodes ++ List(node))
 
   def addInfo(info: ast.Info): DependencyAnalysisInfos = {
-    if (analysisEnabled) {
-      val newSourceInfos = sourceInfos ++ info.getUniqueInfo[DependencyAnalysisSourceInfo].toList
-      val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
-      val newMergeInfos = mergeInfos ++ info.getUniqueInfo[DependencyAnalysisMergeInfo].toList
-      val newJoinInfos = joinInfos ++ info.getUniqueInfo[DependencyAnalysisJoinInfo].toList
-      this.copy(sourceInfos=newSourceInfos, dependencyTypes=newDependencyInfos, mergeInfos=newMergeInfos, joinInfos=newJoinInfos)
-    } else {
-      this
-    }
+    val newSourceInfos = sourceInfos ++ info.getUniqueInfo[DependencyAnalysisSourceInfo].toList
+    val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
+    val newMergeInfos = mergeInfos ++ info.getUniqueInfo[DependencyAnalysisMergeInfo].toList
+    val newJoinInfos = joinInfos ++ info.getUniqueInfo[DependencyAnalysisJoinInfo].toList
+    this.copy(sourceInfos=newSourceInfos, dependencyTypes=newDependencyInfos, mergeInfos=newMergeInfos, joinInfos=newJoinInfos)
   }
 
-  def addInfo(infoString: String, pos: ast.Position, dependencyType: DependencyType): DependencyAnalysisInfos = if (analysisEnabled) {
+  def addInfo(infoString: String, pos: ast.Position, dependencyType: DependencyType): DependencyAnalysisInfos =
     this.copy(sourceInfos = sourceInfos ++ List(StringDependencyAnalysisSourceInfo(infoString, pos)),
       dependencyTypes = dependencyTypes ++ List(DependencyTypeInfo(dependencyType)))
-  } else {
-    this
-  }
 
-  def overrideDependencyType(dependencyType: DependencyType): DependencyAnalysisInfos = {
-    if (analysisEnabled) this.copy(dependencyTypes = DependencyTypeInfo(dependencyType) +: dependencyTypes)
-    else this
-  }
+  def overrideDependencyType(dependencyType: DependencyType): DependencyAnalysisInfos =
+    this.copy(dependencyTypes = DependencyTypeInfo(dependencyType) +: dependencyTypes)
 
-  def overrideDependencyType(assumptionType: OriginType): DependencyAnalysisInfos = {
-    if (analysisEnabled) this.copy(dependencyTypes = DependencyTypeInfo(DependencyType(assumptionType)) +: dependencyTypes)
-    else this
-  }
+  def overrideDependencyType(assumptionType: OriginType): DependencyAnalysisInfos =
+    this.copy(dependencyTypes = DependencyTypeInfo(DependencyType(assumptionType)) +: dependencyTypes)
 
   def overrideSourceInfo(source: DependencyAnalysisSourceInfo): DependencyAnalysisInfos =
-    if (analysisEnabled) this.copy(sourceInfos = source +: sourceInfos) else this
+    this.copy(sourceInfos = source +: sourceInfos)
 
   private def getNodeInfo(n: ast.Node): String = {
     n match {
@@ -178,60 +198,41 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
     s"$sourceInfo$nodeInfo"
   }
 
-  def missingInfos: List[String] =
-    if (!analysisEnabled) List.empty
-    else {
-      val missingSourceInfo = Option.when(sourceInfos.isEmpty)(s"Missing source info for $getDebugInfo")
-      val missingDependencyType = Option.when(dependencyTypes.isEmpty)(s"Missing dependency type for $getDebugInfo")
-      val missingJoinSource = Option.when(sourceInfos.isEmpty && joinInfos.exists(_.isInstanceOf[EvalStackDependencyAnalysisJoin]))(
-          s"Missing source info for the join infos of $getDebugInfo")
-      List(missingSourceInfo, missingDependencyType, missingJoinSource).flatten
+  def missingInfos: List[String] = {
+    val missingSourceInfo = Option.when(sourceInfos.isEmpty)(s"Missing source info for $getDebugInfo")
+    val missingDependencyType = Option.when(dependencyTypes.isEmpty)(s"Missing dependency type for $getDebugInfo")
+    val missingJoinSource = Option.when(sourceInfos.isEmpty && joinInfos.exists(_.isInstanceOf[EvalStackDependencyAnalysisJoin]))(
+        s"Missing source info for the join infos of $getDebugInfo")
+    List(missingSourceInfo, missingDependencyType, missingJoinSource).flatten
+  }
+
+  def getSourceInfo: DependencyAnalysisSourceInfo =
+    sourceInfos.headOption
+      .orElse(nodes.headOption.map(DependencyAnalysisSourceInfo.createAnalysisSourceInfo))
+      .getOrElse(StringDependencyAnalysisSourceInfo("Unknown", NoPosition))
+
+  def getDependencyType: DependencyType =
+    dependencyTypes.headOption.map(_.dependencyType).getOrElse(OriginType.Unknown.asDepType())
+
+  def getMergeInfo: DependencyAnalysisMergeInfo =
+    mergeInfos.headOption.getOrElse(SimpleDependencyAnalysisMerge(getSourceInfo))
+
+  def getJoinInfo: List[SimpleDependencyAnalysisJoin] =
+    joinInfos.map {
+      case EvalStackDependencyAnalysisJoin(joinType, edgeType) =>
+        SimpleDependencyAnalysisJoin(sourceInfos.lastOption.orElse(nodes.lastOption.map(DependencyAnalysisSourceInfo.createAnalysisSourceInfo))
+          .getOrElse(StringDependencyAnalysisSourceInfo("Unknown", NoPosition)), joinType, edgeType)
+      case a: SimpleDependencyAnalysisJoin => a
     }
-
-  def getSourceInfo: DependencyAnalysisSourceInfo = {
-    if (analysisEnabled) {
-      sourceInfos.headOption
-        .orElse(nodes.headOption.map(DependencyAnalysisSourceInfo.createAnalysisSourceInfo))
-        .getOrElse(StringDependencyAnalysisSourceInfo("Unknown", NoPosition))
-    } else {
-      StringDependencyAnalysisSourceInfo("Unknown", NoPosition)
-    }
-  }
-
-  def getDependencyType: DependencyType = {
-    if (analysisEnabled) {
-      dependencyTypes.headOption.map(_.dependencyType).getOrElse(OriginType.Unknown.asDepType())
-    } else {
-      OriginType.Unknown.asDepType()
-    }
-  }
-
-  def getMergeInfo: DependencyAnalysisMergeInfo = {
-    if (analysisEnabled) mergeInfos.headOption.getOrElse(SimpleDependencyAnalysisMerge(getSourceInfo))
-    else NoDependencyAnalysisMerge()
-  }
-
-  def getJoinInfo: List[SimpleDependencyAnalysisJoin] = {
-    if (analysisEnabled) {
-      joinInfos.map {
-        case EvalStackDependencyAnalysisJoin(joinType, edgeType) =>
-          SimpleDependencyAnalysisJoin(sourceInfos.lastOption.orElse(nodes.lastOption.map(DependencyAnalysisSourceInfo.createAnalysisSourceInfo))
-            .getOrElse(StringDependencyAnalysisSourceInfo("Unknown", NoPosition)), joinType, edgeType)
-        case a: SimpleDependencyAnalysisJoin => a
-      }
-    } else List.empty
-  }
 
   def withMergeInfo(mergeInfo: DependencyAnalysisMergeInfo): DependencyAnalysisInfos =
-    if (analysisEnabled) this.copy(mergeInfos = mergeInfo +: mergeInfos) else this
+    this.copy(mergeInfos = mergeInfo +: mergeInfos)
 
   def withJoinInfo(joinInfo: DependencyAnalysisJoinInfo): DependencyAnalysisInfos =
-    if (analysisEnabled) this.copy(joinInfos = joinInfo +: joinInfos) else this
+    this.copy(joinInfos = joinInfo +: joinInfos)
 
   def removeSinkJoinInfos(): DependencyAnalysisInfos =
-    if (analysisEnabled) this.copy(joinInfos = joinInfos.filterNot(_.joinType.equals(JoinType.Sink))) else this
-
-  def withEnabled(analysisEnabled: Boolean): DependencyAnalysisInfos = this.copy(analysisEnabled=analysisEnabled)
+    this.copy(joinInfos = joinInfos.filterNot(_.joinType.equals(JoinType.Sink)))
 
   def withInfo(sourceInfo: DependencyAnalysisSourceInfo, dependencyType: DependencyType): DependencyAnalysisInfos =
     this.overrideSourceInfo(sourceInfo).overrideDependencyType(dependencyType)
@@ -240,16 +241,10 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
     this.overrideSourceInfo(sourceInfo).overrideDependencyType(assumptionType)
 
   def withoutSourceInfos(): DependencyAnalysisInfos =
-    if (analysisEnabled) this.copy(sourceInfos = List.empty) else this
+    this.copy(sourceInfos = List.empty)
 
   def withAssertionType(assertionType: OriginType): DependencyAnalysisInfos =
-    if (analysisEnabled) this.copy(dependencyTypes = List(DependencyTypeInfo(DependencyType(getDependencyType.assumptionType, assertionType))))
-    else this
-}
-
-object DependencyAnalysisInfos {
-  /** Infos with the analysis disabled. Enable them explicitly, or use Decider#defaultAnalysisInfos during symbolic execution. */
-  val DefaultInfos = DependencyAnalysisInfos(List.empty, List.empty, List.empty, List.empty, List.empty)
+    this.copy(dependencyTypes = List(DependencyTypeInfo(DependencyType(getDependencyType.assumptionType, assertionType))))
 }
 
 case class DependencyAnalysisAxiomInfo(analysisInfos: AnalysisInfos, memberStr: String)

@@ -9,7 +9,7 @@ package viper.silicon.supporters
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.collections.immutable.MultiMap._
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisAxiomInfo, DependencyAnalysisInfos, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis.{AnalysisInfos, DependencyAnalysisAxiomInfo, DependencyAnalyzer}
 import viper.silicon.toMap
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
@@ -107,7 +107,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
         val tAxPres = FunctionPreconditionTransformer.transform(tAx, program)
         val enableAnalysis = Verifier.config.isDependencyAnalysisEnabled &&
           DependencyAnalyzer.extractEnableAnalysisFromInfo(axiom.info).getOrElse(isAnalysisForDomainEnabled)
-        val analysisInfos = DependencyAnalysisInfos.DefaultInfos.withEnabled(enableAnalysis).addInfo(axiom.exp.info, axiom.exp)
+        val analysisInfos = AnalysisInfos.default(enableAnalysis).addInfo(axiom.exp.info, axiom.exp)
         collectedAxioms = collectedAxioms.incl((terms.And(tAxPres, tAx), DependencyAnalysisAxiomInfo(analysisInfos, domain.name)))
       })
     })
