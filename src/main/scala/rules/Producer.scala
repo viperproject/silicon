@@ -370,6 +370,7 @@ object producer extends ProductionRules {
               )
           case (s1, _, _, _, _, None, v1) =>
             Q(s1.copy(constrainableARPs = s.constrainableARPs), v1)
+          case other => sys.error(s"Unexpected result $other when evaluating quantified permission $forall")
         }
 
       case _: ast.InhaleExhaleExp =>

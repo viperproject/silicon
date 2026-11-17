@@ -67,7 +67,11 @@ class MappedCounterexampleTests extends SiliconTests {
         }
         val cParser = new CounterexampleParser(fp)
         // now parsing is actually possible:
-        fastparse.parse(expectedCounterexampleString, cParser.expectedCounterexample(_)) match {
+        /* Parsed.Success and Parsed.Failure define custom extractors, which prevents the compiler
+         * from seeing that the following match is exhaustive.
+         */
+        val parseResult = fastparse.parse(expectedCounterexampleString, cParser.expectedCounterexample(_))
+        (parseResult: @unchecked) match {
           case Parsed.Success(expectedCounterexample, _) => Some(ExpectedMappedCounterexampleAnnotation(id, file, lineNr, expectedCounterexample))
           case Parsed.Failure(_, _, extra) =>
             println(s"Parsing expected counterexample failed in file $file: ${extra.trace().longAggregateMsg}")
@@ -119,12 +123,14 @@ case class ExpectedMappedCounterexampleAnnotation(id: OutputAnnotationId, file: 
     resolve(Vector(accPred.loc, accPred.perm), model).exists {
       case Vector((_, actualPermOpt), (expectedPermAmount, _)) =>
         actualPermOpt.exists(actualPermAmount => areEqualEntries(expectedPermAmount, LitPermEntry(actualPermAmount)))
+      case _ => false
     }
   }
 
   def containsEquality(lhs: PExp, rhs: PExp, model: ExtractedModel): Boolean =
-    resolveWoPerm(Vector(lhs, rhs), model).exists { case Vector(resolvedLhs, resolvedRhs) =>
-      areEqualEntries(resolvedLhs, resolvedRhs) }
+    resolveWoPerm(Vector(lhs, rhs), model).exists {
+      case Vector(resolvedLhs, resolvedRhs) => areEqualEntries(resolvedLhs, resolvedRhs)
+      case _ => false }
 
   /** resolves `expr` to a model entry in the given model. In case it's a field access, the corresponding permissions are returned as well */
   def resolve(expr: PExp, model: ExtractedModel): Option[(ExtractedModelEntry, Option[Rational])] = expr match {
@@ -134,9 +140,11 @@ case class ExpectedMappedCounterexampleAnnotation(id: OutputAnnotationId, file: 
     case idnuse: PIdnUseExp => model.entries.get(idnuse.name).map((_, None))
     case PFieldAccess(rcv, _, idnuse) => resolveWoPerm(rcv, model).flatMap {
       case RefEntry(_, fields) => fields.get(idnuse.name)
+      case _ => None
     }
     case PLookup(base, _, idx, _) => resolveWoPerm(Vector(base, idx), model).flatMap {
       case Vector(SeqEntry(_, values), LitIntEntry(evaluatedIdx)) if values.size > evaluatedIdx => Some(values(evaluatedIdx.toInt), None)
+      case _ => None
     }
   }
 
@@ -160,6 +168,7 @@ case class ExpectedMappedCounterexampleAnnotation(id: OutputAnnotationId, file: 
     case (RefEntry(name1, _), RecursiveRefEntry(name2)) => name1 == name2
     case (RecursiveRefEntry(name1), RefEntry(name2, _)) => name1 == name2
     case (NullRefEntry(name1), NullRefEntry(name2)) => name1 == name2
+    case _ => false
   }
 
   override def notFoundError: TestError = TestCustomError(s"Expected the following counterexample on line $forLineNr: $expectedCounterexample")

@@ -61,10 +61,6 @@ class MagicWandSnapFunctionsContributor(preambleReader: PreambleReader[String, S
   /** Add all axioms needed to the preamble using `sink`. Currently, there are none. */
   override def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = {}
 
-  /** Helper function to transform the lines returned by the `PreambleReader`. */
-  private def extractPreambleLines(lines: Iterable[String]*): Iterable[String] =
-    lines.flatten
-
   /** Helper function to emit all lines using `sink`. */
   private def emitPreambleLines(sink: ProverLike, lines: Iterable[String]*): Unit = {
     lines foreach { declaration =>

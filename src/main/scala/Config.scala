@@ -791,9 +791,9 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   }
 
   validateOpt(simplifyOnConsume, maskHeapMode) {
-    case (Some(true), Some(true)) => Right()
+    case (Some(true), Some(true)) => Right(())
     case (Some(true), _) => Left(s"Option ${simplifyOnConsume.name} is only supported in combination with ${maskHeapMode.name}")
-    case _ => Right()
+    case _ => Right(())
   }
 
   validateOpt(counterexample, maskHeapMode) {
@@ -840,7 +840,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   validateOpt(numberOfParallelVerifiers) {
     case Some(n) if n <= 0 => Left(s"Number of parallel verifiers must be positive, but $n was provided")
-    case _ => Right()
+    case _ => Right(())
   }
 
   validateFileOpt(logConfig)

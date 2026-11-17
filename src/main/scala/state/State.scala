@@ -252,7 +252,7 @@ object State {
                  permissionScalingFactor1, permissionScalingFactorExp1, isEvalInOld,
                  reserveHeaps1, reserveCfgs1, exhaleExt1, isInPackage1,
                  ssCache1, assertReadAccessOnly1,
-                 qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1, qpTag1,
+                 qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1, _,
                  predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
                  moreCompleteExhale, moreCompleteExhaleQP, moreJoins) =>
 
@@ -281,7 +281,7 @@ object State {
                      `permissionScalingFactor1`, `permissionScalingFactorExp1`, `isEvalInOld`,
                      `reserveHeaps1`, `reserveCfgs1`, `exhaleExt1`,`isInPackage1`,
                      ssCache2, `assertReadAccessOnly1`,
-                     `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, `smDomainNeeded1`, qpTag1,
+                     `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, `smDomainNeeded1`, _,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
                      moreCompleteExhale2, moreCompleteExhaleQP2, `moreJoins`) =>
 
@@ -465,7 +465,7 @@ object State {
       permissionScalingFactor1, permissionScalingFactorExp1, isEvalInOld,
       reserveHeaps1, reserveCfgs1, exhaleExt1, isInPackage1,
       ssCache1, assertReadAccessOnly1,
-      qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1, qpTag1,
+      qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1, _,
       predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
       moreCompleteExhale, moreCompleteExhaleQP, moreJoins) =>
 
@@ -493,9 +493,9 @@ object State {
           `permissionScalingFactor1`, `permissionScalingFactorExp1`, `isEvalInOld`,
           reserveHeaps2, `reserveCfgs1`, `exhaleExt1`,`isInPackage1`,
           ssCache2, `assertReadAccessOnly1`,
-          `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, smDomainNeeded2, qpTag1,
+          `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, smDomainNeeded2, _,
           `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
-          moreCompleteExhale2, moreCompleteExhaleQP2, `moreJoins`) =>
+          _, _, `moreJoins`) =>
 
             val debugOldHeaps3 = mergeMaps(debugOldHeaps1, (), debugOldHeaps2, ())(
               (record, _) => Some(record))(
@@ -526,7 +526,7 @@ object State {
                 // If store entry is only on one branch, we can safely discard it.
                 None
               })
-              ((v1, cond1, v2, cond2) => {
+              ((v1, cond1, v2, _) => {
                 if (v1._1 == v2._1) {
                   // Trivial: Both entries are the same.
                   Some(v1)
