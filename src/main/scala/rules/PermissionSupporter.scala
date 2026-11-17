@@ -16,7 +16,8 @@ import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silver.verifier.reasons.{NegativePermission, NonPositivePermission}
 
 object permissionSupporter extends SymbolicExecutionRules {
-  def assertNotNegative(s: State, tPerm: Term, ePerm: ast.Exp, ePermNew: Option[ast.Exp], pve: PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
+  def assertNotNegative(s: State, tPerm: Term, ePerm: ast.Exp, ePermNew: Option[ast.Exp], pve: PartialVerificationError,
+      v: Verifier, analysisInfos: AnalysisInfos)
                        (Q: (State, Verifier) => VerificationResult)
                        : VerificationResult = {
 

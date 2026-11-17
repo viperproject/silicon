@@ -402,7 +402,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
         val branchesToMerge = recordedBranches.map({ case (sBranch, pcs) =>
           val unknownLhs = freshSnap(sorts.Snap, v)
           val replaceLhs = (t: Term) => t.replace(freshSnapRoot, unknownLhs)
-          val replaceLhsInHeap = (h: Heap) => Heap(h.values.map(hv => v.chunkFactory.substitute(hv, Map(freshSnapRoot -> unknownLhs), analysisInfos, isExhaledChunk=false)))
+          val replaceLhsInHeap = (h: Heap) =>
+            Heap(h.values.map(hv => v.chunkFactory.substitute(hv, Map(freshSnapRoot -> unknownLhs), analysisInfos, isExhaledChunk=false)))
           val sBranchWithUnknownLhs = sBranch.copy(h = replaceLhsInHeap(sBranch.h),
                                                    reserveHeaps = sBranch.reserveHeaps.map(replaceLhsInHeap))
           val condition = replaceLhs(And(pcs.branchConditions))
@@ -426,7 +427,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
         val token = wandSnapshot.yieldToken(freshSnapRoot)
         val tokenAxiom = Forall(freshSnapRoot, Implies(token, Or(branchConditions)), Trigger(token))
         v.decider.prover.comment(s"Path conditions recorded while packaging wand $wand, guarded by the wand's token")
-        v.decider.assume(tokenAxiom, Option.when(debugOn)(DebugExp.createInstance("Path conditions recorded while packaging the magic wand", tokenAxiom, true)), analysisInfos /* TODO ake */)
+        v.decider.assume(tokenAxiom,
+          Option.when(debugOn)(DebugExp.createInstance("Path conditions recorded while packaging the magic wand", tokenAxiom, true)),
+          analysisInfos /* TODO ake */)
 
         /* Producing the wand's LHS and executing the proof script can introduce definitional path
          * conditions, e.g. definitions of new snapshot and permission maps (see Decider.assumeDefinition),
@@ -440,7 +443,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
                           .distinct
                           .filterNot(_.contains(freshSnapRoot))
         v.decider.prover.comment(s"Definitions recorded while packaging wand $wand")
-        v.decider.assumeDefinition(definitions, Option.when(debugOn)(DebugExp.createInstance("Definitions recorded while packaging the magic wand", true)), analysisInfos /* TODO ake */)
+        v.decider.assumeDefinition(definitions,
+          Option.when(debugOn)(DebugExp.createInstance("Definitions recorded while packaging the magic wand", true)), analysisInfos /* TODO ake */)
 
         /* Merging the states of several branches results in several chunks for the same location, each guarded
          * by the corresponding branch condition. Consuming from such heaps is incomplete (in particular, the
@@ -587,7 +591,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
       val analysisInfos = v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo("merge", NoPosition), OriginType.Internal)
       val emptyHeap = v.heapSupporter.getEmptyHeap(newState.program, v)
-      val (fr, hOpsJoinUsed) = v.stateConsolidator(newState).merge(newState.functionRecorder, newState, newState.reserveHeaps(1), newState.h, v, analysisInfos)
+      val (fr, hOpsJoinUsed) = v.stateConsolidator(newState)
+        .merge(newState.functionRecorder, newState, newState.reserveHeaps(1), newState.h, v, analysisInfos)
       newState.copy(functionRecorder = fr, h = emptyHeap,
           reserveHeaps = emptyHeap +: hOpsJoinUsed +: newState.reserveHeaps.drop(2))
     } else newState

@@ -99,13 +99,17 @@ trait ChunkFactory {
   def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos): GeneralChunk
   def permMinus(chunk: QuantifiedBasicChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos): QuantifiedBasicChunk
 
-  def permPlus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhaledChunk: Boolean=false): GeneralChunk
+  def permPlus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
+      isExhaledChunk: Boolean=false): GeneralChunk
 
-  def withPerm(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhaledChunk: Boolean=false): GeneralChunk
+  def withPerm(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
+      isExhaledChunk: Boolean=false): GeneralChunk
 
-  def withPermNonQuantifiedChunk(chunk: NonQuantifiedChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhaledChunk: Boolean=false): NonQuantifiedChunk
+  def withPermNonQuantifiedChunk(chunk: NonQuantifiedChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
+      isExhaledChunk: Boolean=false): NonQuantifiedChunk
 
-  def permScale(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhaledChunk: Boolean=false): GeneralChunk
+  def permScale(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
+      isExhaledChunk: Boolean=false): GeneralChunk
 
   def substitute(chunk: GeneralChunk, terms: silicon.Map[Term, Term], analysisInfos: AnalysisInfos, isExhaledChunk: Boolean=false): GeneralChunk
 
@@ -163,7 +167,8 @@ class DefaultChunkFactory extends ChunkFactory {
                                               hints: Seq[Term] = Nil,
                                               analysisInfos: AnalysisInfos,
                                               isExhaledChunk: Boolean = false): QuantifiedPredicateChunk =
-    QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, orgCondition, condition, conditionExp, permValue, permValueExp, invs, singletonArgs, singletonArgExps, tag, hints)
+    QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, orgCondition, condition, conditionExp, permValue, permValueExp, invs,
+      singletonArgs, singletonArgExps, tag, hints)
 
   override def createQuantifiedMagicWandChunk(id: MagicWandIdentifier,
                                               quantifiedVars: Seq[Var],
@@ -179,7 +184,8 @@ class DefaultChunkFactory extends ChunkFactory {
                                               hints: Seq[Term] = Nil,
                                               analysisInfos: AnalysisInfos,
                                               isExhaledChunk: Boolean = false): QuantifiedMagicWandChunk =
-    QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, orgCondition, perm, permExp, invs, singletonArgs, singletonArgExps, tag, hints)
+    QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, orgCondition, perm, permExp, invs,
+      singletonArgs, singletonArgExps, tag, hints)
 
   override def createMagicWandChunk(id: MagicWandIdentifier,
                                     bindings: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])],
@@ -205,16 +211,20 @@ class DefaultChunkFactory extends ChunkFactory {
   def permMinus(chunk: QuantifiedBasicChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos): QuantifiedBasicChunk =
     chunk.permMinus(newPerm, newPermExp)
 
-  def permPlus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhaledChunk: Boolean=false): GeneralChunk =
+  def permPlus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
+      isExhaledChunk: Boolean=false): GeneralChunk =
     chunk.permPlus(newPerm, newPermExp)
 
-  def withPerm(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhaledChunk: Boolean=false): GeneralChunk =
+  def withPerm(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
+      isExhaledChunk: Boolean=false): GeneralChunk =
     chunk.withPerm(newPerm, newPermExp)
 
-  def withPermNonQuantifiedChunk(chunk: NonQuantifiedChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhaledChunk: Boolean=false): NonQuantifiedChunk =
+  def withPermNonQuantifiedChunk(chunk: NonQuantifiedChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
+      isExhaledChunk: Boolean=false): NonQuantifiedChunk =
     chunk.withPerm(newPerm, newPermExp)
 
-  def permScale(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhaledChunk: Boolean=false): GeneralChunk =
+  def permScale(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
+      isExhaledChunk: Boolean=false): GeneralChunk =
     chunk.permScale(newPerm, newPermExp)
 
   def substitute(chunk: GeneralChunk, terms: silicon.Map[Term, Term], analysisInfos: AnalysisInfos, isExhaledChunk: Boolean = false): GeneralChunk =
@@ -225,6 +235,7 @@ class DefaultChunkFactory extends ChunkFactory {
 
   def withSnapshotMap(chunk: QuantifiedChunk, snap: Term, analysisInfos: AnalysisInfos): QuantifiedChunk = chunk.withSnapshotMap(snap)
 
-  def withSnap(chunk: NonQuantifiedChunk, snap: Term, snapExp: Option[ast.Exp], analysisInfos: AnalysisInfos): NonQuantifiedChunk = chunk.withSnap(snap, snapExp)
+  def withSnap(chunk: NonQuantifiedChunk, snap: Term, snapExp: Option[ast.Exp], analysisInfos: AnalysisInfos): NonQuantifiedChunk =
+      chunk.withSnap(snap, snapExp)
 
 }

@@ -13,7 +13,8 @@ import viper.silver.ast
 
 object DependencyAnalysisTool {
 
-  def runDependencyAnalysisWorkflow(commands: String, options: DependencyAnalysisOptions, verificationResults: List[VerificationResult], axiomNodes: Iterable[AxiomAssumptionNode], program: ast.Program, inputFile: Option[String]): DependencyAnalysisResult = {
+  def runDependencyAnalysisWorkflow(commands: String, options: DependencyAnalysisOptions, verificationResults: List[VerificationResult],
+      axiomNodes: Iterable[AxiomAssumptionNode], program: ast.Program, inputFile: Option[String]): DependencyAnalysisResult = {
     val memberResults = verificationResults.flatMap(_.intraproceduralGraphResult)
     val verificationErrors: List[Failure] = (verificationResults filter (_.isInstanceOf[Failure])) map (_.asInstanceOf[Failure])
     // TODO ake: make sure we can access the name of frontend programs (instead of naming it "joined")

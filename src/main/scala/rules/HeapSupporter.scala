@@ -111,7 +111,8 @@ trait HeapSupportRules extends SymbolicExecutionRules {
 
   /** Merges the chunks consumed by a transfer (during packaging a wand) into the heap of
     * already-transferred permissions. */
-  def mergeTransferredChunks(fr: FunctionRecorder, s: State, h: Heap, usedChunks: Seq[Chunk], v: Verifier, analysisInfos: AnalysisInfos): (FunctionRecorder, Heap)
+  def mergeTransferredChunks(fr: FunctionRecorder, s: State, h: Heap, usedChunks: Seq[Chunk], v: Verifier,
+      analysisInfos: AnalysisInfos): (FunctionRecorder, Heap)
 
   /** Whether this heap encoding contributes trigger terms for the given resource access
     * occurring in a quantifier's trigger set. */
@@ -274,7 +275,8 @@ class DefaultHeapSupportRules extends HeapSupportRules {
         val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v, analysisInfos)
         val s2 = triggerResourceIfNeeded(s1, ass.lhs, Seq(tRcvr), eRcvrNew.map(Seq(_)), v, analysisInfos)
         v1.decider.clearModel()
-        val lhsSourceInfos = analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(ass.lhs))) // splitting lhs and rhs to make permission flow analysis more precise
+        // splitting lhs and rhs to make permission flow analysis more precise
+        val lhsSourceInfos = analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(ass.lhs)))
       val result = quantifiedChunkSupporter.removePermissions(
           s2,
           relevantChunks,
@@ -299,7 +301,8 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             val debugExp = Option.when(debugOn)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
             v1.decider.assumeDefinition(smValueDef, debugExp, analysisInfos)
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(debugOn)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
-              field, Seq(tRcvr), Option.when(debugOn)(Seq(eRcvrNew.get)), FullPerm, Option.when(debugOn)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, newTag, s1.program, v, lhsSourceInfos.overrideDependencyType(OriginType.Internal), isExhaledChunk=false)
+              field, Seq(tRcvr), Option.when(debugOn)(Seq(eRcvrNew.get)), FullPerm, Option.when(debugOn)(ast.FullPerm()(ass.pos, ass.info,
+                ass.errT)), sm, newTag, s1.program, v, lhsSourceInfos.overrideDependencyType(OriginType.Internal), isExhaledChunk=false)
             if (s3.heapDependentTriggers.contains(field)) {
               val debugExp2 = Option.when(debugOn)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString}.${field.name})"))
               v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2, lhsSourceInfos.overrideDependencyType(OriginType.Trigger))
@@ -327,10 +330,13 @@ class DefaultHeapSupportRules extends HeapSupportRules {
         executionFlowController.tryOrFail0(s, v)((s1, v1, QS) => exhaleFieldPerm(s1, v1, analysisInfos)(QS))(Q)
     } else {
       val description = s"consume ${ass.pos}: $ass"
-      val lhsSourceInfos = analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(ass.lhs))) // splitting lhs and rhs to make permission flow analysis more precise
-      chunkSupporter.consume(s, s.h, field, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(debugOn)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v, description, lhsSourceInfos)((s3, h3, _, v3) => {
+      // splitting lhs and rhs to make permission flow analysis more precise
+      val lhsSourceInfos = analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(ass.lhs)))
+      chunkSupporter.consume(s, s.h, field, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm,
+        Option.when(debugOn)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v, description, lhsSourceInfos)((s3, h3, _, v3) => {
         val id = BasicChunkIdentifier(field.name)
-        val newChunk = v3.chunkFactory.createBasicChunk(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tRhs, eRhsNew, FullPerm, Option.when(debugOn)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), s3.qpTag, lhsSourceInfos.overrideDependencyType(OriginType.Internal))
+        val newChunk = v3.chunkFactory.createBasicChunk(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tRhs, eRhsNew, FullPerm,
+          Option.when(debugOn)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), s3.qpTag, lhsSourceInfos.overrideDependencyType(OriginType.Internal))
         chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
           val s5 = s4.copy(h = h4)
           val s6 = if (debugOn && s5.isRecordingHeaps) v.recordIntermediateHeap(s5) else s5
@@ -389,7 +395,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
               v.decider.prover.comment(s"perm($resAcc)  ~~>  assume upper permission bound")
               val debugLabel = v.getDebugOldLabel(s2, resAcc.pos, Some(h))
               val exp = Option.when(debugOn)(ast.PermLeCmp(ast.DebugLabelledOld(ast.CurrentPerm(resAcc)(), debugLabel)(), ast.FullPerm()())())
-              v.decider.assume(PermAtMost(currentPermAmount, FullPerm), exp, exp.map(s2.substituteVarsInExp(_)), analysisInfos.overrideDependencyType(OriginType.Internal))
+              v.decider.assume(PermAtMost(currentPermAmount, FullPerm), exp, exp.map(s2.substituteVarsInExp(_)),                 analysisInfos.overrideDependencyType(OriginType.Internal))
             case _ =>
           }
 
@@ -623,7 +629,8 @@ class DefaultHeapSupportRules extends HeapSupportRules {
         case _ =>
           val chunkId = ChunkIdentifier(resource, s.program)
           val (resId, snap1) = if (resource.isInstanceOf[ast.Field]) (FieldID, tSnap) else (PredicateID, tSnap.convert(sorts.Snap))
-          val ch = v.chunkFactory.createBasicChunk(resId, chunkId.asInstanceOf[BasicChunkIdentifier], tArgs, eArgs, snap1, eSnap, tPerm, ePerm, s.qpTag, analysisInfos)
+          val ch = v.chunkFactory.createBasicChunk(resId, chunkId.asInstanceOf[BasicChunkIdentifier], tArgs, eArgs, snap1, eSnap, tPerm,
+            ePerm, s.qpTag, analysisInfos)
           if (mergeAndTrigger) {
             chunkSupporter.produce(s, s.h, ch, v)((s2, h2, v2) => {
               if (resource.isInstanceOf[ast.Predicate] && Verifier.config.enablePredicateTriggersOnInhale() && s2.functionRecorder == NoopFunctionRecorder
@@ -631,7 +638,8 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                 val predicate = resource.asInstanceOf[ast.Predicate]
                 val argsString = eArgs.mkString(", ")
                 val debugExp = Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))", isInternal_ = true))
-                v2.decider.assume(App(s2.predicateData(predicate.name).triggerFunction, snap1 +: tArgs), debugExp, analysisInfos.overrideDependencyType(OriginType.Trigger))
+                v2.decider.assume(App(s2.predicateData(predicate.name).triggerFunction, snap1 +: tArgs), debugExp,
+                  analysisInfos.overrideDependencyType(OriginType.Trigger))
               }
               Q(s2.copy(h = h2), v2)
             })
@@ -1042,7 +1050,8 @@ class DefaultHeapSupportRules extends HeapSupportRules {
   def addWandChunk(h: Heap, chWand: Chunk, s: State, v: Verifier): Heap =
     h + chWand
 
-  def mergeTransferredChunks(fr: FunctionRecorder, s: State, h: Heap, usedChunks: Seq[Chunk], v: Verifier, analysisInfos: AnalysisInfos): (FunctionRecorder, Heap) =
+  def mergeTransferredChunks(fr: FunctionRecorder, s: State, h: Heap, usedChunks: Seq[Chunk], v: Verifier,
+      analysisInfos: AnalysisInfos): (FunctionRecorder, Heap) =
     v.stateConsolidator(s).merge(fr, s, h, Heap(usedChunks), v, analysisInfos)
 
   def handlesResourceTrigger(ra: ast.ResourceAccess, s: State): Boolean =

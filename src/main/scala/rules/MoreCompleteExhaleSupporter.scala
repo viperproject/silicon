@@ -179,7 +179,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     }
 
     val (s1, taggedSnap, snapDefs, permSum, permSumExp) = summariseOnly(s, relevantChunks, resource, args, argsExp, knownValue, v)
-    v.decider.assumeDefinition(And(snapDefs), Option.when(debugOn)(DebugExp.createInstance("Snapshot", isInternal_ = true)), analysisInfos.overrideDependencyType(OriginType.Internal))
+    v.decider.assumeDefinition(And(snapDefs), Option.when(debugOn)(DebugExp.createInstance("Snapshot", isInternal_ = true)),
+      analysisInfos.overrideDependencyType(OriginType.Internal))
     //    v.decider.assume(PermAtMost(permSum, FullPerm())) /* Done in StateConsolidator instead */
 
     val s2 =
@@ -212,7 +213,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     if (relevantChunks.isEmpty) {
       if (v.decider.checkSmoke(analysisInfos, isAssert = true)) {
-        InfeasiblePath.continueIfExplorationEnabled(Success() /* TODO: Mark branch as dead? */, alwaysContinue = s.isInPackage)(Q(s, InfeasiblePath.freshSnapshot(resource, s, v), v))
+        InfeasiblePath.continueIfExplorationEnabled(Success() /* TODO: Mark branch as dead? */,
+          alwaysContinue = s.isInPackage)(Q(s, InfeasiblePath.freshSnapshot(resource, s, v), v))
       } else {
         val failure = createFailure(ve, v, s, False, "branch is dead")
         recordFailedFalseAssertion(s, v, analysisInfos)
@@ -332,7 +334,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       }
     } else {
       if (!terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
-        actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, argsExp, perms, permsExp, returnSnap, ve, v, analysisInfos)((s1, updatedChunks, optSnap, v2) => {
+        actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, argsExp, perms, permsExp, returnSnap, ve, v,
+          analysisInfos)((s1, updatedChunks, optSnap, v2) => {
           Q(s1, Heap(updatedChunks ++ otherChunks), optSnap, v2)
         })
       } else {
@@ -389,7 +392,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm))
             pSumExp = eqExp.map(eq => ast.PermAdd(pSumExp.get, ast.CondExp(eq, ch.permExp.get, ast.NoPerm()())(eq.pos, eq.info, eq.errT))())
 
-            val newChunk = v.chunkFactory.withPerm(ch, PermMinus(ch.perm, pTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT)), analysisInfos).asInstanceOf[NonQuantifiedChunk]
+            val newChunk = v.chunkFactory.withPerm(ch, PermMinus(ch.perm, pTaken),
+              permsExp.map(pe => ast.PermSub(ch.permExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT)), analysisInfos)
+              .asInstanceOf[NonQuantifiedChunk]
             val _ = v.chunkFactory.withPerm(ch, pTaken, None, analysisInfos, isExhaledChunk=true)
             pNeeded = PermMinus(pNeeded, pTaken)
             pNeededExp = permsExp.map(pe => ast.PermSub(pNeededExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT))
@@ -512,7 +517,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         @unused // required in order to ensure a sound dependency analysis
         val _ = v.chunkFactory.withPermNonQuantifiedChunk(ch, permTaken, None, analysisInfos, isExhaledChunk=true)
-        v.chunkFactory.withPermNonQuantifiedChunk(ch, PermMinus(ch.perm, permTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, permTakenExp.get)(pe.pos, pe.info, pe.errT)), analysisInfos)
+        v.chunkFactory.withPermNonQuantifiedChunk(ch, PermMinus(ch.perm, permTaken),
+          permsExp.map(pe => ast.PermSub(ch.permExp.get, permTakenExp.get)(pe.pos, pe.info, pe.errT)), analysisInfos)
       })
 
     val totalTakenBounds =

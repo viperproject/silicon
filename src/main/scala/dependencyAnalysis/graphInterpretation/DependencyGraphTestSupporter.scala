@@ -12,7 +12,6 @@ import viper.silver.dependencyAnalysis.OriginType
 
 import scala.util.matching.Regex
 
-// TODO ake: move this class to the tests. This requires removing the CLI commands in TestDependencyAnalysisCliExtension, which Gobra's DependencyAnalysisTests relies on.
 /**
  * @param report receives the test outcomes while the tests run
  */
@@ -45,8 +44,10 @@ class DependencyGraphTestSupporter(queries: FinalGraphInterpreter, report: Strin
         val (isAssumptionTypeCorrect, isTested) = testTypeInternal(dependencyInfo, assumptionTypeRegex, ulNode.assumptionTypes)
         val (isAssertionTypeCorrect, isTested2) = testTypeInternal(dependencyInfo, assertionTypeRegex, ulNode.assertionTypes)
 
-        printIfFalse(isAssumptionTypeCorrect, s"Wrong assumption type for node ${ulNode.source.toString} having assumption types ${ulNode.assumptionTypes}.")
-        printIfFalse(isAssertionTypeCorrect, s"Wrong assertion type for node ${ulNode.source.toString} having assertion types ${ulNode.assertionTypes}.")
+        printIfFalse(isAssumptionTypeCorrect,
+          s"Wrong assumption type for node ${ulNode.source.toString} having assumption types ${ulNode.assumptionTypes}.")
+        printIfFalse(isAssertionTypeCorrect,
+          s"Wrong assertion type for node ${ulNode.source.toString} having assertion types ${ulNode.assertionTypes}.")
         Option.when(isTested || isTested2)(isAssumptionTypeCorrect && isAssertionTypeCorrect)
     }
   }
@@ -86,14 +87,17 @@ class DependencyGraphTestSupporter(queries: FinalGraphInterpreter, report: Strin
       case Some(expectedLabels) =>
         val queriedAssertions = assertionNode.lowLevelAssertionNodes
         val allDependencies = queries.computeNonInternalDependencies(queriedAssertions.toSet)
-        val sourceDependencies = UserLevelDependencyAnalysisNode.from(allDependencies).toSourceSet().diff(UserLevelDependencyAnalysisNode.from(queriedAssertions).toSourceSet())
+        val sourceDependencies = UserLevelDependencyAnalysisNode.from(allDependencies).toSourceSet()
+          .diff(UserLevelDependencyAnalysisNode.from(queriedAssertions).toSourceSet())
 
-        val labelsInReportedDeps: Set[Set[String]] = sourceDependencies.map(node => nodeLabelRegex.findAllMatchIn(node.toString).map(_.group(1)).toSet)
+        val labelsInReportedDeps: Set[Set[String]] =
+          sourceDependencies.map(node => nodeLabelRegex.findAllMatchIn(node.toString).map(_.group(1)).toSet)
         val actualLabelInReportedDeps = labelsInReportedDeps.filter(_.size == 1).flatten
 
         val labelDiff = expectedLabels.diff(actualLabelInReportedDeps)
         val isSound = labelDiff.isEmpty
-        printIfFalse(isSound, s"Missing dependencies (${labelDiff.mkString(", ")}) for ${assertionNode.source.toString}. Reported dependencies: ${actualLabelInReportedDeps.mkString(", ")}")
+        printIfFalse(isSound, s"Missing dependencies (${labelDiff.mkString(", ")}) for ${assertionNode.source.toString}. " +
+          s"Reported dependencies: ${actualLabelInReportedDeps.mkString(", ")}")
         Some(isSound)
     }
   }

@@ -72,7 +72,8 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
                                               analysisInfos: AnalysisInfos,
                                               isExhaledChunk: Boolean = false): QuantifiedPredicateChunk = {
     decider.registerChunk[QuantifiedPredicateChunk]({ finalPerm =>
-      QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, orgCondition, condition, conditionExp, finalPerm, permValueExp, invs, singletonArgs, singletonArgExps, tag, hints)
+      QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, orgCondition, condition, conditionExp, finalPerm, permValueExp, invs,
+        singletonArgs, singletonArgExps, tag, hints)
     }, permValue, analysisInfos, isExhaledChunk)
   }
 
@@ -91,7 +92,8 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
                                               analysisInfos: AnalysisInfos,
                                               isExhaledChunk: Boolean = false): QuantifiedMagicWandChunk = {
     decider.registerChunk[QuantifiedMagicWandChunk]({ finalPerm =>
-      QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, orgCondition, perm, permExp, invs, singletonArgs, singletonArgExps, tag, hints)
+      QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, orgCondition, perm, permExp, invs,
+        singletonArgs, singletonArgExps, tag, hints)
     }, perm, analysisInfos, isExhaledChunk)
   }
 
@@ -141,25 +143,29 @@ class DependencyAnalysisAwareChunkFactory(decider: Decider with DependencyAnalys
     newChunk
   }
 
-  def permPlus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhaledChunk: Boolean=false): GeneralChunk = {
+  def permPlus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
+      isExhaledChunk: Boolean=false): GeneralChunk = {
     decider.registerChunk({finalPerm =>
       chunk.permPlus(finalPerm, newPermExp)},
       newPerm, analysisInfos, isExhaledChunk)
   }
 
-  def withPerm(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhaledChunk: Boolean=false): GeneralChunk = {
+  def withPerm(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
+      isExhaledChunk: Boolean=false): GeneralChunk = {
     decider.registerChunk({finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},
       newPerm, analysisInfos, isExhaledChunk)
   }
 
-  def withPermNonQuantifiedChunk(chunk: NonQuantifiedChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhaledChunk: Boolean=false): NonQuantifiedChunk = {
+  def withPermNonQuantifiedChunk(chunk: NonQuantifiedChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
+      isExhaledChunk: Boolean=false): NonQuantifiedChunk = {
     decider.registerChunk({finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},
       newPerm, analysisInfos, isExhaledChunk)
   }
 
-  def permScale(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos, isExhaledChunk: Boolean=false): GeneralChunk = {
+  def permScale(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
+      isExhaledChunk: Boolean=false): GeneralChunk = {
     decider.registerChunk({finalPerm =>
       chunk.permScale(finalPerm, newPermExp)},
       newPerm, analysisInfos, isExhaledChunk)

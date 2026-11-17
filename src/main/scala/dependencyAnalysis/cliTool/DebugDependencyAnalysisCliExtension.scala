@@ -12,7 +12,8 @@ import viper.silicon.dependencyAnalysis.graphInterpretation.FinalGraphInterprete
 import viper.silver.dependencyAnalysis.OriginType.OriginType
 import viper.silver.dependencyAnalysis.{OriginType, DependencyAnalysisSourceInfo}
 
-class DebugDependencyAnalysisCliExtension(queries: FinalGraphInterpreter, options: DependencyAnalysisOptions) extends DependencyAnalysisCliToolExtension{
+class DebugDependencyAnalysisCliExtension(queries: FinalGraphInterpreter,
+    options: DependencyAnalysisOptions) extends DependencyAnalysisCliToolExtension{
   override val name: String = "Debug Features"
   override val commands: List[DependencyAnalysisCliCommand] = List(
                                                                 new AssumptionTypesCommand,
@@ -80,7 +81,8 @@ class DebugDependencyAnalysisCliExtension(queries: FinalGraphInterpreter, option
     override val cmdName: String = "weirdNodes"
     override val cmd: DependencyAnalysisCliInput => DependencyAnalysisCliResult = _ => DependencyAnalysisCliResult(getWeirdNodeStrings: _*)
     override val description: String = s"'$cmdName' to print weird nodes"
-    private val weirdNodePattern = """\b(function|func|method|requires|ensures|preserves|pure|axiom|if|else|while|for|interface|domain|adt|struct|package|import|type)\b""".r
+    private val weirdNodePattern =
+      """\b(function|func|method|requires|ensures|preserves|pure|axiom|if|else|while|for|interface|domain|adt|struct|package|import|type)\b""".r
 
     private def getWeirdNodeStrings: Seq[String] = {
       queries.getNodes.filter(n => !n.originType.isInstanceOf[OriginType.InternalType]).groupBy(_.sourceInfo)

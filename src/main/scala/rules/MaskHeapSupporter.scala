@@ -121,7 +121,8 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
           val newHeap = v.decider.createAlias(MergeHeaps(c1.heap, c1.mask, c2.heap, c2.mask), s.get)
           if (r.isInstanceOf[ast.Field] && s.isDefined && s.get.mayAssumeUpperBounds) {
             if (newMask != c1.mask && newMask != c2.mask)
-              v.decider.assume(upperBoundAssertion(newMask, v), Option.when(debugOn)(DebugExp.createInstance("Upper bound assertion for merged field mask")), analysisInfos)
+              v.decider.assume(upperBoundAssertion(newMask, v),
+                Option.when(debugOn)(DebugExp.createInstance("Upper bound assertion for merged field mask")), analysisInfos)
           }
           c1.copy(newMask = newMask, newHeap = newHeap)
         case (Some(c1), None) => c1
@@ -382,7 +383,8 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
           case false =>
             if (!consumeExact) {
               // constrain wildcard
-              v.decider.assume(PermLess(rPerm, maskValue), Option.when(debugOn)(DebugExp.createInstance("Constrain wildcard permission")), analysisInfos)
+              v.decider.assume(PermLess(rPerm, maskValue),
+                Option.when(debugOn)(DebugExp.createInstance("Constrain wildcard permission")), analysisInfos)
             }
             val taken = PermMin(maskValue, rPerm)
             val newMask = if (s.assertReadAccessOnly) {
@@ -449,7 +451,8 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
           } else {
             val added = v.decider.createAlias(MaskAdd(resChunk.mask, argTerm, PermNegation(permissions)), s)
             added match {
-              case MaskAdd(resChunk.mask, argTerm, PermNegation(permissions)) => removeSingleAdd(resChunk.mask, argTerm, permissions, s, v, analysisInfos)
+              case MaskAdd(resChunk.mask, argTerm, PermNegation(permissions)) =>
+                removeSingleAdd(resChunk.mask, argTerm, permissions, s, v, analysisInfos)
               case _ => added
             }
           }
@@ -547,7 +550,8 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
 
     val comment = "Nested auxiliary terms: globals"
     v.decider.prover.comment(comment)
-    v.decider.assume(auxGlobals, Option.when(debugOn)(DebugExp.createInstance(description = comment, children = auxGlobalsExp.get)), enforceAssumption = false, analysisInfos)
+    v.decider.assume(auxGlobals, Option.when(debugOn)(DebugExp.createInstance(description = comment, children = auxGlobalsExp.get)),
+      enforceAssumption = false, analysisInfos)
 
     val comment2 = "Nested auxiliary terms: non-globals"
     v.decider.prover.comment(comment2)
@@ -557,10 +561,12 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
         v.decider.assume(
           auxNonGlobals.map(_.copy(
             vars = effectiveTriggersQVars,
-            triggers = effectiveTriggers)), Option.when(debugOn)(DebugExp.createInstance(description = comment2, children = auxNonGlobalsExp.get)), enforceAssumption = false, analysisInfos)
+            triggers = effectiveTriggers)), Option.when(debugOn)(DebugExp.createInstance(description = comment2,
+              children = auxNonGlobalsExp.get)), enforceAssumption = false, analysisInfos)
       case Some(_) =>
         /* Explicit triggers were provided. */
-        v.decider.assume(auxNonGlobals, Option.when(debugOn)(DebugExp.createInstance(description = comment2, children = auxNonGlobalsExp.get)), enforceAssumption = false, analysisInfos)
+        v.decider.assume(auxNonGlobals, Option.when(debugOn)(DebugExp.createInstance(description = comment2, children = auxNonGlobalsExp.get)),
+          enforceAssumption = false, analysisInfos)
     }
 
     val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
@@ -922,7 +928,8 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
       triggers = effectiveTriggers))
     v.decider.assume(
       auxNonGlobalsWithEffectiveTriggers,
-      Option.when(debugOn)(DebugExp.createInstance(description = commentNonGlobals, children = auxNonGlobalsExp.get)), enforceAssumption = false, analysisInfos)
+      Option.when(debugOn)(DebugExp.createInstance(description = commentNonGlobals,
+        children = auxNonGlobalsExp.get)), enforceAssumption = false, analysisInfos)
 
     val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
     val nonNegImplicationExp = eCond.map(c => ast.Implies(c, ast.PermGeCmp(ePerm.get, ast.NoPerm()())())(c.pos, c.info, c.errT))
@@ -964,7 +971,8 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
             v.decider.prover.comment(comment)
             v.decider.assumeDefinition(inv.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)),
               Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)), analysisInfos)
-            v.decider.assumeDefinition(inv.definitionalAxioms, Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)), analysisInfos)
+            v.decider.assumeDefinition(inv.definitionalAxioms,
+              Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)), analysisInfos)
 
             val h1 = hp - currentChunk + newChunk
             v.decider.assume(permBoundConstraint, Option.when(debugOn)(DebugExp.createInstance("Permission upper bound")), analysisInfos)
@@ -1349,7 +1357,8 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
   override def mergeReserveHeaps(hUsed: Heap, hOps: Heap, hLhs: Heap, s: State, v: Verifier, analysisInfos: AnalysisInfos): Heap =
     mergeWandHeaps(mergeWandHeaps(hUsed, hOps, v, Some(s), analysisInfos), hLhs, v, Some(s), analysisInfos)
 
-  override def mergeTransferredChunks(fr: viper.silicon.supporters.functions.FunctionRecorder, s: State, h: Heap, usedChunks: Seq[Chunk], v: Verifier, analysisInfos: AnalysisInfos): (viper.silicon.supporters.functions.FunctionRecorder, Heap) =
+  override def mergeTransferredChunks(fr: viper.silicon.supporters.functions.FunctionRecorder, s: State, h: Heap, usedChunks: Seq[Chunk], v: Verifier,
+      analysisInfos: AnalysisInfos): (viper.silicon.supporters.functions.FunctionRecorder, Heap) =
     (fr, usedChunks.foldLeft(h)((cur, chnk) => mergeWandHeaps(cur, Heap(Seq(chnk)), v, Some(s), analysisInfos)))
 
   override def addWandChunk(h: Heap, chWand: Chunk, s: State, v: Verifier): Heap = {

@@ -102,14 +102,16 @@ object predicateSupporter extends PredicateSupportRules {
     })
   }
 
-  def producePredicateContents(s: State, tree: PredicateContentsTree, toReplace: silicon.Map[Term, Term], v: Verifier, analysisInfos: AnalysisInfos, isUnfolding: Boolean = false)
+  def producePredicateContents(s: State, tree: PredicateContentsTree, toReplace: silicon.Map[Term, Term], v: Verifier,
+      analysisInfos: AnalysisInfos, isUnfolding: Boolean = false)
                               (Q: (State, Verifier) => VerificationResult)
             : VerificationResult = {
     tree match {
       case PredicateLeafNode(h, assumptions) =>
         val debugExp = Option.when(debugOn)(DebugExp.createInstance("Assumption from unfolded predicate body"))
         assumptions.foreach(a => v.decider.assume(a.replace(toReplace), debugExp, analysisInfos))
-        val substChunks = h.values.map(chunk => v.chunkFactory.permScale(v.chunkFactory.substitute(chunk.asInstanceOf[GeneralChunk], toReplace, analysisInfos), s.permissionScalingFactor, s.permissionScalingFactorExp, analysisInfos))
+        val substChunks = h.values.map(chunk => v.chunkFactory.permScale(v.chunkFactory.substitute(chunk.asInstanceOf[GeneralChunk], toReplace,
+          analysisInfos), s.permissionScalingFactor, s.permissionScalingFactorExp, analysisInfos))
 
         val quantifiedResourceIdentifiers: Set[ChunkIdentifer] = s.qpPredicates.map(p => BasicChunkIdentifier(p.name)) ++ s.qpFields.map(f => BasicChunkIdentifier(f.name)) ++ s.qpMagicWands
 
@@ -129,7 +131,8 @@ object predicateSupporter extends PredicateSupportRules {
                   case _ => s.predicateFormalVarMap(resource.asInstanceOf[ast.Predicate].name)
                 }
                 newFr = newFr.recordFvfAndDomain(SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq()))
-                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, resource, bc.args, None, bc.perm, None, sm, bc.tag, s.program, v, analysisInfos, isExhaledChunk=false)
+                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, resource, bc.args, None, bc.perm, None, sm, bc.tag, s.program,
+                  v, analysisInfos, isExhaledChunk=false)
               case mwc: MagicWandChunk =>
                 val wand = mwc.id.ghostFreeWand
                 val bodyVars = wand.subexpressionsToEvaluate(s.program)
@@ -137,7 +140,8 @@ object predicateSupporter extends PredicateSupportRules {
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, wand, mwc.args, mwc.snap, v)
                 v.decider.assumeDefinition(smValueDef, None, analysisInfos)
                 newFr = newFr.recordFvfAndDomain(SnapshotMapDefinition(wand, sm, Seq(smValueDef), Seq()))
-                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, wand, mwc.args, None, mwc.perm, None, sm, mwc.tag, s.program, v, analysisInfos, isExhaledChunk=false)
+                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, wand, mwc.args, None, mwc.perm, None, sm, mwc.tag, s.program,
+                  v, analysisInfos, isExhaledChunk=false)
             }
           } else {
             c
@@ -220,7 +224,8 @@ object predicateSupporter extends PredicateSupportRules {
               App(s2.predicateData(predicate.name).triggerFunction,
                 v2.heapSupporter.predicateTriggerSnapArg(s2, predicate, snap.get, hPreUnfold) +: tArgs)
             val eargs = eArgs.mkString(", ")
-            v2.decider.assume(predicateTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), analysisInfos.overrideDependencyType(OriginType.Trigger))
+            v2.decider.assume(predicateTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")),
+              analysisInfos.overrideDependencyType(OriginType.Trigger))
           }
           Q(s2.copy(g = s.g,
             permissionScalingFactor = s.permissionScalingFactor,
@@ -235,7 +240,8 @@ object predicateSupporter extends PredicateSupportRules {
               App(s2.predicateData(predicate.name).triggerFunction,
                 v2.heapSupporter.predicateTriggerSnapArg(s2, predicate, snap.get, hPreUnfold) +: tArgs)
             val eargs = eArgs.mkString(", ")
-            v2.decider.assume(predicateTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), analysisInfos.overrideDependencyType(OriginType.Trigger))
+            v2.decider.assume(predicateTrigger, Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")),
+              analysisInfos.overrideDependencyType(OriginType.Trigger))
           }
           Q(s2.copy(g = s.g,
             permissionScalingFactor = s.permissionScalingFactor,

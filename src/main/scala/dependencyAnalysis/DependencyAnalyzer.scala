@@ -132,7 +132,8 @@ object DependencyAnalyzer extends LazyLogging {
   }
 }
 
-class DefaultDependencyAnalyzer(member: ast.Member, options: DependencyAnalysisOptions, private var axiomNodes: AxiomNodes) extends DependencyAnalyzer {
+class DefaultDependencyAnalyzer(member: ast.Member, options: DependencyAnalysisOptions,
+    private var axiomNodes: AxiomNodes) extends DependencyAnalyzer {
   protected var customMergeDependencies: Set[(Set[DependencyAnalysisMergeInfo], Set[DependencyAnalysisMergeInfo])] = Set.empty
 
   override def getMember: ast.Member = member
@@ -214,13 +215,15 @@ class DefaultDependencyAnalyzer(member: ast.Member, options: DependencyAnalysisO
 
   override def addInfeasibilityNode(isCheck: Boolean, analysisInfos: AnalysisInfos): Option[Int] = {
     checked(analysisInfos)
-    val node = DependencyNodeFactory.createInfeasibilityNode(analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assumptionType, getMember.name)
+    val node = DependencyNodeFactory.createInfeasibilityNode(analysisInfos.getSourceInfo,
+      analysisInfos.getDependencyType.assumptionType, getMember.name)
     addAssumptionNode(node)
     Some(node.id)
   }
 
   override def addAssertionFailedNode(failedAssertion: Term, analysisInfos: AnalysisInfos): Option[Int] = {
-    val assumeNode = DependencyNodeFactory.createSimpleAssumptionNode(failedAssertion, None, assumptionMetadata(analysisInfos).copy(originType = analysisInfos.getDependencyType.assertionType))
+    val assumeNode = DependencyNodeFactory.createSimpleAssumptionNode(failedAssertion, None, assumptionMetadata(analysisInfos)
+      .copy(originType = analysisInfos.getDependencyType.assertionType))
     val assertFailedNode = DependencyNodeFactory.createSimpleAssertionNode(failedAssertion, assertionMetadata(analysisInfos), hasFailed=true)
     dependencyGraph.addNode(assumeNode)
     dependencyGraph.addNode(assertFailedNode)
@@ -243,8 +246,10 @@ class DefaultDependencyAnalyzer(member: ast.Member, options: DependencyAnalysisO
   }
 
   override def addDependenciesForAbstractMembers(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], analysisInfos: AnalysisInfos): Unit = {
-    val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, analysisInfos.addInfo(e.info, e).withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Up))))
-    val targetNodes = targetExps.flatMap(e => addAssertNode(True, analysisInfos.addInfo(e.info, e).withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))))
+    val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, analysisInfos.addInfo(e.info, e)
+      .withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Up))))
+    val targetNodes = targetExps.flatMap(e => addAssertNode(True, analysisInfos.addInfo(e.info, e)
+      .withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))))
     dependencyGraph.addEdges(sourceNodeIds.toSet, targetNodes.toSet)
   }
 

@@ -25,7 +25,8 @@ class DependencyAnalysisPruningSupporter(queries: FinalGraphInterpreter) {
   def getPrunedProgram(crucialNodes: Set[DependencyAnalysisNode], program: ast.Program): (ast.Program, Double) = {
 
     def isCrucialExp(exp: ast.Exp, crucialNodePositionStrings: Set[String]): Boolean = {
-      crucialNodePositionStrings.contains(DependencyAnalysisSourceInfo.extractPositionString(exp.pos)) // TODO ake: currently we compare only lines not columns!
+      // TODO ake: currently we compare only lines not columns!
+      crucialNodePositionStrings.contains(DependencyAnalysisSourceInfo.extractPositionString(exp.pos))
     }
 
     def isCrucialStmt(stmt: ast.Stmt, crucialNodePositionStrings: Set[String]): Boolean = {
@@ -79,7 +80,8 @@ class DependencyAnalysisPruningSupporter(queries: FinalGraphInterpreter) {
         val nonDetermBool = getNextNonDetermBool
         ast.Seqn(Seq(
           ast.LocalVarDeclStmt(ast.LocalVarDecl(nonDetermBool, ast.Bool)())(),
-          ast.While(ast.LocalVar(nonDetermBool, ast.Bool)(cond.pos, cond.info, cond.errT), newInvs, body)(whileStmt.pos, whileStmt.info, whileStmt.errT))
+          ast.While(ast.LocalVar(nonDetermBool, ast.Bool)(cond.pos, cond.info, cond.errT), newInvs, body)(whileStmt.pos,
+            whileStmt.info, whileStmt.errT))
           , Seq())(whileStmt.pos, whileStmt.info, whileStmt.errT)
       case whileStmt@ast.While(cond, invs, body) =>
         val newInvs = invs.filter(isCrucialExp(_, crucialNodePositionStrings))

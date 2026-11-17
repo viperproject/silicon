@@ -275,7 +275,8 @@ object chunkSupporter extends ChunkSupportRules {
       case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.assertTimeout.getOrElse(0), analysisInfos) =>
         Q(s, ch.snap, v)
       case _ if v.decider.checkSmoke(analysisInfos, isAssert = true) =>
-        InfeasiblePath.continueIfExplorationEnabled(Success() /* TODO: Mark branch as dead? */, alwaysContinue = s.isInPackage)(Q(s, InfeasiblePath.freshSnapshot(resource, s, v), v))
+        InfeasiblePath.continueIfExplorationEnabled(Success() /* TODO: Mark branch as dead? */,
+          alwaysContinue = s.isInPackage)(Q(s, InfeasiblePath.freshSnapshot(resource, s, v), v))
       case _ =>
         val failure = createFailure(ve, v, s, "looking up chunk", true)
         recordFailedFalseAssertion(s, v, analysisInfos)

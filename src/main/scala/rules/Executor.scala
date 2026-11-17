@@ -335,7 +335,8 @@ object executor extends ExecutionRules {
                       v2.decider.declareAndRecordAsFreshMacros(fm1.filter(!v2.decider.freshMacros.contains(_))) /* [BRANCH-PARALLELISATION] */
                       v2.decider.pcs.markPathInfeasible(v2.decider.pcs.isPathMarkedInfeasible || pcs.isPathMarkedInfeasible)
                       if (v2.decider.pcs.infeasibilityNodeId.isEmpty) v2.decider.pcs.setCurrentInfeasibilityNode(pcs.infeasibilityNodeId)
-                      v2.decider.assume(pcs.assumptionsWithNodeIds map { case (t, nodeId) => v.decider.analysisHooks.withLabel(t, nodeId) }, Option.when(debugOn)(DebugExp.createInstance("Loop invariant", pcs.assumptionExps)), enforceAssumption=false, analysisInfosLoopInternal)
+                      v2.decider.assume(pcs.assumptionsWithNodeIds map { case (t, nodeId) => v.decider.analysisHooks.withLabel(t, nodeId) },
+                        Option.when(debugOn)(DebugExp.createInstance("Loop invariant", pcs.assumptionExps)), enforceAssumption=false, analysisInfosLoopInternal)
                       v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
                       if (InfeasiblePath.skipInfeasiblePaths && v2.decider.checkSmoke(analysisInfosLoopInternal))
                         Success()
@@ -413,7 +414,8 @@ object executor extends ExecutionRules {
     if (Verifier.config.isDependencyAnalysisEnabled) {
       tArgs.zip(eArgsWithDAInfo).map { case (tArg, eArg) =>
         val argNew = v.decider.fresh(tArg.sort, None)
-        v.decider.assume(Equals(argNew, tArg), None, analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(eArg))))
+        v.decider.assume(Equals(argNew, tArg), None,
+          analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(eArg))))
         (argNew, None)
       }
     } else if (debugOn) {
@@ -503,7 +505,8 @@ object executor extends ExecutionRules {
           } else {
             val fld = flds.head
             val snap = v.decider.fresh(fld.name, v.symbolConverter.toSort(fld.typ), Option.when(debugOn)(extractPTypeFromExp(x)))
-            v.heapSupporter.produceSingle(s, fld, Seq(tRcvr), eRcvr, snap, None, p, pExp, NullPartialVerificationError, false, v, analysisInfos)((s1, v1) => {
+            v.heapSupporter.produceSingle(s, fld, Seq(tRcvr), eRcvr, snap, None, p, pExp, NullPartialVerificationError, false,
+              v, analysisInfos)((s1, v1) => {
               addFieldPerms(s1, flds.tail, v1)(QB)
             })
           }
@@ -536,7 +539,8 @@ object executor extends ExecutionRules {
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
         val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(exhale)) else s
-        val analysisInfos1 = if (a.topLevelConjuncts.size > 1) analysisInfos.withoutSourceInfos() else analysisInfos // needed to ensure that each top-level conjunct gets a dedicated assertion node
+        // needed to ensure that each top-level conjunct gets a dedicated assertion node
+        val analysisInfos1 = if (a.topLevelConjuncts.size > 1) analysisInfos.withoutSourceInfos() else analysisInfos
         consume(s0, a, false, pve, v, analysisInfos1)((s1, _, v1) => {
           val s1a = if (debugOn) v1.finishKeyHeap(s1) else s1
           Q(s1a, v1)})
@@ -556,7 +560,8 @@ object executor extends ExecutionRules {
         )
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
-        val analysisInfos1 = if (a.topLevelConjuncts.size > 1) analysisInfos.withoutSourceInfos() else analysisInfos // needed to ensure that each top-level conjunct gets a dedicated assertion node
+        // needed to ensure that each top-level conjunct gets a dedicated assertion node
+        val analysisInfos1 = if (a.topLevelConjuncts.size > 1) analysisInfos.withoutSourceInfos() else analysisInfos
         val r =
           consume(s, a, false, AssertFailed(assert), v, analysisInfos1)((_, _, _) =>
             Success())
@@ -567,7 +572,8 @@ object executor extends ExecutionRules {
         val pve = AssertFailed(assert)
         val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(assert)) else s
 
-        val analysisInfos1 = if (a.topLevelConjuncts.size > 1) analysisInfos.withoutSourceInfos() else analysisInfos // needed to ensure that each top-level conjunct gets a dedicated assertion node
+        // needed to ensure that each top-level conjunct gets a dedicated assertion node
+        val analysisInfos1 = if (a.topLevelConjuncts.size > 1) analysisInfos.withoutSourceInfos() else analysisInfos
 
         if (s.exhaleExt) {
           v.heapSupporter.checkEmptyExhaleExtState(s)
@@ -622,7 +628,8 @@ object executor extends ExecutionRules {
         val pveCall = CallFailed(call)
         val pveCallTransformed = pveCall.withReasonNodeTransformed(reasonTransformer)
 
-        v.decider.analysisHooks.recordAssumption(True, analysisInfos, None) // make sure method calls are represented as a node, even if there are no postconditions
+        // make sure method calls are represented as a node, even if there are no postconditions
+        v.decider.analysisHooks.recordAssumption(True, analysisInfos, None)
 
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
         val sepIdentifier = v.symbExLog.openScope(mcLog)
@@ -648,7 +655,9 @@ object executor extends ExecutionRules {
             case _: ast.Old => true
             case _ => false
           })
-          val presWithDAInfo = if (!Verifier.config.isDependencyAnalysisEnabled) meth.pres else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.pres.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
+          val presWithDAInfo =
+            if (!Verifier.config.isDependencyAnalysisEnabled) meth.pres
+            else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.pres.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
           val presDAInfo = analysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Up))
           consumes(s1a, presWithDAInfo, needsOldHeapReconstruct, _ => pvePre, v1, presDAInfo)((s2, preSnap, v2) => {
             v2.symbExLog.closeScope(preCondId)
@@ -687,9 +696,12 @@ object executor extends ExecutionRules {
               s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1, v2))
             }
             val s2a = s2.copy(g = s2.g + gOuts, oldHeaps = newOldHeaps)
-            val postsWithDAInfo = if (!Verifier.config.isDependencyAnalysisEnabled) meth.posts else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.posts.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
+            val postsWithDAInfo =
+              if (!Verifier.config.isDependencyAnalysisEnabled) meth.posts
+              else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.posts.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
             // The postcondition should not introduce any proof obligations as they are guaranteed by the fact / assumption that the callee verifies. Hence, we mark them as internal assertions.
-            val analysisInfos2 = analysisInfos.withAssertionType(OriginType.Internal).withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Down))
+            val analysisInfos2 = analysisInfos.withAssertionType(OriginType.Internal)
+              .withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Down))
             produces(s2a, freshSnap, postsWithDAInfo, _ => pveCallTransformed, v2, analysisInfos2)((s3, v3) => {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
@@ -809,7 +821,8 @@ object executor extends ExecutionRules {
     executed
   }
 
-   private def ssaifyRhs(rhs: Term, rhsExp: ast.Exp, rhsExpNew: Option[ast.Exp], name: String, typ: ast.Type, v: Verifier, s : State, analysisInfos: AnalysisInfos): (Term, Option[ast.Exp]) = {
+   private def ssaifyRhs(rhs: Term, rhsExp: ast.Exp, rhsExpNew: Option[ast.Exp], name: String, typ: ast.Type, v: Verifier, s : State,
+       analysisInfos: AnalysisInfos): (Term, Option[ast.Exp]) = {
      rhs match {
        case _: Var | _: Literal if !Verifier.config.isDependencyAnalysisEnabled =>
          (rhs, rhsExpNew)

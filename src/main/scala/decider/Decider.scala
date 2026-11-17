@@ -327,7 +327,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: AnalysisInfos): Unit = {
       if (finalExp.isDefined) {
-        assume(assumptions=InsertionOrderedSet((t, Some(DebugExp.createInstance(e.get, finalExp.get)))), enforceAssumption = false, isDefinition = false, analysisInfos)
+        assume(assumptions=InsertionOrderedSet((t, Some(DebugExp.createInstance(e.get, finalExp.get)))), enforceAssumption = false,
+          isDefinition = false, analysisInfos)
       } else {
         assume(assumptions=InsertionOrderedSet((t, None)), enforceAssumption = false, isDefinition = false, analysisInfos)
       }
@@ -361,7 +362,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         filteredAssumptions foreach (a => addDebugExp(a._2.get.withTerm(a._1)))
       }
 
-      if (filteredAssumptions.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredAssumptions.map(_._1)), analysisInfos, isDefinition=isDefinition)
+      if (filteredAssumptions.nonEmpty) {
+         assumeWithoutSmokeChecks(InsertionOrderedSet(filteredAssumptions.map(_._1)), analysisInfos, isDefinition=isDefinition)
+      }
     }
 
     def assume(assumptions: Seq[Term], debugExps: Option[Seq[DebugExp]], analysisInfos: AnalysisInfos): Unit = {
@@ -448,7 +451,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def checkWithNodeId(t: Term, timeout: Int, analysisInfos: AnalysisInfos): (Boolean, Option[Int]) =
       deciderAssert(t, analysisInfos, Some(timeout), isCheck=true)
 
-    def assert(t: Term, analysisInfos: AnalysisInfos)(Q:  Boolean => VerificationResult): VerificationResult = assert(t, analysisInfos,  timeout=Verifier.config.assertTimeout.toOption)(Q)
+    def assert(t: Term, analysisInfos: AnalysisInfos)(Q:  Boolean => VerificationResult): VerificationResult =
+        assert(t, analysisInfos,  timeout=Verifier.config.assertTimeout.toOption)(Q)
 
     def assert(t: Term, analysisInfos: AnalysisInfos, timeout: Option[Int])(Q:  Boolean => VerificationResult): VerificationResult = {
       val (success, _) = deciderAssert(t, analysisInfos, timeout)

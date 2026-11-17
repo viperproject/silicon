@@ -20,7 +20,8 @@ object UserLevelDependencyAnalysisNode {
     }.toSet
 
 
-  def extractByAssumptionType(nodes: Set[UserLevelDependencyAnalysisNode], filterCriteria: OriginType => Boolean): Set[UserLevelDependencyAnalysisNode] = {
+  def extractByAssumptionType(nodes: Set[UserLevelDependencyAnalysisNode],
+      filterCriteria: OriginType => Boolean): Set[UserLevelDependencyAnalysisNode] = {
     nodes.filter(node => node.assumptionTypes exists filterCriteria)
   }
 
@@ -58,6 +59,7 @@ case class UserLevelDependencyAnalysisNode(source: DependencyAnalysisSourceInfo,
 
 }
 
-case class CompactUserLevelDependencyAnalysisNode(source: DependencyAnalysisSourceInfo, assumptionTypes: Set[OriginType], assertionTypes: Set[OriginType], hasFailures: Boolean) {
+case class CompactUserLevelDependencyAnalysisNode(source: DependencyAnalysisSourceInfo, assumptionTypes: Set[OriginType],
+    assertionTypes: Set[OriginType], hasFailures: Boolean) {
   def position: Position = source.getPosition
 }

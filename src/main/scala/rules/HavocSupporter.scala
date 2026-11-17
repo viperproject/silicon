@@ -128,7 +128,8 @@ object havocSupporter extends SymbolicExecutionRules {
         v.decider.assert(receiverInjectivityCheck, analysisInfos) {
           case false =>
             val failure = createFailure(pve dueTo notInjectiveReason, v, s1, receiverInjectivityCheck, "QP receiver injective")
-            recordFailedAssertion(s1, v, receiverInjectivityCheck, injectivityDebugExp.flatMap(_.originalExp), injectivityDebugExp.flatMap(_.finalExp), analysisInfos)
+            recordFailedAssertion(s1, v, receiverInjectivityCheck, injectivityDebugExp.flatMap(_.originalExp),
+              injectivityDebugExp.flatMap(_.finalExp), analysisInfos)
             if (s1.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s1, v1) else failure
           case true =>
             // Generate the inverse axioms
@@ -149,7 +150,8 @@ object havocSupporter extends SymbolicExecutionRules {
             )
             val comment = "Definitional axioms for havocall inverse functions"
             v.decider.prover.comment(comment)
-            v.decider.assume(inverseFunctions.definitionalAxioms, Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false, analysisInfos=analysisInfos)
+            v.decider.assume(inverseFunctions.definitionalAxioms, Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)),
+              enforceAssumption = false, analysisInfos=analysisInfos)
 
             // Call the havoc helper function, which returns a new heap, which is
             // partially havocked. Since we are executing a Havocall statement, we wrap

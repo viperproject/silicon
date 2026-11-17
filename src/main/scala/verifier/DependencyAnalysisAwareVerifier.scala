@@ -31,14 +31,16 @@ trait DependencyAnalysisAwareVerifier extends BaseVerifier with DependencyAnalys
   /** Adds an assertion node for each conjunct of the preconditions, to which the callers of the member are joined. */
   def addPreconditionNodes(pres: Seq[ast.Exp]): Unit = {
     pres.flatMap(_.topLevelConjuncts).flatMap(pc => {
-      val analysisInfos = decider.defaultAnalysisInfos.addInfo(pc.info, pc).withJoinInfo(SimpleDependencyAnalysisJoin(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up))
+      val analysisInfos = decider.defaultAnalysisInfos.addInfo(pc.info, pc)
+        .withJoinInfo(SimpleDependencyAnalysisJoin(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up))
       decider.getDependencyAnalyzer.createAssertOrCheckNode(True, analysisInfos, isCheck = false)
     }).foreach(decider.getDependencyAnalyzer.addAssertionNode)
   }
 
   /** Records that the postconditions of a member without a body depend on its preconditions. */
   def addDependenciesForAbstractMember(pres: Seq[ast.Exp], posts: Seq[ast.Exp]): Unit =
-    decider.getDependencyAnalyzer.addDependenciesForAbstractMembers(pres.flatMap(_.topLevelConjuncts), posts.flatMap(_.topLevelConjuncts), decider.defaultAnalysisInfos)
+    decider.getDependencyAnalyzer.addDependenciesForAbstractMembers(pres.flatMap(_.topLevelConjuncts),
+      posts.flatMap(_.topLevelConjuncts), decider.defaultAnalysisInfos)
 
   /** Builds the final graph of the current member and stores it in the given verification result. */
   def attachIntraproceduralResult(result: VerificationResult, member: ast.Member): Unit = {
@@ -57,11 +59,13 @@ class DependencyAnalysisAwareMainVerifier(config: Config,
 
   override lazy val axiomNodeRegistry: AxiomNodeRegistry = new AxiomNodeRegistry(config.dependencyAnalysisOptions)
 
-  override protected lazy val _verificationPoolManager: DependencyAnalysisAwareVerificationPoolManager = new DependencyAnalysisAwareVerificationPoolManager(this)
+  override protected lazy val _verificationPoolManager: DependencyAnalysisAwareVerificationPoolManager =
+    new DependencyAnalysisAwareVerificationPoolManager(this)
 
   override def verificationPoolManager: DependencyAnalysisAwareVerificationPoolManager = _verificationPoolManager
 
-  override def createWorkerVerifier(): DependencyAnalysisAwareWorkerVerifier = new DependencyAnalysisAwareWorkerVerifier(this, nextUniqueVerifierId(), reporter, debugMode)
+  override def createWorkerVerifier(): DependencyAnalysisAwareWorkerVerifier =
+      new DependencyAnalysisAwareWorkerVerifier(this, nextUniqueVerifierId(), reporter, debugMode)
 
   override def allProvers: AllProvers with DependencyAnalysisProverHandler = DependencyAnalysisAwareAllProvers
 
@@ -83,7 +87,8 @@ class DependencyAnalysisAwareMainVerifier(config: Config,
 
   override def afterVerification(verificationResults: List[VerificationResult], program: ast.Program, inputFile: Option[String]): Unit = {
     val dependencyAnalysisResult = config.dependencyAnalysis.toOption.map(commands =>
-      DependencyAnalysisTool.runDependencyAnalysisWorkflow(commands, config.dependencyAnalysisOptions, verificationResults, axiomNodeRegistry.current.nodes, program, inputFile))
+      DependencyAnalysisTool.runDependencyAnalysisWorkflow(commands, config.dependencyAnalysisOptions, verificationResults,
+        axiomNodeRegistry.current.nodes, program, inputFile))
     (reporter, dependencyAnalysisResult) match {
       case (analysisReporter: DependencyAnalysisReporter, Some(res)) =>
         analysisReporter.finalGraphQueries = Some(res.finalGraphQueries)

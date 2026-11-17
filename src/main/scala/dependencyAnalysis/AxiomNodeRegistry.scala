@@ -52,7 +52,8 @@ class AxiomNodeRegistry(options: DependencyAnalysisOptions) {
   /** @return the id of the newly created node */
   def addAxiom(assumption: Term, axiomInfo: DependencyAnalysisAxiomInfo, description: Option[String] = None): Int = {
     val analysisInfos = DependencyAnalyzer.checkedInfos(axiomInfo.analysisInfos, axiomInfo.memberStr, options)
-    val node = DependencyNodeFactory.createAxiomAssumptionNode(assumption, description, NodeMetadata.forAssumption(analysisInfos, axiomInfo.memberStr))
+    val node = DependencyNodeFactory.createAxiomAssumptionNode(assumption, description,
+                NodeMetadata.forAssumption(analysisInfos, axiomInfo.memberStr))
     synchronized { _current = _current.added(node) }
     node.id
   }

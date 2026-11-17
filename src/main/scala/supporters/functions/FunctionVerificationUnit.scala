@@ -41,7 +41,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
   def decider: Decider
   def symbolConverter: SymbolConverter
 
-  private case class Phase1Data(sPre: State, bcsPre: Stack[(Term, Option[Int])], bcsPreExp: Stack[(ast.Exp, Option[ast.Exp])], pcsPre: Seq[(Term, Option[Int])], pcsPreExp: Option[InsertionOrderedSet[DebugExp]])
+  private case class Phase1Data(sPre: State, bcsPre: Stack[(Term, Option[Int])], bcsPreExp: Stack[(ast.Exp, Option[ast.Exp])],
+      pcsPre: Seq[(Term, Option[Int])], pcsPreExp: Option[InsertionOrderedSet[DebugExp]])
 
   def functionsSupporter: FunctionsSupporter = DefaultFunctionsSupporter
 
@@ -289,9 +290,11 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
             val labelledBcsPre = terms.And(bcsPre map { case (t, nodeId) => v.decider.analysisHooks.withLabel(t, nodeId) })
-            decider.setCurrentBranchCondition(labelledBcsPre, (BigAnd(bcsPreExp.map(_._1)), Option.when(debugOn)(BigAnd(bcsPreExp.map(_._2.get)))), precondAnalysisSourceInfos)
+            decider.setCurrentBranchCondition(labelledBcsPre,
+              (BigAnd(bcsPreExp.map(_._1)), Option.when(debugOn)(BigAnd(bcsPreExp.map(_._2.get)))), precondAnalysisSourceInfos)
             val labelledPcsPre = pcsPre map { case (t, nodeId) => v.decider.analysisHooks.withLabel(t, nodeId) }
-            decider.assume(labelledPcsPre, Option.when(debugOn)(DebugExp.createInstance(s"precondition of ${function.name}", pcsPreExp.get)), enforceAssumption = false, precondAnalysisSourceInfos)
+            decider.assume(labelledPcsPre, Option.when(debugOn)(DebugExp.createInstance(s"precondition of ${function.name}", pcsPreExp.get)),
+              enforceAssumption = false, precondAnalysisSourceInfos)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s1a = if (debugOn) v.startKeyHeap(s1, "nil", EvalExp(body)) else s1
             eval(s1a, body, FunctionNotWellformed(function), v, analysisInfosBody)((s2, tBody, bodyNew, _) => {

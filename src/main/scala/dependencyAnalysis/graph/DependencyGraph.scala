@@ -88,7 +88,8 @@ trait ReadOnlyDependencyGraph[T <: DependencyGraphState] {
    * @param includeDownwardEdges if set to true, interprocedural downward edges are taken into account
    * @return the set of dependencies of the provided sources
    */
-  def computeDependencies(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[DependencyAnalysisNode]
+  def computeDependencies(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean,
+      includeDownwardEdges: Boolean): Set[DependencyAnalysisNode]
 
   /**
    * @param nodesToAnalyze the set of dependency nodes for which all dependents should be computed
@@ -97,7 +98,8 @@ trait ReadOnlyDependencyGraph[T <: DependencyGraphState] {
    * @param includeDownwardEdges if set to true, interprocedural downward edges are taken into account
    * @return the set of dependents of the provided sources
    */
-  def computeDependents(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[DependencyAnalysisNode]
+  def computeDependents(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean,
+      includeDownwardEdges: Boolean): Set[DependencyAnalysisNode]
 
   /**
    * @param nodesToAnalyze the set of dependency nodes for which the direct dependencies should be computed
@@ -106,7 +108,8 @@ trait ReadOnlyDependencyGraph[T <: DependencyGraphState] {
    * @param includeDownwardEdges if set to true, interprocedural downward edges are taken into account
    * @return the set of direct dependencies of the provided sources
    */
-  def computeDirectDependencies(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[DependencyAnalysisNode]
+  def computeDirectDependencies(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean,
+      includeDownwardEdges: Boolean): Set[DependencyAnalysisNode]
 
   /**
    * @param nodesToAnalyze the set of dependency nodes for which the direct dependents should be computed
@@ -115,7 +118,8 @@ trait ReadOnlyDependencyGraph[T <: DependencyGraphState] {
    * @param includeDownwardEdges if set to true, interprocedural downward edges are taken into account
    * @return the set of direct dependents of the provided targets
    */
-  def computeDirectDependents(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[DependencyAnalysisNode]
+  def computeDirectDependents(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean,
+      includeDownwardEdges: Boolean): Set[DependencyAnalysisNode]
 
   /**
    * Exports the graph to the folder 'dirName'.
@@ -287,12 +291,14 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   //   vacuousProofs.add(assertionId)
   // }
 
-  def computeDependencies(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[DependencyAnalysisNode] = {
+  def computeDependencies(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean,
+      includeDownwardEdges: Boolean): Set[DependencyAnalysisNode] = {
     val edges = selectEdges(includeUpwardEdges, includeDownwardEdges)
     getNodesByIds(computeReachableIds(nodesToAnalyze.map(_.id), edges, infeasibilityNodeIdsToSkip(includeInfeasibilityNodes)))
   }
 
-  def computeDirectDependencies(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[DependencyAnalysisNode] = {
+  def computeDirectDependencies(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean,
+      includeDownwardEdges: Boolean): Set[DependencyAnalysisNode] = {
     val infeasibilityNodeIds = infeasibilityNodeIdsToSkip(includeInfeasibilityNodes)
     val edges = selectEdges(includeUpwardEdges, includeDownwardEdges)
     val targetsBySourceInfo = nodesToAnalyze.groupBy(_.sourceInfo)
@@ -300,12 +306,14 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
       .filter(node => targetsBySourceInfo.contains(node.sourceInfo))
       .toList.groupMap(_.sourceInfo)(_.id)
     val depIds = targetsBySourceInfo.flatMap { case (sourceInfo, nodes) =>
-      getDirectDependenciesInternal(nodes.map(_.id).toList, sourceInfo, nodeIdsBySourceInfo.getOrElse(sourceInfo, List.empty).toSet, infeasibilityNodeIds, edges)
+      getDirectDependenciesInternal(nodes.map(_.id).toList, sourceInfo, nodeIdsBySourceInfo.getOrElse(sourceInfo, List.empty)
+        .toSet, infeasibilityNodeIds, edges)
     }
     (depIds flatMap getNodeById).toSet
   }
 
-  private def getDirectDependenciesInternal(initQueue: List[Int], targetSourceInfo: DependencyAnalysisSourceInfo, sourceInfoNodeIds: Set[Int], infeasibilityNodeIds: Set[Int], edges: collection.Map[Int, Set[Int]]): Set[Int] = {
+  private def getDirectDependenciesInternal(initQueue: List[Int], targetSourceInfo: DependencyAnalysisSourceInfo, sourceInfoNodeIds: Set[Int],
+      infeasibilityNodeIds: Set[Int], edges: collection.Map[Int, Set[Int]]): Set[Int] = {
     assert(initQueue.toSet.subsetOf(sourceInfoNodeIds), s"Target ids do not all belong to sourceInfo $targetSourceInfo")
     val visited: mutable.Set[Int] = mutable.Set.empty
     val result: mutable.Set[Int] = mutable.Set.empty
@@ -321,12 +329,14 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
     result.toSet
   }
 
-  def computeDependents(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[DependencyAnalysisNode] = {
+  def computeDependents(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean,
+      includeDownwardEdges: Boolean): Set[DependencyAnalysisNode] = {
     val dependents = reverseEdges(selectEdges(includeUpwardEdges, includeDownwardEdges))
     getNodesByIds(computeReachableIds(nodesToAnalyze.map(_.id), dependents, infeasibilityNodeIdsToSkip(includeInfeasibilityNodes)))
   }
 
-  def computeDirectDependents(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[DependencyAnalysisNode] = {
+  def computeDirectDependents(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean,
+      includeDownwardEdges: Boolean): Set[DependencyAnalysisNode] = {
     val infeasibilityNodeIds = infeasibilityNodeIdsToSkip(includeInfeasibilityNodes)
     val visited: mutable.Set[Int] = mutable.Set.empty
     val result: mutable.Set[Int] = mutable.Set.empty
@@ -418,8 +428,10 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   private def exportEdges(fileName: String): Unit = {
     val builder = new StringBuilder()
     getIntraMethodEdges foreach (e => e._2 foreach (s => builder.append(s.toString + "," + e._1.toString + ",direct" + "\n")))
-    getEdgesConnectingMethodsDownwards foreach (e => e._2 foreach (s => builder.append(s.toString + "," + e._1.toString + ",interprocedural downward" + "\n")))
-    getEdgesConnectingMethodsUpwards foreach (e => e._2 foreach (s => builder.append(s.toString + "," + e._1.toString + ",interprocedural upward" + "\n")))
+    getEdgesConnectingMethodsDownwards foreach (e =>
+      e._2 foreach (s => builder.append(s.toString + "," + e._1.toString + ",interprocedural downward" + "\n")))
+    getEdgesConnectingMethodsUpwards foreach (e =>
+      e._2 foreach (s => builder.append(s.toString + "," + e._1.toString + ",interprocedural upward" + "\n")))
 
     val writer = new PrintWriter(fileName)
     writer.println("source,target,label")
@@ -438,7 +450,8 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
         node.sourceInfo.getPositionString, node.mergeInfo.toString, node.sourceInfo.getDescription, node.memberStr, hasFailed.toString)
       parts.map(_.replace("#", "@")).mkString(sep)
     }
-    val headerParts = mutable.Seq("id", "node type", "assumption type", "node info", "source info", "position", "merge info", "description", "member name", "failed?")
+    val headerParts = mutable.Seq("id", "node type", "assumption type", "node info", "source info", "position", "merge info",
+      "description", "member name", "failed?")
     val builder = new StringBuilder()
     getNodes foreach (n => builder.append(getNodeExportString(n).replace("\n", " ") + "\n"))
 

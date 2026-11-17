@@ -14,8 +14,8 @@ import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms.Term
 import viper.silver.reporter.Reporter
 
-class DependencyAnalysisAwareZ3ProverStdIO(uniqueId: String, termConverter: TermToSMTLib2Converter, identifierFactory: IdentifierFactory, reporter: Reporter,
-                                           override protected val axiomNodeRegistry: AxiomNodeRegistry)
+class DependencyAnalysisAwareZ3ProverStdIO(uniqueId: String, termConverter: TermToSMTLib2Converter,
+    identifierFactory: IdentifierFactory, reporter: Reporter, override protected val axiomNodeRegistry: AxiomNodeRegistry)
   extends Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter) with DependencyAnalysisProverHandler {
 
   private var lastUnsatCore: Seq[String] = _

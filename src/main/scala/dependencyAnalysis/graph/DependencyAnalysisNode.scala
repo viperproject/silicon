@@ -188,7 +188,8 @@ object DependencyNodeFactory {
   def createPermissionInhaleNode(chunk: Chunk, term: Term, metadata: NodeMetadata, labelNode: LabelNode): PermissionInhaleNode =
     PermissionInhaleNode(DependencyGraphHelper.nextId(), chunk, term, metadata, labelNode)
 
-  def createPermissionExhaleNode(chunk: Chunk, term: Term, metadata: NodeMetadata, labelNode: LabelNode, hasFailed: Boolean = false): PermissionExhaleNode =
+  def createPermissionExhaleNode(chunk: Chunk, term: Term, metadata: NodeMetadata, labelNode: LabelNode,
+      hasFailed: Boolean = false): PermissionExhaleNode =
     PermissionExhaleNode(DependencyGraphHelper.nextId(), chunk, term, metadata, labelNode, hasFailed)
 
   def createLabelNode(term: Var, memberStr: String): LabelNode =

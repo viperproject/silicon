@@ -140,7 +140,8 @@ class FunctionData(val programFunction: ast.Function,
     else
       Seq.fill(stateArgs.size + formalArgs.size)(None)
 
-  val isAnalysisEnabled: Boolean = Verifier.config.isDependencyAnalysisEnabled && DependencyAnalyzer.extractEnableAnalysisFromInfo(programFunction.info).getOrElse(true)
+  val isAnalysisEnabled: Boolean = Verifier.config.isDependencyAnalysisEnabled &&
+    DependencyAnalyzer.extractEnableAnalysisFromInfo(programFunction.info).getOrElse(true)
   val defaultAnalysisInfo: AnalysisInfos = DependencyAnalysisInfos.DefaultInfos.withEnabled(isAnalysisEnabled)
 
   val functionApplication = App(function, stateArgs ++ formalArgs.values.toSeq)
@@ -280,7 +281,8 @@ class FunctionData(val programFunction: ast.Function,
           })
       } else {
         val innermostBody = And(generateNestedDefinitionalAxioms ++ List(Implies(pre, And(translatedPosts))))
-        Seq((functionEncoding.adaptAxiom(Forall(arguments, wrapBody(innermostBody), Trigger(limitedFunctionApplication)), this), DependencyAnalysisAxiomInfo(defaultAnalysisInfo, programFunction.name)))
+        Seq((functionEncoding.adaptAxiom(Forall(arguments, wrapBody(innermostBody), Trigger(limitedFunctionApplication)), this),
+          DependencyAnalysisAxiomInfo(defaultAnalysisInfo, programFunction.name)))
       }
     } else
       Seq.empty
@@ -373,7 +375,8 @@ class FunctionData(val programFunction: ast.Function,
     val pre = preconditionFunctionApplication
     val postPreconditions = if (programFunction.posts.nonEmpty) {
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
-      val bodies = translatedPostsWithInfo.map(tPost => (Let(bodyBindings, Implies(pre, FunctionPreconditionTransformer.transform(tPost._1, program))), tPost._2))
+      val bodies = translatedPostsWithInfo.map(tPost => (Let(bodyBindings,
+        Implies(pre, FunctionPreconditionTransformer.transform(tPost._1, program))), tPost._2))
       bodies.map(b => (functionEncoding.adaptAxiom(Forall(arguments, b._1, Seq(Trigger(limitedFunctionApplication))), this), b._2))
     } else Seq()
     postPreconditions

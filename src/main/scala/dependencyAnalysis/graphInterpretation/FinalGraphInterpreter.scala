@@ -44,7 +44,8 @@ class FinalGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependencyGra
     getNodes.filter(isVisibleNode).filter(node => node.sourceInfo.getLineNumber.contains(line))
 
   def getNodesByPosition(file: String, line: Int): Set[DependencyAnalysisNode] =
-    getNodes.filter(isVisibleNode).filter(node => node.sourceInfo.getLineNumber.contains(line) && node.sourceInfo.getPositionString.startsWith(file + "."))
+    getNodes.filter(isVisibleNode)
+      .filter(node => node.sourceInfo.getLineNumber.contains(line) && node.sourceInfo.getPositionString.startsWith(file + "."))
 
 
   def getNodesByLabel(label: String): Set[DependencyAnalysisNode] = {
@@ -53,42 +54,56 @@ class FinalGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependencyGra
   }
 
   def computeDirectDependencies(nodesToAnalyze: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = {
-    val result = dependencyGraph.computeDirectDependencies(nodesToAnalyze, includeInfeasibilityNodes = true, includeUpwardEdges = true, includeDownwardEdges = true)
+    val result = dependencyGraph.computeDirectDependencies(nodesToAnalyze, includeInfeasibilityNodes = true,
+      includeUpwardEdges = true, includeDownwardEdges = true)
     result filter isNonInternalAssumptionNode
   }
 
-  private def computeDependencies(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-    val allDependenciesUpwards = dependencyGraph.computeDependencies(nodesToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
-    val allDependenciesDownwards = dependencyGraph.computeDependencies(nodesToAnalyze ++ allDependenciesUpwards, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
+  private def computeDependencies(nodesToAnalyze: Set[DependencyAnalysisNode],
+      includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+    val allDependenciesUpwards =
+      dependencyGraph.computeDependencies(nodesToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
+    val allDependenciesDownwards =
+      dependencyGraph.computeDependencies(nodesToAnalyze ++ allDependenciesUpwards, includeInfeasibilityNodes,
+      includeUpwardEdges = false, includeDownwardEdges = true)
     allDependenciesUpwards ++ allDependenciesDownwards
   }
 
-  def computeNonInternalDependencies(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+  def computeNonInternalDependencies(nodesToAnalyze: Set[DependencyAnalysisNode],
+      includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
     computeDependencies(nodesToAnalyze, includeInfeasibilityNodes) filter isNonInternalAssumptionNode
   }
 
-  def computeExplicitDependencies(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+  def computeExplicitDependencies(nodesToAnalyze: Set[DependencyAnalysisNode],
+      includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
     val allDeps = computeDependencies(nodesToAnalyze, includeInfeasibilityNodes)
     allDeps filter isExplicitAssumptionNode
   }
 
   def computeDirectDependents(nodesToAnalyze: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = {
-    val result = dependencyGraph.computeDirectDependents(nodesToAnalyze, includeInfeasibilityNodes = true, includeUpwardEdges = true, includeDownwardEdges = true)
+    val result = dependencyGraph.computeDirectDependents(nodesToAnalyze, includeInfeasibilityNodes = true,
+      includeUpwardEdges = true, includeDownwardEdges = true)
     result filter isNonInternalAssertionNode
   }
 
-  private def computeDependents(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-    val allDependentsDownwards = dependencyGraph.computeDependents(nodesToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
-    val allDependentsUpwards = dependencyGraph.computeDependents(nodesToAnalyze ++ allDependentsDownwards, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
+  private def computeDependents(nodesToAnalyze: Set[DependencyAnalysisNode],
+      includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+    val allDependentsDownwards =
+      dependencyGraph.computeDependents(nodesToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
+    val allDependentsUpwards =
+      dependencyGraph.computeDependents(nodesToAnalyze ++ allDependentsDownwards, includeInfeasibilityNodes,
+      includeUpwardEdges = true, includeDownwardEdges = false)
     allDependentsUpwards ++ allDependentsDownwards
   }
 
-  def computeNonInternalDependents(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+  def computeNonInternalDependents(nodesToAnalyze: Set[DependencyAnalysisNode],
+      includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
     val allDeps = computeDependents(nodesToAnalyze, includeInfeasibilityNodes)
     allDeps filter isNonInternalAssertionNode
   }
 
-  def computeExplicitDependents(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+  def computeExplicitDependents(nodesToAnalyze: Set[DependencyAnalysisNode],
+      includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
     val allDeps = computeDependents(nodesToAnalyze, includeInfeasibilityNodes)
     allDeps filter isExplicitAssertionNode
   }

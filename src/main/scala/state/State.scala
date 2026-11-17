@@ -383,7 +383,8 @@ object State {
   }
 
   // Puts a collection of chunks under a condition.
-  private def conditionalizeChunks(h: Iterable[Chunk], cond: Term, condExp: Option[ast.Exp], v: Verifier, analysisInfos: AnalysisInfos): Iterable[Chunk] = {
+  private def conditionalizeChunks(h: Iterable[Chunk], cond: Term, condExp: Option[ast.Exp], v: Verifier,
+      analysisInfos: AnalysisInfos): Iterable[Chunk] = {
     h map (c => {
       c match {
         case c: GeneralChunk => v.chunkFactory.applyCondition(c, cond, condExp, analysisInfos)
@@ -400,7 +401,8 @@ object State {
   // Merges two heaps together, by putting h1 under condition cond1,
   // and h2 under cond2.
   // Assumes that cond1 is the negation of cond2.
-  def mergeHeap(h1: Heap, cond1: Term, cond1Exp: Option[ast.Exp], h2: Heap, cond2: Term, cond2Exp: Option[ast.Exp], v: Verifier, analysisInfos: AnalysisInfos): Heap = {
+  def mergeHeap(h1: Heap, cond1: Term, cond1Exp: Option[ast.Exp], h2: Heap, cond2: Term, cond2Exp: Option[ast.Exp], v: Verifier,
+      analysisInfos: AnalysisInfos): Heap = {
     val (maskChunks1, generalChunks1) = h1.values.partition(_.isInstanceOf[BasicMaskHeapChunk])
     val (maskChunks2, generalChunks2) = h2.values.partition(_.isInstanceOf[BasicMaskHeapChunk])
 

@@ -18,7 +18,8 @@ import scala.collection.mutable
 class DependencyAnalysisProgressSupporter(queries: FinalGraphInterpreter) {
 
   private val dependencyGraph = queries.getGraph
-  private lazy val sourceToAssertionNodesMap: Map[DependencyAnalysisSourceInfo, Set[GeneralAssertionNode]] = queries.getNonInternalAssertionNodes.groupBy(_.sourceInfo)
+  private lazy val sourceToAssertionNodesMap: Map[DependencyAnalysisSourceInfo, Set[GeneralAssertionNode]] =
+    queries.getNonInternalAssertionNodes.groupBy(_.sourceInfo)
   // The graph's getters copy these maps, so they are read once rather than for every visited node.
   private lazy val edgesConnectingMethodsUpwards: Map[Int, Set[Int]] = dependencyGraph.getEdgesConnectingMethodsUpwards
   private lazy val edgesConnectingMethodsDownwards: Map[Int, Set[Int]] = dependencyGraph.getEdgesConnectingMethodsDownwards
@@ -28,9 +29,11 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphInterpreter) {
    * That is, the dependencies of each pre- and postcondition are cached and can thus be reused for subsequent computations.
    * We do not cache intraprocedural dependencies to allow for precise computation of dependencies using the low-level graph.
    */
-  val deps: DAMemo[(DependencyAnalysisSourceInfo, DATraversalMode), Set[CompactUserLevelDependencyAnalysisNode]] = DAMemo { case (assertionNode, mode) =>
+  val deps: DAMemo[(DependencyAnalysisSourceInfo, DATraversalMode), Set[CompactUserLevelDependencyAnalysisNode]] =
+    DAMemo { case (assertionNode, mode) =>
     // TODO ake: maybe this should be moved to the FinalGraphInterpreter such that other queries can be optimized as well.
-    def computeDependencies(currentNode: DependencyAnalysisSourceInfo, visited: Set[(DependencyAnalysisSourceInfo, DATraversalMode)], traversalMode: DATraversalMode): Set[CompactUserLevelDependencyAnalysisNode] = {
+    def computeDependencies(currentNode: DependencyAnalysisSourceInfo, visited: Set[(DependencyAnalysisSourceInfo, DATraversalMode)],
+        traversalMode: DATraversalMode): Set[CompactUserLevelDependencyAnalysisNode] = {
       if (visited.contains((currentNode, traversalMode))) {
         Set.empty // break cycles to avoid infinite loops
       } else if (deps.contains(currentNode, traversalMode)) {
@@ -40,7 +43,9 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphInterpreter) {
         val allNonInternalAssertions = sourceToAssertionNodesMap.getOrElse(currentNode, Set.empty)
 
         // compute intraprocedural dependencies without caching any intermediate results
-        val intraMethodDependencies = dependencyGraph.computeDependencies(allNonInternalAssertions.toSet, includeInfeasibilityNodes = true, includeUpwardEdges = false, includeDownwardEdges = false)
+        val intraMethodDependencies =
+          dependencyGraph.computeDependencies(allNonInternalAssertions.toSet, includeInfeasibilityNodes = true,
+          includeUpwardEdges = false, includeDownwardEdges = false)
         val nonInternalIntraMethodDependencies = intraMethodDependencies.filter(queries.isNonInternalAssumptionNode)
 
         // recursively compute all interprocedural dependencies and cache results at procedure-boundaries
@@ -50,10 +55,13 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphInterpreter) {
         }
         val interProceduralNodeIds = intraMethodDependencies.flatMap(n => relevantInterProceduralEdges.getOrElse(n.id, Set.empty))
         val interProceduralNodes = interProceduralNodeIds.flatMap(queries.getGraph.getNodeById)
-        val interProceduralDependencies = interProceduralNodes.map(_.sourceInfo).flatMap(node => computeDependencies(node, updatedVisited, traversalMode))
+        val interProceduralDependencies = interProceduralNodes.map(_.sourceInfo)
+          .flatMap(node => computeDependencies(node, updatedVisited, traversalMode))
 
         // put together all identified dependencies and cache the result
-        val result = reduceCompactUserLevelNodes(toCompactUserLevelNodes(nonInternalIntraMethodDependencies ++ interProceduralNodes) ++ interProceduralDependencies).filterNot(_.source.equals(currentNode))
+        val result = reduceCompactUserLevelNodes(
+            toCompactUserLevelNodes(nonInternalIntraMethodDependencies ++ interProceduralNodes) ++ interProceduralDependencies)
+          .filterNot(_.source.equals(currentNode))
         deps.put((currentNode, traversalMode), result)
         result
       }
@@ -63,7 +71,8 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphInterpreter) {
   }
 
   // merges results of several computations by merging low-level nodes belonging to the same source
-  private def reduceCompactUserLevelNodes(inputNodes: Iterable[CompactUserLevelDependencyAnalysisNode]): Set[CompactUserLevelDependencyAnalysisNode] = {
+  private def reduceCompactUserLevelNodes(inputNodes: Iterable[CompactUserLevelDependencyAnalysisNode])
+                                         : Set[CompactUserLevelDependencyAnalysisNode] = {
     inputNodes.foldLeft(Map.empty[DependencyAnalysisSourceInfo, CompactUserLevelDependencyAnalysisNode]) { case (resultMap, node) =>
       val updatedNode = resultMap.get(node.source) match {
         case Some(existing) =>
@@ -95,7 +104,8 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphInterpreter) {
    * If the assertion encountered a failure, i.e. it could not be proven to hold, then the assertion quality is 0.0.
    * Otherwise, the assertion quality is defined as the fraction of non-assumption dependencies over all dependencies.
    */
-  private def computeAssertionQuality(allDependencies: Set[CompactUserLevelDependencyAnalysisNode], assertion: DependencyAnalysisSourceInfo): Option[Double] = {
+  private def computeAssertionQuality(allDependencies: Set[CompactUserLevelDependencyAnalysisNode],
+      assertion: DependencyAnalysisSourceInfo): Option[Double] = {
     val assertionNodes = sourceToAssertionNodesMap.getOrElse(assertion, Set.empty).collect { case node: GeneralAssertionNode => node }
     val zeroQualityAssertionNodes = assertionNodes.filter(node => node.hasFailed || node.originType.equals(OriginType.ExplicitPostcondition))
     // assertions with failures have quality of 0.0
@@ -104,7 +114,8 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphInterpreter) {
     else if (allDependencies.isEmpty)
       None // we filter out trivial assertions, e.g. assertions that do not have any dependencies
     else {
-      val explicitDeps = allDependencies.filter(_.assumptionTypes.exists(_.isInstanceOf[dependencyAnalysis.OriginType.ExplicitAssumptionType])).map(_.source)
+      val explicitDeps = allDependencies.filter(_.assumptionTypes.exists(_.isInstanceOf[dependencyAnalysis.OriginType.ExplicitAssumptionType]))
+        .map(_.source)
       val numDepsTotal = allDependencies.size
       Some((numDepsTotal - explicitDeps.size).toDouble / numDepsTotal.toDouble)
     }
@@ -137,7 +148,8 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphInterpreter) {
 
     val specQuality = computeSpecQuality(allDependenciesPerAssertionNode.flatMap(_._1).toSet, enableDebugOutput, report)
 
-    val assertionQualities = allDependenciesPerAssertionNode map (ass => (computeAssertionQuality(ass._1, ass._2), ass._2)) collect { case (Some(q), s) => (q, s) }
+    val assertionQualities =
+      allDependenciesPerAssertionNode map (ass => (computeAssertionQuality(ass._1, ass._2), ass._2)) collect { case (Some(q), s) => (q, s) }
     val numNonTrivialAssertions = assertionQualities.size
 
     // all-or-nothing: an assertion only counts if it has no assumption dependencies
@@ -168,10 +180,12 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphInterpreter) {
    * Computes the specification quality given the covered nodes. Specification quality is defined as the fraction of
    * all (user-level) nodes in the graph that are covered.
    */
-  private def computeSpecQuality(coveredNodes: Set[CompactUserLevelDependencyAnalysisNode], enableDebugOutput: Boolean, report: String => Unit): Double = {
+  private def computeSpecQuality(coveredNodes: Set[CompactUserLevelDependencyAnalysisNode], enableDebugOutput: Boolean,
+      report: String => Unit): Double = {
 
     val explicitAssertions = toCompactUserLevelNodes(queries.getExplicitAssertionNodes.toSet)
-    val allSourceCodeNodes = toCompactUserLevelNodes(queries.getNonInternalAssumptionNodes).filter(n => n.assumptionTypes.exists(_.isInstanceOf[OriginType.SourceCodeType])).map(_.source).diff(explicitAssertions.map(_.source))
+    val allSourceCodeNodes = toCompactUserLevelNodes(queries.getNonInternalAssumptionNodes)
+      .filter(n => n.assumptionTypes.exists(_.isInstanceOf[OriginType.SourceCodeType])).map(_.source).diff(explicitAssertions.map(_.source))
 
     if (allSourceCodeNodes.isEmpty)
       1.0
@@ -180,7 +194,8 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphInterpreter) {
       if (enableDebugOutput)
         report(
           s"Covered Source Code:\n\t${coveredSourceCodeNodes.toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}\n" +
-            s"Uncovered Source Code:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}"
+            "Uncovered Source Code:\n\t" +
+              allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")
         )
 
       report(s"Spec Quality = ${coveredSourceCodeNodes.size} / ${allSourceCodeNodes.size}")
@@ -197,7 +212,9 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphInterpreter) {
 
     val relevantDependenciesPerAssertion = allAssertions
       .map(ass => (ass, queries.toUserLevelNodes(queries.computeNonInternalDependencies(ass.lowerLevelNodes)).diffBySource(Set(ass)))).toMap
-      .filter { case (assertion, assumptions) => assumptions.nonEmpty || assertion.hasFailures || assertion.assertionTypes.contains(OriginType.ExplicitPostcondition) }
+      .filter { case (assertion, assumptions) =>
+        assumptions.nonEmpty || assertion.hasFailures || assertion.assertionTypes.contains(OriginType.ExplicitPostcondition)
+      }
     val numAssertions = relevantDependenciesPerAssertion.size.toDouble
 
     val assumptionImpacts = relevantDependenciesPerAssertion.toList.flatMap { case (_, assumptions) =>
@@ -229,7 +246,8 @@ class DependencyAnalysisProgressSupporter(queries: FinalGraphInterpreter) {
 
     val explicitAssertions = queries.getExplicitAssertionNodes.groupBy(_.sourceInfo)
     val allNodes = queries.getNonInternalAssumptionNodes.groupBy(n => (n.sourceInfo, n.memberStr))
-    val allSourceCodeStmts = allNodes.filter(_._2.exists(_.originType.isInstanceOf[OriginType.SourceCodeType])).filterNot(n => explicitAssertions.contains(n._1._1)).keySet
+    val allSourceCodeStmts = allNodes.filter(_._2.exists(_.originType.isInstanceOf[OriginType.SourceCodeType]))
+      .filterNot(n => explicitAssertions.contains(n._1._1)).keySet
 
     val uncoveredSourceCodeStmts = allSourceCodeStmts.filterNot(n => allDependencies.contains(n._1))
     uncoveredSourceCodeStmts.groupBy(_._2).map { case (member, sources) =>

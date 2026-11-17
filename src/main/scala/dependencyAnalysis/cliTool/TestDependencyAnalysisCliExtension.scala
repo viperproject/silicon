@@ -13,7 +13,8 @@ import viper.silicon.dependencyAnalysis.graphInterpretation.{FinalGraphInterpret
  * [[DependencyGraphTestSupporter]] fails with an assertion at the end of a test run, so these commands write to the
  * console while they run instead of returning a result, which would lose the findings reported before the failure.
  */
-class TestDependencyAnalysisCliExtension(queries: FinalGraphInterpreter, console: DependencyAnalysisCliConsole) extends DependencyAnalysisCliToolExtension{
+class TestDependencyAnalysisCliExtension(queries: FinalGraphInterpreter,
+    console: DependencyAnalysisCliConsole) extends DependencyAnalysisCliToolExtension{
   override val name: String = "Test Features"
   override val commands: List[DependencyAnalysisCliCommand] = List(
     new TestAllCommand,
@@ -26,7 +27,8 @@ class TestDependencyAnalysisCliExtension(queries: FinalGraphInterpreter, console
     override val description: String = s"""'$cmdName' to test all node types and dependencies with respect to the @dependencyInfo(...) annotations"""
     override val cmd: DependencyAnalysisCliInput => DependencyAnalysisCliResult = { _ =>
       val testSupporter = new DependencyGraphTestSupporter(queries, console.printLine)
-      if (queries.getAssertionNodesWithFailures.nonEmpty) console.printLine(s"Program contains verification failures at \n\t${queries.getAssertionNodesWithFailures.mkString("\n\t")}")
+      if (queries.getAssertionNodesWithFailures.nonEmpty)
+        console.printLine(s"Program contains verification failures at \n\t${queries.getAssertionNodesWithFailures.mkString("\n\t")}")
       testSupporter.testDependencies()
       testSupporter.testNodeTypes()
       DependencyAnalysisCliResult.empty

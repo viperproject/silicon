@@ -19,7 +19,8 @@ import scala.collection.mutable
  * * @param memberResults The analysis results of the members to be joined.
  * * @param axiomNodes The axiom nodes of all provers, which the graphs of the members refer to by id only.
  */
-class DependencyGraphJoiner(name: String, memberResults: Set[IntraproceduralGraphResult], axiomNodes: Iterable[AxiomAssumptionNode], options: DependencyAnalysisOptions) {
+class DependencyGraphJoiner(name: String, memberResults: Set[IntraproceduralGraphResult], axiomNodes: Iterable[AxiomAssumptionNode],
+    options: DependencyAnalysisOptions) {
 
   /**
    * @return Queries operating on a new dependency graph that represents all input graphs and
@@ -41,7 +42,8 @@ class DependencyGraphJoiner(name: String, memberResults: Set[IntraproceduralGrap
     val joinSourceNodes = memberResults.flatMap(_.joinSourceNodes) ++ axiomJoinNodes
     val joinSinkNodes   = memberResults.flatMap(_.joinSinkNodes) ++ axiomJoinNodes
 
-    def getJoinNodesByJoinInfo(candidateNodes: Set[DependencyAnalysisNode], joinType: JoinType): Map[(DependencyAnalysisSourceInfo, EdgeType), Set[DependencyAnalysisNode]] = {
+    def getJoinNodesByJoinInfo(candidateNodes: Set[DependencyAnalysisNode],
+        joinType: JoinType): Map[(DependencyAnalysisSourceInfo, EdgeType), Set[DependencyAnalysisNode]] = {
       val acc: mutable.Map[(DependencyAnalysisSourceInfo, EdgeType), Set[DependencyAnalysisNode]] = mutable.Map.empty
       candidateNodes.foreach {
         node =>
@@ -69,17 +71,21 @@ class DependencyGraphJoiner(name: String, memberResults: Set[IntraproceduralGrap
     new FinalGraphInterpreter(name, newGraph, memberResults.toList.flatMap(_.errors))
   }
 
-  private def addEdgesConnectingMethods(newGraph: DependencyGraph[Final], edgeType: EdgeType, sourceNodes: Set[DependencyAnalysisNode], sinkNodes: Set[DependencyAnalysisNode], sourceInfoToNodeIds: Map[DependencyAnalysisSourceInfo, Set[Int]], intraMethodEdges: Map[Int, Set[Int]]): Unit = {
+  private def addEdgesConnectingMethods(newGraph: DependencyGraph[Final], edgeType: EdgeType, sourceNodes: Set[DependencyAnalysisNode],
+      sinkNodes: Set[DependencyAnalysisNode], sourceInfoToNodeIds: Map[DependencyAnalysisSourceInfo, Set[Int]],
+      intraMethodEdges: Map[Int, Set[Int]]): Unit = {
     if (edgeType.equals(EdgeType.Up)) {
       // Preconditions are connected to the dependencies required to prove them at all call sites. However, they do not depend on the calls themselves.
-      val directDepsOfSources = sourceNodes.groupBy(_.sourceInfo).flatMap(t => getDirectIntraMethodDependencies(t._2.map(_.id), sourceInfoToNodeIds(t._1), intraMethodEdges))
+      val directDepsOfSources = sourceNodes.groupBy(_.sourceInfo)
+        .flatMap(t => getDirectIntraMethodDependencies(t._2.map(_.id), sourceInfoToNodeIds(t._1), intraMethodEdges))
       newGraph.addEdgesConnectingMethodsUpwards(directDepsOfSources.toSet, sinkNodes.map(_.id))
     } else {
       newGraph.addEdgesConnectingMethodsDownwards(sourceNodes.map(_.id), sinkNodes.map(_.id))
     }
   }
 
-  private def getDirectIntraMethodDependencies(initQueue: Set[Int], allNodesWithSameSource: Set[Int], intraMethodEdges: Map[Int, Set[Int]]): Set[Int] = {
+  private def getDirectIntraMethodDependencies(initQueue: Set[Int], allNodesWithSameSource: Set[Int],
+      intraMethodEdges: Map[Int, Set[Int]]): Set[Int] = {
     assert(initQueue.subsetOf(allNodesWithSameSource), s"Target ids do not all belong to sourceInfo $allNodesWithSameSource")
     val visited: mutable.Set[Int] = mutable.Set.empty
     val result: mutable.Set[Int] = mutable.Set.empty

@@ -91,7 +91,8 @@ trait DependencyAnalysisTestFramework {
     lazy val pruningSupporter = new DependencyAnalysisPruningSupporter(fullGraphQueries)
 
     def execute(): Unit = {
-      val triggerNodeLines = fullGraphQueries.getNodes.filter(node => node.getUserLevelRepresentation.contains("@trigger()")).flatMap(_.sourceInfo.getLineNumber)
+      val triggerNodeLines = fullGraphQueries.getNodes.filter(node => node.getUserLevelRepresentation.contains("@trigger()"))
+        .flatMap(_.sourceInfo.getLineNumber)
       var id: Int = 0
       // TODO ake: it would be better to work with position string instead of line numbers
       val testCases = fullGraphQueries.getExplicitAssertionNodes flatMap (_.sourceInfo.getLineNumber)
@@ -285,7 +286,8 @@ trait DependencyAnalysisTestFramework {
         (rankI, idxI, scoreI) = positions(i)
         (rankJ, idxJ, scoreJ) = positions(j)
         if rankI < rankJ && scoreI != scoreJ && idxI > idxJ
-      } yield s"Wrong assumption order: @guidedAssumption($rankI) at actual position $idxI should come before @guidedAssumption($rankJ) at position $idxJ").toSeq
+      } yield s"Wrong assumption order: @guidedAssumption($rankI) at actual position $idxI should come before " +
+        s"@guidedAssumption($rankJ) at position $idxJ").toSeq
     }
 
     private def checkUncoveredStatements(actualUncoveredByMethod: Map[String, (Int, String)]): Seq[String] = {
@@ -299,7 +301,8 @@ trait DependencyAnalysisTestFramework {
           case Some((actualCount, output)) =>
             for (line <- annotatedLines) {
               if (!output.contains(s"line $line)"))
-                errors += s"@uncovered() at line $line not found in uncovered statements of method '${method.name}'.\nActual uncovered output:\n$output"
+                errors += s"@uncovered() at line $line not found in uncovered statements of method '${method.name}'." +
+                  s"\nActual uncovered output:\n$output"
             }
             if (actualCount != annotatedLines.size)
               errors += s"Method '${method.name}': expected ${annotatedLines.size} uncovered statement(s), got $actualCount"
@@ -334,7 +337,8 @@ trait DependencyAnalysisTestFramework {
         idxA = actualOrder.indexOf(methodA)
         idxB = actualOrder.indexOf(methodB)
         if idxA >= 0 && idxB >= 0 && idxA > idxB
-      } yield s"Wrong method order: '$methodA' ($countA @uncovered) should appear before '$methodB' ($countB @uncovered), but actual order is: ${actualOrder.mkString(", ")}").toSeq
+      } yield s"Wrong method order: '$methodA' ($countA @uncovered) should appear before '$methodB' ($countB @uncovered), " +
+        s"but actual order is: ${actualOrder.mkString(", ")}").toSeq
     }
 
     private def uncoveredAnnotatedLinesInMethod(method: ast.Method): List[Int] = {

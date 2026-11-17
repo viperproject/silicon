@@ -8,7 +8,8 @@ package viper.silicon.dependencyAnalysis.cliTool
 
 import viper.silicon.dependencyAnalysis.cliTool.DependencyAnalysisCliSupport.{getSourceInfoString, measureTime}
 import viper.silicon.dependencyAnalysis.graph._
-import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisProgressSupporter, DependencyAnalysisPruningSupporter, FinalGraphInterpreter}
+import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisProgressSupporter, DependencyAnalysisPruningSupporter,
+  FinalGraphInterpreter}
 import viper.silicon.interfaces.Failure
 import viper.silver.ast
 
@@ -27,7 +28,8 @@ class CoreDependencyAnalysisCliCommands(queries: FinalGraphInterpreter,
   val commands: List[DependencyAnalysisCliCommand] = List(
     DependencyAnalysisCliCommand("dep", "'dep [line numbers]' to print the direct, explicit, and all dependencies of the given line numbers")(
       input => handleDependencyQuery(input.args.toSet)),
-    DependencyAnalysisCliCommand("allDeps", "'allDeps [line numbers]' (short: 'ad') to print all dependencies of the given line numbers", alternativeNames = List("ad"))(
+    DependencyAnalysisCliCommand("allDeps", "'allDeps [line numbers]' (short: 'ad') to print all dependencies of the given line numbers",
+      alternativeNames = List("ad"))(
       input => handleAllDependenciesQuery(input.args.toSet)),
     DependencyAnalysisCliCommand("downDep", "'downDep [line numbers]' to print the dependents of the given line numbers")(
       input => handleDependentsQuery(input.args.toSet)),
@@ -35,7 +37,8 @@ class CoreDependencyAnalysisCliCommands(queries: FinalGraphInterpreter,
       input => handleVerificationProgressQuery(input.args, input.exportTarget)),
     DependencyAnalysisCliCommand("guide", "'guide' to compute verification guidance", alternativeNames = List("guidance"))(
       input => handleVerificationGuidanceQuery(input.args)),
-    DependencyAnalysisCliCommand("prune", "'prune [line numbers] > [file]' to prune the program with respect to the given line numbers and export the new program to file")(
+    DependencyAnalysisCliCommand("prune",
+      "'prune [line numbers] > [file]' to prune the program with respect to the given line numbers and export the new program to file")(
       input => handlePruningRequest(input.args, input.exportTarget.get)),
     DependencyAnalysisCliCommand("export", "'export > [folder]' to export the dependency graph to the given folder")(
       input => {
@@ -69,7 +72,8 @@ class CoreDependencyAnalysisCliCommands(queries: FinalGraphInterpreter,
     if (exportFileNameOpt.isDefined) {
       val writer = new PrintWriter(exportFileNameOpt.get)
       writer.println("Spec Quality, Binary Proof Quality, Binary Progress, Avg Proof Quality, Avg Progress, Runtime [ms]")
-      writer.println(s"${progress.specQuality},${progress.binaryProofQuality},${progress.binaryProgress},${progress.avgProofQuality},${progress.avgProgress},$optTime")
+      writer.println(s"${progress.specQuality},${progress.binaryProofQuality},${progress.binaryProgress}," +
+        s"${progress.avgProofQuality},${progress.avgProgress},$optTime")
       writer.close()
     }
 
@@ -88,14 +92,16 @@ class CoreDependencyAnalysisCliCommands(queries: FinalGraphInterpreter,
 
     val (directDependencies, timeDirect) = measureTime[Set[DependencyAnalysisNode]](queries.computeDirectDependencies(queriedAssertions))
     val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](queries.computeNonInternalDependencies(queriedAssertions))
-    val (allDependenciesWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[DependencyAnalysisNode]](queries.computeNonInternalDependencies(queriedAssertions, includeInfeasibilityNodes=false))
+    val (allDependenciesWithoutInfeasibility, timeWithoutInfeasibility) =
+      measureTime[Set[DependencyAnalysisNode]](queries.computeNonInternalDependencies(queriedAssertions, includeInfeasibilityNodes=false))
     val (explicitDependencies, timeExplicit) = measureTime[Set[DependencyAnalysisNode]](queries.computeExplicitDependencies(queriedAssertions))
 
     val lines = Seq(
       s"Queried:\n\t${getSourceInfoString(queriedNodes)}",
       s"\nDirect Dependencies (${timeDirect}ms):\n\t${getSourceInfoString(directDependencies.diff(queriedNodes))}",
       s"\nAll Dependencies (${timeAll}ms):\n\t${getSourceInfoString(allDependencies.diff(queriedNodes))}",
-      s"\nDependencies without infeasibility (${timeWithoutInfeasibility}ms):\n\t${getSourceInfoString(allDependenciesWithoutInfeasibility.diff(queriedNodes))}",
+      s"\nDependencies without infeasibility (${timeWithoutInfeasibility}ms):\n\t" +
+        getSourceInfoString(allDependenciesWithoutInfeasibility.diff(queriedNodes)),
       s"\nExplicit Dependencies (${timeExplicit}ms):\n\t${getSourceInfoString(explicitDependencies.diff(queriedNodes))}"
     ) ++ failedAssertionsWarning(queriedAssertions)
     DependencyAnalysisCliResult(lines: _*)
@@ -119,7 +125,8 @@ class CoreDependencyAnalysisCliCommands(queries: FinalGraphInterpreter,
 
     val (directDependents, timeDirect) = measureTime[Set[DependencyAnalysisNode]](queries.computeDirectDependents(queriedNodes))
     val (allDependents, timeAll) = measureTime[Set[DependencyAnalysisNode]](queries.computeNonInternalDependents(queriedNodes))
-    val (dependentsWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[DependencyAnalysisNode]](queries.computeNonInternalDependents(queriedNodes, includeInfeasibilityNodes=false))
+    val (dependentsWithoutInfeasibility, timeWithoutInfeasibility) =
+      measureTime[Set[DependencyAnalysisNode]](queries.computeNonInternalDependents(queriedNodes, includeInfeasibilityNodes=false))
     val (explicitDependents, timeExplicit) = measureTime[Set[DependencyAnalysisNode]](queries.computeExplicitDependents(queriedNodes))
 
     DependencyAnalysisCliResult(
@@ -150,7 +157,10 @@ class CoreDependencyAnalysisCliCommands(queries: FinalGraphInterpreter,
       "Uncovered source code per method: ",
       s"\nMethods and the number of uncovered statements:\n\t${memberCoverageRanking.mkString("\n\t")}\n"
     ) ++ (
-      if (enableDebugging) Seq(s"\nUncovered statements by member:\n\t${uncoveredStatements.view.mapValues(v => (v, v.size)).toList.filter(_._2._2 > 0).sortBy(_._2._2).reverse}")
+      if (enableDebugging) {
+        val uncoveredByMember = uncoveredStatements.view.mapValues(v => (v, v.size)).toList.filter(_._2._2 > 0).sortBy(_._2._2).reverse
+        Seq(s"\nUncovered statements by member:\n\t$uncoveredByMember")
+      }
       else Seq.empty
     )
     DependencyAnalysisCliResult(lines: _*)

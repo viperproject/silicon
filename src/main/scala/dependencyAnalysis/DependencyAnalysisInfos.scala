@@ -99,7 +99,9 @@ abstract class AnalysisInfos {
  * @param analysisEnabled boolean flag indicating whether the analysis is currently enabled; might change at runtime.
  *                        While it is false, the infos stay empty and all getters return placeholders.
  */
-case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInfo], dependencyTypes: List[DependencyTypeInfo], mergeInfos: List[DependencyAnalysisMergeInfo], joinInfos: List[DependencyAnalysisJoinInfo], nodes: List[ast.Node], analysisEnabled: Boolean = false) extends AnalysisInfos {
+case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInfo], dependencyTypes: List[DependencyTypeInfo],
+    mergeInfos: List[DependencyAnalysisMergeInfo], joinInfos: List[DependencyAnalysisJoinInfo], nodes: List[ast.Node],
+    analysisEnabled: Boolean = false) extends AnalysisInfos {
 
   def addInfo(info: ast.Info, node: ast.Node): DependencyAnalysisInfos = {
     if (analysisEnabled) {
@@ -107,7 +109,8 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
       val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
       val newMergeInfos = mergeInfos ++ info.getUniqueInfo[DependencyAnalysisMergeInfo].toList
       val newJoinInfos = joinInfos ++ info.getUniqueInfo[DependencyAnalysisJoinInfo].toList
-      this.copy(sourceInfos=newSourceInfos, dependencyTypes=newDependencyInfos, mergeInfos=newMergeInfos, joinInfos=newJoinInfos, nodes=nodes ++ List(node))
+      this.copy(sourceInfos=newSourceInfos, dependencyTypes=newDependencyInfos, mergeInfos=newMergeInfos,
+        joinInfos=newJoinInfos, nodes=nodes ++ List(node))
     } else {
       this
     }
@@ -126,7 +129,8 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
   }
 
   def addInfo(infoString: String, pos: ast.Position, dependencyType: DependencyType): DependencyAnalysisInfos = if (analysisEnabled) {
-    this.copy(sourceInfos = sourceInfos ++ List(StringDependencyAnalysisSourceInfo(infoString, pos)), dependencyTypes = dependencyTypes ++ List(DependencyTypeInfo(dependencyType)))
+    this.copy(sourceInfos = sourceInfos ++ List(StringDependencyAnalysisSourceInfo(infoString, pos)),
+      dependencyTypes = dependencyTypes ++ List(DependencyTypeInfo(dependencyType)))
   } else {
     this
   }
@@ -164,7 +168,8 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
     else {
       val missingSourceInfo = Option.when(sourceInfos.isEmpty)(s"Missing source info for $getDebugInfo")
       val missingDependencyType = Option.when(dependencyTypes.isEmpty)(s"Missing dependency type for $getDebugInfo")
-      val missingJoinSource = Option.when(sourceInfos.isEmpty && joinInfos.exists(_.isInstanceOf[EvalStackDependencyAnalysisJoin]))(s"Missing source info for the join infos of $getDebugInfo")
+      val missingJoinSource = Option.when(sourceInfos.isEmpty && joinInfos.exists(_.isInstanceOf[EvalStackDependencyAnalysisJoin]))(
+          s"Missing source info for the join infos of $getDebugInfo")
       List(missingSourceInfo, missingDependencyType, missingJoinSource).flatten
     }
 
@@ -195,7 +200,8 @@ case class DependencyAnalysisInfos(sourceInfos: List[DependencyAnalysisSourceInf
     if (analysisEnabled) {
       joinInfos.map {
         case EvalStackDependencyAnalysisJoin(joinType, edgeType) =>
-          SimpleDependencyAnalysisJoin(sourceInfos.lastOption.orElse(nodes.lastOption.map(DependencyAnalysisSourceInfo.createAnalysisSourceInfo)).getOrElse(StringDependencyAnalysisSourceInfo("Unknown", NoPosition)), joinType, edgeType)
+          SimpleDependencyAnalysisJoin(sourceInfos.lastOption.orElse(nodes.lastOption.map(DependencyAnalysisSourceInfo.createAnalysisSourceInfo))
+            .getOrElse(StringDependencyAnalysisSourceInfo("Unknown", NoPosition)), joinType, edgeType)
         case a: SimpleDependencyAnalysisJoin => a
       }
     } else List.empty

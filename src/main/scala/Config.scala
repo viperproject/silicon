@@ -757,8 +757,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
    * and computes the final dependency graph but does not run any graph queries.
    */
   val dependencyAnalysis: ScallopOption[String] = opt[String]("dependencyAnalysis",
-    descr = "Enable dependency analysis and set the commands (separated by ;) to be executed after verification. The available commands are `interactive` " +
-      "and all commands supported by the interactive CLI tool",
+    descr = "Enable dependency analysis and set the commands (separated by ;) to be executed after verification. " +
+      "The available commands are `interactive` and all commands supported by the interactive CLI tool",
     default = None,
     noshort = true
   )

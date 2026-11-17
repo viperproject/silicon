@@ -238,7 +238,8 @@ object evaluator extends EvaluationRules {
           lbl
         s.oldHeaps.get(heapName) match {
           case None =>
-            val failure = createFailure(pve dueTo LabelledStateNotReached(ast.LabelledOld(e0, heapName)(old.pos, old.info, old.errT)), v, s, "labelled state reached")
+            val failure = createFailure(pve dueTo LabelledStateNotReached(ast.LabelledOld(e0, heapName)(old.pos, old.info, old.errT)),
+              v, s, "labelled state reached")
             recordFailedFalseAssertion(s, v, analysisInfos)
             val freshVar = v.decider.fresh(v.symbolConverter.toSort(old.typ), None)
             if (s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, freshVar, None, v) else failure
@@ -315,8 +316,10 @@ object evaluator extends EvaluationRules {
         eval(s, e0, pve, v, analysisInfos)((s1, t0, e0New, v1) =>
           joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1, v1, analysisInfos)((s2, v2, QB) =>
             brancher.branch(s2.copy(parallelizeBranches = false), t0, (e0, e0New), v2, analysisInfos.overrideDependencyType(OriginType.Internal))(
-              (s3, v3) => eval(s3.copy(parallelizeBranches = s2.parallelizeBranches), e1, pve, v3, analysisInfos)((s4, t4, e4, v4) => QB(s4, (t4, e4), v4)),
-              (s3, v3) => eval(s3.copy(parallelizeBranches = s2.parallelizeBranches), e2, pve, v3, analysisInfos)((s4, t4, e4, v4) => QB(s4, (t4, e4), v4)))
+              (s3, v3) => eval(s3.copy(parallelizeBranches = s2.parallelizeBranches), e1, pve, v3, analysisInfos)((s4, t4, e4, v4) =>
+                QB(s4, (t4, e4), v4)),
+              (s3, v3) => eval(s3.copy(parallelizeBranches = s2.parallelizeBranches), e2, pve, v3, analysisInfos)((s4, t4, e4, v4) =>
+                QB(s4, (t4, e4), v4)))
           )(entries => {
             /* TODO: If branch(...) took orElse-continuations that are executed if a branch is dead, then then
                 comparisons with t0/Not(t0) wouldn't be necessary. */
@@ -338,13 +341,16 @@ object evaluator extends EvaluationRules {
       /* Integers */
 
       case ast.Add(e0, e1) =>
-        evalBinOp(s, e0, e1, Plus, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.Add(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, Plus, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) => 
+          Q(s1, t, e0New.map(e0p => ast.Add(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.Sub(e0, e1) =>
-        evalBinOp(s, e0, e1, Minus, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.Sub(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, Minus, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) => 
+          Q(s1, t, e0New.map(e0p => ast.Sub(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.Mul(e0, e1) =>
-        evalBinOp(s, e0, e1, Times, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.Mul(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, Times, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) => 
+          Q(s1, t, e0New.map(e0p => ast.Mul(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.Div(e0, e1) =>
         evalBinOp(s, e0, e1, Div, pve, v, analysisInfos)((s1, tDiv, e0New, e1New, v1) =>
@@ -357,34 +363,42 @@ object evaluator extends EvaluationRules {
           => Q(s2, t, e0New.map(e0p => ast.Mod(e0p, e1New.get)(e.pos, e.info, e.errT)), v2)))
 
       case ast.LeCmp(e0, e1) =>
-        evalBinOp(s, e0, e1, AtMost, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.LeCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, AtMost, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) =>
+          Q(s1, t, e0New.map(e0p => ast.LeCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.LtCmp(e0, e1) =>
-        evalBinOp(s, e0, e1, Less, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.LtCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, Less, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) =>
+          Q(s1, t, e0New.map(e0p => ast.LtCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.GeCmp(e0, e1) =>
-        evalBinOp(s, e0, e1, AtLeast, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.GeCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, AtLeast, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) =>
+          Q(s1, t, e0New.map(e0p => ast.GeCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.GtCmp(e0, e1) =>
-        evalBinOp(s, e0, e1, Greater, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.GtCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, Greater, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) =>
+          Q(s1, t, e0New.map(e0p => ast.GtCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       /* Permissions */
 
       case ast.PermAdd(e0, e1) =>
-        evalBinOp(s, e0, e1, PermPlus, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.PermAdd(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, PermPlus, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) =>
+          Q(s1, t, e0New.map(e0p => ast.PermAdd(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.PermSub(e0, e1) =>
-        evalBinOp(s, e0, e1, PermMinus, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.PermSub(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, PermMinus, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) =>
+          Q(s1, t, e0New.map(e0p => ast.PermSub(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.PermMinus(e0) =>
         eval(s, e0, pve, v, analysisInfos)((s1, t0, e0New, v1) =>
           Q(s1, PermMinus(NoPerm, t0), e0New.map(e0p => ast.PermMinus(e0p)(e.pos, e.info, e.errT)), v1))
 
       case ast.PermMul(e0, e1) =>
-        evalBinOp(s, e0, e1, PermTimes, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.PermMul(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, PermTimes, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) =>
+          Q(s1, t, e0New.map(e0p => ast.PermMul(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.DebugPermMin(e0, e1) =>
-        evalBinOp(s, e0, e1, PermMin, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.DebugPermMin(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, PermMin, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) =>
+          Q(s1, t, e0New.map(e0p => ast.DebugPermMin(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.IntPermMul(e0, e1) =>
         eval(s, e0, pve, v, analysisInfos)((s1, t0, e0New, v1) =>
@@ -404,16 +418,20 @@ object evaluator extends EvaluationRules {
               Q(s3, t, e0New.map(e0p => ast.PermPermDiv(e0p, e1New.get)(e.pos, e.info, e.errT)), v3))))
 
       case ast.PermLeCmp(e0, e1) =>
-        evalBinOp(s, e0, e1, AtMost, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.PermLeCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, AtMost, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) =>
+          Q(s1, t, e0New.map(e0p => ast.PermLeCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.PermLtCmp(e0, e1) =>
-        evalBinOp(s, e0, e1, Less, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.PermLtCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, Less, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) =>
+          Q(s1, t, e0New.map(e0p => ast.PermLtCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.PermGeCmp(e0, e1) =>
-        evalBinOp(s, e0, e1, AtLeast, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.PermGeCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, AtLeast, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) =>
+          Q(s1, t, e0New.map(e0p => ast.PermGeCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.PermGtCmp(e0, e1) =>
-        evalBinOp(s, e0, e1, Greater, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.PermGtCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, Greater, pve, v, analysisInfos)((s1, t, e0New, e1New, v1) =>
+          Q(s1, t, e0New.map(e0p => ast.PermGtCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       /* Others */
 
@@ -546,10 +564,13 @@ object evaluator extends EvaluationRules {
             val commentGlobal = "Nested auxiliary terms: globals (aux)"
             v1.decider.prover.comment(commentGlobal)
             val auxAnalysisInfos = analysisInfos.overrideDependencyType(OriginType.Internal).withMergeInfo(NoDependencyAnalysisMerge())
-            v1.decider.assume(tAuxGlobal, Option.when(debugOn)(DebugExp.createInstance(description=commentGlobal, children=auxGlobalsExp.get)), enforceAssumption = false, auxAnalysisInfos)
+            v1.decider.assume(tAuxGlobal, Option.when(debugOn)(DebugExp.createInstance(description=commentGlobal, children=auxGlobalsExp.get)),
+              enforceAssumption = false, auxAnalysisInfos)
             val commentNonGlobals = "Nested auxiliary terms: non-globals (aux)"
             v1.decider.prover.comment(commentNonGlobals)
-            v1.decider.assume(tAuxHeapIndep/*tAux*/, Option.when(debugOn)(DebugExp.createInstance(description=commentNonGlobals, children=auxNonGlobalsExp.get)), enforceAssumption = false, auxAnalysisInfos)
+            v1.decider.assume(tAuxHeapIndep/*tAux*/,
+              Option.when(debugOn)(DebugExp.createInstance(description=commentNonGlobals, children=auxNonGlobalsExp.get)),
+              enforceAssumption = false, auxAnalysisInfos)
             if (qantOp == Exists) {
               // For universal quantification, the non-global auxiliary assumptions will contain the information that
               // forall vars :: all function preconditions are fulfilled.
@@ -762,7 +783,9 @@ object evaluator extends EvaluationRules {
                       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
                         val eArgsString = eArgsNew.mkString(", ")
                         val debugExp = Option.when(debugOn)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))", isInternal_ = true))
-                        v4.decider.assume(App(s.predicateData(predicate.name).triggerFunction, v4.heapSupporter.predicateTriggerSnapArg(s4, predicate, snap.get, s4.h) +: tArgs), debugExp, analysisInfos.overrideDependencyType(OriginType.Trigger))
+                        v4.decider.assume(App(s.predicateData(predicate.name).triggerFunction,
+                          v4.heapSupporter.predicateTriggerSnapArg(s4, predicate, snap.get, s4.h) +: tArgs), debugExp,
+                          analysisInfos.overrideDependencyType(OriginType.Trigger))
                       }
                       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
                       val s4b = s4a.scalePermissionFactor(tPerm, ePermNew)
@@ -772,7 +795,8 @@ object evaluator extends EvaluationRules {
 
                       if (s4c.predicateData(predicate.name).predContents.isDefined) {
                         val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s4c.predicateData(predicate.name).params.get.zip(Seq(snap.get) ++ tArgs))
-                        predicateSupporter.producePredicateContents(s4c, s4c.predicateData(predicate.name).predContents.get, toReplace, v4, analysisInfos.overrideDependencyType(OriginType.Internal), true)((s5, v5) => {
+                        predicateSupporter.producePredicateContents(s4c, s4c.predicateData(predicate.name).predContents.get, toReplace, v4,
+                          analysisInfos.overrideDependencyType(OriginType.Internal), true)((s5, v5) => {
                           val s5a = s5.copy(g = s4b.g,
                             functionRecorder = s5.functionRecorder.changeDepthBy(-1),
                             recordVisited = s3.recordVisited,
@@ -785,7 +809,8 @@ object evaluator extends EvaluationRules {
                           eval(s5c, eIn, pve, v5, analysisInfos)((s6, t6, e6, v6) => QB(s6, (t6, e6), v6))
                         })
                       } else {
-                        produce(s4c, v4.heapSupporter.unfoldedBodySnapshotFunction(s4c, predicate, tArgs, snap.get, s4c.h, v4), body, pve, v4, analysisInfos)((s5, v5) => {
+                        produce(s4c, v4.heapSupporter.unfoldedBodySnapshotFunction(s4c, predicate, tArgs, snap.get, s4c.h, v4), body, pve,
+                          v4, analysisInfos)((s5, v5) => {
                           val s5a = s5.copy(g = s4b.g,
                                            functionRecorder = s5.functionRecorder.changeDepthBy(-1),
                                            recordVisited = s3.recordVisited,
@@ -804,7 +829,8 @@ object evaluator extends EvaluationRules {
                       Q(s7, r7._1, r7._2, v7)})
                 case false =>
                   v2.decider.finishDebugSubExp(s"unfolding of ${predicate.name}(${eArgs.mkString(", ")}) in heap $s2Label")
-                  val failure = createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))
+                  val failure = createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2, IsPositive(tPerm),
+                    ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))
                   recordFailedFalseAssertion(s2a, v2, analysisInfos)
                   val freshVar = v2.decider.fresh(v2.symbolConverter.toSort(e.typ), None)
                   InfeasiblePath.continueAfterFailure(failure, s2a, v2)(Q(s2a, freshVar, None, v2))
@@ -975,7 +1001,8 @@ object evaluator extends EvaluationRules {
       case em: ast.ExplicitMap =>
         eval(s, em.desugared, pve, v, analysisInfos)((s1, t0, _, v1) => Q(s1, t0, Option.when(debugOn)(em), v1))
       case ast.MapCardinality(base) =>
-        eval(s, base, pve, v, analysisInfos)((s1, t0, baseNew, v1) => Q(s1, MapCardinality(t0), baseNew.map(ast.MapCardinality(_)(e.pos, e.info, e.errT)), v1))
+        eval(s, base, pve, v, analysisInfos)((s1, t0, baseNew, v1) =>
+          Q(s1, MapCardinality(t0), baseNew.map(ast.MapCardinality(_)(e.pos, e.info, e.errT)), v1))
       case ast.MapDomain(base) =>
         eval(s, base, pve, v, analysisInfos)((s1, t0, baseNew, v1) => Q(s1, MapDomain(t0), baseNew.map(ast.MapDomain(_)(e.pos, e.info, e.errT)), v1))
       case ast.MapRange(base) =>
@@ -1006,7 +1033,8 @@ object evaluator extends EvaluationRules {
 
       case ast.MapContains(key, base) =>
         evals2(s, Seq(key, base), Nil, _ => pve, v, analysisInfos)({
-          case (s1, Seq(keyT, baseT), esNew, v1) => Q(s1, SetIn(keyT, MapDomain(baseT)), esNew.map(es => ast.MapContains(es(0), es(1))(e.pos, e.info, e.errT)), v1)
+          case (s1, Seq(keyT, baseT), esNew, v1) =>
+            Q(s1, SetIn(keyT, MapDomain(baseT)), esNew.map(es => ast.MapContains(es(0), es(1))(e.pos, e.info, e.errT)), v1)
         })
 
       /* Unexpected nodes */
@@ -1028,7 +1056,8 @@ object evaluator extends EvaluationRules {
   }
 
 
-  private def assertSeqIndexBounds(tIndex: Term, tSeq: Term, eIndex: ast.Exp, eSeq: ast.Exp, expNew: Option[Seq[ast.Exp]], pve: PartialVerificationError, s: State, v: Verifier, analysisInfos: AnalysisInfos): VerificationResult = {
+  private def assertSeqIndexBounds(tIndex: Term, tSeq: Term, eIndex: ast.Exp, eSeq: ast.Exp, expNew: Option[Seq[ast.Exp]],
+      pve: PartialVerificationError, s: State, v: Verifier, analysisInfos: AnalysisInfos): VerificationResult = {
 
     def assertLtSeqLength(): VerificationResult = {
       val indexInBoundsTerm = Less(tIndex, SeqLength(tSeq))
@@ -1145,7 +1174,8 @@ object evaluator extends EvaluationRules {
 
     joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s, v, analysisInfos)((s1, v1, QB) =>
       brancher.branch(s1.copy(parallelizeBranches = false), tLhs, eLhs, v1, analysisInfos, fromShortCircuitingAnd = fromShortCircuitingAnd)(
-        (s2, v2) => eval(s2.copy(parallelizeBranches = s1.parallelizeBranches), eRhs, pve, v2, analysisInfos)((s2, tRhs, eRhsNew, v2) => QB(s2, (tRhs, eRhsNew), v2)),
+        (s2, v2) => eval(s2.copy(parallelizeBranches = s1.parallelizeBranches), eRhs, pve, v2, analysisInfos)((s2, tRhs, eRhsNew, v2) =>
+          QB(s2, (tRhs, eRhsNew), v2)),
         (s2, v2) => QB(s2.copy(parallelizeBranches = s1.parallelizeBranches), (True, Option.when(debugOn)(ast.TrueLit()())), v2))
     )(entries => {
       assert(entries.length <= 2)
@@ -1408,7 +1438,8 @@ object evaluator extends EvaluationRules {
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
         // TODO ake: wrap pcDelta with labels?
-        v.decider.assume(pcDelta, Option.when(debugOn)(DebugExp.createInstance("pcDeltaExp", children = pcDeltaExp)), enforceAssumption = false, analysisInfos.overrideDependencyType(OriginType.Internal))
+        v.decider.assume(pcDelta, Option.when(debugOn)(DebugExp.createInstance("pcDeltaExp", children = pcDeltaExp)), enforceAssumption = false,
+          analysisInfos.overrideDependencyType(OriginType.Internal))
         Q(s.copy(functionRecorder = functionRecorder), v.heapSupporter.adaptTriggerTerms(cachedTriggerTerms ++ remainingTriggerTerms, s), v)
       case _ =>
         for (e <- remainingTriggerExpressions)
@@ -1487,7 +1518,8 @@ object evaluator extends EvaluationRules {
     }
 
     val triggerString = exps.mkString(", ")
-    v.decider.assume(triggerAxioms, Option.when(debugOn)(DebugExp.createInstance(s"Heap Triggers ($triggerString)")), enforceAssumption = false, analysisInfos.overrideDependencyType(OriginType.Trigger))
+    v.decider.assume(triggerAxioms, Option.when(debugOn)(DebugExp.createInstance(s"Heap Triggers ($triggerString)")), enforceAssumption = false,
+      analysisInfos.overrideDependencyType(OriginType.Trigger))
     var fr = sCur.functionRecorder
     for (smDef <- smDefs){
       fr = fr.recordFvfAndDomain(smDef)
@@ -1523,9 +1555,11 @@ object evaluator extends EvaluationRules {
         case _ =>
           val expPair = if (constructor == Or) (exps.head, e0New) else (ast.Not(exps.head)(), e0New.map(ast.Not(_)()))
           joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1, v1, analysisInfos)((s2, v2, QB) =>
-            brancher.branch(s2.copy(parallelizeBranches = false), if (constructor == Or) t0 else Not(t0), expPair, v2, analysisInfos.overrideDependencyType(OriginType.Internal), fromShortCircuitingAnd = true)(
+            brancher.branch(s2.copy(parallelizeBranches = false), if (constructor == Or) t0 else Not(t0), expPair, v2,
+              analysisInfos.overrideDependencyType(OriginType.Internal), fromShortCircuitingAnd = true)(
               (s3, v3) => QB(s3.copy(parallelizeBranches = s2.parallelizeBranches), (t0, e0New), v3),
-              (s3, v3) => evalSeqShortCircuit(constructor, s3.copy(parallelizeBranches = s2.parallelizeBranches), exps.tail, pve, v3, analysisInfos)((s2, t2, e2, v2) => QB(s2, (t2, e2), v2)))
+              (s3, v3) => evalSeqShortCircuit(constructor, s3.copy(parallelizeBranches = s2.parallelizeBranches), exps.tail, pve, v3,
+                analysisInfos)((s2, t2, e2, v2) => QB(s2, (t2, e2), v2)))
             ){case Seq(ent) =>
                 (ent.s, ent.data)
               case Seq(ent1, ent2) =>

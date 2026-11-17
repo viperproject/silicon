@@ -69,8 +69,10 @@ case class BasicChunk private[chunks] (resourceID: BaseID,
 
   override protected[chunks] def permScale(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermTimes(perm, newPerm), permExp.map(pe => ast.PermMul(pe, newPermExp.get)()))
-  override protected[chunks] def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]): BasicChunk = BasicChunk(resourceID, id, args, argsExp, snap, snapExp, newPerm, newPermExp, tag)
-  override protected[chunks] def withSnap(newSnap: Term, newSnapExp: Option[ast.Exp]): BasicChunk = BasicChunk(resourceID, id, args, argsExp, newSnap, newSnapExp, perm, permExp, tag)
+  override protected[chunks] def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]): BasicChunk =
+    BasicChunk(resourceID, id, args, argsExp, snap, snapExp, newPerm, newPermExp, tag)
+  override protected[chunks] def withSnap(newSnap: Term, newSnapExp: Option[ast.Exp]): BasicChunk =
+    BasicChunk(resourceID, id, args, argsExp, newSnap, newSnapExp, perm, permExp, tag)
 
   override lazy val toString = resourceID match {
     case FieldID => s"${args.head}.$id -> $snap # $perm"
@@ -107,7 +109,8 @@ object QuantifiedFieldChunk {
                             singletonRcvrExp: Option[ast.Exp],
                             tag: Option[Int],
                             hints: Seq[Term] = Nil): QuantifiedFieldChunk =
-    new QuantifiedFieldChunk(id, fvf, orgCondition, condition, conditionExp, permValue, permValueExp, invs, singletonRcvr, singletonRcvrExp, tag, hints)
+    new QuantifiedFieldChunk(id, fvf, orgCondition, condition, conditionExp, permValue, permValueExp, invs,
+      singletonRcvr, singletonRcvrExp, tag, hints)
 }
 
 /* TODO: Instead of using the singletonRcvr to differentiate between QP chunks that
@@ -189,7 +192,8 @@ object QuantifiedPredicateChunk {
                             singletonArgExps: Option[Seq[ast.Exp]],
                             tag: Option[Int],
                             hints: Seq[Term] = Nil): QuantifiedPredicateChunk =
-    new QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, orgCondition, condition, conditionExp, permValue, permValueExp, invs, singletonArgs, singletonArgExps, tag, hints)
+    new QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, orgCondition, condition, conditionExp, permValue, permValueExp, invs,
+      singletonArgs, singletonArgExps, tag, hints)
 }
 
 case class QuantifiedPredicateChunk protected[chunks] (id: BasicChunkIdentifier,
@@ -256,7 +260,8 @@ object QuantifiedMagicWandChunk {
                             singletonArgExps: Option[Seq[ast.Exp]],
                             tag: Option[Int],
                             hints: Seq[Term] = Nil): QuantifiedMagicWandChunk =
-    new QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, orgCondition, perm, permExp, invs, singletonArgs, singletonArgExps, tag, hints)
+    new QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, orgCondition, perm, permExp, invs,
+      singletonArgs, singletonArgExps, tag, hints)
 }
 
 case class QuantifiedMagicWandChunk protected[chunks] (id: MagicWandIdentifier,
