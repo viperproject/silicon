@@ -246,8 +246,8 @@ class DefaultMainVerifier(config: Config,
       val startTime = System.currentTimeMillis()
       var results: Seq[VerificationResult] = null
       try {
-        results = verifyMember(this, function)((_, f) =>
-          functionsSupporter.verify(createInitialState(f, program, functionData, predicateData), f)
+        results = verifyMember(this, function)((v1, f) =>
+          v1.functionsSupporter.verify(createInitialState(f, program, functionData, predicateData), f)
             .flatMap(extractAllVerificationResults))
       } catch {
         case e : Throwable =>
@@ -264,8 +264,8 @@ class DefaultMainVerifier(config: Config,
       val startTime = System.currentTimeMillis()
       var results: Seq[VerificationResult] = null
       try {
-        results = verifyMember(this, predicate)((_, p) =>
-          predicateSupporter.verify(createInitialState(p, program, functionData, predicateData), p)
+        results = verifyMember(this, predicate)((v1, p) =>
+          v1.predicateSupporter.verify(createInitialState(p, program, functionData, predicateData), p)
             .flatMap(extractAllVerificationResults))
       } catch {
         case e: Throwable =>
