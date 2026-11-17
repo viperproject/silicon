@@ -99,7 +99,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                  : VerificationResult = {
     evaluateWandArguments(s, wand, pve, v, analysisInfos)((s1, ts, esNew, v1) => {
       val newChunk = v1.chunkFactory.createMagicWandChunk(MagicWandIdentifier(wand, s.program), s1.g.values, ts, esNew, snap, FullPerm,
-        Option.when(debugOn)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), None, analysisInfos)
+        Option.when(debugOn)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), None, analysisInfos.forChunk)
       Q(s1, newChunk, v1)
     })
   }
@@ -403,7 +403,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           val unknownLhs = freshSnap(sorts.Snap, v)
           val replaceLhs = (t: Term) => t.replace(freshSnapRoot, unknownLhs)
           val replaceLhsInHeap = (h: Heap) =>
-            Heap(h.values.map(hv => v.chunkFactory.substitute(hv, Map(freshSnapRoot -> unknownLhs), analysisInfos, isExhaledChunk=false)))
+            Heap(h.values.map(hv => v.chunkFactory.substitute(hv, Map(freshSnapRoot -> unknownLhs), analysisInfos.forChunk)))
           val sBranchWithUnknownLhs = sBranch.copy(h = replaceLhsInHeap(sBranch.h),
                                                    reserveHeaps = sBranch.reserveHeaps.map(replaceLhsInHeap))
           val condition = replaceLhs(And(pcs.branchConditions))

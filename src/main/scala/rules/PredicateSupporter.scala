@@ -111,7 +111,7 @@ object predicateSupporter extends PredicateSupportRules {
         val debugExp = Option.when(debugOn)(DebugExp.createInstance("Assumption from unfolded predicate body"))
         assumptions.foreach(a => v.decider.assume(a.replace(toReplace), debugExp, analysisInfos))
         val substChunks = h.values.map(chunk => v.chunkFactory.permScale(v.chunkFactory.substitute(chunk.asInstanceOf[GeneralChunk], toReplace,
-          analysisInfos), s.permissionScalingFactor, s.permissionScalingFactorExp, analysisInfos))
+          analysisInfos.forChunk), s.permissionScalingFactor, s.permissionScalingFactorExp, analysisInfos.forChunk))
 
         val quantifiedResourceIdentifiers: Set[ChunkIdentifer] = s.qpPredicates.map(p => BasicChunkIdentifier(p.name)) ++ s.qpFields.map(f => BasicChunkIdentifier(f.name)) ++ s.qpMagicWands
 
@@ -132,7 +132,7 @@ object predicateSupporter extends PredicateSupportRules {
                 }
                 newFr = newFr.recordFvfAndDomain(SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq()))
                 quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, resource, bc.args, None, bc.perm, None, sm, bc.tag, s.program,
-                  v, analysisInfos, isExhaledChunk=false)
+                  v, analysisInfos.forChunk)
               case mwc: MagicWandChunk =>
                 val wand = mwc.id.ghostFreeWand
                 val bodyVars = wand.subexpressionsToEvaluate(s.program)
@@ -141,7 +141,7 @@ object predicateSupporter extends PredicateSupportRules {
                 v.decider.assumeDefinition(smValueDef, None, analysisInfos)
                 newFr = newFr.recordFvfAndDomain(SnapshotMapDefinition(wand, sm, Seq(smValueDef), Seq()))
                 quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, wand, mwc.args, None, mwc.perm, None, sm, mwc.tag, s.program,
-                  v, analysisInfos, isExhaledChunk=false)
+                  v, analysisInfos.forChunk)
             }
           } else {
             c

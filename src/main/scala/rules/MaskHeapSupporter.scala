@@ -1264,7 +1264,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
     val argTerm = toSnapTree(tArgs)
     val newMask = MaskAdd(PredZeroMask, argTerm, FullPerm)
     val newHeap = HeapSingleton(argTerm, snapshot.mwsf, WandHeapSort)
-    val newChunk = v.chunkFactory.createBasicMaskHeapChunk(MagicWandID, MagicWandIdentifier(wand, s.program), newMask, newHeap, analysisInfos)
+    val newChunk = v.chunkFactory.createBasicMaskHeapChunk(MagicWandID, MagicWandIdentifier(wand, s.program), newMask, newHeap, analysisInfos.forChunk)
     (newChunk, Seq(), Option.when(debugOn)(Seq()))
   }
 

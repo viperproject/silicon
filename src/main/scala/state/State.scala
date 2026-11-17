@@ -387,7 +387,7 @@ object State {
       analysisInfos: AnalysisInfos): Iterable[Chunk] = {
     h map (c => {
       c match {
-        case c: GeneralChunk => v.chunkFactory.applyCondition(c, cond, condExp, analysisInfos)
+        case c: GeneralChunk => v.chunkFactory.applyCondition(c, cond, condExp, analysisInfos.forChunk)
         case _ => sys.error("Chunk type not conditionalizable.")
       }
     })

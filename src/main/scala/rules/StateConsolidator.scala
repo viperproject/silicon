@@ -247,7 +247,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
       val (fr2, combinedSnap, snapEq) = combineSnapshots(fr1, snap1, snap2, perm1, perm2, qvars, v)
 
       Some(fr2, v.chunkFactory.createBasicChunk(rid1, id1, args1, args1Exp, combinedSnap, snap1Exp, PermPlus(perm1, perm2),
-        perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)()), tag1, analysisInfos.overrideDependencyType(OriginType.Internal)), Seq(snapEq))
+        perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)()), tag1, analysisInfos.overrideDependencyType(OriginType.Internal).forChunk), Seq(snapEq))
     /* In the standard QP mode, quantified chunks are only matched by findChunkWithProvenAliases,
      * i.e. they provably denote the same location(s) and have equal conditions. They can therefore
      * be merged cheaply by summing their permissions and combining their snapshot maps, without
@@ -264,7 +264,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
       val permSumExp = perm1Exp.map(p1 => ast.PermAdd(p1, r.permValueExp.get)())
       val bestHints = if (hints1.nonEmpty) hints1 else hints2
       Some(fr2, v.chunkFactory.createQuantifiedFieldChunk(id1, combinedSnap, orgCondition1, condition1, condition1Exp, permSum, permSumExp, invs1,
-        singletonRcvr1, singletonRcvr1Exp, tag1, bestHints, analysisInfos.overrideDependencyType(OriginType.Internal)), Seq(snapEq))
+        singletonRcvr1, singletonRcvr1Exp, tag1, bestHints, analysisInfos.overrideDependencyType(OriginType.Internal).forChunk), Seq(snapEq))
     case (l@QuantifiedPredicateChunk(id1, qVars1, qVars1Exp, psf1, _, _, _, perm1, perm1Exp, _, _, _, _, _),
           r@QuantifiedPredicateChunk(_, qVars2, qVars2Exp, psf2, orgCondition2, condition2, condition2Exp, _, _, invs2, singletonArgs2, singletonArgs2Exp, tag2, hints2))
         if Verifier.config.exhaleModeQP == ExhaleMode.MoreComplete =>
@@ -272,7 +272,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
       val permSum = PermPlus(perm1.replace(qVars1, qVars2), r.permValue)
       val permSumExp = perm1Exp.map(p1 => ast.PermAdd(p1.replace(qVars1Exp.get.zip(qVars2Exp.get).toMap), r.permValueExp.get)())
       Some(fr2, v.chunkFactory.createQuantifiedPredicateChunk(id1, qVars2, qVars2Exp, combinedSnap, orgCondition2, condition2, condition2Exp, permSum,
-        permSumExp, invs2, singletonArgs2, singletonArgs2Exp, tag2, hints2, analysisInfos.overrideDependencyType(OriginType.Internal)), Seq(snapEq))
+        permSumExp, invs2, singletonArgs2, singletonArgs2Exp, tag2, hints2, analysisInfos.overrideDependencyType(OriginType.Internal).forChunk), Seq(snapEq))
     case (_: QuantifiedBasicChunk, _: QuantifiedBasicChunk)
         if Verifier.config.exhaleModeQP == ExhaleMode.MoreComplete =>
       None
@@ -321,15 +321,15 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
       l.resourceID match {
         case FieldID => {
           Some(fr3, v.chunkFactory.createQuantifiedFieldChunk(BasicChunkIdentifier(l.id.toString), sm, l.orgCondition, True, condExp, permSum,
-            permSumExp, combinedInvs, combinedRecvr.map(_.head), combinedRecvrExp.map(_.head), l.tag, combinedHints, analysisInfos), valueDefinitions)
+            permSumExp, combinedInvs, combinedRecvr.map(_.head), combinedRecvrExp.map(_.head), l.tag, combinedHints, analysisInfos.forChunk), valueDefinitions)
         }
         case PredicateID => {
           Some(fr3, v.chunkFactory.createQuantifiedPredicateChunk(BasicChunkIdentifier(l.id.toString), 
-            l.quantifiedVars, l.quantifiedVarExps, sm, l.orgCondition, True, condExp, permSum, permSumExp, combinedInvs, combinedRecvr, combinedRecvrExp, l.tag, combinedHints, analysisInfos), 
+            l.quantifiedVars, l.quantifiedVarExps, sm, l.orgCondition, True, condExp, permSum, permSumExp, combinedInvs, combinedRecvr, combinedRecvrExp, l.tag, combinedHints, analysisInfos.forChunk), 
             valueDefinitions)
         }
         case MagicWandID => Some(fr3, v.chunkFactory.createQuantifiedMagicWandChunk(MagicWandIdentifier(resource.asInstanceOf[MagicWandStructure], s.program), 
-          l.quantifiedVars, l.quantifiedVarExps, sm, l.orgCondition, permSum, permSumExp, combinedInvs, combinedRecvr, combinedRecvrExp, l.tag, combinedHints, analysisInfos), 
+          l.quantifiedVars, l.quantifiedVarExps, sm, l.orgCondition, permSum, permSumExp, combinedInvs, combinedRecvr, combinedRecvrExp, l.tag, combinedHints, analysisInfos.forChunk), 
           valueDefinitions)
       }
   }

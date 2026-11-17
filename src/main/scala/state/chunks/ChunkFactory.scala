@@ -7,20 +7,12 @@
 package viper.silicon.state.chunks
 
 import viper.silicon
-import viper.silicon.dependencyAnalysis.AnalysisInfos
+import viper.silicon.dependencyAnalysis.{AnalysisInfos, AnalysisInfosForChunks}
 import viper.silicon.resources.{BaseID, ResourceID}
 import viper.silicon.rules.InverseFunctions
 import viper.silicon.state.terms.{MagicWandSnapshot, Term, Var}
 import viper.silver.ast
 
-/**
- * Creates chunks. Implementations may additionally register the created chunks with an analysis.
- *
- * Methods taking an `isExhaledChunk` flag: the flag is set if the created chunk does not represent permission that is
- * added to the heap, but permission that is removed from it (e.g. the permission taken from a chunk while exhaling).
- * Such a chunk is typically discarded after its creation; the dependency analysis records it as a proof obligation
- * (permission exhale node) instead of as an assumption (permission inhale node).
- */
 trait ChunkFactory {
   def createBasicChunk(resourceID: BaseID,
                        id: BasicChunkIdentifier,
@@ -31,8 +23,7 @@ trait ChunkFactory {
                        perm: Term,
                        permExp: Option[ast.Exp],
                        tag: Option[Int],
-                       analysisInfos: AnalysisInfos,
-                       isExhaledChunk: Boolean = false): BasicChunk
+                       analysisInfos: AnalysisInfosForChunks): BasicChunk
 
   def createQuantifiedFieldChunk(id: BasicChunkIdentifier,
                                  fvf: Term,
@@ -46,8 +37,7 @@ trait ChunkFactory {
                                  singletonRcvrExp: Option[ast.Exp],
                                  tag: Option[Int],
                                  hints: Seq[Term] = Nil,
-                                 analysisInfos: AnalysisInfos,
-                                 isExhaledChunk: Boolean = false): QuantifiedFieldChunk
+                                 analysisInfos: AnalysisInfosForChunks): QuantifiedFieldChunk
 
   def createQuantifiedPredicateChunk(id: BasicChunkIdentifier,
                                      quantifiedVars: Seq[Var],
@@ -63,8 +53,7 @@ trait ChunkFactory {
                                      singletonArgExps: Option[Seq[ast.Exp]],
                                      tag: Option[Int],
                                      hints: Seq[Term] = Nil,
-                                     analysisInfos: AnalysisInfos,
-                                     isExhaledChunk: Boolean = false): QuantifiedPredicateChunk
+                                     analysisInfos: AnalysisInfosForChunks): QuantifiedPredicateChunk
 
   def createQuantifiedMagicWandChunk(id: MagicWandIdentifier,
                                      quantifiedVars: Seq[Var],
@@ -78,8 +67,7 @@ trait ChunkFactory {
                                      singletonArgExps: Option[Seq[ast.Exp]],
                                      tag: Option[Int],
                                      hints: Seq[Term] = Nil,
-                                     analysisInfos: AnalysisInfos,
-                                     isExhaledChunk: Boolean = false): QuantifiedMagicWandChunk
+                                     analysisInfos: AnalysisInfosForChunks): QuantifiedMagicWandChunk
 
   def createMagicWandChunk(id: MagicWandIdentifier,
                            bindings: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])],
@@ -89,35 +77,30 @@ trait ChunkFactory {
                            perm: Term,
                            permExp: Option[ast.Exp],
                            tag: Option[Int],
-                           analysisInfos: AnalysisInfos,
-                           isExhaledChunk: Boolean = false): MagicWandChunk
+                           analysisInfos: AnalysisInfosForChunks): MagicWandChunk
 
-  def createBasicMaskHeapChunk(resourceID: ResourceID, resource: Any, mask: Term, heap: Term, analysisInfos: AnalysisInfos) : BasicMaskHeapChunk
+  def createBasicMaskHeapChunk(resourceID: ResourceID, resource: Any, mask: Term, heap: Term, analysisInfos: AnalysisInfosForChunks) : BasicMaskHeapChunk
 
-  def applyCondition(chunk: GeneralChunk, newCond: Term, newCondExp: Option[ast.Exp], analysisInfos: AnalysisInfos): GeneralChunk
+  def applyCondition(chunk: GeneralChunk, newCond: Term, newCondExp: Option[ast.Exp], analysisInfos: AnalysisInfosForChunks): GeneralChunk
 
   def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos): GeneralChunk
   def permMinus(chunk: QuantifiedBasicChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos): QuantifiedBasicChunk
 
-  def permPlus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
-      isExhaledChunk: Boolean=false): GeneralChunk
+  def permPlus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfosForChunks): GeneralChunk
 
-  def withPerm(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
-      isExhaledChunk: Boolean=false): GeneralChunk
+  def withPerm(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfosForChunks): GeneralChunk
 
-  def withPermNonQuantifiedChunk(chunk: NonQuantifiedChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
-      isExhaledChunk: Boolean=false): NonQuantifiedChunk
+  def withPermNonQuantifiedChunk(chunk: NonQuantifiedChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfosForChunks): NonQuantifiedChunk
 
-  def permScale(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
-      isExhaledChunk: Boolean=false): GeneralChunk
+  def permScale(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfosForChunks): GeneralChunk
 
-  def substitute(chunk: GeneralChunk, terms: silicon.Map[Term, Term], analysisInfos: AnalysisInfos, isExhaledChunk: Boolean=false): GeneralChunk
+  def substitute(chunk: GeneralChunk, terms: silicon.Map[Term, Term], analysisInfos: AnalysisInfosForChunks): GeneralChunk
 
-  def substitute(chunk: Chunk, terms: silicon.Map[Term, Term], analysisInfos: AnalysisInfos, isExhaledChunk: Boolean): Chunk
+  def substitute(chunk: Chunk, terms: silicon.Map[Term, Term], analysisInfos: AnalysisInfosForChunks): Chunk
 
-  def withSnapshotMap(chunk: QuantifiedChunk, snap: Term, analysisInfos: AnalysisInfos): QuantifiedChunk
+  def withSnapshotMap(chunk: QuantifiedChunk, snap: Term, analysisInfos: AnalysisInfosForChunks): QuantifiedChunk
 
-  def withSnap(chunk: NonQuantifiedChunk, snap: Term, snapExp: Option[ast.Exp], analysisInfos: AnalysisInfos): NonQuantifiedChunk
+  def withSnap(chunk: NonQuantifiedChunk, snap: Term, snapExp: Option[ast.Exp], analysisInfos: AnalysisInfosForChunks): NonQuantifiedChunk
 
 }
 
@@ -131,8 +114,7 @@ class DefaultChunkFactory extends ChunkFactory {
                                 perm: Term,
                                 permExp: Option[ast.Exp],
                                 tag: Option[Int],
-                                analysisInfos: AnalysisInfos,
-                                isExhaledChunk: Boolean = false): BasicChunk =
+                                analysisInfos: AnalysisInfosForChunks): BasicChunk =
     BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp, tag)
 
   override def createQuantifiedFieldChunk(id: BasicChunkIdentifier,
@@ -147,8 +129,7 @@ class DefaultChunkFactory extends ChunkFactory {
                                           singletonRcvrExp: Option[ast.Exp],
                                           tag: Option[Int],
                                           hints: Seq[Term] = Nil,
-                                          analysisInfos: AnalysisInfos,
-                                          isExhaledChunk: Boolean = false): QuantifiedFieldChunk =
+                                          analysisInfos: AnalysisInfosForChunks): QuantifiedFieldChunk =
     QuantifiedFieldChunk(id, fvf, orgCondition, condition, conditionExp, permValue, permValueExp, invs, singletonRcvr, singletonRcvrExp, tag, hints)
 
   override def createQuantifiedPredicateChunk(id: BasicChunkIdentifier,
@@ -165,8 +146,7 @@ class DefaultChunkFactory extends ChunkFactory {
                                               singletonArgExps: Option[Seq[ast.Exp]],
                                               tag: Option[Int],
                                               hints: Seq[Term] = Nil,
-                                              analysisInfos: AnalysisInfos,
-                                              isExhaledChunk: Boolean = false): QuantifiedPredicateChunk =
+                                              analysisInfos: AnalysisInfosForChunks): QuantifiedPredicateChunk =
     QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, orgCondition, condition, conditionExp, permValue, permValueExp, invs,
       singletonArgs, singletonArgExps, tag, hints)
 
@@ -182,8 +162,7 @@ class DefaultChunkFactory extends ChunkFactory {
                                               singletonArgExps: Option[Seq[ast.Exp]],
                                               tag: Option[Int],
                                               hints: Seq[Term] = Nil,
-                                              analysisInfos: AnalysisInfos,
-                                              isExhaledChunk: Boolean = false): QuantifiedMagicWandChunk =
+                                              analysisInfos: AnalysisInfosForChunks): QuantifiedMagicWandChunk =
     QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, orgCondition, perm, permExp, invs,
       singletonArgs, singletonArgExps, tag, hints)
 
@@ -195,14 +174,13 @@ class DefaultChunkFactory extends ChunkFactory {
                                     perm: Term,
                                     permExp: Option[ast.Exp],
                                     tag: Option[Int],
-                                    analysisInfos: AnalysisInfos,
-                                    isExhaledChunk: Boolean = false): MagicWandChunk =
+                                    analysisInfos: AnalysisInfosForChunks): MagicWandChunk =
     MagicWandChunk(id, bindings, args, argsExp, snap, perm, permExp, tag)
 
-  def createBasicMaskHeapChunk(resourceID: ResourceID, resource: Any, mask: Term, heap: Term, analysisInfos: AnalysisInfos) : BasicMaskHeapChunk =
+  def createBasicMaskHeapChunk(resourceID: ResourceID, resource: Any, mask: Term, heap: Term, analysisInfos: AnalysisInfosForChunks) : BasicMaskHeapChunk =
     BasicMaskHeapChunk(resourceID, resource, mask, heap)
 
-  def applyCondition(chunk: GeneralChunk, newCond: Term, newCondExp: Option[ast.Exp], analysisInfos: AnalysisInfos): GeneralChunk =
+  def applyCondition(chunk: GeneralChunk, newCond: Term, newCondExp: Option[ast.Exp], analysisInfos: AnalysisInfosForChunks): GeneralChunk =
     chunk.applyCondition(newCond, newCondExp)
 
   def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos): GeneralChunk =
@@ -211,31 +189,27 @@ class DefaultChunkFactory extends ChunkFactory {
   def permMinus(chunk: QuantifiedBasicChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos): QuantifiedBasicChunk =
     chunk.permMinus(newPerm, newPermExp)
 
-  def permPlus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
-      isExhaledChunk: Boolean=false): GeneralChunk =
+  def permPlus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfosForChunks): GeneralChunk =
     chunk.permPlus(newPerm, newPermExp)
 
-  def withPerm(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
-      isExhaledChunk: Boolean=false): GeneralChunk =
+  def withPerm(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfosForChunks): GeneralChunk =
     chunk.withPerm(newPerm, newPermExp)
 
-  def withPermNonQuantifiedChunk(chunk: NonQuantifiedChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
-      isExhaledChunk: Boolean=false): NonQuantifiedChunk =
+  def withPermNonQuantifiedChunk(chunk: NonQuantifiedChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfosForChunks): NonQuantifiedChunk =
     chunk.withPerm(newPerm, newPermExp)
 
-  def permScale(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfos,
-      isExhaledChunk: Boolean=false): GeneralChunk =
+  def permScale(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfos: AnalysisInfosForChunks): GeneralChunk =
     chunk.permScale(newPerm, newPermExp)
 
-  def substitute(chunk: GeneralChunk, terms: silicon.Map[Term, Term], analysisInfos: AnalysisInfos, isExhaledChunk: Boolean = false): GeneralChunk =
+  def substitute(chunk: GeneralChunk, terms: silicon.Map[Term, Term], analysisInfos: AnalysisInfosForChunks): GeneralChunk =
     chunk.substitute(terms)
 
-  def substitute(chunk: Chunk, terms: silicon.Map[Term, Term], analysisInfos: AnalysisInfos, isExhaledChunk: Boolean): Chunk =
+  def substitute(chunk: Chunk, terms: silicon.Map[Term, Term], analysisInfos: AnalysisInfosForChunks): Chunk =
     chunk.substitute(terms)
 
-  def withSnapshotMap(chunk: QuantifiedChunk, snap: Term, analysisInfos: AnalysisInfos): QuantifiedChunk = chunk.withSnapshotMap(snap)
+  def withSnapshotMap(chunk: QuantifiedChunk, snap: Term, analysisInfos: AnalysisInfosForChunks): QuantifiedChunk = chunk.withSnapshotMap(snap)
 
-  def withSnap(chunk: NonQuantifiedChunk, snap: Term, snapExp: Option[ast.Exp], analysisInfos: AnalysisInfos): NonQuantifiedChunk =
+  def withSnap(chunk: NonQuantifiedChunk, snap: Term, snapExp: Option[ast.Exp], analysisInfos: AnalysisInfosForChunks): NonQuantifiedChunk =
       chunk.withSnap(snap, snapExp)
 
 }

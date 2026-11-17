@@ -19,7 +19,7 @@ trait DependencyAnalysisHandler {
 
   def getDependencyAnalyzer: DependencyAnalyzer
 
-  def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfos: AnalysisInfos, isExhaledChunk: Boolean): CH
+  def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfos: AnalysisInfosForChunks): CH
 
   def createAnalysisLabelNode(sourceNodeId: Option[Int] = None): Option[LabelNode]
 }
@@ -177,16 +177,16 @@ trait DependencyAnalysisAwareDeciderProvider extends DefaultDeciderProvider { v:
       }
     }
 
-    override def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfos: AnalysisInfos, isExhaledChunk: Boolean): CH = {
+    override def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfos: AnalysisInfosForChunks): CH = {
       if (!isDependencyAnalysisEnabledForMember)
         return buildChunk(perm)
 
       val labelNodeOpt = createAnalysisLabelNode()
 
-      if (isExhaledChunk)
-        dependencyAnalyzer.registerExhaleChunk(buildChunk, perm, labelNodeOpt, analysisInfos)
+      if (analysisInfos.isExhaledChunk)
+        dependencyAnalyzer.registerExhaleChunk(buildChunk, perm, labelNodeOpt, analysisInfos.analysisInfos)
       else {
-        dependencyAnalyzer.registerInhaleChunk(buildChunk, perm, labelNodeOpt, analysisInfos)
+        dependencyAnalyzer.registerInhaleChunk(buildChunk, perm, labelNodeOpt, analysisInfos.analysisInfos)
       }
     }
 

@@ -605,11 +605,11 @@ object executor extends ExecutionRules {
         }.getOrElse(sys.error(s"Found $methodName, but no matching field or predicate $resourceName"))
         val h1 = Heap(s.h.values.map {
           case bc: BasicChunk if bc.id.name == member.name =>
-            v.chunkFactory.withSnap(bc, freshSnap(bc.snap.sort, v), None, analysisInfos)
+            v.chunkFactory.withSnap(bc, freshSnap(bc.snap.sort, v), None, analysisInfos.forChunk)
           case qfc: QuantifiedFieldChunk if qfc.id.name == member.name =>
-            v.chunkFactory.withSnapshotMap(qfc,freshSnap(qfc.fvf.sort, v), analysisInfos)
+            v.chunkFactory.withSnapshotMap(qfc,freshSnap(qfc.fvf.sort, v), analysisInfos.forChunk)
           case qpc: QuantifiedPredicateChunk if qpc.id.name == member.name =>
-            v.chunkFactory.withSnapshotMap(qpc, freshSnap(qpc.psf.sort, v), analysisInfos)
+            v.chunkFactory.withSnapshotMap(qpc, freshSnap(qpc.psf.sort, v), analysisInfos.forChunk)
           case other =>
             other})
         Q(s.copy(h = h1), v)

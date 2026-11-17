@@ -302,7 +302,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             v1.decider.assumeDefinition(smValueDef, debugExp, analysisInfos)
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(debugOn)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
               field, Seq(tRcvr), Option.when(debugOn)(Seq(eRcvrNew.get)), FullPerm, Option.when(debugOn)(ast.FullPerm()(ass.pos, ass.info,
-                ass.errT)), sm, newTag, s1.program, v, lhsSourceInfos.overrideDependencyType(OriginType.Internal), isExhaledChunk=false)
+                ass.errT)), sm, newTag, s1.program, v, lhsSourceInfos.overrideDependencyType(OriginType.Internal).forChunk)
             if (s3.heapDependentTriggers.contains(field)) {
               val debugExp2 = Option.when(debugOn)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString}.${field.name})"))
               v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2, lhsSourceInfos.overrideDependencyType(OriginType.Trigger))
@@ -336,7 +336,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
         Option.when(debugOn)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v, description, lhsSourceInfos)((s3, h3, _, v3) => {
         val id = BasicChunkIdentifier(field.name)
         val newChunk = v3.chunkFactory.createBasicChunk(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tRhs, eRhsNew, FullPerm,
-          Option.when(debugOn)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), s3.qpTag, lhsSourceInfos.overrideDependencyType(OriginType.Internal))
+          Option.when(debugOn)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), s3.qpTag, lhsSourceInfos.overrideDependencyType(OriginType.Internal).forChunk)
         chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
           val s5 = s4.copy(h = h4)
           val s6 = if (debugOn && s5.isRecordingHeaps) v.recordIntermediateHeap(s5) else s5
@@ -584,11 +584,11 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val debugExp = Option.when(debugOn)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
       v.decider.assumeDefinition(smValueDef, debugExp, analysisInfos)
       val chunk = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, tArgs,
-        eArgs, FullPerm, Option.when(debugOn)(ast.FullPerm()()), sm, None, s.program, v, analysisInfos, isExhaledChunk=false)
+        eArgs, FullPerm, Option.when(debugOn)(ast.FullPerm()()), sm, None, s.program, v, analysisInfos.forChunk)
       (chunk, Seq(smValueDef), Option.when(debugOn)(Seq(debugExp.get)))
     } else {
       val chunk = v.chunkFactory.createMagicWandChunk(MagicWandIdentifier(wand, s.program), s.g.values, tArgs, eArgs, snapshot, FullPerm,
-        Option.when(debugOn)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), None, analysisInfos)
+        Option.when(debugOn)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), None, analysisInfos.forChunk)
       (chunk, Seq.empty[Term], Option.when(debugOn)(Seq.empty[DebugExp]))
     }
   }
@@ -630,7 +630,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
           val chunkId = ChunkIdentifier(resource, s.program)
           val (resId, snap1) = if (resource.isInstanceOf[ast.Field]) (FieldID, tSnap) else (PredicateID, tSnap.convert(sorts.Snap))
           val ch = v.chunkFactory.createBasicChunk(resId, chunkId.asInstanceOf[BasicChunkIdentifier], tArgs, eArgs, snap1, eSnap, tPerm,
-            ePerm, s.qpTag, analysisInfos)
+            ePerm, s.qpTag, analysisInfos.forChunk)
           if (mergeAndTrigger) {
             chunkSupporter.produce(s, s.h, ch, v)((s2, h2, v2) => {
               if (resource.isInstanceOf[ast.Predicate] && Verifier.config.enablePredicateTriggersOnInhale() && s2.functionRecorder == NoopFunctionRecorder
@@ -854,12 +854,12 @@ class DefaultHeapSupportRules extends HeapSupportRules {
         val havockedSnap = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction, Option.when(debugOn)(PUnknown()))
         val cond = replacementCond(lhs, ch.args, condInfo)
         val magicWandSnapshot = MagicWandSnapshot(Ite(cond, havockedSnap, ch.snap.mwsf))
-        v.chunkFactory.withSnap(ch, magicWandSnapshot, None, analysisInfos)
+        v.chunkFactory.withSnap(ch, magicWandSnapshot, None, analysisInfos.forChunk)
 
       case ch =>
         val havockedSnap = freshSnap(ch.snap.sort, v)
         val cond = replacementCond(lhs, ch.args, condInfo)
-        v.chunkFactory.withSnap(ch, Ite(cond, havockedSnap, ch.snap), None, analysisInfos)
+        v.chunkFactory.withSnap(ch, Ite(cond, havockedSnap, ch.snap), None, analysisInfos.forChunk)
     }
     Heap(otherChunks ++ newChunks)
   }
@@ -941,7 +941,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val debugExp = Option.when(debugOn)(DebugExp.createInstance("havoc new axiom", isInternal_ = true))
       v.decider.assume(newAxiom, debugExp, analysisInfos)
 
-      v.chunkFactory.withSnapshotMap(ch, newSm, analysisInfos)
+      v.chunkFactory.withSnapshotMap(ch, newSm, analysisInfos.forChunk)
     }
     Heap(newChunks ++ otherChunks)
   }

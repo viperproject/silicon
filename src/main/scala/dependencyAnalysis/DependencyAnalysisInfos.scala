@@ -72,7 +72,22 @@ abstract class AnalysisInfos {
   def withoutSourceInfos(): AnalysisInfos
   /** Replaces all dependency types by the current one, with its assertion type set to `assertionType`. */
   def withAssertionType(assertionType: OriginType): AnalysisInfos
+
+  /** Infos for creating a chunk that represents permission added to the heap. */
+  def forChunk: AnalysisInfosForChunks = AnalysisInfosForChunks(this, isExhaledChunk = false)
+  /** Infos for creating a chunk that represents permission removed from the heap, see [[AnalysisInfosForChunks]]. */
+  def forExhaledChunk: AnalysisInfosForChunks = AnalysisInfosForChunks(this, isExhaledChunk = true)
 }
+
+/**
+ * Analysis infos passed to the [[viper.silicon.state.chunks.ChunkFactory]].
+ *
+ * @param isExhaledChunk set if the created chunk does not represent permission that is added to the heap, but permission
+ *                       that is removed from it (e.g. the permission taken from a chunk while exhaling). Such a chunk is
+ *                       typically discarded after its creation; the dependency analysis records it as a proof obligation
+ *                       (permission exhale node) instead of as an assumption (permission inhale node).
+ */
+case class AnalysisInfosForChunks(analysisInfos: AnalysisInfos, isExhaledChunk: Boolean)
 
 /**
  * Stores all information about the currently evaluated/executed Viper AST node. This info is used to derive the parameters for the low-level dependency nodes.
