@@ -1,0 +1,23 @@
+function foo(x: Int, y: Int) : Int
+    requires @dependencyInfo("assumptionType:Precondition, label:L1, expectedDependencies:[L4]")(x > 0) // importantly, L5 is NOT a dependency
+    requires @dependencyInfo("assumptionType:Precondition, label:L2, expectedDependencies:[L4, L5]")(y < 100)
+{
+    @dependencyInfo("assumptionType:FunctionBody, label:L3")(x)
+}
+
+method clientFoo(){
+    var x: Int, y: Int, z: Int
+
+    @dependencyInfo("assumptionType:SourceCode, label:L4")
+    x := 19
+
+    @dependencyInfo("assumptionType:SourceCode, label:L5")
+    y := 10
+
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L6, expectedDependencies:[L4, L5]")
+    z := foo(x, x/y)
+
+    @dependencyInfo("assertionType:Explicit, label:L7, expectedDependencies:[L6, L3, L5, L4]")
+    assert z == x
+
+}

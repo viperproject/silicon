@@ -1,0 +1,18 @@
+// Spec quality: 1
+// Proof quality: 7/8
+// Progress: 7/8
+
+predicate greater0(n: Int){
+  n > 0
+}
+
+method unfoldP(n: Int)
+    requires greater0(n)
+{
+    var x: Int
+    assume x == 1
+    unfold greater0(n)  // PQ: 1/1
+    x := n + x
+
+    assert x > 1        // PQ: 3/4
+}

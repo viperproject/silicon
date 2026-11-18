@@ -1,0 +1,34 @@
+method helper() returns (res: Int)
+    ensures res == 10
+{
+    res := 10
+}
+
+method m1()
+{
+    var a: Int
+    @uncovered()
+    a := helper()
+}
+
+method m2()
+{
+    var a: Int
+    a := helper()
+
+    assert a == 10
+}
+
+method m3()
+{
+    var a: Int
+    a := helper()
+    assert a == 10
+
+    @uncovered()
+    a := helper()
+    @uncovered()
+    a := helper()
+    @uncovered()
+    a := helper()
+}

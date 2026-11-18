@@ -1,0 +1,18 @@
+// Spec quality: 1/2
+// Proof quality: 1/2
+// Progress: 1/4
+
+method add(a: Int, b: Int) returns (res: Int)
+    requires b != 0
+    ensures res == a + b // PQ: 1/1
+{
+    res := a + b
+}
+
+method client()
+{
+    var a: Int, b: Int, res: Int
+    assume b > 0
+
+    res := add(a, b)    // PQ: 0/1
+}

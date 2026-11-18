@@ -24,7 +24,7 @@ trait FunctionEncoding {
 
   /** Post-processes a generated axiom, e.g. to replace state-argument placeholders
     * in recorded terms with the formal state parameters. */
-  def adaptAxiom(t: Term, data: FunctionData): Term = t
+  def adaptAxiom(t: Term, data: FunctionData): Term = t // TODO ake: track this in the dependency analysis?
 
   /** Additional function symbols to declare for a function (e.g. frame functions). */
   def auxiliaryFunctions(data: FunctionData): Seq[Fun] = Seq()

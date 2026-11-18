@@ -1,0 +1,14 @@
+// Spec quality: 1
+// Proof quality: 1/2
+// Progress: 1/2
+
+field f: Int
+
+method permissions(x: Ref)
+    requires acc(x.f, 1/2)
+    ensures acc(x.f, 3/4)       // PQ: 1/2
+{
+    inhale acc(x.f, 1/4)
+
+    assert perm(x.f) >= 3/4     // PQ: 1/2
+}

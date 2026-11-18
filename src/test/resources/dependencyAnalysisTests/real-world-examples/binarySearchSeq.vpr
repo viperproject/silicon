@@ -1,0 +1,33 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+// taken from silver test suite
+method binary_search(array: Seq[Int], key: Int) returns (index: Int)
+   requires forall i: Int, j: Int :: 0 <= i && j < |array| && i < j ==> array[i] <= array[j]
+   ensures -1 <= index && index < |array|
+   ensures 0 <= index ==> array[index] == key
+   ensures -1 == index ==> (forall i: Int :: 0 <= i && i < |array| ==> array[i] != key)
+{
+  var low: Int := 0 
+  var high: Int := |array|
+  var mid : Int
+  
+  index := -1
+  while (low < high)
+      invariant 0 <= low && low <= high && high <= |array|
+      invariant forall i: Int :: (0 <= i && i < |array| && !(low <= i && i < high)) ==> array[i] != key
+  {
+    mid := (low + high) \ 2;
+    if (array[mid] < key) {
+      low := mid + 1;
+    } else {
+      if (key < array[mid]) {
+         high := mid;
+      } else {
+        index := mid
+      }
+    }
+  }
+  index := -1
+}

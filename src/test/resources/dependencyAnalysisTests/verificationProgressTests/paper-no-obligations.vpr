@@ -1,0 +1,24 @@
+// Spec quality: 0
+// Proof quality: 1
+// Progress: 0
+
+// Border case - there are no proof obligations
+
+method branches(x: Bool, y: Bool)
+{
+    var a: Int
+    var b: Int
+    assume x == y
+
+    if (x) {
+        a := 1
+    } else {
+        a := -1
+    }
+
+    if (y) {
+        b := 1
+    } else {
+        b := -1
+    }
+}

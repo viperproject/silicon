@@ -1,0 +1,7 @@
+// Spec quality: 1
+// Proof quality: 0
+// Progress: 0
+
+method add(a: Int, b: Int) returns (res: Int)
+    requires b != 0
+    ensures res == a + b
