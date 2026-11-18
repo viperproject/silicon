@@ -323,6 +323,9 @@ class SiliconFrontend(override val reporter: Reporter,
 
   override def backendTypeFormat: Option[String] = Some("SMTLIB")
 
+  override protected def attachDependencyAnalysisInfo: Boolean =
+    siliconInstance != null && siliconInstance.config != null && siliconInstance.config.isDependencyAnalysisEnabled
+
   def createVerifier(fullCmd: String) = {
     siliconInstance = new Silicon(reporter, Seq("args" -> fullCmd))
 
