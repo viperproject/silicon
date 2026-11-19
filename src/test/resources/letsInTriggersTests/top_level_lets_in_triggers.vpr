@@ -1,0 +1,76 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Triggers whose top-level expression is a let. Silver rejects such triggers
+// ("is not a valid Trigger") when translating a parsed program, but Silicon
+// receives them from frontends that construct the AST directly. Here, each
+// such trigger is written as unwrap(let ...), which LetsInTriggersTests
+// replaces by the let before verifying the program. The test then checks that
+//   - Silicon reports no "Might not be able to use trigger ..." warning, i.e.
+//     each trigger is found among the terms of the quantifier body (modulo its
+//     lets) instead of being evaluated on its own, which fails because div's
+//     precondition only holds under the guard i > 0, and
+//   - exactly the assertions annotated with ExpectedOutput fail.
+// This file is not part of SiliconTests, which would verify the triggers with
+// unwrap. See triggers/lets_in_triggers.vpr for lets nested inside a trigger.
+
+function unwrap(b: Bool): Bool
+
+function div(n: Int, d: Int): Int
+  requires d != 0
+{ n \ d }
+
+function q(n: Int): Int
+function s(a: Int, b: Int): Bool
+function t(i: Int): Bool
+
+// The trigger and the body use the same let.
+method letInTriggerAndBody()
+  requires forall i: Int :: { unwrap(let x == (q(div(10, i))) in s(x, x)) }
+    i > 0 ==> (let x == (q(div(10, i))) in (s(x, x) && t(i)))
+{
+  // The quantifier is instantiated through the let-bound trigger.
+  assert s(q(div(10, 5)), q(div(10, 5)))
+  assert t(5)
+
+  // The trigger is still restrictive: there is no term s(q(div(10, 3)), q(div(10, 3))).
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+// Only the trigger uses a let; the body is let-free.
+method letInTriggerOnly()
+  requires forall i: Int :: { unwrap(let x == (q(div(10, i))) in s(x, x)) }
+    i > 0 ==> (s(q(div(10, i)), q(div(10, i))) && t(i))
+{
+  assert s(q(div(10, 5)), q(div(10, 5)))
+  assert t(5)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+// The value of a let is itself a let, in the trigger and in the body.
+method letInLetValue()
+  requires forall i: Int :: { unwrap(let x == (let y == (div(10, i)) in q(y)) in s(x, x)) }
+    i > 0 ==> (let x == (let y == (div(10, i)) in q(y)) in (s(x, x) && t(i)))
+{
+  assert s(q(div(10, 5)), q(div(10, 5)))
+  assert t(5)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+// A trigger set with several expressions, one of them a let.
+method letInTriggerSet()
+  requires forall i: Int, j: Int :: { unwrap(let x == (q(div(10, i))) in s(x, j)), t(j) }
+    i > 0 ==> (let x == (q(div(10, i))) in (s(x, j) && t(i)))
+  requires t(7)
+{
+  assert s(q(div(10, 5)), 7)
+  assert t(5)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}

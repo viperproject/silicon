@@ -142,6 +142,18 @@ package object utils {
       str.substring(0, str.lastIndexOf("@"))
     }
 
+    /** Replaces each let expression `let x == e0 in e1` in `e` by `e1` with `x` replaced by `e0`,
+      * starting with the innermost lets. The variable is replaced in the same way as when the
+      * evaluator records the possible triggers of a let body (see the `Let` case of
+      * [[viper.silicon.rules.evaluator]]), so that a trigger and a recorded possible trigger
+      * that are equal modulo their lets are equal after inlining.
+      */
+    def inlineLets(e: silver.ast.Exp): silver.ast.Exp =
+      if (!e.exists(_.isInstanceOf[silver.ast.Let])) e
+      else e.transform({
+        case silver.ast.Let(x, e0, e1) => inlineLets(e1).replace(x.localVar, inlineLets(e0))
+      }, Traverse.TopDown)
+
     def replaceVarsInExp(e: silver.ast.Exp, varNames: Seq[String], replacements: Seq[silver.ast.Exp]): silver.ast.Exp = {
       silver.utility.Sanitizer.replaceFreeVariablesInExpression(e, varNames.zip(replacements).toMap, Set())
     }

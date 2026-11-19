@@ -270,7 +270,15 @@ object evaluator extends EvaluationRules {
             val newPossibleTriggers = if (s2.recordPossibleTriggers) {
               val addedTriggers = s2.possibleTriggers -- possibleTriggersBefore.keys
               val addedTriggersReplaced = addedTriggers.map(at => at._1.replace(x.localVar, e0) -> at._2)
-              s2.possibleTriggers ++ addedTriggersReplaced
+              /* If e0 itself contains lets, also record the possible triggers with x replaced
+               * by e0 with its lets inlined, so that they are found by evalTrigger, which looks up
+               * triggers with their lets inlined.
+               */
+              val e0Inlined = inlineLets(e0)
+              val addedTriggersReplacedInlined =
+                if (e0Inlined eq e0) Map.empty
+                else addedTriggers.map(at => at._1.replace(x.localVar, e0Inlined) -> at._2)
+              s2.possibleTriggers ++ addedTriggersReplaced ++ addedTriggersReplacedInlined
             } else {
               s2.possibleTriggers
             }
@@ -1360,12 +1368,27 @@ object evaluator extends EvaluationRules {
         other
     }
 
+    def lookupPossibleTrigger(e: ast.Exp): Option[Term] = e match {
+      case pt @ (_: ast.PossibleTrigger | _: ast.FieldAccess | _: ast.LabelledOld | _: ast.Old) =>
+        s.possibleTriggers.get(pt)
+      case _ =>
+        None
+    }
+
+    /* The possible triggers recorded while evaluating the body have their let-bound variables
+     * replaced by their values (see the Let case of eval2). Hence, if a trigger contains lets,
+     * it is also looked up with its lets inlined. If it is not found, the original trigger is
+     * evaluated below.
+     */
     val (cachedTriggerTerms, remainingTriggerExpressions) =
-      exps.map {
-        case pt @ (_: ast.PossibleTrigger | _: ast.FieldAccess | _: ast.LabelledOld | _: ast.Old) =>
-          val cachedTrigger = s.possibleTriggers.get(pt).map(t => transformPotentialFuncApp(t))
-          (cachedTrigger, if (cachedTrigger.isDefined) None else Some(pt))
-        case e => (None, Some(e))
+      exps.map { e =>
+        val cachedTrigger =
+          lookupPossibleTrigger(e)
+            .orElse {
+              val eInlined = inlineLets(e)
+              if (eInlined eq e) None else lookupPossibleTrigger(eInlined)
+            }.map(t => transformPotentialFuncApp(t))
+        (cachedTrigger, if (cachedTrigger.isDefined) None else Some(e))
       }.unzip match {
         case (optCachedTriggerTerms, optRemainingTriggerExpressions) =>
           (optCachedTriggerTerms.flatten, optRemainingTriggerExpressions.flatten)
