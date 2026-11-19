@@ -274,10 +274,13 @@ object evaluator extends EvaluationRules {
                * by e0 with its lets inlined, so that they are found by evalTrigger, which looks up
                * triggers with their lets inlined.
                */
-              val e0Inlined = inlineLets(e0)
               val addedTriggersReplacedInlined =
-                if (e0Inlined eq e0) Map.empty
-                else addedTriggers.map(at => at._1.replace(x.localVar, e0Inlined) -> at._2)
+                if (addedTriggers.isEmpty) Map.empty
+                else {
+                  val e0Inlined = inlineLets(e0)
+                  if (e0Inlined eq e0) Map.empty
+                  else addedTriggers.map(at => at._1.replace(x.localVar, e0Inlined) -> at._2)
+                }
               s2.possibleTriggers ++ addedTriggersReplaced ++ addedTriggersReplacedInlined
             } else {
               s2.possibleTriggers

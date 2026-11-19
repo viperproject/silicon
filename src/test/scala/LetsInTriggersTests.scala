@@ -11,7 +11,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.Silicon
 import viper.silver.ast.{Forall, FuncApp, HasLineColumn, Let, Program}
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.reporter.{Message, Reporter, WarningsDuringVerification}
+import viper.silver.reporter.{InternalWarningMessage, Message, Reporter, WarningsDuringVerification}
 import viper.silver.verifier.{AbstractVerificationError, Failure, Success}
 
 import java.nio.file.{Files, Paths}
@@ -30,7 +30,10 @@ class LetsInTriggersTests extends AnyFunSuite with BeforeAndAfterAll {
     def report(msg: Message): Unit = synchronized { messages += msg }
     def clear(): Unit = synchronized { messages.clear() }
     def warnings: Seq[String] = synchronized {
-      messages.toSeq.collect { case WarningsDuringVerification(ws) => ws.map(_.readableMessage) }.flatten
+      messages.toSeq.collect {
+        case WarningsDuringVerification(ws) => ws.map(_.readableMessage)
+        case InternalWarningMessage(text) => Seq(text)
+      }.flatten
     }
   }
 
@@ -53,7 +56,7 @@ class LetsInTriggersTests extends AnyFunSuite with BeforeAndAfterAll {
     silicon.stop()
   }
 
-  /** Replaces each trigger expression `unwrap(e)` by `e`. This allows writing triggers whose
+  /** Replaces each trigger expression `unwrap(e)` or `unwrapInt(e)` by `e`. This allows writing triggers whose
     * top-level expression is a let, which Silver rejects when translating a parsed program,
     * but which Silicon receives from frontends that construct the AST directly.
     */
@@ -61,7 +64,7 @@ class LetsInTriggersTests extends AnyFunSuite with BeforeAndAfterAll {
     program.transform({
       case q: Forall =>
         val triggers = q.triggers.map(t => t.copy(exps = t.exps.map {
-          case FuncApp("unwrap", Seq(e)) => e
+          case FuncApp("unwrap" | "unwrapInt", Seq(e)) => e
           case e => e
         })(t.pos, t.info, t.errT))
         q.copy(triggers = triggers)(q.pos, q.info, q.errT)
@@ -85,7 +88,8 @@ class LetsInTriggersTests extends AnyFunSuite with BeforeAndAfterAll {
     reporter.clear()
     val result = silicon.verify(program)
 
-    val triggerWarnings = reporter.warnings.filter(_.contains("Might not be able to use trigger"))
+    val triggerWarnings = reporter.warnings.filter(w =>
+      w.contains("Might not be able to use trigger") || w.contains("Could not resolve expression"))
     assert(triggerWarnings.isEmpty, s"Unexpected trigger warnings: ${triggerWarnings.mkString("\n")}")
 
     val failureLines = result match {

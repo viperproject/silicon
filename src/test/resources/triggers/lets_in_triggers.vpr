@@ -8,7 +8,8 @@
 // the triggers below on their own fails (div's precondition only holds under
 // the guard i > 0), which makes Silicon drop the trigger with the warning
 // "Might not be able to use trigger ...". LetsInTriggersTests checks that
-// verifying this file reports no such warning.
+// verifying this file reports no such warning, and no "Could not resolve
+// expression ..." warning while axiomatising a function.
 // See letsInTriggersTests/top_level_lets_in_triggers.vpr for triggers whose
 // top-level expression is a let.
 
@@ -69,4 +70,22 @@ method letInTriggerSet()
 
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert t(3)
+}
+
+field f: Int
+
+function g(r: Ref, i: Int): Int
+  requires acc(r.f)
+
+// The trigger of a quantifier in a function postcondition is translated with
+// its lets inlined, so g(r, i) in the trigger is resolved like g(r, i) in the body.
+function h(r: Ref): Bool
+  requires acc(r.f)
+  ensures forall i: Int :: { g(r, let x == (i) in x) } g(r, i) > r.f
+
+method letInTriggerOfFunctionPostcondition(r: Ref)
+  requires acc(r.f)
+{
+  var b: Bool := h(r)
+  assert g(r, 3) > r.f
 }

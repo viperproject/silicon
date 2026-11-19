@@ -10,6 +10,7 @@ import viper.silver.ast
 import viper.silicon.rules.functionSupporter
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
+import viper.silicon.utils.ast.inlineLets
 import viper.silicon.verifier.Verifier
 import viper.silver.ast.{AnnotationInfo, WeightedQuantifier}
 
@@ -94,9 +95,12 @@ trait ExpressionTranslator {
         val body = eQuant.exp
         val vars = eQuant.variables map (_.localVar)
 
-        /** IMPORTANT: Keep in sync with [[viper.silicon.rules.evaluator.evalTrigger]] */
+        /** IMPORTANT: Keep in sync with [[viper.silicon.rules.evaluator.evalTrigger]]
+          * Triggers are translated with their lets inlined, so that, e.g., a function application in the
+          * body of a let is translated like the same application in the quantifier body.
+          */
         val translatedTriggers = eTriggers map (triggerSet => Trigger(triggerSet.exps map (trigger =>
-          f(trigger) match {
+          f(inlineLets(trigger)) match {
             case app @ App(fun: HeapDepFun, _) =>
               app.copy(applicable = functionSupporter.limitedVersion(fun))
             case other => other
