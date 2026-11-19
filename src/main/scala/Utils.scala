@@ -143,7 +143,7 @@ package object utils {
     }
 
     /** Replaces each let expression `let x == e0 in e1` in `e` by `e1` with `x` replaced by `e0`,
-      * starting with the innermost lets. The variable is replaced in the same way as when the
+      * starting with the innermost lets. The variable is replaced with `replace`, as when the
       * evaluator records the possible triggers of a let body (see the `Let` case of
       * [[viper.silicon.rules.evaluator]]), so that a trigger and a recorded possible trigger
       * that are equal modulo their lets are equal after inlining. A let whose variable occurs
@@ -155,7 +155,8 @@ package object utils {
         case silver.ast.Let(x, e0, e1) if !occursInOld(x.localVar, e1) => e1.replace(x.localVar, e0)
       }, Traverse.BottomUp)
 
-    private def occursInOld(v: silver.ast.LocalVar, e: silver.ast.Exp): Boolean = e.existsDefined {
+    /** Returns true iff `v` occurs in an old expression in `e`. */
+    def occursInOld(v: silver.ast.LocalVar, e: silver.ast.Exp): Boolean = e.existsDefined {
       case silver.ast.Old(e1) if e1.contains(v) =>
       case silver.ast.LabelledOld(e1, _) if e1.contains(v) =>
     }
