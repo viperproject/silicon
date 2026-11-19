@@ -146,8 +146,11 @@ package object utils {
       * starting with the innermost lets. The variable is replaced with `replace`, as when the
       * evaluator records the possible triggers of a let body (see the `Let` case of
       * [[viper.silicon.rules.evaluator]]), so that a trigger and a recorded possible trigger
-      * that are equal modulo their lets are equal after inlining. A let whose variable occurs
-      * in an old expression in `e1` is kept, since `e0` would be evaluated in the old state there.
+      * that are equal modulo their lets are equal after inlining.
+      *
+      * A let whose variable occurs in an old expression in `e1` is kept, since `e0` would be
+      * evaluated in the old state there. Such a trigger is therefore not matched against a
+      * recorded possible trigger in which the evaluator replaced the variable in an old expression.
       */
     def inlineLets(e: silver.ast.Exp): silver.ast.Exp =
       if (!e.exists(_.isInstanceOf[silver.ast.Let])) e

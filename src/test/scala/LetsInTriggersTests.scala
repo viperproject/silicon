@@ -20,7 +20,10 @@ import scala.jdk.CollectionConverters._
 
 /** Checks that triggers containing lets are found among the terms recorded while evaluating
   * the quantifier body, modulo their lets, instead of being evaluated on their own (which
-  * fails for the test programs and makes Silicon drop the trigger with a warning).
+  * fails for the test programs and makes Silicon drop the trigger with a warning), and that
+  * the function axiomatisation resolves them (otherwise it reports "Could not resolve
+  * expression"). SilSuite ignores warnings, so this test checks them in addition to the
+  * annotated errors, also for triggers/lets_in_triggers.vpr, which is part of SiliconTests.
   */
 class LetsInTriggersTests extends AnyFunSuite with BeforeAndAfterAll {
   private class CollectingReporter extends Reporter {
@@ -74,6 +77,7 @@ class LetsInTriggersTests extends AnyFunSuite with BeforeAndAfterAll {
     val program = unwrapTriggers(_root_.tests.loadProgram(filePrefix, fileName, frontend))
     val lines = Files.readAllLines(Paths.get(getClass.getClassLoader.getResource(s"$filePrefix$fileName.vpr").toURI)).asScala
     val expectedFailureLines =
+      // An annotation applies to the next line; line numbers start at 1
       lines.zipWithIndex.collect { case (line, idx) if line.trim.startsWith("//:: ExpectedOutput") => idx + 2 }.toSeq
     (program, expectedFailureLines)
   }

@@ -187,18 +187,20 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
           }
         }
 
-        // The expression might have been recorded with different lets, e.g., if it is from a trigger, which
-        // is translated with its lets inlined (see ExpressionTranslator), and was recorded inside a let in the
-        // quantifier body. Hence, also compare the expressions with their lets, and the lets of their contexts,
-        // inlined.
+        // The expression might have been recorded with different lets. For example, a trigger is translated
+        // with its lets inlined (see ExpressionTranslator), while the same function application in the
+        // quantifier body might contain a let, as in g(let x == e in x), or be inside one, as in
+        // let x == e in g(x). Hence, the expressions are also compared modulo lets: with their own lets
+        // inlined and with the variables of the lets around them replaced by their values.
         val (keyInlined, ctxWithoutLets) = withoutLets(key, ctx)
-        val valModuloLets = map.find({ case ((k, c), _) =>
+        def equalModuloLets(k: K, c: Seq[ExpContext]): Boolean = {
           val (kInlined, cWithoutLets) = withoutLets(k, c)
           kInlined == keyInlined &&
             (cWithoutLets == ctxWithoutLets || (checkInnerContexts && cWithoutLets.startsWith(ctxWithoutLets)))
-        })
-        if (valModuloLets.nonEmpty) {
-          return valModuloLets.get._2.convert(sort)
+        }
+        map.collectFirst({ case ((k, c), v) if equalModuloLets(k, c) => v }) match {
+          case Some(v) => return v.convert(sort)
+          case None =>
         }
 
         if (!failed && data.verificationFailures.isEmpty) {

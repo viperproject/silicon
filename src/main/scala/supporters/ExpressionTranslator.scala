@@ -95,9 +95,12 @@ trait ExpressionTranslator {
         val body = eQuant.exp
         val vars = eQuant.variables map (_.localVar)
 
-        /** IMPORTANT: Keep in sync with [[viper.silicon.rules.evaluator.evalTrigger]]
-          * Triggers are translated with their lets inlined, so that, e.g., a function application in the
-          * body of a let is translated like the same application in the quantifier body.
+        /** IMPORTANT: Keep in sync with [[viper.silicon.rules.evaluator.evalTrigger]].
+          *
+          * Triggers are translated with their lets inlined, so that a trigger behaves like its let-free
+          * form: a heap-dependent function application at the top of the trigger is replaced by its limited
+          * version below, and the function applications in the trigger are resolved against those recorded
+          * for the quantifier body (see HeapAccessReplacingExpressionTranslator).
           */
         val translatedTriggers = eTriggers map (triggerSet => Trigger(triggerSet.exps map (trigger =>
           f(inlineLets(trigger)) match {

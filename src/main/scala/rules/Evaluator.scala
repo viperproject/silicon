@@ -272,17 +272,14 @@ object evaluator extends EvaluationRules {
               val addedTriggersReplaced = addedTriggers.map(at => at._1.replace(x.localVar, e0) -> at._2)
               /* If e0 itself contains lets, also record the possible triggers with x replaced
                * by e0 with its lets inlined, so that they are found by evalTrigger, which looks up
-               * triggers with their lets inlined. As in inlineLets, x is not replaced in possible
-               * triggers where it occurs in an old expression.
+               * triggers with their lets inlined. Unlike above, but as in inlineLets, x is not
+               * replaced in possible triggers in which it occurs in an old expression.
                */
+              lazy val e0Inlined = inlineLets(e0)
               val addedTriggersReplacedInlined =
-                if (addedTriggers.isEmpty) Map.empty
-                else {
-                  val e0Inlined = inlineLets(e0)
-                  if (e0Inlined eq e0) Map.empty
-                  else addedTriggers.collect {
-                    case (pt, t) if !occursInOld(x.localVar, pt) => pt.replace(x.localVar, e0Inlined) -> t
-                  }
+                if (addedTriggers.isEmpty || (e0Inlined eq e0)) Map.empty
+                else addedTriggers.collect {
+                  case (pt, tPt) if !occursInOld(x.localVar, pt) => pt.replace(x.localVar, e0Inlined) -> tPt
                 }
               s2.possibleTriggers ++ addedTriggersReplaced ++ addedTriggersReplacedInlined
             } else {
