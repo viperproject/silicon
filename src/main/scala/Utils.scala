@@ -146,13 +146,19 @@ package object utils {
       * starting with the innermost lets. The variable is replaced in the same way as when the
       * evaluator records the possible triggers of a let body (see the `Let` case of
       * [[viper.silicon.rules.evaluator]]), so that a trigger and a recorded possible trigger
-      * that are equal modulo their lets are equal after inlining.
+      * that are equal modulo their lets are equal after inlining. A let whose variable occurs
+      * in an old expression in `e1` is kept, since `e0` would be evaluated in the old state there.
       */
     def inlineLets(e: silver.ast.Exp): silver.ast.Exp =
       if (!e.exists(_.isInstanceOf[silver.ast.Let])) e
       else e.transform({
-        case silver.ast.Let(x, e0, e1) => inlineLets(e1).replace(x.localVar, inlineLets(e0))
-      }, Traverse.TopDown)
+        case silver.ast.Let(x, e0, e1) if !occursInOld(x.localVar, e1) => e1.replace(x.localVar, e0)
+      }, Traverse.BottomUp)
+
+    private def occursInOld(v: silver.ast.LocalVar, e: silver.ast.Exp): Boolean = e.existsDefined {
+      case silver.ast.Old(e1) if e1.contains(v) =>
+      case silver.ast.LabelledOld(e1, _) if e1.contains(v) =>
+    }
 
     def replaceVarsInExp(e: silver.ast.Exp, varNames: Seq[String], replacements: Seq[silver.ast.Exp]): silver.ast.Exp = {
       silver.utility.Sanitizer.replaceFreeVariablesInExpression(e, varNames.zip(replacements).toMap, Set())

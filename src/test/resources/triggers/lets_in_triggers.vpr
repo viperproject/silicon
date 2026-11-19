@@ -101,3 +101,19 @@ method letInTriggerAndBodyOfFunctionPostcondition(r: Ref)
   var b: Bool := h2(r)
   assert g(r, 3) > r.f
 }
+
+function k(i: Int, v: Int): Int
+function u(v: Int): Bool
+
+// A let whose variable occurs in an old expression is not inlined, since its
+// value would be evaluated in the old state there. The trigger therefore does
+// not match the body term u(old(k(i, r.f))), which reads the old value of r.f,
+// and is evaluated on its own.
+method letWithVariableInOld(r: Ref)
+  requires acc(r.f)
+{
+  r.f := r.f + 1
+  inhale forall i: Int :: { u(let x == (r.f) in old(k(i, x))) } u(old(k(i, r.f))) && t(i)
+  inhale u(let x == (r.f) in old(k(5, x)))
+  assert t(5)
+}
