@@ -1,0 +1,20 @@
+// Spec quality: 1
+// Proof quality: 7/10
+// Progress: 7/10
+
+method loop1() {
+    var i: Int
+    var res: Int
+    res := 0
+    assume i == 10
+    while (i > 0)
+        invariant i <= 10       // PQ: 1/2
+        invariant i >= 0        // PQ: 2/3
+        invariant res >= 0      // PQ: 4/5
+    {
+        res := res + i
+        i := i - 1
+    }
+
+    assert res >= 0             // PQ: 5/6
+}

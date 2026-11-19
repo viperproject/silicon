@@ -7,21 +7,21 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silver.ast
-import viper.silver.cfg
 import viper.silver.components.StatefulComponent
+import viper.silver.dependencyAnalysis._
 import viper.silver.verifier.errors._
 import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
-import viper.silicon.state.{CreateLabel, ExhalePost, InhalePre, State, Store}
 import viper.silicon.state.State.OldHeaps
+import viper.silicon.state._
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
 import viper.silicon.Map
 import viper.silver.reporter.WarningsDuringVerification
 import viper.silver.verifier.VerifierWarning
+import viper.silver.{ast, cfg}
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
@@ -31,10 +31,14 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
   def logger: Logger
   def decider: Decider
 
-  object methodSupporter extends MethodVerificationUnit with StatefulComponent {
+  def methodSupporter: MethodSupporter = DefaultMethodSupporter
+
+  private object DefaultMethodSupporter extends MethodSupporter
+
+  trait MethodSupporter extends MethodVerificationUnit with StatefulComponent {
+    import consumer._
     import executor._
     import producer._
-    import consumer._
 
     private var _units: Seq[ast.Method] = _
 
@@ -48,7 +52,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
-      val proverOptions: Map[String, String] = AnnotationSupporter.getProverConfigArgs(method, reporter)
+      val proverOptions = AnnotationSupporter.getProverConfigArgs(method, reporter)
       v.decider.setProverOptions(proverOptions)
 
       openSymbExLogger(method)
@@ -93,13 +97,16 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
           new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}.dot"))
       }
 
+      val analysisInfosPrecondition = v.decider.defaultAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Up))
+      val analysisInfosPostcondition = v.decider.defaultAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))
+
       errorsReportedSoFar.set(0)
       val result =
         /* Combined the well-formedness check and the execution of the body, which are two separate
          * rules in Smans' paper.
          */
         executionFlowController.locally(s0, v)((s1, v1) => {
-          produces(s1, freshSnap, pres, ContractNotWellformed, v1)((s2, v2) => {
+          produces(s1, freshSnap, pres, ContractNotWellformed, v1, analysisInfosPrecondition)((s2, v2) => {
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
             val s2b = if (producer.debugOn) {
@@ -111,16 +118,16 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                   val s3a = s3.copy(h = v3.heapSupporter.getEmptyHeap(s3.program, v3))
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
                   val sepIdentifier = symbExLog.openScope(impLog)
-                  produces(s3a, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
+                  produces(s3a, freshSnap, posts, ContractNotWellformed, v3, analysisInfosPostcondition)((_, _) => {
                     symbExLog.closeScope(sepIdentifier)
                     Success()})})
             && {
                executionFlowController.locally(s2b, v2)((s3, v3) =>  {
-                  exec(s3, body, v3)((s4, v4) => {
+                  exec(s3, body, v3)((s4, v4) => { {
                     val currentLabel = v4.getDebugHeapLabel(s4).getOrElse("finalHeapMissing")
                     val s4a = if (producer.debugOn) v4.startKeyHeap(s4, currentLabel, ExhalePost) else s4
-                    consumes(s4a, posts, false, postViolated, v4)((_, _, _) =>
-                      Success())})}) }  )})})
+                    consumes(s4a, posts, false, postViolated, v4, analysisInfosPostcondition)((_, _, _) =>
+                      Success())}})}) }  )})})
 
       v.decider.resetProverOptions()
 

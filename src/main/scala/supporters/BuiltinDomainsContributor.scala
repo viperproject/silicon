@@ -17,6 +17,7 @@ import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.DefaultSymbolConverter
 import viper.silicon.state.terms._
+import viper.silicon.verifier.Verifier
 
 abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, DomainFun, Term] {
   type BuiltinDomainType <: ast.GenericType
@@ -164,7 +165,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
   /* Utility */
 
   private def loadProgramFromUrl(url: URL): ast.Program =
-    BuiltinDomainsContributor.loadProgramFromUrl(url)
+    BuiltinDomainsContributor.loadProgramFromUrl(url, Verifier.config.isDependencyAnalysisEnabled)
 }
 
 object BuiltinDomainsContributor {
@@ -178,18 +179,20 @@ object BuiltinDomainsContributor {
   private def lastModified(url: URL): Long =
     if (url.getProtocol == "file") new File(url.toURI).lastModified() else 0L
 
-  def loadProgramFromUrl(url: URL): ast.Program = {
+  def loadProgramFromUrl(url: URL, attachDependencyAnalysisInfo: Boolean): ast.Program = {
     assert(url != null, s"Unexpectedly found sourceUrl == null")
 
     val modified = lastModified(url)
 
-    programCache.compute(url.toString, (_, cached) =>
+    /* The translated program differs depending on whether dependency analysis infos are attached, hence the cache key
+     * has to distinguish the two cases. */
+    programCache.compute(s"$url#$attachDependencyAnalysisInfo", (_, cached) =>
       if (cached != null && cached._1 == modified) cached
-      else (modified, parseProgramFromUrl(url))
+      else (modified, parseProgramFromUrl(url, attachDependencyAnalysisInfo))
     )._2
   }
 
-  private def parseProgramFromUrl(url: URL): ast.Program = {
+  private def parseProgramFromUrl(url: URL, attachDependencyAnalysisInfo: Boolean): ast.Program = {
     val fromPath = viper.silver.utility.Paths.pathFromResource(url)
     val source = scala.io.Source.fromURL(url)
 
@@ -209,7 +212,7 @@ object BuiltinDomainsContributor {
 
     val resolver = viper.silver.parser.Resolver(parsedProgram)
     val resolved = resolver.run(false).get
-    val translator = viper.silver.parser.Translator(resolved)
+    val translator = viper.silver.parser.Translator(resolved, attachDependencyAnalysisInfo)
     val program = translator.translate.get
 
     program

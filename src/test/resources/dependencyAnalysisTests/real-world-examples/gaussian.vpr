@@ -1,0 +1,81 @@
+field f: Int
+
+method gaussianSimple(n: Int) returns (res: Int)
+  requires 0 <= n
+  requires @irrelevant("Precondition")(n <= 5)
+{
+  res := 0
+  var i: Int := 0
+  while(@dependency("PathCondition")(i <= n))
+    invariant @dependency("LoopInvariant")(i <= (n + 1))
+    invariant @irrelevant("LoopInvariant")(i <= 6)
+    invariant @dependency("LoopInvariant")(res == (i - 1) * i / 2)
+  {
+    @dependency("SourceCode")
+    res := res + i
+    @dependency("SourceCode")
+    i := i + 1
+  }
+
+  @testAssertion("Explicit")
+  assert res == n * (n + 1) / 2
+}
+
+method gaussianPerm(a: Ref, p: Perm) returns (res: Int)
+  requires @dependency("Precondition")(none < p) && p < write
+  requires @dependency("Precondition")(acc(a.f, p))
+  requires 0 <= a.f
+  requires a.f <= 5
+  ensures acc(a.f, p)
+{
+  res := 0
+  var i: Int := 0
+  while(@dependency("PathCondition")(i <= a.f))
+    invariant @dependency("LoopInvariant")(acc(a.f, p))
+    invariant 0 <= a.f && a.f <= 5
+    invariant @dependency("LoopInvariant")(i <= (a.f + 1))
+    invariant i <= 6
+    invariant @dependency("LoopInvariant")(res == (i - 1) * i / 2)
+  {
+    @dependency("SourceCode")
+    res := res + i
+    @dependency("SourceCode")
+    i := i + 1
+  }
+
+  @testAssertion("Explicit")
+  assert res == a.f * (a.f + 1) / 2
+}
+
+predicate gaussianEq(res: Int, n: Int){
+  res == (n - 1) * n / 2 && n >= 0
+}
+
+method gaussianPred(n: Int) returns (res: Int)
+  requires 0 <= n
+  requires n <= 5
+{
+  res := 0
+  var i: Int
+  @dependency("SourceCode")
+  i := 0
+  @dependency("Rewrite")
+  fold gaussianEq(res, i)
+  while(i <= n)
+    invariant i <= (n + 1)
+    invariant i <= 6
+    invariant @dependency("LoopInvariant")(gaussianEq(res, i))
+  {
+    @dependency("Rewrite")
+    unfold gaussianEq(res, i)
+    @dependency("SourceCode")
+    res := res + i
+    @dependency("SourceCode")
+    i := i + 1
+    @dependency("Rewrite")
+    fold gaussianEq(res, i)
+  }
+  assert i == n+1
+  @testAssertion("Explicit")
+  assert gaussianEq(res, n+1)
+}

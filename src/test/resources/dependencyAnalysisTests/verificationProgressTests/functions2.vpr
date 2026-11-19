@@ -1,0 +1,7 @@
+// Spec quality: 1
+// Proof quality: 0
+// Progress: 0
+
+function sumUnverified(x: Int, y: Int): Int
+  requires x >= 0 && y >= 0
+  ensures result == x + y

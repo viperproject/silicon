@@ -6,7 +6,7 @@
 
 package viper.silicon.state
 
-import viper.silicon.interfaces.state.Chunk
+import viper.silicon.state.chunks.Chunk
 
 trait Heap {
   def values: Iterable[Chunk]

@@ -1,0 +1,78 @@
+method branches1(a: Int, b: Int)
+{
+  var n:Int, c: Bool
+
+  assume @dependencyInfo("assumptionType:Explicit, label:L1")(0 < a)
+  assume @dependencyInfo("assumptionType:Explicit, label:L2")(b > 4)
+
+  assume @dependencyInfo("assumptionType:Explicit, label:L3")(a < 100)
+  assume @dependencyInfo("assumptionType:Explicit, label:L4")(b < 50)
+  assume @dependencyInfo("assumptionType:Explicit, label:L5")(!c ==> a > 5)
+
+  if(@dependencyInfo("assumptionType:PathCondition, label:L6")(c)){
+    @dependencyInfo("assumptionType:SourceCode, label:L7")
+    n := a + 1
+  }else{
+    @dependencyInfo("assumptionType:SourceCode, label:L8")
+    n := b + 1
+  }
+
+  @dependencyInfo("assertionType:Explicit, label:L9, expectedDependencies:[L1,L2,L7,L8]")
+  assert n > 1
+}
+
+method branches2(a: Int, b: Int)
+{
+  var n:Int, c: Bool
+
+  assume @dependencyInfo("assumptionType:Explicit, label:L10")(((0 < a)))
+  assume @dependencyInfo("assumptionType:Explicit, label:L11")(((a < 100)))
+  assume @dependencyInfo("assumptionType:Explicit, label:L12")(((a < b)))
+  assume @dependencyInfo("assumptionType:Explicit, label:L13")(((b < 50)))
+
+  var x: Int
+  if(@dependencyInfo("assumptionType:PathCondition, label:L14")(((a >= n)))){
+    @dependencyInfo("assumptionType:SourceCode, label:L15")
+    x := a + b
+  }else{
+    @dependencyInfo("assumptionType:SourceCode, label:L16")
+    x := n + 1
+    @dependencyInfo("assertionType:Explicit, label:L17, expectedDependencies:[L10,L14,L16]")
+    assert x > 1
+  }
+
+  @dependencyInfo("assertionType:Explicit, label:L22, expectedDependencies:[L16,L15,L14,L12]")
+  assert x > n
+}
+
+
+method nestedBranches1(a: Int, b: Int)
+{
+  var n:Int, c: Bool
+
+  assume @dependencyInfo("assumptionType:Explicit, label:L23")(((0 < a)))
+  assume @dependencyInfo("assumptionType:Explicit, label:L24")(((a < 100)))
+  assume @dependencyInfo("assumptionType:Explicit, label:L25")(((0 < b)))
+  assume @dependencyInfo("assumptionType:Explicit, label:L26")(((b < 50)))
+  assume @dependencyInfo("assumptionType:Explicit, label:L27")(((c ==> a > 5)))
+
+  if(@dependencyInfo("assumptionType:PathCondition, label:L28")(((c)))){
+    if(@dependencyInfo("assumptionType:PathCondition, label:L29")(((a > b)))){
+      @dependencyInfo("assumptionType:SourceCode, label:L30")
+      n := a - b
+    }else{
+      @dependencyInfo("assumptionType:SourceCode, label:L31")
+      n := a + b
+    }
+    @dependencyInfo("assumptionType:SourceCode, label:L32")
+    n := n - 1
+  }else{
+    @dependencyInfo("assumptionType:SourceCode, label:L33")
+    n := a + b
+  }
+
+  @dependencyInfo("assertionType:Explicit, label:L34, expectedDependencies:[L33,L32,L31,L30,L25]")
+  assert n <= a + b
+  @dependencyInfo("assertionType:Explicit, label:L35, expectedDependencies:[L28,L25,L30,L31,L32]")
+  assert c ==> n < a + b
+}
