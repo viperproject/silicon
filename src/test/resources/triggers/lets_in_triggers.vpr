@@ -89,3 +89,15 @@ method letInTriggerOfFunctionPostcondition(r: Ref)
   var b: Bool := h(r)
   assert g(r, 3) > r.f
 }
+
+// The trigger and the body of a quantifier in a function postcondition use the same let.
+function h2(r: Ref): Bool
+  requires acc(r.f)
+  ensures forall i: Int :: { g(r, let x == (i) in x) } g(r, let x == (i) in x) > r.f
+
+method letInTriggerAndBodyOfFunctionPostcondition(r: Ref)
+  requires acc(r.f)
+{
+  var b: Bool := h2(r)
+  assert g(r, 3) > r.f
+}

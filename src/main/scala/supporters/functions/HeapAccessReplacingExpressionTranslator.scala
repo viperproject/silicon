@@ -15,7 +15,7 @@ import viper.silicon.rules.functionSupporter
 import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.supporters.ExpressionTranslator
-import viper.silicon.utils.ast.extractPTypeFromExp
+import viper.silicon.utils.ast.{extractPTypeFromExp, inlineLets}
 import viper.silicon.verifier.Verifier
 import viper.silver.parser.{PType, PUnknown}
 import viper.silver.ast.AnnotationInfo
@@ -187,6 +187,20 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
           }
         }
 
+        // The expression might have been recorded with different lets, e.g., if it is from a trigger, which
+        // is translated with its lets inlined (see ExpressionTranslator), and was recorded inside a let in the
+        // quantifier body. Hence, also compare the expressions with their lets, and the lets of their contexts,
+        // inlined.
+        val (keyInlined, ctxWithoutLets) = withoutLets(key, ctx)
+        val valModuloLets = map.find({ case ((k, c), _) =>
+          val (kInlined, cWithoutLets) = withoutLets(k, c)
+          kInlined == keyInlined &&
+            (cWithoutLets == ctxWithoutLets || (checkInnerContexts && cWithoutLets.startsWith(ctxWithoutLets)))
+        })
+        if (valModuloLets.nonEmpty) {
+          return valModuloLets.get._2.convert(sort)
+        }
+
         if (!failed && data.verificationFailures.isEmpty) {
           val msg = resolutionFailureMessage(key, data)
 
@@ -202,4 +216,19 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
          */
         fresh("$unresolved", sort, pType)
     }
+
+  /** Returns the expression `e` in the contexts `ctx` with its lets inlined and with the let-bound variables of
+    * the let contexts replaced by their values (starting with the innermost let), together with `ctx` without its
+    * let contexts.
+    */
+  private def withoutLets(e: ast.Positioned, ctx: Seq[ExpContext]): (ast.Positioned, Seq[ExpContext]) = e match {
+    case exp: ast.Exp =>
+      val inlined = ctx.foldRight(inlineLets(exp)) {
+        case (LetContext(l), e1) => e1.replace(l.variable.localVar, inlineLets(l.exp))
+        case (_, e1) => e1
+      }
+      (inlined, ctx.filterNot(_.isInstanceOf[LetContext]))
+    case _ =>
+      (e, ctx)
+  }
 }
