@@ -227,14 +227,17 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
     }
 
   /** Returns the expression `e` inside the lets of its let contexts `ctx`, e.g. `let x == e0 in e` for the
-    * context of the let `let x == e0 in ...`.
+    * context of the let `let x == e0 in ...`. A let whose variable is bound again by a quantifier inside it is
+    * left out, since its variable does not occur in `e`.
     */
   private def inLetsOf(e: ast.Positioned, ctx: Seq[ExpContext]): Option[ast.Exp] = e match {
     case exp: ast.Exp =>
-      Some(ctx.foldRight(exp) {
-        case (LetContext(l), e1) => ast.Let(l.variable, l.exp, e1)(e1.pos, e1.info, e1.errT)
-        case (_, e1) => e1
-      })
+      Some(ctx.foldRight((exp, Set.empty[String])) {
+        case (LetContext(l), (e1, quantifiedVars)) if !quantifiedVars.contains(l.variable.name) =>
+          (ast.Let(l.variable, l.exp, e1)(e1.pos, e1.info, e1.errT), quantifiedVars)
+        case (QuantifierContext(q), (e1, quantifiedVars)) => (e1, quantifiedVars ++ q.variables.map(_.name))
+        case (_, result) => result
+      }._1)
     case _ =>
       None
   }
