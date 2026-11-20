@@ -1,17 +1,17 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-// Triggers that contain let expressions are matched against the terms recorded
-// while evaluating the quantifier body modulo their lets, i.e. after replacing
-// each let-bound variable by its value. Such a trigger is therefore reused with
-// the body's path conditions instead of being evaluated on its own. Evaluating
-// the triggers below on their own fails (div's precondition only holds under
-// the guard i > 0), which makes Silicon drop the trigger with the warning
-// "Might not be able to use trigger ...". LetsInTriggersTests checks that
-// verifying this file reports no such warning, and no "Could not resolve
-// expression ..." warning while axiomatising a function.
-// See top_level_lets_in_triggers.vpr for triggers whose top-level expression
-// is a let.
+// Triggers are matched against the terms recorded while evaluating the
+// quantifier body modulo lets, i.e. as if each let-bound variable were replaced
+// by its value, here for lets nested inside triggers or body terms. A matched
+// trigger is reused with the body's path conditions instead of being evaluated
+// on its own. For the triggers with div below, evaluating them on their own
+// fails (div's precondition only holds under the guard i > 0), which makes
+// Silicon drop the trigger with the warning "Might not be able to use trigger
+// ...". LetsInTriggersTests checks that verifying this file reports no such
+// warning, and no "Could not resolve expression ..." warning while
+// axiomatising a function. See top_level_lets_in_triggers.vpr for triggers
+// whose top-level expression is a let.
 
 function div(n: Int, d: Int): Int
   requires d != 0
@@ -93,25 +93,33 @@ function g(r: Ref, i: Int): Int
 // resolved modulo lets like g(r, i) in the body.
 function h(r: Ref): Bool
   requires acc(r.f)
-  ensures forall i: Int :: { g(r, let x == (i) in x) } g(r, i) > r.f
+  ensures forall i: Int :: { g(r, let x == (i) in x) } g(r, i) > r.f && t(i)
 
 method letInTriggerOfFunctionPostcondition(r: Ref)
   requires acc(r.f)
 {
   var b: Bool := h(r)
   assert g(r, 3) > r.f
+  assert t(3)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(4)
 }
 
 // The trigger and the body of a quantifier in a function postcondition use the same let.
 function h2(r: Ref): Bool
   requires acc(r.f)
-  ensures forall i: Int :: { g(r, let x == (i) in x) } g(r, let x == (i) in x) > r.f
+  ensures forall i: Int :: { g(r, let x == (i) in x) } g(r, let x == (i) in x) > r.f && t(i)
 
 method letInTriggerAndBodyOfFunctionPostcondition(r: Ref)
   requires acc(r.f)
 {
   var b: Bool := h2(r)
   assert g(r, 3) > r.f
+  assert t(3)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(4)
 }
 
 function k(i: Int, v: Int): Int

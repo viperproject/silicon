@@ -271,14 +271,14 @@ object evaluator extends EvaluationRules {
             val newPossibleTriggers = if (s2.recordPossibleTriggers) {
               /* The possible triggers recorded in the let body that mention x are recorded inside the let
                * instead, i.e. as `let x == e0 in pt`, since x is not bound outside of it. evalTrigger
-               * compares triggers to them modulo lets. Replacing x by e0 instead could make the recorded
-               * expressions exponentially larger in the number of nested lets.
+               * compares triggers to them modulo lets. (Replacing x by e0 in them can make them exponentially
+               * larger in the number of nested lets.)
                */
               val addedTriggersWithX =
                 (s2.possibleTriggers -- possibleTriggersBefore.keys).filter(_._1.contains(x.localVar))
               val addedTriggersInLet =
                 addedTriggersWithX.map { case (pt, tPt) => ast.Let(x, e0, pt)(pt.pos, pt.info, pt.errT) -> tPt }
-              s2.possibleTriggers -- addedTriggersWithX.keys ++ addedTriggersInLet
+              (s2.possibleTriggers -- addedTriggersWithX.keys) ++ addedTriggersInLet
             } else {
               s2.possibleTriggers
             }

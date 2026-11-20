@@ -9,20 +9,14 @@ package viper.silicon.tests
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.Silicon
-import viper.silver.ast.{Forall, HasLineColumn, Let, Program}
 import viper.silver.reporter.{InternalWarningMessage, Message, Reporter, WarningsDuringVerification}
-import viper.silver.verifier.{AbstractVerificationError, Failure, Success}
 
-import java.nio.file.{Files, Paths}
 import scala.collection.mutable.ArrayBuffer
-import scala.jdk.CollectionConverters._
 
-/** Checks that triggers containing lets are found among the terms recorded while evaluating
-  * the quantifier body, modulo their lets, instead of being evaluated on their own (which
-  * fails for the test programs and makes Silicon drop the trigger with a warning), and that
-  * the function axiomatisation resolves them (otherwise it reports "Could not resolve
-  * expression"). SilSuite ignores warnings, so this test checks them in addition to the
-  * annotated errors for the test programs in triggers/, which are also part of SiliconTests.
+/** Verifies the test programs in triggers/ and checks that Silicon reports no warning that a trigger might not be
+  * usable ("Might not be able to use trigger") or could not be resolved while axiomatising a function ("Could not
+  * resolve expression"). SiliconTests, which also verifies these programs, checks their annotated errors, but not
+  * warnings.
   */
 class LetsInTriggersTests extends AnyFunSuite with BeforeAndAfterAll {
   private class CollectingReporter extends Reporter {
@@ -58,45 +52,21 @@ class LetsInTriggersTests extends AnyFunSuite with BeforeAndAfterAll {
     silicon.stop()
   }
 
-  private def load(filePrefix: String, fileName: String): (Program, Seq[Int]) = {
-    val program = _root_.tests.loadProgram(filePrefix, fileName, frontend)
-    val lines = Files.readAllLines(Paths.get(getClass.getClassLoader.getResource(s"$filePrefix$fileName.vpr").toURI)).asScala
-    val expectedFailureLines =
-      // An annotation applies to the next line; line numbers start at 1
-      lines.zipWithIndex.collect { case (line, idx) if line.trim.startsWith("//:: ExpectedOutput") => idx + 2 }.toSeq
-    (program, expectedFailureLines)
-  }
-
-  private def check(filePrefix: String, fileName: String, expectTopLevelLets: Boolean): Unit = {
-    val (program, expectedFailureLines) = load(filePrefix, fileName)
-
-    val triggerExps = program.deepCollect { case q: Forall => q.triggers.flatMap(_.exps) }.flatten
-    assert(triggerExps.exists(_.exists(_.isInstanceOf[Let])), "Test program has no trigger containing a let")
-    assert(triggerExps.exists(_.isInstanceOf[Let]) == expectTopLevelLets)
-
+  private def check(fileName: String): Unit = {
+    val program = _root_.tests.loadProgram("triggers/", fileName, frontend)
     reporter.clear()
-    val result = silicon.verify(program)
+    silicon.verify(program)
 
     val triggerWarnings = reporter.warnings.filter(w =>
       w.contains("Might not be able to use trigger") || w.contains("Could not resolve expression"))
     assert(triggerWarnings.isEmpty, s"Unexpected trigger warnings: ${triggerWarnings.mkString("\n")}")
-
-    val failureLines = result match {
-      case Success => Seq()
-      case Failure(errors) => errors.map {
-        case e: AbstractVerificationError if e.fullId == "assert.failed:assertion.false" =>
-          e.pos.asInstanceOf[HasLineColumn].line
-        case e => fail(s"Unexpected error: ${e.readableMessage}")
-      }
-    }
-    assert(failureLines.sorted == expectedFailureLines.sorted)
   }
 
   test("Triggers with nested lets are found in the quantifier body") {
-    check("triggers/", "lets_in_triggers", expectTopLevelLets = false)
+    check("lets_in_triggers")
   }
 
   test("Triggers that are lets are found in the quantifier body") {
-    check("triggers/", "top_level_lets_in_triggers", expectTopLevelLets = true)
+    check("top_level_lets_in_triggers")
   }
 }

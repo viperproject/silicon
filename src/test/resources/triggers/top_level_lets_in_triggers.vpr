@@ -3,7 +3,8 @@
 
 // Triggers whose top-level expression is a let. They are found among the
 // terms of the quantifier body modulo lets, as in lets_in_triggers.vpr, which
-// has the same cases (and one more) with lets nested inside the triggers.
+// has the same cases with lets nested inside the triggers, and two more (a let
+// in the body only, and a let-bound variable used in old).
 // LetsInTriggersTests checks that verifying this file reports no "Might not be
 // able to use trigger ..." and no "Could not resolve expression ..." warning.
 
@@ -20,7 +21,7 @@ method letInTriggerAndBody()
   requires forall i: Int :: { let x == (q(div(10, i))) in s(x, x) }
     i > 0 ==> (let x == (q(div(10, i))) in (s(x, x) && t(i)))
 {
-  // The quantifier is instantiated through the let-bound trigger.
+  // The quantifier is instantiated through the let trigger.
   assert s(q(div(10, 5)), q(div(10, 5)))
   assert t(5)
 
@@ -75,23 +76,31 @@ function g(r: Ref, i: Int): Int
 // lets like g(r, i) in the body.
 function h(r: Ref): Bool
   requires acc(r.f)
-  ensures forall i: Int :: { let x == (i) in g(r, x) } g(r, i) > r.f
+  ensures forall i: Int :: { let x == (i) in g(r, x) } g(r, i) > r.f && t(i)
 
 method letTriggerOfFunctionPostcondition(r: Ref)
   requires acc(r.f)
 {
   var b: Bool := h(r)
   assert g(r, 3) > r.f
+  assert t(3)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(4)
 }
 
 // The trigger and the body of a quantifier in a function postcondition use the same let.
 function h2(r: Ref): Bool
   requires acc(r.f)
-  ensures forall i: Int :: { let x == (i) in g(r, x) } let x == (i) in g(r, x) > r.f
+  ensures forall i: Int :: { let x == (i) in g(r, x) } (let x == (i) in g(r, x) > r.f) && t(i)
 
 method letTriggerAndBodyOfFunctionPostcondition(r: Ref)
   requires acc(r.f)
 {
   var b: Bool := h2(r)
   assert g(r, 3) > r.f
+  assert t(3)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(4)
 }

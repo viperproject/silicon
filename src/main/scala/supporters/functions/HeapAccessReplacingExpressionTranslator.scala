@@ -205,10 +205,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
             })
           }
         }
-        map.collectFirst({ case ((k, c), v) if matchesModuloLets(k, c) => v }) match {
-          case Some(v) => return v.convert(sort)
-          case None =>
-        }
+        map.collectFirst({ case ((k, c), v) if matchesModuloLets(k, c) => v }).foreach(v => return v.convert(sort))
 
         if (!failed && data.verificationFailures.isEmpty) {
           val msg = resolutionFailureMessage(key, data)
@@ -227,8 +224,8 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
     }
 
   /** Returns the expression `e` inside the lets of its let contexts `ctx`, e.g. `let x == e0 in e` for the
-    * context of the let `let x == e0 in ...`. Returns None if the variable of a let is bound again by a quantifier
-    * inside it, since the quantified variable would then be bound by the let.
+    * context of the let `let x == e0 in ...`. Returns None if a quantifier inside a let binds a variable with the
+    * same name as the let, since wrapping `e` in the let would then capture occurrences of the quantified variable.
     */
   private def inLetsOf(e: ast.Exp, ctx: Seq[ExpContext]): Option[ast.Exp] =
     ctx.foldRight(Option((e, Set.empty[String]))) {
