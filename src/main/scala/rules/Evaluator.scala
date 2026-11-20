@@ -269,16 +269,11 @@ object evaluator extends EvaluationRules {
           val possibleTriggersBefore = if (s1.recordPossibleTriggers) s1.possibleTriggers else Map.empty
           eval(s1.copy(g = s1.g + (x.localVar, (t0, e0New)), functionRecorder = newFuncRec), e1, pve, v1, analysisInfos)((s2, t2, e1New, v2) => {
             val newPossibleTriggers = if (s2.recordPossibleTriggers) {
-              /* The possible triggers recorded in the let body that mention x are recorded inside the let
-               * instead, i.e. as `let x == e0 in pt`, since x is not bound outside of it. evalTrigger
-               * compares triggers to them modulo lets. Keeping the let, rather than replacing x by e0, keeps them
-               * from growing exponentially in the number of nested lets.
-               */
-              val addedTriggersWithX =
-                (s2.possibleTriggers -- possibleTriggersBefore.keys).filter(_._1.contains(x.localVar))
-              val addedTriggersInLet =
-                addedTriggersWithX.map { case (pt, tPt) => ast.Let(x, e0, pt)(pt.pos, pt.info, pt.errT) -> tPt }
-              (s2.possibleTriggers -- addedTriggersWithX.keys) ++ addedTriggersInLet
+              val addedTriggers = s2.possibleTriggers -- possibleTriggersBefore.keys
+              // Also record the possible triggers of the let body with the let inlined (see evalTrigger)
+              val addedTriggersReplaced = addedTriggers.map(at =>
+                Expressions.inlineLets(ast.Let(x, e0, at._1)(at._1.pos, at._1.info, at._1.errT)) -> at._2)
+              s2.possibleTriggers ++ addedTriggersReplaced
             } else {
               s2.possibleTriggers
             }
@@ -1368,16 +1363,20 @@ object evaluator extends EvaluationRules {
         other
     }
 
-    /* Possible triggers that were recorded inside a let of the body (see the Let case of eval2), and triggers
-     * that contain lets, are found by comparing them modulo lets. If a trigger is not found, it is evaluated below.
+    def lookupPossibleTrigger(e: ast.Exp): Option[Term] = e match {
+      case pt @ (_: ast.PossibleTrigger | _: ast.FieldAccess | _: ast.LabelledOld | _: ast.Old) =>
+        s.possibleTriggers.get(pt)
+      case _ =>
+        None
+    }
+
+    /* The possible triggers recorded in a let body are also recorded with the let inlined (see the Let case of
+     * eval2). Hence, a trigger is also looked up with its lets inlined.
      */
     val (cachedTriggerTerms, remainingTriggerExpressions) =
       exps.map { e =>
-        lazy val eContainsLet = e.contains[ast.Let]
         val cachedTrigger =
-          s.possibleTriggers.get(e).orElse(s.possibleTriggers.collectFirst {
-            case (pt, t) if (eContainsLet || pt.contains[ast.Let]) && Expressions.equalModuloLets(e, pt) => t
-          }).map(t => transformPotentialFuncApp(t))
+          lookupPossibleTrigger(e).orElse(lookupPossibleTrigger(Expressions.inlineLets(e))).map(t => transformPotentialFuncApp(t))
         (cachedTrigger, if (cachedTrigger.isDefined) None else Some(e))
       }.unzip match {
         case (optCachedTriggerTerms, optRemainingTriggerExpressions) =>

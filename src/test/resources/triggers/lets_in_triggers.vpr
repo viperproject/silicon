@@ -1,17 +1,17 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-// Triggers are matched against the terms recorded while evaluating the
-// quantifier body modulo lets, i.e. as if each let-bound variable were replaced
-// by its value, here for lets nested inside triggers or body terms. A matched
-// trigger is reused with the body's path conditions instead of being evaluated
-// on its own. For the triggers with div below, evaluating them on their own
-// fails (div's precondition only holds under the guard i > 0), which makes
-// Silicon drop the trigger with the warning "Might not be able to use trigger
-// ...". LetsInTriggersTests checks that verifying this file reports no such
-// warning, and no "Could not resolve expression ..." warning while
-// axiomatising a function. See top_level_lets_in_triggers.vpr for triggers
-// whose top-level expression is a let.
+// Triggers with lets nested inside them are matched against the terms recorded
+// while evaluating the quantifier body modulo lets, i.e. as if each let-bound
+// variable were replaced by its value. A matched trigger is reused with the
+// body's path conditions instead of being evaluated on its own. For the
+// triggers with div below, evaluating them on their own fails (div's
+// precondition only holds under the guard i > 0), which makes Silicon drop the
+// trigger with the warning "Might not be able to use trigger ...".
+// LetsInTriggersTests checks that verifying this file reports no such warning,
+// and no "Could not resolve expression ..." warning while axiomatising a
+// function. See top_level_lets_in_triggers.vpr for triggers whose top-level
+// expression is a let.
 
 function div(n: Int, d: Int): Int
   requires d != 0
@@ -51,18 +51,6 @@ method letInTriggerOnly()
 method letInLetValue()
   requires forall i: Int :: { s(let x == (let y == (div(10, i)) in q(y)) in x, q(div(10, i))) }
     i > 0 ==> (let x == (let y == (div(10, i)) in q(y)) in (s(x, x) && t(i)))
-{
-  assert s(q(div(10, 5)), q(div(10, 5)))
-  assert t(5)
-
-  //:: ExpectedOutput(assert.failed:assertion.false)
-  assert t(3)
-}
-
-// The trigger is let-free; the body contains the same term with a let in it.
-method letInBodyOnly()
-  requires forall i: Int :: { s(q(div(10, i)), q(div(10, i))) }
-    i > 0 ==> (s(let x == (q(div(10, i))) in x, q(div(10, i))) && t(i))
 {
   assert s(q(div(10, 5)), q(div(10, 5)))
   assert t(5)

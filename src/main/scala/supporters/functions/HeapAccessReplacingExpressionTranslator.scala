@@ -188,24 +188,12 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
           }
         }
 
-        // The expression might have been recorded with different lets. For example, a function application
-        // in a trigger might be written without a let, while the same application in the quantifier body might
-        // contain a let, as in g(let x == e in x), or be inside one, as in let x == e in g(x), or vice versa.
-        // Hence, the expressions, inside the lets of their contexts, are also compared modulo lets.
-        val keyInLets = inLetsOf(key, ctx)
-        val ctxWithoutLets = ctx.filterNot(_.isInstanceOf[LetContext])
-        lazy val keyContainsLet = keyInLets.exists(_.contains[ast.Let])
-        def matchesModuloLets(k: K, c: Seq[ExpContext]): Boolean = {
-          val cWithoutLets = c.filterNot(_.isInstanceOf[LetContext])
-          (cWithoutLets == ctxWithoutLets || (checkInnerContexts && cWithoutLets.startsWith(ctxWithoutLets))) && {
-            val kInLets = inLetsOf(k, c)
-            (keyContainsLet || kInLets.exists(_.contains[ast.Let])) && ((keyInLets, kInLets) match {
-              case (Some(e1), Some(e2)) => Expressions.equalModuloLets(e1, e2)
-              case _ => false
-            })
-          }
-        }
-        map.collectFirst({ case ((k, c), v) if matchesModuloLets(k, c) => v }).foreach(v => return v.convert(sort))
+        // A function application in a trigger might only have been recorded in a different form modulo lets, e.g. as
+        // g(r, i) in the body for g(r, let x == (i) in x) in the trigger (if evalTrigger found the trigger in the
+        // body). Hence, the expressions are also compared with the lets of their contexts and their own lets inlined.
+        val keyInlined = inlinedInLetContexts(key, ctx)
+        map.collectFirst({ case ((k, c), v) if inlinedInLetContexts(k, c) == keyInlined => v })
+          .foreach(v => return v.convert(sort))
 
         if (!failed && data.verificationFailures.isEmpty) {
           val msg = resolutionFailureMessage(key, data)
@@ -223,16 +211,11 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         fresh("$unresolved", sort, pType)
     }
 
-  /** Returns the expression `e` inside the lets of its let contexts `ctx`, e.g. `let x == e0 in e` for the
-    * context of the let `let x == e0 in ...`. Returns None if a quantifier inside a let binds a variable with the
-    * same name as the let, since wrapping `e` in the let would then capture occurrences of the quantified variable.
-    */
-  private def inLetsOf(e: ast.Exp, ctx: Seq[ExpContext]): Option[ast.Exp] =
-    ctx.foldRight(Option((e, Set.empty[String]))) {
-      case (LetContext(l), Some((e1, quantifiedVars))) =>
-        if (quantifiedVars.contains(l.variable.name)) None
-        else Some((ast.Let(l.variable, l.exp, e1)(e1.pos, e1.info, e1.errT), quantifiedVars))
-      case (QuantifierContext(q), Some((e1, quantifiedVars))) => Some((e1, quantifiedVars ++ q.variables.map(_.name)))
-      case (_, result) => result
-    }.map(_._1)
+  private def inlinedInLetContexts(e: ast.Exp, ctx: Seq[ExpContext]): (ast.Exp, Seq[ExpContext]) = {
+    val inLets = ctx.foldRight(e) {
+      case (LetContext(l), e1) => ast.Let(l.variable, l.exp, e1)(e1.pos, e1.info, e1.errT)
+      case (_, e1) => e1
+    }
+    (Expressions.inlineLets(inLets), ctx.filterNot(_.isInstanceOf[LetContext]))
+  }
 }

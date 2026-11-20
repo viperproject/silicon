@@ -3,8 +3,8 @@
 
 // Triggers whose top-level expression is a let. They are found among the
 // terms of the quantifier body modulo lets, as in lets_in_triggers.vpr, which
-// has the same cases with lets nested inside the triggers, and two more (a let
-// in the body only, and a let-bound variable used in old).
+// has the same cases with lets nested inside the triggers, and one more (a
+// let-bound variable used in old).
 // LetsInTriggersTests checks that verifying this file reports no "Might not be
 // able to use trigger ..." and no "Could not resolve expression ..." warning.
 
