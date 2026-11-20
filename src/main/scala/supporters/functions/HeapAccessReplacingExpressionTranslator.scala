@@ -188,16 +188,19 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
           }
         }
 
-        // A function application in a trigger might only have been recorded in a different form modulo lets, e.g. as
-        // g(r, i) in the body for g(r, let x == (i) in x) in the trigger (if evalTrigger found the trigger in the
-        // body). Hence, the expressions are also compared with the lets of their contexts and their own lets inlined.
+        // An expression might only have been recorded in a different form modulo lets, e.g. as g(r, i) in the body
+        // for g(r, let x == (i) in x) in a trigger that evalTrigger found in the body. Hence, the expressions are also
+        // compared with their lets inlined, including the lets around them, i.e. those of their let contexts.
         val (keyInlined, ctxWithoutLets) = inlinedInLetContexts(key, ctx)
-        def matches(k: K, c: Seq[ExpContext]): Boolean = {
+        def matches(k: ast.Exp, c: Seq[ExpContext]): Boolean = {
           val (kInlined, cWithoutLets) = inlinedInLetContexts(k, c)
           kInlined == keyInlined &&
             (cWithoutLets == ctxWithoutLets || (checkInnerContexts && cWithoutLets.startsWith(ctxWithoutLets)))
         }
-        map.collectFirst({ case ((k, c), v) if matches(k, c) => v }).foreach(v => return v.convert(sort))
+        map.collectFirst({ case ((k, c), v) if matches(k, c) => v }) match {
+          case Some(v) => return v.convert(sort)
+          case None =>
+        }
 
         if (!failed && data.verificationFailures.isEmpty) {
           val msg = resolutionFailureMessage(key, data)

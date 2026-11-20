@@ -96,10 +96,8 @@ trait ExpressionTranslator {
 
         /** IMPORTANT: Keep in sync with [[viper.silicon.rules.evaluator.evalTrigger]].
           *
-          * The lets in a trigger are expanded, so that a trigger is treated like the same trigger without lets:
-          * a heap-dependent function application at its top is replaced by its limited version below, and with
-          * --maskHeapMode, a trigger that is a let is not filtered out as an impossible trigger (see
-          * Quantification.apply).
+          * Lets in a trigger are expanded, so that a trigger is handled like the same trigger without lets: a
+          * heap-dependent function application at its top is limited, and --maskHeapMode does not filter it out.
           */
         val translatedTriggers = eTriggers map (triggerSet => Trigger(triggerSet.exps map (trigger =>
           f(trigger).transform()(post = { case let: Let => let.body.replace(let.bindings) }) match {

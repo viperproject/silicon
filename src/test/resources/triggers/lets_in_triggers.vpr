@@ -3,8 +3,8 @@
 
 // Triggers with lets nested inside them are matched against the terms recorded
 // while evaluating the quantifier body modulo lets, i.e. as if each let-bound
-// variable were replaced by its value. A matched trigger is reused with the
-// body's path conditions instead of being evaluated on its own. For the
+// variable were replaced by its value. For a matched trigger, the term recorded
+// for the body is used instead of evaluating the trigger on its own. For the
 // triggers with div below, evaluating them on their own fails (div's
 // precondition only holds under the guard i > 0), which makes Silicon drop the
 // trigger with the warning "Might not be able to use trigger ...".
@@ -110,7 +110,10 @@ method letInTriggerAndBodyOfFunctionPostcondition(r: Ref)
   assert t(4)
 }
 
-// The body only contains g(r, i) inside a nested quantifier.
+// The body only contains g(r, i) inside a nested quantifier. In the axiom for
+// the postcondition, the trigger is resolved against g(r, i) in the nested
+// context (LetsInTriggersTests checks that no "Could not resolve" warning is
+// reported).
 function h3(r: Ref): Bool
   requires acc(r.f)
   ensures forall i: Int :: { g(r, let x == (i) in x) } (forall j: Int :: { t(j) } t(j) ==> g(r, i) > j)
