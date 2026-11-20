@@ -8,10 +8,11 @@ package viper.silicon.interfaces
 
 import viper.silicon.debugger.{DebugAxiom, DebugExp}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.interfaces.state.Chunk
+import viper.silicon.dependencyAnalysis.graphInterpretation.IntraproceduralGraphResult
 import viper.silicon.reporting._
-import viper.silicon.state.terms.{BooleanLiteral, FunctionDecl, IntLiteral, MacroDecl, Term, Var}
 import viper.silicon.state.{State, Store}
+import viper.silicon.state.chunks.Chunk
+import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.Program
@@ -30,6 +31,7 @@ sealed abstract class VerificationResult {
   var previous: Vector[VerificationResult] = Vector() //Sets had problems with equality
   val continueVerification: Boolean = true
   var isReported: Boolean = false
+  var intraproceduralGraphResult: Option[IntraproceduralGraphResult] = None
 
   def isFatal: Boolean
   def &&(other: => VerificationResult): VerificationResult
@@ -268,7 +270,7 @@ case class SiliconMappedCounterexample(internalStore: Store,
 
   private def renameSnap(entry: ValueEntry): ExtractedModelEntry = {
     if (!heapNames.contains(entry)) {
-      heapNames += (entry -> ("heap_" + heapNames.size.toString))
+      heapNames += (entry -> ("hp_" + heapNames.size.toString))
     }
     UnprocessedModelEntry(ConstantEntry(
             heapNames.get(entry).orNull))

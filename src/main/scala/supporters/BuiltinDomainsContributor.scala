@@ -8,6 +8,7 @@ package viper.silicon.supporters
 
 import java.io.File
 import java.net.URL
+import java.util.concurrent.ConcurrentHashMap
 import scala.annotation.unused
 import scala.reflect.ClassTag
 import viper.silver.ast
@@ -16,6 +17,7 @@ import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.DefaultSymbolConverter
 import viper.silicon.state.terms._
+import viper.silicon.verifier.Verifier
 
 abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, DomainFun, Term] {
   type BuiltinDomainType <: ast.GenericType
@@ -56,6 +58,10 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
 
   def analyze(program: ast.Program): Unit = {
     val builtinDomainTypeInstances = computeGroundTypeInstances(program)
+
+    /* Nothing to collect if the program doesn't use the builtin domain; avoids loading its source program */
+    if (builtinDomainTypeInstances.isEmpty) return
+
     val sourceProgram = loadProgramFromUrl(sourceUrl)
     val sourceDomain = transformSourceDomain(sourceProgram.findDomain(sourceDomainName))
 
@@ -158,10 +164,35 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
 
   /* Utility */
 
-  // TODO: Check that Silver's parser doesn't already provide suitable functionality.
-  private def loadProgramFromUrl(url: URL): ast.Program = {
+  private def loadProgramFromUrl(url: URL): ast.Program =
+    BuiltinDomainsContributor.loadProgramFromUrl(url, Verifier.config.isDependencyAnalysisEnabled)
+}
+
+object BuiltinDomainsContributor {
+  /* Parsed source programs, keyed by URL. Parsing and type-checking them is expensive and the resulting
+   * (immutable) programs are identical for each verification run, so they are shared across runs and verifiers.
+   * Each entry also records the source's modification time (if it is a file), such that changes to
+   * user-provided axiomatisation files are picked up.
+   */
+  private val programCache = new ConcurrentHashMap[String, (Long, ast.Program)]()
+
+  private def lastModified(url: URL): Long =
+    if (url.getProtocol == "file") new File(url.toURI).lastModified() else 0L
+
+  def loadProgramFromUrl(url: URL, attachDependencyAnalysisInfo: Boolean): ast.Program = {
     assert(url != null, s"Unexpectedly found sourceUrl == null")
 
+    val modified = lastModified(url)
+
+    /* The translated program differs depending on whether dependency analysis infos are attached, hence the cache key
+     * has to distinguish the two cases. */
+    programCache.compute(s"$url#$attachDependencyAnalysisInfo", (_, cached) =>
+      if (cached != null && cached._1 == modified) cached
+      else (modified, parseProgramFromUrl(url, attachDependencyAnalysisInfo))
+    )._2
+  }
+
+  private def parseProgramFromUrl(url: URL, attachDependencyAnalysisInfo: Boolean): ast.Program = {
     val fromPath = viper.silver.utility.Paths.pathFromResource(url)
     val source = scala.io.Source.fromURL(url)
 
@@ -181,7 +212,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
 
     val resolver = viper.silver.parser.Resolver(parsedProgram)
     val resolved = resolver.run(false).get
-    val translator = viper.silver.parser.Translator(resolved)
+    val translator = viper.silver.parser.Translator(resolved, attachDependencyAnalysisInfo)
     val program = translator.translate.get
 
     program

@@ -9,33 +9,38 @@ package viper.silicon.rules
 import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.logger.records.structural.JoiningRecord
-import viper.silicon.state.State
+import viper.silicon.state.{StateMerge, State}
 import viper.silicon.state.terms.{And, Or, Term}
 import viper.silicon.utils.ast.{BigAnd, BigOr}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-
-import scala.annotation.unused
+import viper.silver.ast.NoPosition
+import viper.silver.dependencyAnalysis.{OriginType, StringDependencyAnalysisSourceInfo}
 
 case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathConditions) {
+
+  private def analysisInfos(v: Verifier): AnalysisInfos =
+    v.decider.defaultAnalysisInfos.withInfo(StringDependencyAnalysisSourceInfo("merge", NoPosition), OriginType.Internal)
+
   // Instead of merging states by calling State.merge,
   // we can directly merge JoinDataEntries to obtain new States,
   // and the join data entries themselves provide information about the path conditions to State.merge.
   def pathConditionAwareMerge(other: JoinDataEntry[D], v: Verifier): State = {
-    val res = State.merge(this.s, this.pathConditions, other.s, other.pathConditions)
+    val res = State.merge(this.s, this.pathConditions, other.s, other.pathConditions, v, analysisInfos(v))
     v.stateConsolidator(s).consolidate(res, v)
   }
 
-  def pathConditionAwareMergeWithoutConsolidation(other: JoinDataEntry[D], @unused v: Verifier): State = {
-    State.merge(this.s, this.pathConditions, other.s, other.pathConditions)
+  def pathConditionAwareMergeWithoutConsolidation(other: JoinDataEntry[D], v: Verifier): State = {
+    State.merge(this.s, this.pathConditions, other.s, other.pathConditions, v, analysisInfos(v))
   }
 }
 
 trait JoiningRules extends SymbolicExecutionRules {
 
-  def join[D, JD](s: State, v: Verifier, resetState: Boolean = true)
+  def join[D, JD](s: State, v: Verifier, analysisInfos: AnalysisInfos, resetState: Boolean = true)
                  (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
                  (Q: (State, JD, Verifier) => VerificationResult)
@@ -43,7 +48,7 @@ trait JoiningRules extends SymbolicExecutionRules {
 }
 
 object joiner extends JoiningRules {
-  def join[D, JD](s: State, v: Verifier, resetState: Boolean = true)
+  def join[D, JD](s: State, v: Verifier, analysisInfos: AnalysisInfos, resetState: Boolean = true)
                  (block: (State, Verifier, (State, D,  Verifier) => VerificationResult) => VerificationResult)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
                  (Q: (State, JD, Verifier) => VerificationResult)
@@ -92,24 +97,28 @@ object joiner extends JoiningRules {
         Success()
       } else {
         val (sJoined, dataJoined) = merge(entries)
+        val sJoined2 = if (debugOn) v.recordHeap(sJoined, "nil", StateMerge, v.decider.pcs.duplicate()) else sJoined
 
         var feasibleBranches: List[Term] = Nil
-        var feasibleBranchesExp: Option[List[ast.Exp]] = Option.when(withExp)(Nil)
-        var feasibleBranchesExpNew: Option[List[ast.Exp]] = Option.when(withExp)(Nil)
+        var feasibleBranchesExp: Option[List[ast.Exp]] = Option.when(debugOn)(Nil)
+        var feasibleBranchesExpNew: Option[List[ast.Exp]] = Option.when(debugOn)(Nil)
 
         entries foreach (entry => {
           val pcs = entry.pathConditions.conditionalized
-          val pcsExp = Option.when(withExp)(entry.pathConditions.conditionalizedExp)
+          val pcsExp = Option.when(debugOn)(entry.pathConditions.conditionalizedExp)
           val comment = "Joined path conditions"
           v.decider.prover.comment(comment)
-          v.decider.assume(pcs, Option.when(withExp)(DebugExp.createInstance(comment, InsertionOrderedSet(pcsExp.get))), enforceAssumption = false)
+          v.decider.assume(pcs, Option.when(debugOn)(DebugExp.createInstance(comment, InsertionOrderedSet(pcsExp.get))),
+            enforceAssumption = false, analysisInfos)
           feasibleBranches = And(entry.pathConditions.branchConditions) :: feasibleBranches
           feasibleBranchesExp = feasibleBranchesExp.map(fbe => BigAnd(entry.pathConditions.branchConditionExps.map(_._1)) :: fbe)
           feasibleBranchesExpNew = feasibleBranchesExpNew.map(fbe => BigAnd(entry.pathConditions.branchConditionExps.map(_._2.get)) :: fbe)
         })
         // Assume we are in a feasible branch
-        v.decider.assume(Or(feasibleBranches), Option.when(withExp)(DebugExp.createInstance(Some("Feasible Branches"), feasibleBranchesExp.map(BigOr(_)), feasibleBranchesExpNew.map(BigOr(_)), InsertionOrderedSet.empty)))
-        Q(sJoined, dataJoined, v)
+        v.decider.assume(Or(feasibleBranches),
+          Option.when(debugOn)(DebugExp.createInstance(Some("Feasible Branches"), feasibleBranchesExp.map(BigOr(_)),
+          feasibleBranchesExpNew.map(BigOr(_)), InsertionOrderedSet.empty)), analysisInfos)
+        Q(sJoined2, dataJoined, v)
       }
     }
   }

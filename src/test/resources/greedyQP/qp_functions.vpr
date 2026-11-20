@@ -1,0 +1,194 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+function fun01(xs: Seq[Ref]): Int
+  requires forall i: Int, j: Int :: i >= 0 && i < |xs| && j >= 0 && j < |xs| && i != j ==> xs[i] != xs[j]
+  requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
+  requires |xs| > 3
+{ xs[0].f }
+
+method test01(xs: Seq[Ref]) {
+  inhale forall i: Int, j: Int :: i >= 0 && i < |xs| && j >= 0 && j < |xs| && i != j ==> xs[i] != xs[j]
+  inhale forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
+  inhale |xs| > 3
+
+  inhale fun01(xs) == 5
+  assert fun01(xs) == 5
+}
+
+function fun02(xs: Seq[Ref]): Int
+  requires forall i: Int, j: Int :: i >= 0 && i < |xs| && j >= 0 && j < |xs| && i != j ==> xs[i] != xs[j]
+  requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
+  requires |xs| > 3
+{ xs[0].f + xs[1].f }
+
+method test02(xs: Seq[Ref]) {
+  inhale forall i: Int, j: Int :: i >= 0 && i < |xs| && j >= 0 && j < |xs| && i != j ==> xs[i] != xs[j]
+  inhale forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
+  inhale |xs| > 3
+
+  xs[0].f := 3
+  xs[1].f := 7
+  assert fun02(xs) == 10
+
+  xs[0].f := xs[1].f
+  assert fun02(xs) == 14
+
+  xs[0].f := xs[2].f
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert fun02(xs) == 14
+}
+
+function fun03(xs: Seq[Ref], i: Int): Int
+  requires |xs| > 6
+  requires forall k: Int, j: Int :: k >= 0 && k < |xs| && j >= 0 && j < |xs| && k != j ==> xs[k] != xs[j]
+  requires forall j: Int :: 0 <= j && j < 3 ==> acc(xs[j].f)
+  requires forall j: Int :: 3 <= j && j < |xs| ==> acc(xs[j].f)
+  requires 0 <= i && i < |xs|
+{ xs[i].f }
+
+method test03(xs: Seq[Ref]) {
+  inhale |xs| > 6
+  inhale forall k: Int, j: Int :: k >= 0 && k < |xs| && j >= 0 && j < |xs| && k != j ==> xs[k] != xs[j]
+  inhale forall j: Int :: 0 <= j && j < 3 ==> acc(xs[j].f)
+  inhale forall j: Int :: 3 <= j && j < |xs| ==> acc(xs[j].f)
+
+  inhale xs[0].f < xs[1].f
+  assert fun03(xs, 0) < fun03(xs, 1)
+}
+
+predicate P02(xs: Seq[Ref], n: Int) {
+     |xs| == n
+  && 3 <= n
+  && (forall k: Int, j: Int :: k >= 0 && k < |xs| && j >= 0 && j < |xs| && k != j ==> xs[k] != xs[j])
+  && (forall j: Int :: 0 <= j && j < 3 ==> acc(xs[j].f))
+  && (forall j: Int :: 3 <= j && j < n ==> acc(xs[j].f))
+}
+
+method test06a(xs: Seq[Ref], n: Int) {
+  inhale |xs| == n && 6 < n
+  inhale (forall k: Int, j: Int :: k >= 0 && k < |xs| && j >= 0 && j < |xs| && k != j ==> xs[k] != xs[j])
+  inhale (forall j: Int :: 0 <= j && j < 3 ==> acc(xs[j].f))
+  inhale (forall j: Int :: 3 <= j && j < n ==> acc(xs[j].f))
+
+  var v1: Int := xs[2].f
+
+  fold acc(P02(xs, n))
+  unfold acc(P02(xs, n))
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test06b(xs: Seq[Ref], n: Int) {
+  inhale acc(P02(xs, n))
+  inhale 6 < n
+
+  unfold acc(P02(xs, n))
+  var v1: Int := xs[2].f
+  var v2: Int := xs[1].f // 4
+  fold acc(P02(xs, n))
+
+  unfold acc(P02(xs, n))
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+function fun06(xs: Seq[Ref], n: Int, i: Int): Int
+  requires acc(P02(xs, n))
+  requires 0 < i && i < n
+{
+  unfolding acc(P02(xs, n)) in xs[i].f
+}
+
+method test05(xs: Seq[Ref], n: Int, i: Int) {
+  inhale acc(P02(xs, n))
+  inhale 6 < n
+  inhale i == 4
+
+  unfold acc(P02(xs, n))
+  var v1: Int := xs[i].f
+  fold acc(P02(xs, n))
+
+  assert v1 == fun06(xs, n, i)
+
+  unfold acc(P02(xs, n))
+  xs[i].f := 0
+  fold acc(P02(xs, n))
+
+  var v2: Int := fun06(xs, n, i)
+  assert v2 == 0
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert v2 == v1
+}
+
+field ss: Seq[Ref]
+
+predicate P01(x: Ref, n: Int) {
+     acc(x.ss)
+  && |x.ss| == n
+  && 3 <= n
+  && (forall k: Int, j: Int :: k >= 0 && k < |x.ss| && j >= 0 && j < |x.ss| && k != j ==> x.ss[k] != x.ss[j])
+  && (forall j: Int :: 0 <= j && j < 3 ==> acc(x.ss[j].f))
+  && (forall j: Int :: 3 <= j && j < n ==> acc(x.ss[j].f))
+//  && (forall j: Int :: 0 <= j && j < n - 1 ==> x.ss[j].f < x.ss[j + 1].f)
+}
+
+function fun04(x: Ref, n: Int, i: Int): Int
+  requires acc(P01(x, n))
+  requires 0 < i && i < n
+  // ensures this(..., i) < this(..., i+1)
+{
+  unfolding acc(P01(x, n)) in x.ss[i].f
+}
+
+method test04(x: Ref, n: Int) {
+  inhale acc(P01(x, n))
+  inhale 6 < n
+
+  unfold acc(P01(x, n))
+  var v1: Int := x.ss[2].f
+  var v2: Int := x.ss[4].f
+  fold acc(P01(x, n))
+
+  assert v1 == fun04(x, n, 2)
+  assert v2 == fun04(x, n, 4)
+
+  unfold acc(P01(x, n))
+  x.ss[4].f := 0
+  fold acc(P01(x, n))
+
+  assert v1 == fun04(x, n, 2)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert v2 == fun04(x, n, 4)
+}
+
+function fun07(xs: Seq[Ref], j: Int): Int
+  requires forall k: Int, i: Int :: k >= 0 && k < |xs| && i >= 0 && i < |xs| && k != i ==> xs[k] != xs[i]
+  requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
+  ensures result >= 0
+{
+    j < 0     ? fun07(xs, j + 1)
+  : |xs| <= j ? fun07(xs, j - 1)
+  :             xs[j].f * xs[j].f
+}
+
+function fun08(xs: Seq[Ref], i: Int): Int
+  requires forall k: Int, j: Int :: k >= 0 && k < |xs| && j >= 0 && j < |xs| && k != j ==> xs[k] != xs[j]
+  requires forall j: Int :: 0 <= j && j < |xs| ==> acc(xs[j].f)
+  requires 0 <= i && i < |xs|
+  ensures result > xs[i].f
+{ xs[i].f + 1 }
+
+method test07(xs: Seq[Ref]) {
+  inhale forall k: Int, j: Int :: k >= 0 && k < |xs| && j >= 0 && j < |xs| && k != j ==> xs[k] != xs[j]
+  inhale forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
+  inhale |xs| > 3
+
+  assert fun07(xs, -10) >= 0
+  assert fun08(xs, 2) > xs[2].f
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert fun07(xs, -10) > 0
+}

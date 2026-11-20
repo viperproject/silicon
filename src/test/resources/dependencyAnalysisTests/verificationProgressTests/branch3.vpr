@@ -1,0 +1,16 @@
+// Spec quality: 2/3
+// Proof quality: 1
+// Progress: 2/3
+
+method branch3() {
+    var x: Int, y: Int
+
+    if (x > 10) {
+        y := x + 1
+    } else {
+        y := 10
+        assume y > 0
+    }
+
+    assert x > 10 ==> y > 0     // PQ: 2/2
+}

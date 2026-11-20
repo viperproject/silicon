@@ -1,0 +1,61 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+define RED 0
+define WHITE 1
+define BLUE 2
+
+define ordered(a,i,j) loc(a,i).val <= loc(a,j).val
+
+define access(a) forall i: Int :: 0 <= i && i < length(a) ==> acc(loc(a,i).val)
+
+method DutchFlag(a: Array)
+  requires access(a)
+  requires forall i : Int :: 0 <= i && i < length(a) ==> loc(a,i).val == RED || loc(a,i).val == WHITE || loc(a,i).val == BLUE
+  ensures access(a)
+  ensures forall i:Int, j: Int :: 0 <= i && i < j && j < length(a) ==> ordered(a,i,j)
+{
+  var unsorted : Int := 0
+  var white : Int := 0
+  var blue : Int := length(a)
+
+  while (unsorted < blue)
+  invariant access(a)
+  invariant 0 <= white && white <= unsorted && unsorted <= blue && blue <= length(a)
+  invariant forall i : Int :: 0 <= i && i < length(a) ==> loc(a,i).val == RED || loc(a,i).val == WHITE || loc(a,i).val == BLUE
+  invariant forall i : Int :: 0<= i && i < white ==> loc(a,i).val == RED
+  invariant forall i : Int :: white<= i && i < unsorted ==> loc(a,i).val == WHITE
+  invariant forall i : Int :: blue<= i && i < length(a) ==> loc(a,i).val == BLUE
+  {
+    var tmp : Int := loc(a,unsorted).val
+    if(tmp == WHITE) {
+      unsorted := unsorted + 1
+    } elseif(tmp == RED) {
+      loc(a,unsorted).val := loc(a,white).val
+      loc(a,white).val := tmp
+      white := white + 1
+      unsorted := unsorted + 1
+    } else {
+      loc(a,unsorted).val := loc(a,blue - 1).val
+      blue := blue - 1
+      loc(a,blue).val := tmp
+    }
+  }
+}
+
+field val: Int // array slot value
+domain Array {
+  function loc(a: Array, i: Int): Ref
+  function length(a: Array): Int
+  function inverse_first(r: Ref): Array // array this slot belongs to
+  function inverse_second(r: Ref): Int // index of this array slot
+
+  axiom all_diff {
+    forall a: Array, i: Int :: {loc(a, i)}
+      inverse_first(loc(a, i)) == a && inverse_second(loc(a, i)) == i
+  }
+
+  axiom length_nonneg {
+    forall a: Array :: length(a) >= 0
+  }
+}

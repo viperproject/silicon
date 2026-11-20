@@ -1,0 +1,71 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+function countFalseX(a: Array, from: Int): Int
+  requires 0 <= from && from <= length(a);
+  requires forall z: Int :: (from <= z && z < length(a) ==> acc(loc(a,z).val));
+{
+  from == length(a) ? 0 : countFalseX(a, from+1)
+}
+
+method lemmaFrontX(a: Array, from: Int)
+  requires 0 <= from && from <= length(a);
+  requires forall z: Int :: (from <= z && z < length(a) ==> acc(loc(a,z).val));
+{
+  assert
+    countFalseX(a, from)
+      ==
+    (from == length(a) ? 0 : countFalseX(a, from+1));
+}
+
+method lemmaFrontXX(a: Array, from: Int)
+  requires 0 <= from && from <= length(a);
+  requires forall z: Int :: (from <= z && z < length(a) ==> acc(loc(a,z).val));
+{
+  assert
+    countFalseX(a, from)
+      ==
+    (from == length(a) ? 0 : countFalseX(a, from+1));
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+
+/* Original program that Peter worked on during the 2nd Viper hackathon. */
+
+function countFalse(a: Array, from: Int, to: Int): Int
+  requires 0 <= from && from <= to && to <= length(a);
+  requires forall z: Int :: (from <= z && z < to ==> acc(loc(a,z).val));
+{
+  (from == to ? 0 : (loc(a,from).val ? 0 : 1) + countFalse(a, from+1, to))
+}
+
+method lemmaFront(a: Array, from: Int, to: Int)
+  requires 0 <= from && from <= to && to <= length(a);
+  requires forall z: Int :: (from <= z && z < to ==> acc(loc(a,z).val));
+{
+  /* Previously failed */
+  assert
+    countFalse(a, from, to)
+      ==
+    (from == to ? 0 : (loc(a,from).val ? 0 : 1) + countFalse(a, from+1, to));
+}
+
+field val: Bool;
+
+domain Array {
+  function loc(a: Array, i: Int): Ref
+  function length(a: Array): Int
+  function first(r: Ref): Array
+  function second(r: Ref): Int
+
+  axiom all_diff {
+    forall a: Array, i: Int :: {loc(a, i)}
+      first(loc(a, i)) == a && second(loc(a, i)) == i
+  }
+
+  axiom length_nonneg {
+    forall a: Array :: length(a) >= 0
+  }
+}

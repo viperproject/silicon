@@ -283,11 +283,11 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     val mark = v.decider.setPathConditionMark()
     val outcomes = mutable.ListBuffer.empty[(State, RecordedPathConditions)]
     // exec2 rather than exec, which would also call the debug hook.
-    val res = executor.exec2(o.s, stmt, v)((s1, v1) => {
+    val res = executor.exec2(o.s, stmt, v, v.decider.defaultAnalysisInfos)((s1, v1) => {
       // The path conditions of each case are popped again once the case is done, so they are recorded here. An
       // outcome whose path conditions are contradictory, e.g. after adding permission the state already has, is
       // dropped.
-      if (!v1.decider.checkSmoke()) outcomes += ((s1, v1.decider.pcs.after(mark)))
+      if (!v1.decider.checkSmoke(v1.decider.defaultAnalysisInfos)) outcomes += ((s1, v1.decider.pcs.after(mark)))
       Success()
     })
     // Everything the statement declared, e.g. the snapshots of new chunks.
@@ -491,7 +491,7 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
         val mark = v.decider.setPathConditionMark()
         val outcomes = mutable.ListBuffer.empty[(State, Seq[Term], RecordedPathConditions)]
         val pvef = (e: ast.Exp) => PartialVerificationError(r => ContractNotWellformed(e, r))
-        val res = evaluator.evals(o.s, args, pvef, v)((s1, ts, _, v1) => {
+        val res = evaluator.evals(o.s, args, pvef, v, v.decider.defaultAnalysisInfos)((s1, ts, _, v1) => {
           outcomes += ((s1, ts, v1.decider.pcs.after(mark)))
           Success()
         })
@@ -671,10 +671,10 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
         else scala.util.Try(e match {
           case loc: ast.LocationAccess =>
             val pve = PartialVerificationError(r => ContractNotWellformed(loc, r))
-            evaluator.eval3(o.s, loc, pve, o.v)((_, _, _, _) => Success())
+            evaluator.eval3(o.s, loc, pve, o.v, o.v.decider.defaultAnalysisInfos)((_, _, _, _) => Success())
           case _ =>
             val pve = PartialVerificationError(r => AssertFailed(ast.Assert(e)(e.pos), r))
-            consumer.consume(o.s, e, returnSnap = false, pve, o.v)((_, _, _) => Success())
+            consumer.consume(o.s, e, returnSnap = false, pve, o.v, o.v.decider.defaultAnalysisInfos)((_, _, _) => Success())
         }).toOption
       case _ => None
     }
@@ -922,7 +922,7 @@ class SiliconDebugSession(verificationResults: List[VerificationResult],
     var evalPcs: RecordedPathConditions = null
     val pve: PartialVerificationError = PartialVerificationError(r => ContractNotWellformed(e, r))
     val beforeEval = v.decider.setPathConditionMark()
-    val verificationResult = evaluator.eval3(obl.s, e, pve, v)((newS, t, newE, newV) => {
+    val verificationResult = evaluator.eval3(obl.s, e, pve, v, v.decider.defaultAnalysisInfos)((newS, t, newE, newV) => {
       resS = newS
       resT = t
       resE = newE.get

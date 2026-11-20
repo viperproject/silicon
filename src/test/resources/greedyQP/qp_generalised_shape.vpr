@@ -1,0 +1,177 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+field g: Ref
+
+method test05(xs: Set[Ref], ys: Set[Ref], x1: Ref, x2: Ref)
+  requires forall x: Ref :: x in xs && !(x in ys) ==> acc(x.f)
+{
+  assume x1 in xs && x2 in xs
+  assume !(x1 in ys)
+  assume x1 != null && x2 != null // TODO: Should not be necessary, see Silicon issue 61
+  var a: Int := x1.f
+
+  //:: ExpectedOutput(assignment.failed:insufficient.permission)
+  a := x2.f
+}
+
+method test07(xs: Set[Ref], y1: Ref)
+  requires forall x: Ref :: x in xs ==> acc(x.f)
+  requires forall x: Ref :: x in xs && x.f != 0 ==> acc(x.g)
+  requires y1 in xs
+{
+  var a: Int := y1.f
+
+  //:: ExpectedOutput(assignment.failed:insufficient.permission)
+  var r: Ref := y1.g
+}
+
+method test12(x1: Ref)
+  requires acc(x1.g)
+  ensures forall x: Ref :: x in Set(x1) ==> acc(x.g)
+  //:: ExpectedOutput(postcondition.violated:insufficient.permission)
+  ensures acc(x1.g)
+{}
+
+method test14(x1: Ref)
+  requires acc(x1.g) && acc(x1.g.f)
+  ensures forall x: Ref :: x in Set(x1) ==> acc(x.g)
+  ensures forall x: Ref :: x in Set(x1) ==> acc(x.g.f)
+{}
+
+method test13(x1: Ref)
+  requires acc(x1.g) && acc(x1.g.f)
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  ensures forall x: Ref :: x in Set(x1) ==> acc(x.g.f)
+{}
+
+method test10(x1: Ref, x2: Ref)
+  requires acc(x1.g) && acc(x1.g.f, wildcard)
+  requires acc(x2.g) && acc(x2.g.f, wildcard)
+  ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g, wildcard)
+  //:: ExpectedOutput(not.wellformed:qp.not.injective)
+  ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g.f, wildcard)
+{}
+
+method test15(x1: Ref, x2: Ref)
+  requires acc(x1.g) && acc(x1.g.f, 2/3)
+  requires acc(x2.g) && acc(x2.g.f, 2/3)
+  ensures forall x: Ref :: x in Set(x1, x2) ==> acc(x.g, wildcard)
+  ensures x1.g != x2.g /* TODO: Should not be necessary */
+  ensures forall x: Ref :: x in Set(x1, x2) ==> acc(x.g.f, wildcard)
+{}
+
+method test11(x1: Ref, x2: Ref, x3: Ref, x4: Ref, x5: Ref, x6: Ref)
+  requires acc(x1.g) && acc(x1.g.f)
+  requires acc(x2.g) && acc(x2.g.f)
+  requires acc(x3.g) && acc(x3.g.f)
+  requires acc(x4.g) && acc(x4.g.f)
+  requires acc(x5.g) && acc(x5.g.f)
+  requires acc(x6.g) && acc(x6.g.f)
+{
+  //:: ExpectedOutput(call.failed:qp.not.injective)
+  test10(x1, x6)
+  //:: ExpectedOutput(call.failed:qp.not.injective)
+  //:: MissingOutput(call.failed:qp.not.injective, /silicon/issue/34/)
+  test10(x2, x5)
+  //:: ExpectedOutput(call.failed:qp.not.injective)
+  //:: MissingOutput(call.failed:qp.not.injective, /silicon/issue/34/)
+  test10(x3, x4)
+}
+
+method test06(xs: Set[Ref], y1: Ref, y2: Ref, y3: Ref)
+  requires forall x: Ref :: x in xs ==> acc(x.g)
+  requires forall x1: Ref, x2: Ref :: x1 in xs && x2 in xs && x1 != x2 ==> x1.g != x2.g
+  requires forall x: Ref :: x in xs ==> acc(x.g.f)
+  requires y1 in xs && y2 in xs && y3 in xs
+  requires y1 != y2
+{
+  assume y1.g != null // TODO: Should not be necessary, see Silicon issue 61
+  assume y2.g != null // TODO: Should not be necessary, see Silicon issue 61
+  var a: Int := y1.g.f
+
+  assert y1.g != y2.g
+  assert y1.g != y3.g || y2.g != y3.g
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert y1.g != y3.g && y2.g != y3.g
+}
+
+//predicate P(xs: Set[Ref], ys: Set[Ref], x1: Ref, x2: Ref) {
+//     forall x: Ref ::
+//      x in xs && !(y in ys) ==>
+//           acc(x.f)
+//        && (x.f != 0 ==>
+//                 acc(x.g)
+//              && (!(x.g in xs) ==> acc(x.g.f)))
+//}
+//
+//predicate P(xs: Set[Ref], ys: Set[Ref], x1: Ref, x2: Ref) {
+//     (forall x: Ref :: x in xs && !(y in ys) ==> acc(x.f))
+//  && (forall-refs[f] x :: x.f != 0 ==> acc(x.g))
+//  && (forall-refs[g] x :: !(x.g in xs) ==> acc(x.g.f))
+//}
+
+predicate P(xs: Set[Ref], ys: Set[Ref]) {
+     (forall x: Ref :: x in xs && !(x in ys) ==> acc(x.f))
+  && (forall x: Ref :: x in xs && !(x in ys) && x.f != 0 ==> acc(x.g))
+  && (forall x1: Ref, x2: Ref ::
+         x1 in xs && !(x1 in ys) && x1.f != 0 && !(x1.g in xs)
+      && x2 in xs && !(x2 in ys) && x2.f != 0 && !(x2.g in xs) && x1 != x2 ==> x1.g != x2.g)
+  && (forall x: Ref :: x in xs && !(x in ys) && x.f != 0 && !(x.g in xs) ==> acc(x.g.f))
+}
+
+method test01(xs: Set[Ref], ys: Set[Ref], x: Ref)
+  requires acc(P(xs, ys))
+{
+  unfold acc(P(xs, ys))
+  assume x in xs
+  assume x != null // TODO: Should not be necessary, see Silicon issue 61
+
+  //:: ExpectedOutput(assignment.failed:insufficient.permission)
+  var a: Int := x.f
+}
+
+method test02(xs: Set[Ref], ys: Set[Ref], x: Ref)
+  requires acc(P(xs, ys))
+{
+  unfold acc(P(xs, ys))
+  assume x in xs && !(x in ys)
+  assume x != null // TODO: Should not be necessary, see Silicon issue 61
+  var a: Int := x.f
+
+  //:: ExpectedOutput(assignment.failed:insufficient.permission)
+  var b: Ref := x.g
+}
+
+method test03(xs: Set[Ref], ys: Set[Ref], x: Ref)
+  requires acc(P(xs, ys))
+{
+  unfold acc(P(xs, ys))
+
+  assume x in xs && !(x in ys)
+  assume x != null // TODO: Should not be necessary, see Silicon issue 61
+  var a: Int := x.f
+  assume a != 0
+  var b: Ref := x.g
+
+  //:: ExpectedOutput(assignment.failed:insufficient.permission)
+  //:: MissingOutput(assignment.failed:receiver.null, /silicon/issue/219/)
+  a := x.g.f
+}
+
+method test04(xs: Set[Ref], ys: Set[Ref], x: Ref)
+  requires acc(P(xs, ys))
+{
+  unfold acc(P(xs, ys))
+
+  assume x in xs && !(x in ys)
+  assume x != null // TODO: Should not be necessary, see Silicon issue 61
+  var a: Int := x.f
+  assume a != 0
+  var b: Ref := x.g
+  assume !(x.g in xs)
+  assume x.g != null // TODO: Should not be necessary, see Silicon issue 61
+  a := x.g.f
+}

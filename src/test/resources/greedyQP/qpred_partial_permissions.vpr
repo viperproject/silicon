@@ -1,0 +1,67 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field f: Int
+
+predicate pred(r:Ref) {
+	acc(r.f)
+}
+
+method t1(r: Ref) returns ()
+    requires forall x:Ref :: {pred(x)} true ==> acc(pred(x), wildcard)
+{
+    t1(r)
+    t1(r)
+}
+
+method t2(r: Ref) returns ()
+    requires forall x:Ref :: {x.f} true ==> acc(x.f, wildcard)
+{
+    t2(r)
+    t2(r)
+}
+
+method t3(r: Ref) returns ()
+    requires forall x:Ref :: {pred(x)} true ==> acc(pred(x), wildcard)
+    ensures  forall x:Ref :: {pred(x)} true ==> acc(pred(x), wildcard)
+    ensures  forall x:Ref :: {pred(x)} true ==> acc(pred(x), wildcard)
+{}
+
+method t4(r: Ref) returns ()
+    requires forall x:Ref :: {x.f} true ==> acc(x.f, wildcard)
+    ensures  forall x:Ref :: {x.f} true ==> acc(x.f, wildcard)
+    ensures  forall x:Ref :: {x.f} true ==> acc(x.f, wildcard)
+{}
+
+
+
+method t5(r: Ref, xs: Seq[Ref]) returns ()
+    requires forall x:Ref :: {x.f} x in xs ==> acc(x.f, write)
+{
+    exhale forall x:Ref :: {x.f} x in xs ==> acc(x.f, 1/3)
+    assert forall x:Ref :: {x.f} x in xs ==> (perm(x.f) == (2/3))
+    assert forall x:Ref :: {x.f} x in xs ==> acc(x.f, wildcard)
+    assert forall x:Ref :: {x.f} x in xs ==> acc(x.f, wildcard)
+    exhale forall x:Ref :: {x.f} x in xs ==> acc(x.f, perm(x.f))
+    assert forall x:Ref :: {x.f} x in xs ==> (perm(x.f) == none)
+
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
+    assert forall x:Ref :: {x.f} x in xs ==> acc(x.f, wildcard)
+}
+
+method t6(r:Ref, xs:Seq[Ref]) returns ()
+requires r in xs
+{
+    inhale forall x:Ref :: {x in xs} x in xs ==> x != null
+
+	  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+    exhale forall x:Ref :: {x in xs} x in xs ==> acc(x.f, wildcard)
+}
+
+method t7(r:Ref, xs:Seq[Ref]) returns ()
+requires r in xs
+{
+    //:: ExpectedOutput(exhale.failed:insufficient.permission)
+    exhale forall x:Ref :: {pred(x)} x in xs ==> acc(pred(x), wildcard)
+}

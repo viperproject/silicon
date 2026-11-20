@@ -7,8 +7,10 @@
 package viper.silicon.supporters
 
 import viper.silicon.debugger.DebugExp
+import viper.silicon.dependencyAnalysis.AnalysisInfos
 import viper.silicon.state.terms.{Combine, First, Second, Sort, Term, Unit, sorts}
-import viper.silicon.state.{MagicWandIdentifier, State, SymbolConverter}
+import viper.silicon.state.{Heap, State, SymbolConverter}
+import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -26,11 +28,53 @@ trait SnapshotSupporter {
                          sf: (Sort, Verifier) => Term,
                          a0: ast.Exp,
                          a1: ast.Exp,
-                         v: Verifier)
+                         v: Verifier,
+                         analysisInfos: AnalysisInfos)
                         : ((Sort, Verifier) => Term, (Sort, Verifier) => Term)
+
+  /** The snapshot of an empty sequence of consumed conjuncts. */
+  def unitSnapshot: Term
+
+  /** Combines the snapshots of two consumed conjunct sequences into one; `a1` is the
+    * conjunct that produced `snap1`, `a2` the remaining conjuncts that produced `snap2`. */
+  def combineSnapshots(s: State, snap1: Term, snap2: Term, a1: ast.Exp, a2: Seq[ast.Exp], v: Verifier): Term
+
+  /** Converts the accumulated snapshot of a completed (top-level) consume into the
+    * snapshot representation handed to clients of consume/consumes. `h` is the heap
+    * the assertions were consumed from (before the consume), `as` the consumed
+    * top-level conjuncts. */
+  def finalizeConsumedSnapshot(s: State, h: Heap, snap: Term, as: Seq[ast.Exp], v: Verifier): Term
+
+  /** The constraint (if any) stating that the given snapshot is empty; assumed when a
+    * produced conjunct contributes no snapshot (e.g. pure assertions, dead branches).
+    * The snapshot is passed by name since evaluating the snapshot function may have
+    * side effects (e.g. creating fresh symbols) that implementations may want to avoid. */
+  def emptySnapshotConstraint(snap: => Term): Option[Term]
+
+  /** Adapts the snapshot function passed to a (top-level) produce to the internal
+    * snapshot representation used while producing `as`. */
+  def adaptProduceSnapshotFunction(s: State,
+                                   sf: (Sort, Verifier) => Term,
+                                   as: Seq[ast.Exp],
+                                   v: Verifier)
+                                  : (Sort, Verifier) => Term
 }
 
 class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends SnapshotSupporter {
+  def unitSnapshot: Term = Unit
+
+  def combineSnapshots(s: State, snap1: Term, snap2: Term, a1: ast.Exp, a2: Seq[ast.Exp], v: Verifier): Term = Combine(snap1, snap2)
+
+  def finalizeConsumedSnapshot(s: State, h: Heap, snap: Term, as: Seq[ast.Exp], v: Verifier): Term = snap
+
+  def emptySnapshotConstraint(snap: => Term): Option[Term] = Some(snap === Unit)
+
+  def adaptProduceSnapshotFunction(s: State,
+                                   sf: (Sort, Verifier) => Term,
+                                   as: Seq[ast.Exp],
+                                   v: Verifier)
+                                  : (Sort, Verifier) => Term = sf
+
   def optimalSnapshotSort(a: ast.Exp, program: ast.Program): (Sort, Boolean) =
     optimalSnapshotSort(a, program, Nil)
 
@@ -40,8 +84,6 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
     case p: ast.Predicate =>
       p.body.map(v.snapshotSupporter.optimalSnapshotSort(_, s.program)._1)
         .getOrElse(sorts.Snap)
-    case mw: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(mw, s.program)) =>
-      sorts.Snap
     case _: ast.MagicWand => sorts.MagicWandSnapFunction
   }
 
@@ -117,10 +159,11 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
                          sf: (Sort, Verifier) => Term,
                          a0: ast.Exp,
                          a1: ast.Exp,
-                         v: Verifier)
+                         v: Verifier,
+                         analysisInfos: AnalysisInfos)
                         : ((Sort, Verifier) => Term, (Sort, Verifier) => Term) = {
 
-    val (snap0, snap1) = createSnapshotPair(s, sf(sorts.Snap, v), a0, a1, v)
+    val (snap0, snap1) = createSnapshotPair(s, sf(sorts.Snap, v), a0, a1, v, analysisInfos)
 
     val sf0 = toSf(snap0)
     val sf1 = toSf(snap1)
@@ -128,7 +171,7 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
     (sf0, sf1)
   }
 
-  private def createSnapshotPair(@unused s: State, snap: Term, @unused a0: ast.Exp, @unused a1: ast.Exp, v: Verifier): (Term, Term) = {
+  private def createSnapshotPair(@unused s: State, snap: Term, @unused a0: ast.Exp, @unused a1: ast.Exp, v: Verifier, analysisInfos: AnalysisInfos): (Term, Term) = {
     /* [2015-11-17 Malte] If both fresh snapshot terms and first/second datatypes
      * are used, then the overall test suite verifies in 2min 10sec, whereas
      * it takes 2min 20sec when only first/second datatypes are used. Might be
@@ -160,7 +203,7 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
 
         (snap0, snap1, snap === Combine(snap0, snap1))
       }
-    v.decider.assume(snapshotEq, Option.when(Verifier.config.enableDebugging())(DebugExp.createInstance("Snapshot", true)))
+    v.decider.assume(snapshotEq, Option.when(Verifier.config.enableDebugging())(DebugExp.createInstance("Snapshot", true)), analysisInfos)
 
     (snap0, snap1)
   }

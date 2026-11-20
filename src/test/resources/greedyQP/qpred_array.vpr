@@ -1,0 +1,61 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field val: Int
+
+domain IArray {
+  function loc(a: IArray, i: Int): Ref
+  function loc_limited(a: IArray, i: Int): Ref
+  function len(a: IArray): Int
+  function first(r: Ref): IArray
+  function second(r: Ref): Int
+
+  axiom limited {
+    forall a: IArray, i: Int :: {loc(a, i)}
+      loc(a,i) == loc_limited(a,i)
+  }
+
+  axiom all_diff {
+    forall a: IArray, i: Int :: {loc(a, i)}
+      first(loc(a, i)) == a && second(loc(a, i)) == i
+  }
+
+  axiom length_nonneg {
+    forall a: IArray :: len(a) >= 0
+  }
+}
+
+predicate p(a:IArray, i:Int) {
+    acc(loc(a, i).val)
+}
+
+method t1(a: IArray, n: Int)
+  requires n > 5
+  requires forall i: Int :: i in [0..n) ==> acc(p(a, i))
+  ensures forall i: Int :: i in [4..n) ==> acc(p(a, i))
+  ensures forall i: Int :: i in [0..4) ==> acc(p(a, i))
+{}
+
+method t2(a: IArray, n: Int)
+  requires n > 5
+  requires forall i: Int :: i in [0..n) ==> acc(p(a, i))
+  ensures forall i: Int :: i in [4..n) ==> acc(p(a, i))
+  //:: ExpectedOutput(postcondition.violated:insufficient.permission)
+  ensures forall i: Int :: i in [0..5) ==> acc(p(a, i))
+{}
+
+method t3(a: IArray, n: Int)
+  requires n > 5
+  requires forall i: Int :: i in [0..n) ==> acc(p(a, i))
+  ensures forall i: Int :: i in [4..n) ==> acc(p(a, i))
+  ensures forall i: Int :: i in [0..3) ==> acc(p(a, i))
+{}
+
+method t4(a: IArray, n: Int)
+  requires n > 5
+  requires forall i: Int :: i in [0..n) ==> acc(p(a, i))
+  ensures forall i: Int :: i in [1..n) ==> acc(p(a, i))
+  ensures acc(p(a, 0))
+  //:: ExpectedOutput(postcondition.violated:insufficient.permission)
+  ensures acc(p(a, 1))
+{}

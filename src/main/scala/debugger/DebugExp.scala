@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
 
 object DebugExp {
-  private var idCounter: AtomicInteger = new AtomicInteger(0)
+  private val idCounter: AtomicInteger = new AtomicInteger(0)
 
   def createInstance(description: Option[String],
                      originalExp: Option[ast.Exp],
@@ -90,6 +90,7 @@ object DebugExp {
     new InstantiationDebugExp(idCounter.getAndIncrement(), sourceId, description,
       finalExp.map(Simplifier.simplify(_, true)), term)
 }
+
 class DebugExp(val id: Int,
                val description : Option[String],
                val originalExp : Option[ast.Exp],
@@ -221,7 +222,6 @@ class DebugExp(val id: Int,
 
 }
 
-
 class ImplicationDebugExp(id: Int,
                           description : Option[String],
                           originalExp : Option[ast.Exp],
@@ -266,7 +266,6 @@ class ImplicationDebugExp(id: Int,
     }
   }
 }
-
 
 class QuantifiedDebugExp(id: Int,
                          description : Option[String],
@@ -396,7 +395,6 @@ class DebugExpPrintConfiguration {
 }
 
 class DebugAxiom(val description: String, val terms: InsertionOrderedSet[Term]){
-
   override def toString: String = {
     s"$description:\n\t\t${terms.mkString("\n\t\t")}\n"
   }

@@ -9,6 +9,7 @@ package viper.silicon.interfaces.decider
 import viper.silicon.debugger.DebugAxiom
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.config.Version
+import viper.silicon.dependencyAnalysis.DependencyAnalysisAxiomInfo
 import viper.silver.components.StatefulComponent
 import viper.silicon.{Config, Map}
 import viper.silicon.state.terms._
@@ -32,10 +33,16 @@ trait ProverLike {
       preambleAssumptions :+= new DebugAxiom(description, terms)
     terms foreach assume
   }
+
+  /** Assumes the given axioms and, if the prover supports an analysis, records them together with their infos. */
+  def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, DependencyAnalysisAxiomInfo)], description: String): Unit =
+    assumeAxioms(axioms.map(_._1), description)
+
   def setOption(name: String, value: String): String
   def assume(term: Term): Unit
   def declare(decl: Decl): Unit
-  def comment(content: String): Unit
+  /* By-name, such that callers' (potentially expensive) comment strings are only built if they are needed */
+  def comment(content: => String): Unit
   def saturate(timeout: Int, comment: String): Unit
   def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit
 }

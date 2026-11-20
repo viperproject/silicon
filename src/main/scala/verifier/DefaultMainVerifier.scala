@@ -24,12 +24,15 @@ import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
+import viper.silicon.rules.maskHeapSupporter
 import viper.silicon.state._
+import viper.silicon.state.chunks.MagicWandIdentifier
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
-import viper.silicon.supporters.{AnnotationSupporter, DefaultDomainsContributor, DefaultMapsContributor, DefaultMultisetsContributor, DefaultPredicateVerificationUnitProvider, DefaultSequencesContributor, DefaultSetsContributor, MagicWandSnapFunctionsContributor, PredicateData}
 import viper.silicon.supporters.qps._
 import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
+import viper.silicon.supporters._
 import viper.silicon.utils.Counter
+import viper.silver.ast.utility.QuantifiedPermissions.collectInDependencies
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.{BackendType, Member}
 import viper.silver.cfg.silver.SilverCfg
@@ -46,6 +49,7 @@ trait MainVerifier extends Verifier {
   def nextUniqueVerifierId(): String
   def verificationPoolManager: VerificationPoolManager
   def rootSymbExLogger: SymbExLogger[_ <: MemberSymbExLogger]
+  def createWorkerVerifier(): WorkerVerifier
 
   /** The debug session created by the last verification run, if debugging is enabled and the verification
     * produced a failure that can be debugged. Consumed by Silicon's own CLI and by ViperServer. */
@@ -75,6 +79,8 @@ class DefaultMainVerifier(config: Config,
     symbExLog = rootSymbExLogger.openMemberScope(member, decider.pcs)
   }
 
+  def createWorkerVerifier(): WorkerVerifier = new WorkerVerifier(this, nextUniqueVerifierId(), reporter, debugMode)
+
   protected val preambleReader = new SMTLib2PreambleReader
 
   protected val sequencesContributor = new DefaultSequencesContributor(domainTranslator, config)
@@ -84,20 +90,23 @@ class DefaultMainVerifier(config: Config,
   protected val domainsContributor = new DefaultDomainsContributor(symbolConverter, domainTranslator)
   protected val fieldValueFunctionsContributor = new DefaultFieldValueFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
   protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter, snapshotSupporter)
+  protected val heapFunctionsContributor = new MaskHeapFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
   protected val predicateAndWandSnapFunctionsContributor = new DefaultPredicateAndWandSnapFunctionsContributor(preambleReader, termConverter, predSnapGenerator, config)
   protected val magicWandSnapFunctionsContributor = new MagicWandSnapFunctionsContributor(preambleReader)
 
-  private val _verificationPoolManager: VerificationPoolManager = new VerificationPoolManager(this)
+  protected lazy val _verificationPoolManager: VerificationPoolManager = new DefaultVerificationPoolManager(this)
   def verificationPoolManager: VerificationPoolManager = _verificationPoolManager
 
-  private val statefulSubcomponents = List[StatefulComponent](
+  private lazy val statefulSubcomponents = List[StatefulComponent](
     uniqueIdCounter,
     sequencesContributor, setsContributor, multisetsContributor, mapsContributor, domainsContributor,
     fieldValueFunctionsContributor,
     predSnapGenerator, predicateAndWandSnapFunctionsContributor,
+    heapFunctionsContributor,
+    maskHeapSupporter,
     magicWandSnapFunctionsContributor,
     functionsSupporter, predicateSupporter,
-    _verificationPoolManager,
+    verificationPoolManager,
     MultiRunRecorders /* In lieu of a better place, include MultiRunRecorders singleton here */
   )
 
@@ -134,7 +143,11 @@ class DefaultMainVerifier(config: Config,
 
   /* Verifier orchestration */
 
-  private object allProvers extends ProverLike {
+  def allProvers: AllProvers = DefaultAllProvers
+
+  protected object DefaultAllProvers extends AllProvers
+
+  trait AllProvers extends ProverLike {
     def emit(content: String): Unit = {
       decider.prover.emit(content)
       _verificationPoolManager.pooledVerifiers.emit(content)
@@ -155,9 +168,10 @@ class DefaultMainVerifier(config: Config,
       _verificationPoolManager.pooledVerifiers.declare(decl)
     }
 
-    def comment(content: String): Unit = {
-      decider.prover.comment(content)
-      _verificationPoolManager.pooledVerifiers.comment(content)
+    def comment(content: => String): Unit = {
+      lazy val c = content
+      decider.prover.comment(c)
+      _verificationPoolManager.pooledVerifiers.comment(c)
     }
 
     def saturate(timeout: Int, comment: String): Unit = {
@@ -182,6 +196,13 @@ class DefaultMainVerifier(config: Config,
   }
 
   /* Program verification */
+
+  /**
+   * Verifies `member` using the verifier `v` by invoking `doVerify(v, member)`. This is a hook for subclasses that need
+   * to set up and tear down per-member state around the verification of each member.
+   */
+  def verifyMember[V <: Verifier, M <: ast.Member](v: V, member: M)(doVerify: (V, M) => Seq[VerificationResult]): Seq[VerificationResult] =
+    doVerify(v, member)
 
   def verify(originalProgram: ast.Program, cfgs: Seq[SilverCfg], inputFile: Option[String]): List[VerificationResult] = {
     /** Trigger computation is currently not thread-safe; hence, all triggers are computed
@@ -246,8 +267,9 @@ class DefaultMainVerifier(config: Config,
       val startTime = System.currentTimeMillis()
       var results: Seq[VerificationResult] = null
       try {
-        results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
-          .flatMap(extractAllVerificationResults)
+        results = verifyMember(this, function)((v1, f) =>
+          v1.functionsSupporter.verify(createInitialState(f, program, functionData, predicateData), f)
+            .flatMap(extractAllVerificationResults))
       } catch {
         case e : Throwable =>
           logger error s"An exception was thrown while verifying function `${function.name}`."
@@ -263,8 +285,9 @@ class DefaultMainVerifier(config: Config,
       val startTime = System.currentTimeMillis()
       var results: Seq[VerificationResult] = null
       try {
-        results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
-          .flatMap(extractAllVerificationResults)
+        results = verifyMember(this, predicate)((v1, p) =>
+          v1.predicateSupporter.verify(createInitialState(p, program, functionData, predicateData), p)
+            .flatMap(extractAllVerificationResults))
       } catch {
         case e: Throwable =>
           logger error s"An exception was thrown while verifying predicate `${predicate.name}`."
@@ -298,8 +321,8 @@ class DefaultMainVerifier(config: Config,
           val startTime = System.currentTimeMillis()
           var results: Seq[VerificationResult] = null
           try {
-            results = v.methodSupporter.verify(s, method)
-              .flatMap(extractAllVerificationResults)
+            results = verifyMember(v, method)((v1, m) =>
+              v1.methodSupporter.verify(s, m).flatMap(extractAllVerificationResults))
           } catch {
             case e: Throwable =>
               logger error s"An exception was thrown while verifying method `${method.name}`."
@@ -346,9 +369,9 @@ class DefaultMainVerifier(config: Config,
     }
     reporter report VerificationTerminationMessage()
 
-    val verificationResults = (   functionVerificationResults
-     ++ predicateVerificationResults
-     ++ methodVerificationResults)
+    val verificationResults = (functionVerificationResults
+      ++ predicateVerificationResults
+      ++ methodVerificationResults)
 
     if (config.enableDebugging()) {
       // Rather than blocking on user input here, we publish a debug session that the CLI (see
@@ -364,8 +387,12 @@ class DefaultMainVerifier(config: Config,
         Option.when(hasFrontendState)(FrontendStateCache.translator), this, config))
     }
 
+    afterVerification(verificationResults, program, inputFile)
+
     verificationResults
   }
+
+  def afterVerification(verificationResults: List[VerificationResult], program: ast.Program, inputFile: Option[String]): Unit = {}
 
     private def createInitialState(member: ast.Member,
                                  program: ast.Program,
@@ -386,6 +413,11 @@ class DefaultMainVerifier(config: Config,
           reporter report AnnotationWarning(s"Member ${member.name} has exhaleMode annotation that may interfere with counterexample generation.")
         false
       case None => Verifier.config.exhaleMode == ExhaleMode.MoreComplete
+    }
+    val mceQP = AnnotationSupporter.getExhaleModeQP(member, reporter) match {
+      case Some(ExhaleMode.MoreComplete) => true
+      case Some(ExhaleMode.Greedy) | Some(ExhaleMode.MoreCompleteOnDemand) => false
+      case None => Verifier.config.exhaleModeQP == ExhaleMode.MoreComplete
     }
     val moreJoinsAnnotated = AnnotationSupporter.getJoinMode(member, reporter)
     val moreJoins = if (member.isInstanceOf[ast.Method]) {
@@ -426,6 +458,7 @@ class DefaultMainVerifier(config: Config,
     } else InsertionOrderedSet.empty
 
     State(program = program,
+          currentBlock = None,
           functionData = functionData,
           predicateData = predicateData,
           qpFields = quantifiedFields,
@@ -437,6 +470,7 @@ class DefaultMainVerifier(config: Config,
           currentMember = Some(member),
           heapDependentTriggers = resourceTriggers,
           moreCompleteExhale = mce,
+          moreCompleteExhaleQP = mceQP,
           moreJoins = moreJoins)
   }
 
@@ -451,6 +485,7 @@ class DefaultMainVerifier(config: Config,
     State(
       program = program,
       currentMember = None,
+      currentBlock = None,
       functionData = functionData,
       predicateData = predicateData,
       qpFields = quantifiedFields,
@@ -459,6 +494,7 @@ class DefaultMainVerifier(config: Config,
       predicateSnapMap = predSnapGenerator.snapMap,
       predicateFormalVarMap = predSnapGenerator.formalVarMap,
       moreCompleteExhale = Verifier.config.exhaleMode == ExhaleMode.MoreComplete,
+      moreCompleteExhaleQP = Verifier.config.exhaleModeQP == ExhaleMode.MoreComplete,
       moreJoins = Verifier.config.moreJoins())
   }
 
@@ -504,6 +540,7 @@ class DefaultMainVerifier(config: Config,
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,
@@ -517,6 +554,7 @@ class DefaultMainVerifier(config: Config,
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,
@@ -530,6 +568,7 @@ class DefaultMainVerifier(config: Config,
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,
@@ -548,6 +587,7 @@ class DefaultMainVerifier(config: Config,
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,
@@ -561,6 +601,7 @@ class DefaultMainVerifier(config: Config,
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,

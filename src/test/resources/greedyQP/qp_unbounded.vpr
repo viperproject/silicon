@@ -1,0 +1,53 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+/* TODO: The NonNull stuff should not be necessary, see Silicon issue 61 */
+domain NonNull {
+  function NN(x: Ref): Bool
+
+  axiom non_null {
+    forall x: Ref :: NN(x) <==> x != null
+  }
+}
+
+field f: Int
+
+method test01(y: Ref) {
+  inhale forall x: Ref :: true ==> acc(x.f)
+  inhale forall x: Ref :: true ==> NN(x) && x.f == 0 // Q2
+
+//  assert NN(y)
+//  assert y.f == 0
+//
+//  y.f := 1
+
+  var z: Ref
+  z := new()
+  assert NN(z)    // TODO: Triggers Q2, which (currently) isn't triggered when
+  assert z.f == 0 //       asserting z.f == 0. See unbounded.smt2 (in Silicon's
+                  //       repo in docs/logs/).
+
+  // false can be proven because of the inclusion of null in the range of the above quantifiers
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+
+method test02(y: Ref) {
+  inhale forall x: Ref :: x!=null ==> acc(x.f)
+  inhale forall x: Ref :: x!=null ==> NN(x) && x.f == 0 // Q2
+
+//  assert NN(y)
+//  assert y.f == 0
+//
+//  y.f := 1
+
+  var z: Ref
+  z := new()
+  assert NN(z)    // TODO: Triggers Q2, which (currently) isn't triggered when
+  assert z.f == 0 //       asserting z.f == 0. See unbounded.smt2 (in Silicon's
+                  //       repo in docs/logs/).
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}

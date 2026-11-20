@@ -15,9 +15,9 @@ object DebugRenderer {
   def renderObligation(m: ObligationModel): String =
     "\n" +
       renderErrorInfo(m.originalError) +
-      renderSection("Branch Conditions", m.branchConditions) +
+      renderSection("Branch Conditions", m.branchConditions, emptyText = Some("(none)")) +
       renderSection("Store", m.store) +
-      m.heaps.map(h => renderSection(h.title, h.chunks)).mkString +
+      m.heaps.map(h => renderHeap(h)).mkString +
       renderAxioms(m.axioms) +
       renderDeclarations(m.declarations) +
       renderAssumptions(m) +
@@ -30,9 +30,26 @@ object DebugRenderer {
       e.memberName.map(n => s" (inside $n)").getOrElse("") +
       s"\n\t\t${e.message}\n\n"
 
-  /** A flat section, whose entries are printed one per line: branch conditions, the store, a heap. */
-  private def renderSection(title: String, nodes: Seq[DebugNode]): String =
-    s"$title:\n\t\t${nodes.map(n => n.handle.map(h => s"[$h] ").getOrElse("") + n.label + renderOrigin(n)).mkString("\n\t\t")}\n\n"
+  /** A flat section, whose entries are printed one per line: branch conditions, the store. */
+  private def renderSection(title: String, nodes: Seq[DebugNode], emptyText: Option[String] = None): String = {
+    val entries = if (nodes.isEmpty && emptyText.isDefined) emptyText.toSeq else nodes.map(n => n.label + renderOrigin(n))
+    s"$title:\n\t\t${entries.mkString("\n\t\t")}\n\n"
+  }
+
+  /** A heap with its chunks one per line, followed by the intermediate heaps recorded while building it. */
+  private def renderHeap(h: DebugHeapModel, depth: Int = 0): String = {
+    val indent = "\t" * depth
+    val chunks =
+      if (!h.showChunks) ""
+      else if (h.chunks.isEmpty) s"$indent\t\t(Empty heap)\n"
+      else h.chunks.map(c => s"$indent\t\t${renderHandle(c)}${c.label}${renderOrigin(c)}\n").mkString
+    s"$indent${h.title}:\n" +
+      h.details.map(d => s"$indent\t$d\n").mkString +
+      chunks + "\n" +
+      h.intermediateHeaps.map(ih => renderHeap(ih, depth + 1)).mkString
+  }
+
+  private def renderHandle(n: DebugNode): String = n.handle.map(h => s"[$h] ").getOrElse("")
 
   /** Marks what the user changed with debugger commands, so that it can be told apart from what comes from the program. */
   private def renderOrigin(n: DebugNode, verb: String = "added"): String =

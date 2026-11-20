@@ -7,7 +7,7 @@
 package viper.silicon.debugger
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.interfaces.state.Chunk
+import viper.silicon.state.chunks.Chunk
 import viper.silicon.state.State
 import viper.silicon.state.terms.Term
 import viper.silicon.verifier.Verifier

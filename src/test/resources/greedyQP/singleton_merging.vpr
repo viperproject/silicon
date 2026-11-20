@@ -1,0 +1,45 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Tests that singleton quantified chunks for provably equal receivers are merged during
+// state consolidation, and that merged chunks remain usable afterwards.
+
+field f: Int
+
+// Two singleton QP chunks for provably-equal (but syntactically different) receivers.
+method halves(x: Ref, y: Ref)
+  requires forall z: Ref :: z == x ==> acc(z.f, 1/2)
+  requires forall z: Ref :: z == y ==> acc(z.f, 1/2)
+  requires x == y
+{
+  x.f := 5
+  assert y.f == 5
+  assert forall z: Ref :: z == x ==> acc(z.f, write)
+}
+
+// A singleton chunk merged with a genuinely quantified chunk.
+method mixed(s: Set[Ref], x: Ref)
+  requires forall z: Ref :: z in s ==> acc(z.f, 1/2)
+  requires forall z: Ref :: z == x ==> acc(z.f, 1/2)
+  requires x in s
+{
+  assert acc(x.f, write)
+  x.f := 3
+  assert x.f == 3
+}
+
+method client(a: Ref, b: Ref)
+  requires acc(a.f, 1/2) && acc(b.f, 1/2)
+  requires a == b
+{
+  assert forall z: Ref :: z == a ==> acc(z.f, write)
+}
+
+// A quantified exhale followed by a singleton exhale of an already-consumed location
+// must fail: permissions may not be double-counted across conjuncts.
+method doubleExhale(x1: Ref)
+  requires acc(x1.f)
+  ensures forall x: Ref :: x in Set(x1) ==> acc(x.f)
+  //:: ExpectedOutput(postcondition.violated:insufficient.permission)
+  ensures acc(x1.f)
+{}

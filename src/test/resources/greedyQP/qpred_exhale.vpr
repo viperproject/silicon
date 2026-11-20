@@ -1,0 +1,110 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+predicate pred1(a:Ref) {
+	acc(a.f)
+}
+
+predicate pred2(a:Ref, p:Perm) {
+	p >= none && acc(a.f, p)
+}
+
+method test01(x: Ref)
+  requires acc(pred1(x))
+  ensures acc(pred1(x))
+{
+  unfold pred1(x)
+  assert x != null
+  fold pred1(x)
+}
+
+ method test01_qp(xs: Seq[Ref], y: Ref)
+   requires y in xs
+   requires forall x: Ref :: x in xs ==> acc(pred1(x))
+   ensures  forall x: Ref :: x in xs ==> acc(pred1(x))
+ {
+   unfold pred1(y)
+   assert y != null
+   fold pred1(y)
+ }
+
+  method test02_qp(xs: Seq[Ref], y: Ref)
+   requires y in xs
+   requires forall x: Ref :: x in xs ==> acc(pred1(x))
+   ensures  forall x: Ref :: x in xs && x!=y ==> acc(pred1(x))
+   ensures  acc(pred1(y))
+ {
+   unfold pred1(y)
+   assert y != null
+   fold pred1(y)
+ }
+
+ method test03_qp(xs: Seq[Ref], y: Ref)
+   requires y in xs
+   requires forall x: Ref :: x in xs ==> acc(pred1(x))
+ {
+   unfold pred1(y)
+   assert y != null
+   fold pred1(y)
+   exhale acc(pred1(y))
+
+   //:: ExpectedOutput(exhale.failed:insufficient.permission)
+   exhale forall x: Ref :: x in xs ==> acc(pred1(x))
+ }
+
+  method test04_qp(xs: Seq[Ref], y: Ref)
+   requires y in xs
+   requires forall x: Ref :: x in xs ==> acc(pred1(x))
+ {
+   unfold pred1(y)
+   assert y != null
+   fold pred1(y)
+   exhale acc(pred1(y))
+
+   //:: ExpectedOutput(unfold.failed:insufficient.permission)
+   unfold pred1(y)
+ }
+
+   method test05_qp(xs: Seq[Ref], y: Ref)
+   requires y in xs
+   requires y != null
+   requires forall x: Ref :: x in xs ==> acc(pred1(x))
+ {
+   unfold pred1(y)
+   y.f := 1
+   fold pred1(y)
+   unfold pred1(y)
+   assert y.f == 1
+   fold pred1(y)
+   exhale acc(pred1(y))
+
+   //:: ExpectedOutput(unfold.failed:insufficient.permission)
+   unfold pred1(y)
+ }
+ 
+   method test06_qp(xs: Seq[Ref], y: Ref, z:Ref)
+   requires y in xs
+   requires forall x: Ref :: x in xs ==> acc(pred1(x))
+ {
+   unfold pred1(y)
+   //:: ExpectedOutput(unfold.failed:insufficient.permission)
+   unfold pred1(z)
+ }
+ 
+ 	//retain unfolded knowledge
+   method test07_qp(xs: Seq[Ref], y: Ref)
+   requires y in xs
+   requires y != null
+   requires forall x: Ref :: x in xs ==> acc(pred1(x))
+ {
+   unfold pred1(y)
+   y.f := 1
+   assert y.f == 1
+   fold pred1(y)
+
+
+   unfold pred1(y)
+   assert y.f == 1
+ }

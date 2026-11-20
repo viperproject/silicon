@@ -6,10 +6,11 @@
 
 package viper.silicon.debugger
 
-import viper.silicon.interfaces.state.Chunk
+import viper.silicon.state.State.TemporaryRecord
 import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.state.terms.True
-import viper.silicon.state.{BasicChunk, Heap, MagicWandChunk, QuantifiedFieldChunk, QuantifiedMagicWandChunk, QuantifiedPredicateChunk}
+import viper.silicon.state.terms.{Term, True}
+import viper.silicon.state._
+import viper.silicon.state.chunks._
 import viper.silver.ast
 import viper.silver.ast.utility.Simplifier
 
@@ -88,13 +89,49 @@ object ObligationModelBuilder {
         handle = Option.when(removable)(s"h${idx + 1}"))
     }
 
+    def branchCondDetails(bcs: Seq[(ast.Exp, Term)]): Seq[String] =
+      if (bcs.isEmpty) Seq.empty else Seq("New branch conditions: " + bcs.map(_._1.toString).mkString(", "))
+
+    def intermediateHeapModel(label: String, r: IntermediateHeapRecord): DebugHeapModel =
+      DebugHeapModel(s"Intermediate heap $label", label, chunkNodes(r.heap),
+        details = r.intermediateCause.map(c => s"Cause: ${causeToString(c)}").toSeq ++ branchCondDetails(r.newBranchConds))
+
+    def debugHeapModel(label: String, r: HeapRecord): DebugHeapModel =
+      DebugHeapModel(s"Heap $label", label, chunkNodes(r.heap),
+        details = Seq(s"Parent: ${r.parentLabel}", s"Cause: ${causeToString(r.cause)}") ++ branchCondDetails(r.branchConds),
+        intermediateHeaps = r.intermediateHeaps.toSeq.map { case (l, ir) => intermediateHeapModel(l, ir) })
+
+    def temporaryHeapModel(tempRecord: Option[TemporaryRecord]): Option[DebugHeapModel] =
+      tempRecord.map { case (label, cause, _, heaps) =>
+        DebugHeapModel("Current intermediate heaps", "temporary", Seq.empty,
+          details = Seq(s"Parent: $label", s"Cause: ${causeToString(cause)}"),
+          intermediateHeaps = heaps.toSeq.map { case (l, ir) => intermediateHeapModel(l, ir) },
+          showChunks = false)
+      }
+
     val current = chunkNodes(obl.s.h, obl.userChanges.chunks, removable = true)
-    if (obl.printConfig.printOldHeaps)
-      DebugHeapModel("Current Heap", "current", current) +:
-        obl.s.oldHeaps.toSeq.map { case (k, v) => DebugHeapModel(s"Heap $k", k, chunkNodes(v)) }
-    else
+    if (obl.printConfig.printOldHeaps) {
+      val currLabel = obl.v.getDebugHeapLabel(obl.s).map(" (" + _ + ")").getOrElse("")
+      (DebugHeapModel(s"Current Heap$currLabel", "current", current) +:
+        obl.s.debugOldHeaps.toSeq.map { case (label, r) => debugHeapModel(label, r) }) ++
+        temporaryHeapModel(obl.s.temporaryHeapRecord)
+    } else
       Seq(DebugHeapModel("Heap", "current", current))
   }
+
+  private def causeToString(cause: HeapCause): String = cause match {
+    case InhalePre => "inhale precondition"
+    case ExhalePost => "exhale postcondition"
+    case InhaleInv => "inhale loop invariants"
+    case ExhaleInv => "exhale loop invariants"
+    case StateMerge => "merge framed heap or branches"
+    case CreateLabel => "heap label"
+    case StateConsolidation => "state consolidation"
+    case ExecStmt(stmt) => s"\"$stmt\""
+    case EvalExp(exp) => s"\"$exp\""
+  }
+
+  private def simplify[N <: ast.Node](n: N): N = Simplifier.simplify(n, assumeWelldefinedness = true)
 
   private def branchConditionNodes(obl: ProofObligation): Seq[DebugNode] = {
     // Paired with their indices before filtering, which is what UserChanges.branchConditions refers to.
@@ -102,7 +139,7 @@ object ObligationModelBuilder {
       if (obl.printConfig.printInternalTermRepresentation)
         obl.branchConditions.zipWithIndex.filter(bc => bc._1 != True).map(bc => bc._1.toString -> bc._2)
       else
-        obl.branchConditionExps.map(bc => Simplifier.simplify(bc._2, true)).zipWithIndex
+        obl.branchConditionExps.map(bc => simplify(bc._2)).zipWithIndex
           .filter(bc => bc._1 != ast.TrueLit()()).map(bc => bc._1.toString -> bc._2)
     labels.zipWithIndex.map { case ((l, bcIdx), idx) =>
       DebugNode(syntheticId(BranchSection, idx), DebugNodeKind.BranchCondition, l,
@@ -160,51 +197,51 @@ object ObligationModelBuilder {
     val res = c match {
       case bc: BasicChunk =>
         val snapExpString = bc.snapExp match {
-          case Some(e) => s" -> ${Simplifier.simplify(e, true)}"
+          case Some(e) => s" -> ${simplify(e)}"
           case _ => ""
         }
         bc.resourceID match {
-          case FieldID => s"acc(${bc.argsExp.get.head}.${bc.id}, ${Simplifier.simplify(bc.permExp.get, true)})$snapExpString"
-          case PredicateID => s"acc(${bc.id}(${bc.argsExp.map(_.mkString(", ")).getOrElse("")}), ${Simplifier.simplify(bc.permExp.get, true)})"
+          case FieldID => s"acc(${bc.argsExp.get.head}.${bc.id}, ${simplify(bc.permExp.get)})$snapExpString"
+          case PredicateID => s"acc(${bc.id}(${bc.argsExp.map(_.mkString(", ")).getOrElse("")}), ${simplify(bc.permExp.get)})"
         }
       case mwc: MagicWandChunk =>
         val shape = mwc.id.ghostFreeWand
         val expBindings = mwc.bindings.map(b => b._1 -> b._2._2.get)
         val instantiated = shape.replace(expBindings)
-        s"acc(${instantiated.toString}, ${Simplifier.simplify(mwc.permExp.get, true)})"
+        s"acc(${instantiated.toString}, ${simplify(mwc.permExp.get)})"
       case qfc: QuantifiedFieldChunk =>
         if (qfc.singletonRcvrExp.isDefined) {
-          val receiver = Simplifier.simplify(qfc.singletonRcvrExp.get, true)
-          val perm = Simplifier.simplify(qfc.permExp.get.replace(qfc.quantifiedVarExps.get.head.localVar, receiver), true)
+          val receiver = simplify(qfc.singletonRcvrExp.head)
+          val perm = simplify(qfc.permExp.get.replace(qfc.quantifiedVarExps.get.head.localVar, receiver))
           s"acc(${receiver}.${qfc.id}, ${perm})"
         } else {
           val varsString = qfc.quantifiedVarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val qvarsString = "forall " + qfc.invs.get.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val varsEqualString = qfc.quantifiedVarExps.get.zip(qfc.invs.get.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
-          s"forall ${varsString} :: ${qvarsString} :: ${varsEqualString} ==> acc(${qfc.quantifiedVarExps.get.head.name}.${qfc.id}, ${Simplifier.simplify(qfc.permExp.get, true)})"
+          val qvarsString = "forall " + qfc.invs.head.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
+          val varsEqualString = qfc.quantifiedVarExps.get.zip(qfc.invs.head.invertibleExps.get).map(v => s"${v._1.name} == ${simplify(v._2)}").mkString(" && ")
+          s"forall ${varsString} :: ${qvarsString} :: ${varsEqualString} ==> acc(${qfc.quantifiedVarExps.get.head.name}.${qfc.id}, ${simplify(qfc.permExp.get)})"
         }
       case qpc: QuantifiedPredicateChunk =>
         if (qpc.singletonArgExps.isDefined) {
-          s"acc(${qpc.id}(${qpc.singletonArgExps.get.map(e => Simplifier.simplify(e, true)).mkString(", ")}), ${Simplifier.simplify(qpc.permExp.get, true)})"
+          s"acc(${qpc.id}(${qpc.singletonArgExps.head.map(e => simplify(e)).mkString(", ")}), ${simplify(qpc.permExp.get)})"
         } else {
           val varsString = qpc.quantifiedVarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val qvarsString = "forall " + qpc.invs.get.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val varsEqualString = qpc.quantifiedVarExps.get.zip(qpc.invs.get.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
-          s"forall ${varsString} :: ${qvarsString} :: ${varsEqualString} ==> acc(${qpc.id}(${qpc.quantifiedVarExps.get.map(_.name).mkString(", ")}), ${Simplifier.simplify(qpc.permExp.get, true)})"
+          val qvarsString = "forall " + qpc.invs.head.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
+          val varsEqualString = qpc.quantifiedVarExps.get.zip(qpc.invs.head.invertibleExps.get).map(v => s"${v._1.name} == ${simplify(v._2)}").mkString(" && ")
+          s"forall ${varsString} :: ${qvarsString} :: ${varsEqualString} ==> acc(${qpc.id}(${qpc.quantifiedVarExps.get.map(_.name).mkString(", ")}), ${simplify(qpc.permExp.get)})"
         }
       case qwc: QuantifiedMagicWandChunk =>
         val shape = qwc.id.ghostFreeWand
         if (qwc.singletonArgExps.isDefined) {
-          val instantiated = shape.replace(shape.subexpressionsToEvaluate(s.program).zip(qwc.singletonArgExps.get).map(e => e._1 -> Simplifier.simplify(e._2, true)).toMap)
-          val permReplaced = Simplifier.simplify(qwc.permExp.get.replace(qwc.quantifiedVarExps.get.zip(qwc.singletonArgExps.get).map(e => e._1.localVar -> e._2).toMap), true)
+          val instantiated = shape.replace(shape.subexpressionsToEvaluate(s.program).zip(qwc.singletonArgExps.head).map(e => e._1 -> simplify(e._2)).toMap)
+          val permReplaced = simplify(qwc.permExp.get.replace(qwc.quantifiedVarExps.get.zip(qwc.singletonArgExps.head).map(e => e._1.localVar -> e._2).toMap))
 
           s"acc(${instantiated.toString}, ${permReplaced})"
         } else{
           val varsString = qwc.quantifiedVarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val qvarsString = "forall " + qwc.invs.get.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val varsEqualString = qwc.quantifiedVarExps.get.zip(qwc.invs.get.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
-          val instantiated = shape.replace(shape.subexpressionsToEvaluate(s.program).zip(qwc.invs.get.invertibleExps.get).map(e => e._1 -> Simplifier.simplify(e._2, true)).toMap)
-          s"forall ${varsString} :: ${qvarsString} :: ${varsEqualString} ==> acc(${instantiated}, ${Simplifier.simplify(qwc.permExp.get, true)})"
+          val qvarsString = "forall " + qwc.invs.head.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
+          val varsEqualString = qwc.quantifiedVarExps.get.zip(qwc.invs.head.invertibleExps.get).map(v => s"${v._1.name} == ${simplify(v._2)}").mkString(" && ")
+          val instantiated = shape.replace(shape.subexpressionsToEvaluate(s.program).zip(qwc.invs.head.invertibleExps.get).map(e => e._1 -> simplify(e._2)).toMap)
+          s"forall ${varsString} :: ${qvarsString} :: ${varsEqualString} ==> acc(${instantiated}, ${simplify(qwc.permExp.get)})"
         }
       case other => other.toString
     }

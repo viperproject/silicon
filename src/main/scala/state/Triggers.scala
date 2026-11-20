@@ -101,6 +101,7 @@ class TriggerGenerator
          | _: MapDomain
          | _: MapRange
          | _: MapUpdate
+         | _: MWSFLookup
          | _: SnapshotTerm
          | _: Domain
          | _: Lookup

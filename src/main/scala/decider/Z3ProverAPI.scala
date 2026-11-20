@@ -8,7 +8,8 @@ package viper.silicon.decider
 
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
-import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
+import viper.silicon.interfaces.decider._
+import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms.{App, Decl, Fun, FunctionDecl, Implies, MacroDecl, Not, Quantification, Sort, SortDecl, SortWrapperDecl, Term, TriggerGenerator, Var, sorts}
 import viper.silicon.{Config, Map}
@@ -20,8 +21,6 @@ import java.nio.file.Path
 import scala.collection.mutable
 import com.microsoft.z3._
 import com.microsoft.z3.enumerations.Z3_param_kind
-import viper.silicon.reporting.ExternalToolError
-import viper.silicon.reporting.ProverInteractionFailed
 
 import scala.jdk.CollectionConverters.MapHasAsJava
 import scala.util.Random
@@ -29,8 +28,8 @@ import scala.util.Random
 
 object Z3ProverAPI {
   val name = "Z3-API"
-  val minVersion = Version("4.8.7.0")
-  val maxVersion = Some(Version("4.12.1.0")) /* X.Y.Z if that is the *last supported* version */
+  val minVersion = Version("4.16.0.0")
+  val maxVersion = Some(Version("4.16.0.0")) /* X.Y.Z if that is the *last supported* version */
 
   // these are not actually used, but since there is a lot of code that expects command line parameters and a
   // config file, we just supply this information here (whose contents will then be ignored)
@@ -89,7 +88,7 @@ class Z3ProverAPI(uniqueId: String,
   var preambleAssumes = mutable.LinkedHashSet[BoolExpr]()
   val emittedSorts = mutable.LinkedHashSet[com.microsoft.z3.Sort]()
   val emittedSortSymbols = mutable.LinkedHashSet[Symbol]()
-  val emittedFuncs = mutable.LinkedHashSet[FuncDecl]()
+  val emittedFuncs = mutable.LinkedHashSet[FuncDecl[_]]()
   val emittedFuncSymbols = mutable.Queue[Symbol]()
   var allDecls: Seq[Decl] = Seq()
 
@@ -318,15 +317,19 @@ class Z3ProverAPI(uniqueId: String,
   protected def assertUsingPushPop(goal: Term, timeout: Option[Int]): (Boolean, Long) = {
     endPreamblePhase()
     push()
-    setTimeout(timeout)
+    val (res, startTime, endTime) = try {
+      setTimeout(timeout)
 
-    val negatedGoal = ctx.mkNot(termConverter.convert(goal).asInstanceOf[BoolExpr])
-    prover.add(negatedGoal)
-    val startTime = System.currentTimeMillis()
-    val res = prover.check()
-    val endTime = System.currentTimeMillis()
+      val negatedGoal = ctx.mkNot(termConverter.convert(goal).asInstanceOf[BoolExpr])
+      prover.add(negatedGoal)
+      val startTime = System.currentTimeMillis()
+      val res = prover.check()
+      (res, startTime, System.currentTimeMillis())
+    } finally {
+      pop()
+    }
+
     val result = res == Status.UNSATISFIABLE
-    pop()
 
     if (!result) {
       retrieveAndSaveModel()
@@ -379,7 +382,7 @@ class Z3ProverAPI(uniqueId: String,
     prover.add(termConverter.convertTerm(goalImplication).asInstanceOf[BoolExpr])
 
     val startTime = System.currentTimeMillis()
-    val res = prover.check(termConverter.convertTerm(guardApp))
+    val res = prover.check(termConverter.convertTerm(guardApp).asInstanceOf[BoolExpr])
     val endTime = System.currentTimeMillis()
     val result = res == Status.UNSATISFIABLE
     if (!result) {
@@ -429,7 +432,7 @@ class Z3ProverAPI(uniqueId: String,
     Map.from(result)
   }
 
-  def comment(str: String): Unit = {
+  def comment(str: => String): Unit = {
     // ignore
   }
 

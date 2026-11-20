@@ -89,7 +89,7 @@ class DefaultQuantifierSupporter(triggerGenerator: TriggerGenerator) extends Qua
       .distinct
       // : Seq[(Trigger, Seq[Term])]
       // Map all heap dependencies to fresh variables
-      .map({ case (ts, deps) => (ts, deps.map(t => (t, fresh("proj", t.sort, Option.when(evaluator.withExp)(PUnknown())))).toMap)})
+      .map({ case (ts, deps) => (ts, deps.map(t => (t, fresh("proj", t.sort, Option.when(evaluator.debugOn)(PUnknown())))).toMap)})
       // : Seq[(Trigger, Map[Term, Var])]
       // For each trigger, create a new quantifier where all heap dependencies are replaced with the new variables
       .map({ case (ts, m) =>

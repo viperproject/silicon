@@ -1,0 +1,50 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field value: Int
+
+method test01(S:Seq[Ref], a:Int)
+  requires 0 <= a && a < |S|
+  requires forall j1: Int, j2: Int :: j1 in [0..|S|) && j2 in [0..|S|) && j1 != j2 ==> S[j1] != S[j2]
+  requires forall j:Int :: j in [0..|S|) ==> acc(S[j].value, write)
+  ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].value, write)
+  ensures S[a].value == 2
+{
+  S[a].value := 2
+}
+
+method test02(S:Seq[Ref],a:Int, b:Int, c:Int)
+  requires 0 <= a && a < b && b < c && c < |S|
+  requires forall j1: Int, j2: Int :: j1 in [0..|S|) && j2 in [0..|S|) && j1 != j2 ==> S[j1] != S[j2]
+  requires forall j:Int :: j in [0..|S|) ==> acc(S[j].value, write)
+  ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].value, write)
+  ensures S[a].value == 5
+  ensures S[b].value == 10
+  ensures S[c].value == 1
+{
+  S[a].value := 5
+  S[b].value := 10
+  S[c].value := 1
+}
+
+method test03(S: Seq[Ref], k: Int, a: Int, b: Int)
+  requires 0 <= k && k < |S| && 0 <= a && a < b && b < |S|
+  requires forall j1: Int, j2: Int :: j1 in [0..|S|) && j2 in [0..|S|) && j1 != j2 ==> S[j1] != S[j2]
+  requires forall j:Int :: j in [0..|S|) ==> acc(S[j].value, write)
+  ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].value, write)
+  ensures S[a].value == 5
+  ensures S[b].value == 6
+
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures S[k].value == 0
+{
+  exhale forall l: Int :: l in [0..k) ==> acc(S[l].value, 1/2)
+  inhale forall o:Int :: o in [0..k) ==> acc(S[o].value, 1/2)
+  exhale forall p:Int :: p in [k..|S|) ==> acc(S[p].value, 1/2)
+  inhale forall q:Int :: q in [k..|S|) ==> acc(S[q].value, 1/2)
+
+  S[k].value := 0
+  S[a].value := 5
+  S[b].value := 6
+}
+

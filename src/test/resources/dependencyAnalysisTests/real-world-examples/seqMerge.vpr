@@ -1,0 +1,53 @@
+
+method seq_merge(as: Seq[Int], bs: Seq[Int]) returns (cs: Seq[Int])
+  requires |as| >= 0 && |bs| >= 0
+  requires forall i: Int :: {as[i]} 0 <= i && i <|as| ==> 0 <= as[i]
+  requires forall i: Int :: {as[i]} 0 < i && i <|as| ==> as[i-1] <= as[i]
+  requires forall j: Int :: {bs[j]} 0 <= j && j <|bs| ==> 0 <= bs[j]
+  requires forall j: Int :: {bs[j]} 0 < j && j <|bs| ==> bs[j-1] <= bs[j]
+
+  ensures |cs| == |as| + |bs| + 1
+  ensures forall k: Int :: {cs[k]} 0 <  k && k < |cs| ==> 0 <= cs[k]
+  ensures forall k: Int :: {cs[k]} 0 <  k && k < |cs| ==> cs[k-1] <= cs[k]
+  ensures forall i: Int :: {as[i]} 0 <= i && i < |as| ==> as[i] in cs
+  ensures forall j: Int :: {bs[j]} 0 <= j && j < |bs| ==> bs[j] in cs
+{
+  var i: Int := 0
+  var j: Int := 0
+  var k: Int := 1
+
+  inhale |cs| == |as| + |bs| + 1
+  cs := cs[0 := 0] // index 0 is a dummy value
+
+  while(k < |cs|)
+    invariant 0 <= i && i <= |as|
+    invariant 0 <= j && j <= |bs|
+    invariant 0 <= k && k <= |cs|
+    invariant |cs| == |as| + |bs| + 1
+    invariant i + j + 1 == k
+    invariant forall k0: Int :: {cs[k0]} 0 <= k0 && k0 < k ==> 0 <= cs[k0]
+    invariant forall k0: Int :: {cs[k0]} 0 <= k0 && k0 < k && i < |as| ==> cs[k0] <= as[i]
+    invariant forall k0: Int :: {cs[k0]} 0 <= k0 && k0 < k && j < |bs| ==> cs[k0] <= bs[j]
+    invariant forall k0: Int :: {cs[k0]} 0 < k0 && k0 < k ==> cs[k0-1] <= cs[k0]
+    invariant forall i0: Int :: {as[i0]} 0 <= i0 && i0 < i ==> as[i0] in cs[..k]
+    invariant forall j0: Int :: {bs[j0]} 0 <= j0 && j0 < j ==> bs[j0] in cs[..k]
+    {
+      if(i < |as| && (j >= |bs| || as[i] < bs[j])){
+        var tmp: Int := as[i]
+        cs := cs[k := tmp]
+        i := i + 1
+      }else {
+        var tmp: Int := bs[j]
+        cs := cs[k := tmp]
+        j := j + 1
+      }
+      k := k + 1
+    }
+  
+  // assert i == |as| && j == |bs| && k == |cs|
+  // assert k == |as| + |bs| + 1
+  
+  // assert forall i0: Int :: {as[i0]} 0 <= i0 && i0 < i ==> as[i0] in cs
+  // cs := cs[1..] // remove dummy value
+  // assert forall i0: Int :: {as[i0]} 0 <= i0 && i0 < i ==> as[i0] in cs
+}

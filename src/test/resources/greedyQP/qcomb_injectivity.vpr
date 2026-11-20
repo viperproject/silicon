@@ -1,0 +1,50 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+predicate pred1(a:Ref) {
+	acc(a.f)
+}
+
+predicate pred2(a:Ref, i:Int) {
+	acc(a.f)
+}
+
+//1 argument
+method test01_1(xs: Seq[Ref], y: Ref)
+requires acc(pred1(y))
+requires forall x:Ref :: x in xs ==> acc(x.f)
+//:: ExpectedOutput(not.wellformed:qp.not.injective)
+ensures forall x: Ref :: x in xs  ==> acc(pred1(y)) && acc(x.f)
+{}
+
+method test01_2(xs: Seq[Ref], y: Ref)
+requires acc(pred1(y))
+requires forall x:Ref :: x in xs ==> acc(x.f)
+//:: ExpectedOutput(not.wellformed:qp.not.injective)
+ensures forall x: Ref :: x in xs  ==> acc(x.f) && acc(pred1(y))
+{}
+
+//2 arguments
+method test02(xs: Seq[Ref], y: Ref)
+	requires acc(pred2(y, 1))
+	requires forall x: Ref :: x in xs  ==> acc(x.f)
+	//:: ExpectedOutput(not.wellformed:qp.not.injective)
+	ensures forall x: Ref :: x in xs  ==> acc(pred2(y, 1)) && acc(x.f)
+{}
+
+//injective
+method test03_1(xs: Seq[Ref], y: Ref)
+requires forall x:Ref :: x in xs ==> acc(x.f)
+{
+	//:: ExpectedOutput(exhale.failed:insufficient.permission)
+	exhale forall x: Ref :: x in xs ==> acc(pred2(x, 1)) && acc(x.f)
+}
+
+method test03_2(xs: Seq[Ref], y: Ref)
+requires forall x:Ref :: x in xs ==> acc(x.f)
+{
+	//:: ExpectedOutput(exhale.failed:insufficient.permission)
+	exhale forall x: Ref :: x in xs ==> acc(x.f) && acc(pred2(x, 1))
+}

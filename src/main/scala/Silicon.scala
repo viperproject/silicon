@@ -21,13 +21,11 @@ import viper.silicon.debugger.SiliconDebuggerCli
 import viper.silicon.interfaces.Failure
 import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
-import viper.silicon.verifier.DefaultMainVerifier
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverStdIO}
+import viper.silicon.verifier.{DefaultMainVerifier, DependencyAnalysisAwareMainVerifier}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
-import viper.silver.utility.{FileProgramSubmitter}
-
-import scala.util.chaining._
+import viper.silver.utility.FileProgramSubmitter
 
 object Silicon {
   val name = BuildInfo.projectName
@@ -43,7 +41,7 @@ object Silicon {
   val version: String =
     s"${BuildInfo.projectVersion}${buildVersion.fold("")(v => s" ($v)")}"
 
-  val copyright = "(c) Copyright ETH Zurich 2012 - 2019"
+  val copyright = "(c) Copyright ETH Zurich 2012 - 2026"
   val dependencies = Z3ProverStdIO.dependencies ++ Cvc5ProverStdIO.dependencies
 
   def optionsFromScalaTestConfigMap(configMap: collection.Map[String, Any]): Seq[String] =
@@ -119,7 +117,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     _config = new Config(args)
     if (!config.exit) {
-      _symbExLog = SymbExLogger.ofConfig(_config)
+      _symbExLog = SymbExLogger.ofConfig(_config, reporter)
     }
   }
 
@@ -137,7 +135,8 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     setLogLevelsFromConfig()
 
-    verifier = new DefaultMainVerifier(config, reporter, symbExLog)
+    verifier = if (config.isDependencyAnalysisEnabled) new DependencyAnalysisAwareMainVerifier(config, reporter, symbExLog) 
+                else new DefaultMainVerifier(config, reporter, symbExLog)
     verifier.debugHookOpt = _debugHook
     verifier.start()
   }
@@ -164,6 +163,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
   def stop(): Unit = {
     if (verifier != null) verifier.stop()
+    if (symbExLog != null) symbExLog.close()
   }
 
   /**
@@ -229,8 +229,8 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
         result = Some(condenseToViperResult(failures))
       } catch { /* Catch exceptions thrown during verification (errors are not caught) */
         case _: TimeoutException =>
+          symbExLog.close()
           if (config.ideModeAdvanced()) {
-            symbExLog.close()
             reporter report ExecutionTraceReport(symbExLog.logs.toSeq, List(), List())
           }
           result = Some(SilFailure(SilTimeoutOccurred(config.timeout(), "second(s)") :: Nil))
@@ -342,6 +342,9 @@ class SiliconFrontend(override val reporter: Reporter,
   protected var siliconInstance: Silicon = _
 
   override def backendTypeFormat: Option[String] = Some("SMTLIB")
+
+  override protected def attachDependencyAnalysisInfo: Boolean =
+    siliconInstance != null && siliconInstance.config != null && siliconInstance.config.isDependencyAnalysisEnabled
 
   def createVerifier(fullCmd: String) = {
     siliconInstance = new Silicon(reporter, Seq("args" -> fullCmd))

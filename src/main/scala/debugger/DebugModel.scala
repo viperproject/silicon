@@ -104,8 +104,16 @@ case class DebugNode(id: Int,
   def hasHiddenChildren: Boolean = children.size < childCount
 }
 
-/** The chunks of a single heap. `key` is `"current"` or the label of an old heap; `title` is what the CLI prints. */
-case class DebugHeapModel(title: String, key: String, chunks: Seq[DebugNode])
+/** The chunks of a single heap. `key` is `"current"` or the label of an old heap; `title` is what the CLI prints.
+  * `details` describe where a recorded heap came from (its parent, cause and new branch conditions), and
+  * `intermediateHeaps` are the heaps recorded while it was being built. A group of intermediate heaps that has no
+  * chunks of its own sets `showChunks` to false. */
+case class DebugHeapModel(title: String,
+                          key: String,
+                          chunks: Seq[DebugNode],
+                          details: Seq[String] = Seq.empty,
+                          intermediateHeaps: Seq[DebugHeapModel] = Seq.empty,
+                          showChunks: Boolean = true)
 
 case class PrintConfigModel(printInternal: Boolean,
                             nChildrenToShow: Int,

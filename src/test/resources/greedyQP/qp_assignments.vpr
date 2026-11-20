@@ -1,0 +1,52 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Ref
+
+method test01(xs: Set[Ref], x: Ref)
+  requires x in xs
+  requires forall z: Ref :: z in xs ==> acc(z.f)
+  ensures forall z: Ref :: z in xs ==> acc(z.f)
+  ensures x.f == x
+{ x.f := x }
+
+method test03(xs: Set[Ref], x: Ref)
+  requires x in xs
+  requires forall z: Ref :: z in xs ==> acc(z.f)
+{
+  x.f := x
+  exhale acc(x.f)
+
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert x.f == x
+}
+
+method test04(xs: Set[Ref], x: Ref, y: Ref)
+  requires x in xs && y in xs
+  requires forall z: Ref :: z in xs ==> acc(z.f)
+  requires y.f == y
+{
+  assume x != y
+
+  x.f := x
+  exhale acc(x.f)
+
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert x.f == x
+}
+
+method test02(xs: Set[Ref], x: Ref, y: Ref)
+  requires x in xs && y in xs
+  requires forall z: Ref :: z in xs ==> acc(z.f)
+  requires y.f == y
+{
+  assume x != y
+
+  x.f := x
+  assert y.f == y
+  exhale acc(x.f)
+  assert y.f == y
+
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert x.f == x
+}
