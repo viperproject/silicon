@@ -757,7 +757,7 @@ object executor extends ExecutionRules {
       case pckg @ ast.Package(wand, proofScript) =>
         val pve = PackageFailed(pckg)
         val s0 = if (debugOn) v.startKeyHeap(s, oldLabel, ExecStmt(pckg)) else s
-        magicWandSupporter.packageWand(s.copy(isInPackage = true), wand, proofScript, pve, v, analysisInfos)((s1, chWand, v1) => {
+        magicWandSupporter.packageWand(s0.copy(isInPackage = true), wand, proofScript, pve, v, analysisInfos)((s1, chWand, v1) => {
           val hOps = v1.heapSupporter.addWandChunk(s1.reserveHeaps.head, chWand, s1, v1)
             assert(s.exhaleExt || s1.reserveHeaps.length == 1)
             val s2 =
@@ -782,7 +782,10 @@ object executor extends ExecutionRules {
 
           val s3 = v1.heapSupporter.triggerWandIfNeeded(s2, wand, chWand, v1, analysisInfos)
 
-          val s4 = if (debugOn) v1.finishKeyHeap(s3) else s3
+          // The statements of the proof script record heaps of their own, and finishing those discards the record
+          // started for the package statement; restore it so that the package's heap is recorded, too.
+          val s3a = if (debugOn && !s3.isRecordingHeaps) s3.copy(temporaryHeapRecord = s0.temporaryHeapRecord) else s3
+          val s4 = if (debugOn) v1.finishKeyHeap(s3a) else s3a
           continuation(s4.copy(isInPackage = s.isInPackage), v1)
         })
 
