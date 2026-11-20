@@ -1,0 +1,15 @@
+field val: Bool
+function toBool(s: Ref): Bool
+predicate GlobalMem() {
+  forall k: Ref :: { toBool(k) } toBool(k) ==> false
+}
+
+method client(i: Ref, k: Ref)
+    requires toBool(k)
+    requires GlobalMem()
+    ensures GlobalMem()
+{
+    unfold GlobalMem()
+    assert false // should verify
+    fold GlobalMem()
+}

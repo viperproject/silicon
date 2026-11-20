@@ -1,0 +1,108 @@
+field next : Ref
+field val : Int
+field f: Int
+
+predicate list(start : Ref)
+{
+  acc(start.val) && acc(start.next) &&
+    (start.next != null && list(start.next))
+}
+
+
+method basicApply()
+{
+    var x: Int
+    var y: Int
+    @dependencyInfo("assumptionType:Explicit, label:L1")
+    inhale x > 0
+    @dependencyInfo("assumptionType:Explicit, label:L2")
+    inhale x > 0 --* y > 0
+
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L3, expectedDependencies:[L1, L2]")
+    apply x > 0 --* y > 0
+
+    @dependencyInfo("assertionType:Explicit, label:L4, expectedDependencies:[L1, L2, L3]")
+    assert y > 0
+}
+
+
+method basicPackage(l: Ref)
+  requires @dependencyInfo("assumptionType:Precondition, label:L5")(list(l))
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L6, expectedDependencies:[L5, L7, L8, L10, L11]")(list(l))
+  {
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L7")
+    unfold list(l)
+    var tmp : Ref
+    @dependencyInfo("assumptionType:SourceCode, label:L8")
+    tmp := l.next
+
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L9, expectedDependencies:[L5,L7,L8]")
+    package list(tmp) --* list(l)
+    {
+      @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L10")
+      fold list(l)
+    }
+
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L11, expectedDependencies:[L5, L7, L8, L10]")
+    apply list(tmp) --* list(l)
+
+    @dependencyInfo("assertionType:Explicit, label:L12, expectedDependencies:[L5, L7, L8, L10, L11]")
+    assert list(l)
+}
+
+
+predicate greater0(a: Int){
+    a > 0
+}
+
+method advancedPackage(a: Int, b: Int)
+  {
+
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L13")
+    package (greater0(a) && greater0(b)) --* greater0(a + b)
+    {
+      @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L14")
+      unfold greater0(a)
+      @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L15")
+      unfold greater0(b)
+      @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L16, expectedDependencies:[L14,L15]")
+      fold greater0(a + b)
+    }
+
+    @dependencyInfo("assumptionType:Explicit, label:L17")
+    inhale greater0(a)
+    @dependencyInfo("assumptionType:Explicit, label:L18")
+    inhale greater0(b)
+
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L19, expectedDependencies:[L14,L15,L16,L17,L18]")
+    apply (greater0(a) && greater0(b)) --* greater0(a + b)
+
+    @dependencyInfo("assertionType:Explicit, label:L20, expectedDependencies:[L14,L15,L16,L17,L18,L19]")
+    assert greater0(a + b)
+}
+
+method quantifiedWand(xs: Seq[Int], b: Int)
+    requires @dependencyInfo("assumptionType:Precondition, label:L21")(|xs| > 2)
+    requires @dependencyInfo("assumptionType:Precondition, label:L22")((forall x: Int :: x in xs ==> (greater0(x) --* greater0(x + b))))
+  {
+    @dependencyInfo("assumptionType:Explicit, label:L23")
+    inhale greater0(xs[0])
+    @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L24, expectedDependencies:[L21,L22,L23]")
+    apply greater0(xs[0]) --* greater0(xs[0] + b)
+
+    @dependencyInfo("assertionType:Explicit, label:L25, expectedDependencies:[L21,L22,L23,L24]")
+    assert greater0(xs[0] + b)
+}
+
+method applying1()
+{
+    var x: Int
+    var y: Int
+    @dependencyInfo("assumptionType:Explicit, label:L35")
+    inhale x > 0
+    @dependencyInfo("assumptionType:Explicit, label:L36")
+    inhale x > 0 --* y > 0
+
+    @dependencyInfo("assertionType:Explicit, label:L37, expectedDependencies:[L35,L36]")
+    assert applying (x > 0 --* y > 0) in y > 0
+}

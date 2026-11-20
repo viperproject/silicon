@@ -16,14 +16,23 @@ import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.terms.{Decl, Term}
 
-class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulComponent {
+abstract class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulComponent {
+  /** The type of the workers in this pool, which lets subclasses use the capabilities of their workers without casts. */
+  type Worker >: Null <: WorkerVerifier
+
+  protected def createWorker(): Worker
+
   private val numberOfWorkers: Int = Verifier.config.numberOfParallelVerifiers()
 
-  /*private*/ var workerVerifiers: Seq[WorkerVerifier] = _
+  /*private*/ var workerVerifiers: Seq[Worker] = _
   /*private*/ var threadPool: ForkJoinPool = _
-  /*private*/ var workerVerifierPool: ObjectPool[WorkerVerifier] = _
+  /*private*/ var workerVerifierPool: ObjectPool[Worker] = _
 
-  private[verifier] object pooledVerifiers extends ProverLike {
+  def pooledVerifiers: DefaultPooledVerifiers = _pooledVerifiers
+
+  private[verifier] object _pooledVerifiers extends DefaultPooledVerifiers
+
+  trait DefaultPooledVerifiers extends ProverLike {
     def emit(content: String): Unit = workerVerifiers foreach (_.decider.prover.emit(content))
     override def emit(contents: Iterable[String]): Unit = workerVerifiers foreach (_.decider.prover.emit(contents))
     def assume(term: Term): Unit = workerVerifiers foreach (_.decider.prover.assume(term))
@@ -52,14 +61,14 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
   private def setupWorkerPool(): Unit = {
     workerVerifiers = Vector.empty
 
-    val poolConfig: GenericObjectPoolConfig[WorkerVerifier] = new GenericObjectPoolConfig()
+    val poolConfig: GenericObjectPoolConfig[Worker] = new GenericObjectPoolConfig()
     poolConfig.setMaxTotal(numberOfWorkers)
     poolConfig.setMaxIdle(numberOfWorkers) /* Prevent pool from shutting down idle prover instances */
     poolConfig.setBlockWhenExhausted(true)
 
     val factory = PoolUtils.synchronizedPooledFactory(workerVerifierPoolableObjectFactory)
 
-    workerVerifierPool = new GenericObjectPool[WorkerVerifier](factory, poolConfig)
+    workerVerifierPool = new GenericObjectPool[Worker](factory, poolConfig)
 
     workerVerifierPool.addObjects(poolConfig.getMaxTotal)
 
@@ -109,15 +118,15 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
     }
   }
 
-  private object workerVerifierPoolableObjectFactory extends BasePooledObjectFactory[WorkerVerifier] {
-    def create(): WorkerVerifier = {
-      val worker = new WorkerVerifier(mainVerifier, mainVerifier.nextUniqueVerifierId(), mainVerifier.reporter, Verifier.config.enableDebugging())
+  private object workerVerifierPoolableObjectFactory extends BasePooledObjectFactory[Worker] {
+    def create(): Worker = {
+      val worker = createWorker()
       workerVerifiers = worker +: workerVerifiers
 
       worker
     }
 
-    def wrap(arg: WorkerVerifier): PooledObject[WorkerVerifier] = new DefaultPooledObject(arg)
+    def wrap(arg: Worker): PooledObject[Worker] = new DefaultPooledObject(arg)
   }
 
   /* Verification task management */
@@ -155,7 +164,7 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
 
   class WorkerBorrowingForkJoinWorkerThread(pool: ForkJoinPool) extends ForkJoinWorkerThread(pool) {
     // each thread has its own worker verifier that does not change.
-    var worker: WorkerVerifier = null
+    var worker: Worker = null
 
     override def onStart(): Unit = {
       worker = workerVerifierPool.borrowObject()
@@ -181,4 +190,8 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
   }
 }
 
+class DefaultVerificationPoolManager(mainVerifier: MainVerifier) extends VerificationPoolManager(mainVerifier) {
+  override type Worker = WorkerVerifier
 
+  override protected def createWorker(): WorkerVerifier = mainVerifier.createWorkerVerifier()
+}
