@@ -142,28 +142,6 @@ package object utils {
       str.substring(0, str.lastIndexOf("@"))
     }
 
-    /** Replaces each let expression `let x == e0 in e1` in `e` by `e1` with `x` replaced by `e0`,
-      * starting with the innermost lets. The variable is replaced with `replace`, as when the
-      * evaluator records the possible triggers of a let body (see the `Let` case of
-      * [[viper.silicon.rules.evaluator]]), so that a trigger and a recorded possible trigger
-      * that are equal modulo their lets are equal after inlining.
-      *
-      * A let whose variable occurs in an old expression in `e1` is kept, since `e0` would be
-      * evaluated in the old state there. Such a trigger is therefore not matched against a
-      * recorded possible trigger in which the evaluator replaced the variable in an old expression.
-      */
-    def inlineLets(e: silver.ast.Exp): silver.ast.Exp =
-      if (!e.exists(_.isInstanceOf[silver.ast.Let])) e
-      else e.transform({
-        case silver.ast.Let(x, e0, e1) if !occursInOld(x.localVar, e1) => e1.replace(x.localVar, e0)
-      }, Traverse.BottomUp)
-
-    /** Returns true iff `v` occurs in an old expression in `e`. */
-    def occursInOld(v: silver.ast.LocalVar, e: silver.ast.Exp): Boolean = e.existsDefined {
-      case silver.ast.Old(e1) if e1.contains(v) =>
-      case silver.ast.LabelledOld(e1, _) if e1.contains(v) =>
-    }
-
     def replaceVarsInExp(e: silver.ast.Exp, varNames: Seq[String], replacements: Seq[silver.ast.Exp]): silver.ast.Exp = {
       silver.utility.Sanitizer.replaceFreeVariablesInExpression(e, varNames.zip(replacements).toMap, Set())
     }

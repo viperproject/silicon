@@ -10,7 +10,6 @@ import viper.silver.ast
 import viper.silicon.rules.functionSupporter
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
-import viper.silicon.utils.ast.inlineLets
 import viper.silicon.verifier.Verifier
 import viper.silver.ast.{AnnotationInfo, WeightedQuantifier}
 
@@ -97,18 +96,16 @@ trait ExpressionTranslator {
 
         /** IMPORTANT: Keep in sync with [[viper.silicon.rules.evaluator.evalTrigger]].
           *
-          * Triggers are translated with their lets inlined, so that a trigger behaves like its let-free
-          * form: a heap-dependent function application at the top of the trigger is replaced by its limited
-          * version below, and the function applications in the trigger are resolved against those recorded
-          * for the quantifier body (see HeapAccessReplacingExpressionTranslator).
+          * A heap-dependent function application at the top of a trigger, also inside the lets of the trigger,
+          * is replaced by its limited version.
           */
-        val translatedTriggers = eTriggers map (triggerSet => Trigger(triggerSet.exps map (trigger =>
-          f(inlineLets(trigger)) match {
-            case app @ App(fun: HeapDepFun, _) =>
-              app.copy(applicable = functionSupporter.limitedVersion(fun))
-            case other => other
-          }
-        )))
+        def withLimitedFunctionAtTop(trigger: Term): Term = trigger match {
+          case app @ App(fun: HeapDepFun, _) => app.copy(applicable = functionSupporter.limitedVersion(fun))
+          case let: Let => Let(let.bindings, withLimitedFunctionAtTop(let.body))
+          case other => other
+        }
+        val translatedTriggers =
+          eTriggers map (triggerSet => Trigger(triggerSet.exps map (trigger => withLimitedFunctionAtTop(f(trigger)))))
         val weight = sourceQuant.info.getUniqueInfo[WeightedQuantifier] match {
           case Some(w) =>
             if (w.weight >= 0) {

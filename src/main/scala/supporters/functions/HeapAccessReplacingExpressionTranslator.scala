@@ -15,10 +15,11 @@ import viper.silicon.rules.functionSupporter
 import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.supporters.ExpressionTranslator
-import viper.silicon.utils.ast.{extractPTypeFromExp, inlineLets}
+import viper.silicon.utils.ast.extractPTypeFromExp
 import viper.silicon.verifier.Verifier
 import viper.silver.parser.{PType, PUnknown}
 import viper.silver.ast.AnnotationInfo
+import viper.silver.ast.utility.Expressions
 import viper.silver.reporter.{InternalWarningMessage, Reporter}
 
 class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
@@ -190,13 +191,17 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         // The expression might have been recorded with different lets. For example, a trigger is translated
         // with its lets inlined (see ExpressionTranslator), while the same function application in the
         // quantifier body might contain a let, as in g(let x == e in x), or be inside one, as in
-        // let x == e in g(x). Hence, the expressions are also compared modulo lets: with their own lets
-        // inlined and with the variables of the lets around them replaced by their values.
-        val (keyInlined, ctxWithoutLets) = withoutLets(key, ctx)
+        // let x == e in g(x). Hence, the expressions, inside the lets of their contexts, are also compared
+        // modulo lets.
+        val keyInLets = inLetsOf(key, ctx)
+        val ctxWithoutLets = ctx.filterNot(_.isInstanceOf[LetContext])
         def equalModuloLets(k: K, c: Seq[ExpContext]): Boolean = {
-          val (kInlined, cWithoutLets) = withoutLets(k, c)
-          kInlined == keyInlined &&
-            (cWithoutLets == ctxWithoutLets || (checkInnerContexts && cWithoutLets.startsWith(ctxWithoutLets)))
+          val cWithoutLets = c.filterNot(_.isInstanceOf[LetContext])
+          (cWithoutLets == ctxWithoutLets || (checkInnerContexts && cWithoutLets.startsWith(ctxWithoutLets))) &&
+            ((keyInLets, inLetsOf(k, c)) match {
+              case (Some(e1), Some(e2)) => Expressions.equalModuloLets(e1, e2)
+              case _ => false
+            })
         }
         map.collectFirst({ case ((k, c), v) if equalModuloLets(k, c) => v }) match {
           case Some(v) => return v.convert(sort)
@@ -219,18 +224,16 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         fresh("$unresolved", sort, pType)
     }
 
-  /** Returns the expression `e` in the contexts `ctx` with its lets inlined and with the let-bound variables of
-    * the let contexts replaced by their values (starting with the innermost let), together with `ctx` without its
-    * let contexts.
+  /** Returns the expression `e` inside the lets of its let contexts `ctx`, e.g. `let x == e0 in e` for the
+    * context of the let `let x == e0 in ...`.
     */
-  private def withoutLets(e: ast.Positioned, ctx: Seq[ExpContext]): (ast.Positioned, Seq[ExpContext]) = e match {
+  private def inLetsOf(e: ast.Positioned, ctx: Seq[ExpContext]): Option[ast.Exp] = e match {
     case exp: ast.Exp =>
-      val inlined = ctx.foldRight(inlineLets(exp)) {
-        case (LetContext(l), e1) => e1.replace(l.variable.localVar, inlineLets(l.exp))
+      Some(ctx.foldRight(exp) {
+        case (LetContext(l), e1) => ast.Let(l.variable, l.exp, e1)(e1.pos, e1.info, e1.errT)
         case (_, e1) => e1
-      }
-      (inlined, ctx.filterNot(_.isInstanceOf[LetContext]))
+      })
     case _ =>
-      (e, ctx)
+      None
   }
 }

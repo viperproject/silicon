@@ -9,8 +9,7 @@ package viper.silicon.tests
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.Silicon
-import viper.silver.ast.{Forall, FuncApp, HasLineColumn, Let, Program}
-import viper.silver.ast.utility.rewriter.Traverse
+import viper.silver.ast.{Forall, HasLineColumn, Let, Program}
 import viper.silver.reporter.{InternalWarningMessage, Message, Reporter, WarningsDuringVerification}
 import viper.silver.verifier.{AbstractVerificationError, Failure, Success}
 
@@ -23,7 +22,7 @@ import scala.jdk.CollectionConverters._
   * fails for the test programs and makes Silicon drop the trigger with a warning), and that
   * the function axiomatisation resolves them (otherwise it reports "Could not resolve
   * expression"). SilSuite ignores warnings, so this test checks them in addition to the
-  * annotated errors, also for triggers/lets_in_triggers.vpr, which is part of SiliconTests.
+  * annotated errors for the test programs in triggers/, which are also part of SiliconTests.
   */
 class LetsInTriggersTests extends AnyFunSuite with BeforeAndAfterAll {
   private class CollectingReporter extends Reporter {
@@ -59,22 +58,8 @@ class LetsInTriggersTests extends AnyFunSuite with BeforeAndAfterAll {
     silicon.stop()
   }
 
-  /** Replaces each trigger expression `unwrap(e)` or `unwrapInt(e)` by `e`. This allows writing triggers whose
-    * top-level expression is a let, which Silver rejects when translating a parsed program,
-    * but which Silicon receives from frontends that construct the AST directly.
-    */
-  private def unwrapTriggers(program: Program): Program =
-    program.transform({
-      case q: Forall =>
-        val triggers = q.triggers.map(t => t.copy(exps = t.exps.map {
-          case FuncApp("unwrap" | "unwrapInt", Seq(e)) => e
-          case e => e
-        })(t.pos, t.info, t.errT))
-        q.copy(triggers = triggers)(q.pos, q.info, q.errT)
-    }, Traverse.TopDown)
-
   private def load(filePrefix: String, fileName: String): (Program, Seq[Int]) = {
-    val program = unwrapTriggers(_root_.tests.loadProgram(filePrefix, fileName, frontend))
+    val program = _root_.tests.loadProgram(filePrefix, fileName, frontend)
     val lines = Files.readAllLines(Paths.get(getClass.getClassLoader.getResource(s"$filePrefix$fileName.vpr").toURI)).asScala
     val expectedFailureLines =
       // An annotation applies to the next line; line numbers start at 1
@@ -112,6 +97,6 @@ class LetsInTriggersTests extends AnyFunSuite with BeforeAndAfterAll {
   }
 
   test("Triggers that are lets are found in the quantifier body") {
-    check("letsInTriggersTests/", "top_level_lets_in_triggers", expectTopLevelLets = true)
+    check("triggers/", "top_level_lets_in_triggers", expectTopLevelLets = true)
   }
 }

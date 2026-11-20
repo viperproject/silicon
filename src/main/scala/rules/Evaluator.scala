@@ -11,6 +11,7 @@ import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.JoinMode
 import viper.silver.ast
 import viper.silver.ast.{AnnotationInfo, FalseLit, LocalVarWithVersion, WeightedQuantifier}
+import viper.silver.ast.utility.Expressions
 import viper.silver.dependencyAnalysis._
 import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, VerifierWarning}
 import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
@@ -268,20 +269,16 @@ object evaluator extends EvaluationRules {
           val possibleTriggersBefore = if (s1.recordPossibleTriggers) s1.possibleTriggers else Map.empty
           eval(s1.copy(g = s1.g + (x.localVar, (t0, e0New)), functionRecorder = newFuncRec), e1, pve, v1, analysisInfos)((s2, t2, e1New, v2) => {
             val newPossibleTriggers = if (s2.recordPossibleTriggers) {
-              val addedTriggers = s2.possibleTriggers -- possibleTriggersBefore.keys
-              val addedTriggersReplaced = addedTriggers.map(at => at._1.replace(x.localVar, e0) -> at._2)
-              /* If e0 itself contains lets, also record the possible triggers with x replaced
-               * by e0 with its lets inlined, so that they are found by evalTrigger, which looks up
-               * triggers with their lets inlined. Unlike above, but as in inlineLets, x is not
-               * replaced in possible triggers in which it occurs in an old expression.
+              /* The possible triggers recorded in the let body that mention x are recorded inside the let
+               * instead, i.e. as `let x == e0 in pt`, since x is not bound outside of it. evalTrigger
+               * compares triggers to them modulo lets. Replacing x by e0 instead could make the recorded
+               * expressions exponentially larger in the number of nested lets.
                */
-              lazy val e0Inlined = inlineLets(e0)
-              val addedTriggersReplacedInlined =
-                if (addedTriggers.isEmpty || (e0Inlined eq e0)) Map.empty
-                else addedTriggers.collect {
-                  case (pt, tPt) if !occursInOld(x.localVar, pt) => pt.replace(x.localVar, e0Inlined) -> tPt
-                }
-              s2.possibleTriggers ++ addedTriggersReplaced ++ addedTriggersReplacedInlined
+              val addedTriggersWithX =
+                (s2.possibleTriggers -- possibleTriggersBefore.keys).filter(_._1.contains(x.localVar))
+              val addedTriggersInLet =
+                addedTriggersWithX.map { case (pt, tPt) => ast.Let(x, e0, pt)(pt.pos, pt.info, pt.errT) -> tPt }
+              s2.possibleTriggers -- addedTriggersWithX.keys ++ addedTriggersInLet
             } else {
               s2.possibleTriggers
             }
@@ -1371,26 +1368,20 @@ object evaluator extends EvaluationRules {
         other
     }
 
-    def lookupPossibleTrigger(e: ast.Exp): Option[Term] = e match {
-      case pt @ (_: ast.PossibleTrigger | _: ast.FieldAccess | _: ast.LabelledOld | _: ast.Old) =>
-        s.possibleTriggers.get(pt)
-      case _ =>
-        None
-    }
-
-    /* The possible triggers recorded while evaluating the body have their let-bound variables
-     * replaced by their values (see the Let case of eval2). Hence, if a trigger contains lets,
-     * it is also looked up with its lets inlined. If it is not found, the original trigger is
-     * evaluated below.
+    /* Possible triggers that were recorded inside a let of the body, or triggers that contain lets, are found by
+     * comparing them modulo lets (see the Let case of eval2). If a trigger is not found, it is evaluated below.
      */
     val (cachedTriggerTerms, remainingTriggerExpressions) =
       exps.map { e =>
         val cachedTrigger =
-          lookupPossibleTrigger(e)
-            .orElse {
-              val eInlined = inlineLets(e)
-              if (eInlined eq e) None else lookupPossibleTrigger(eInlined)
-            }.map(t => transformPotentialFuncApp(t))
+          (e match {
+            case pt @ (_: ast.PossibleTrigger | _: ast.FieldAccess | _: ast.LabelledOld | _: ast.Old) =>
+              s.possibleTriggers.get(pt)
+            case _ =>
+              None
+          }).orElse(s.possibleTriggers.collectFirst {
+            case (pt, t) if Expressions.equalModuloLets(e, pt) => t
+          }).map(t => transformPotentialFuncApp(t))
         (cachedTrigger, if (cachedTrigger.isDefined) None else Some(e))
       }.unzip match {
         case (optCachedTriggerTerms, optRemainingTriggerExpressions) =>
