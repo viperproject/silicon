@@ -191,9 +191,13 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         // A function application in a trigger might only have been recorded in a different form modulo lets, e.g. as
         // g(r, i) in the body for g(r, let x == (i) in x) in the trigger (if evalTrigger found the trigger in the
         // body). Hence, the expressions are also compared with the lets of their contexts and their own lets inlined.
-        val keyInlined = inlinedInLetContexts(key, ctx)
-        map.collectFirst({ case ((k, c), v) if inlinedInLetContexts(k, c) == keyInlined => v })
-          .foreach(v => return v.convert(sort))
+        val (keyInlined, ctxWithoutLets) = inlinedInLetContexts(key, ctx)
+        def matches(k: K, c: Seq[ExpContext]): Boolean = {
+          val (kInlined, cWithoutLets) = inlinedInLetContexts(k, c)
+          kInlined == keyInlined &&
+            (cWithoutLets == ctxWithoutLets || (checkInnerContexts && cWithoutLets.startsWith(ctxWithoutLets)))
+        }
+        map.collectFirst({ case ((k, c), v) if matches(k, c) => v }).foreach(v => return v.convert(sort))
 
         if (!failed && data.verificationFailures.isEmpty) {
           val msg = resolutionFailureMessage(key, data)

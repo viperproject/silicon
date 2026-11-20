@@ -110,6 +110,11 @@ method letInTriggerAndBodyOfFunctionPostcondition(r: Ref)
   assert t(4)
 }
 
+// The body only contains g(r, i) inside a nested quantifier.
+function h3(r: Ref): Bool
+  requires acc(r.f)
+  ensures forall i: Int :: { g(r, let x == (i) in x) } (forall j: Int :: { t(j) } t(j) ==> g(r, i) > j)
+
 function k(i: Int, v: Int): Int
 function u(v: Int): Bool
 
