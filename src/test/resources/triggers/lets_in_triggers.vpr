@@ -1,0 +1,139 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Triggers are matched against the terms recorded while evaluating the
+// quantifier body modulo lets, i.e. as if each let-bound variable were replaced
+// by its value, here for lets nested inside triggers or body terms. A matched
+// trigger is reused with the body's path conditions instead of being evaluated
+// on its own. For the triggers with div below, evaluating them on their own
+// fails (div's precondition only holds under the guard i > 0), which makes
+// Silicon drop the trigger with the warning "Might not be able to use trigger
+// ...". LetsInTriggersTests checks that verifying this file reports no such
+// warning, and no "Could not resolve expression ..." warning while
+// axiomatising a function. See top_level_lets_in_triggers.vpr for triggers
+// whose top-level expression is a let.
+
+function div(n: Int, d: Int): Int
+  requires d != 0
+{ n \ d }
+
+function q(n: Int): Int
+function s(a: Int, b: Int): Bool
+function t(i: Int): Bool
+
+// The trigger and the body use the same let.
+method letInTriggerAndBody()
+  requires forall i: Int :: { s(let x == (q(div(10, i))) in x, q(div(10, i))) }
+    i > 0 ==> (let x == (q(div(10, i))) in (s(x, x) && t(i)))
+{
+  // The quantifier is instantiated through the trigger.
+  assert s(q(div(10, 5)), q(div(10, 5)))
+  assert t(5)
+
+  // The trigger is still restrictive: there is no term s(q(div(10, 3)), q(div(10, 3))).
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+// Only the trigger uses a let; the body is let-free.
+method letInTriggerOnly()
+  requires forall i: Int :: { s(let x == (q(div(10, i))) in x, q(div(10, i))) }
+    i > 0 ==> (s(q(div(10, i)), q(div(10, i))) && t(i))
+{
+  assert s(q(div(10, 5)), q(div(10, 5)))
+  assert t(5)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+// The value of a let is itself a let, in the trigger and in the body.
+method letInLetValue()
+  requires forall i: Int :: { s(let x == (let y == (div(10, i)) in q(y)) in x, q(div(10, i))) }
+    i > 0 ==> (let x == (let y == (div(10, i)) in q(y)) in (s(x, x) && t(i)))
+{
+  assert s(q(div(10, 5)), q(div(10, 5)))
+  assert t(5)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+// The trigger is let-free; the body contains the same term with a let in it.
+method letInBodyOnly()
+  requires forall i: Int :: { s(q(div(10, i)), q(div(10, i))) }
+    i > 0 ==> (s(let x == (q(div(10, i))) in x, q(div(10, i))) && t(i))
+{
+  assert s(q(div(10, 5)), q(div(10, 5)))
+  assert t(5)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+// A trigger set with several expressions, one of them containing a let.
+method letInTriggerSet()
+  requires forall i: Int, j: Int :: { s(let x == (q(div(10, i))) in x, j), t(j) }
+    i > 0 ==> (let x == (q(div(10, i))) in (s(x, j) && t(i)))
+  requires t(7)
+{
+  assert s(q(div(10, 5)), 7)
+  assert t(5)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+field f: Int
+
+function g(r: Ref, i: Int): Int
+  requires acc(r.f)
+
+// In the axiom for the postcondition, g(r, let x == (i) in x) in the trigger is
+// resolved modulo lets like g(r, i) in the body.
+function h(r: Ref): Bool
+  requires acc(r.f)
+  ensures forall i: Int :: { g(r, let x == (i) in x) } g(r, i) > r.f && t(i)
+
+method letInTriggerOfFunctionPostcondition(r: Ref)
+  requires acc(r.f)
+{
+  var b: Bool := h(r)
+  assert g(r, 3) > r.f
+  assert t(3)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(4)
+}
+
+// The trigger and the body of a quantifier in a function postcondition use the same let.
+function h2(r: Ref): Bool
+  requires acc(r.f)
+  ensures forall i: Int :: { g(r, let x == (i) in x) } g(r, let x == (i) in x) > r.f && t(i)
+
+method letInTriggerAndBodyOfFunctionPostcondition(r: Ref)
+  requires acc(r.f)
+{
+  var b: Bool := h2(r)
+  assert g(r, 3) > r.f
+  assert t(3)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(4)
+}
+
+function k(i: Int, v: Int): Int
+function u(v: Int): Bool
+
+// The let-bound variable x is used in an old expression but bound outside of
+// it, so its value is not evaluated in the old state. The trigger therefore
+// does not match the body term u(old(k(i, r.f))), which reads the old value of
+// r.f, and is evaluated on its own.
+method letWithVariableInOld(r: Ref)
+  requires acc(r.f)
+{
+  r.f := r.f + 1
+  inhale forall i: Int :: { u(let x == (r.f) in old(k(i, x))) } u(old(k(i, r.f))) && t(i)
+  inhale u(let x == (r.f) in old(k(5, x)))
+  assert t(5)
+}

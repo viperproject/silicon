@@ -19,6 +19,7 @@ import viper.silicon.utils.ast.extractPTypeFromExp
 import viper.silicon.verifier.Verifier
 import viper.silver.parser.{PType, PUnknown}
 import viper.silver.ast.AnnotationInfo
+import viper.silver.ast.utility.Expressions
 import viper.silver.reporter.{InternalWarningMessage, Reporter}
 
 class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
@@ -172,7 +173,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
       case _ => super.translate(symbolConverter.toSort)(e)
     }
 
-  def getOrFail[K <: ast.Positioned](map: Map[(K, Seq[ExpContext]), Term], key: K, ctx: Seq[ExpContext], sort: Sort, pType: Option[PType]): Term =
+  def getOrFail[K <: ast.Exp](map: Map[(K, Seq[ExpContext]), Term], key: K, ctx: Seq[ExpContext], sort: Sort, pType: Option[PType]): Term =
     map.get((key, ctx)) match {
       case Some(s) =>
         s.convert(sort)
@@ -186,6 +187,25 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
             return innerContextVals.get._2.convert(sort)
           }
         }
+
+        // The expression might have been recorded with different lets. For example, a function application
+        // in a trigger might be written without a let, while the same application in the quantifier body might
+        // contain a let, as in g(let x == e in x), or be inside one, as in let x == e in g(x), or vice versa.
+        // Hence, the expressions, inside the lets of their contexts, are also compared modulo lets.
+        val keyInLets = inLetsOf(key, ctx)
+        val ctxWithoutLets = ctx.filterNot(_.isInstanceOf[LetContext])
+        lazy val keyContainsLet = keyInLets.exists(_.contains[ast.Let])
+        def matchesModuloLets(k: K, c: Seq[ExpContext]): Boolean = {
+          val cWithoutLets = c.filterNot(_.isInstanceOf[LetContext])
+          (cWithoutLets == ctxWithoutLets || (checkInnerContexts && cWithoutLets.startsWith(ctxWithoutLets))) && {
+            val kInLets = inLetsOf(k, c)
+            (keyContainsLet || kInLets.exists(_.contains[ast.Let])) && ((keyInLets, kInLets) match {
+              case (Some(e1), Some(e2)) => Expressions.equalModuloLets(e1, e2)
+              case _ => false
+            })
+          }
+        }
+        map.collectFirst({ case ((k, c), v) if matchesModuloLets(k, c) => v }).foreach(v => return v.convert(sort))
 
         if (!failed && data.verificationFailures.isEmpty) {
           val msg = resolutionFailureMessage(key, data)
@@ -202,4 +222,17 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
          */
         fresh("$unresolved", sort, pType)
     }
+
+  /** Returns the expression `e` inside the lets of its let contexts `ctx`, e.g. `let x == e0 in e` for the
+    * context of the let `let x == e0 in ...`. Returns None if a quantifier inside a let binds a variable with the
+    * same name as the let, since wrapping `e` in the let would then capture occurrences of the quantified variable.
+    */
+  private def inLetsOf(e: ast.Exp, ctx: Seq[ExpContext]): Option[ast.Exp] =
+    ctx.foldRight(Option((e, Set.empty[String]))) {
+      case (LetContext(l), Some((e1, quantifiedVars))) =>
+        if (quantifiedVars.contains(l.variable.name)) None
+        else Some((ast.Let(l.variable, l.exp, e1)(e1.pos, e1.info, e1.errT), quantifiedVars))
+      case (QuantifierContext(q), Some((e1, quantifiedVars))) => Some((e1, quantifiedVars ++ q.variables.map(_.name)))
+      case (_, result) => result
+    }.map(_._1)
 }
