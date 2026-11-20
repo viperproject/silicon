@@ -1373,10 +1373,10 @@ object evaluator extends EvaluationRules {
      */
     val (cachedTriggerTerms, remainingTriggerExpressions) =
       exps.map { e =>
-        lazy val eContainsLet = e.exists(_.isInstanceOf[ast.Let])
+        lazy val eContainsLet = e.contains[ast.Let]
         val cachedTrigger =
           s.possibleTriggers.get(e).orElse(s.possibleTriggers.collectFirst {
-            case (pt, t) if (eContainsLet || pt.exists(_.isInstanceOf[ast.Let])) && Expressions.equalModuloLets(e, pt) => t
+            case (pt, t) if (eContainsLet || pt.contains[ast.Let]) && Expressions.equalModuloLets(e, pt) => t
           }).map(t => transformPotentialFuncApp(t))
         (cachedTrigger, if (cachedTrigger.isDefined) None else Some(e))
       }.unzip match {

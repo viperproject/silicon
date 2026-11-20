@@ -173,7 +173,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
       case _ => super.translate(symbolConverter.toSort)(e)
     }
 
-  def getOrFail[K <: ast.Positioned](map: Map[(K, Seq[ExpContext]), Term], key: K, ctx: Seq[ExpContext], sort: Sort, pType: Option[PType]): Term =
+  def getOrFail[K <: ast.Exp](map: Map[(K, Seq[ExpContext]), Term], key: K, ctx: Seq[ExpContext], sort: Sort, pType: Option[PType]): Term =
     map.get((key, ctx)) match {
       case Some(s) =>
         s.convert(sort)
@@ -194,18 +194,18 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         // Hence, the expressions, inside the lets of their contexts, are also compared modulo lets.
         val keyInLets = inLetsOf(key, ctx)
         val ctxWithoutLets = ctx.filterNot(_.isInstanceOf[LetContext])
-        lazy val keyContainsLet = keyInLets.exists(_.exists(_.isInstanceOf[ast.Let]))
-        def equalModuloLets(k: K, c: Seq[ExpContext]): Boolean = {
+        lazy val keyContainsLet = keyInLets.exists(_.contains[ast.Let])
+        def matchesModuloLets(k: K, c: Seq[ExpContext]): Boolean = {
           val cWithoutLets = c.filterNot(_.isInstanceOf[LetContext])
           (cWithoutLets == ctxWithoutLets || (checkInnerContexts && cWithoutLets.startsWith(ctxWithoutLets))) && {
             val kInLets = inLetsOf(k, c)
-            (keyContainsLet || kInLets.exists(_.exists(_.isInstanceOf[ast.Let]))) && ((keyInLets, kInLets) match {
+            (keyContainsLet || kInLets.exists(_.contains[ast.Let])) && ((keyInLets, kInLets) match {
               case (Some(e1), Some(e2)) => Expressions.equalModuloLets(e1, e2)
               case _ => false
             })
           }
         }
-        map.collectFirst({ case ((k, c), v) if equalModuloLets(k, c) => v }) match {
+        map.collectFirst({ case ((k, c), v) if matchesModuloLets(k, c) => v }) match {
           case Some(v) => return v.convert(sort)
           case None =>
         }
@@ -227,18 +227,15 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
     }
 
   /** Returns the expression `e` inside the lets of its let contexts `ctx`, e.g. `let x == e0 in e` for the
-    * context of the let `let x == e0 in ...`. A let whose variable is bound again by a quantifier inside it is
-    * left out, since its variable does not occur in `e`.
+    * context of the let `let x == e0 in ...`. Returns None if the variable of a let is bound again by a quantifier
+    * inside it, since the quantified variable would then be bound by the let.
     */
-  private def inLetsOf(e: ast.Positioned, ctx: Seq[ExpContext]): Option[ast.Exp] = e match {
-    case exp: ast.Exp =>
-      Some(ctx.foldRight((exp, Set.empty[String])) {
-        case (LetContext(l), (e1, quantifiedVars)) if !quantifiedVars.contains(l.variable.name) =>
-          (ast.Let(l.variable, l.exp, e1)(e1.pos, e1.info, e1.errT), quantifiedVars)
-        case (QuantifierContext(q), (e1, quantifiedVars)) => (e1, quantifiedVars ++ q.variables.map(_.name))
-        case (_, result) => result
-      }._1)
-    case _ =>
-      None
-  }
+  private def inLetsOf(e: ast.Exp, ctx: Seq[ExpContext]): Option[ast.Exp] =
+    ctx.foldRight(Option((e, Set.empty[String]))) {
+      case (LetContext(l), Some((e1, quantifiedVars))) =>
+        if (quantifiedVars.contains(l.variable.name)) None
+        else Some((ast.Let(l.variable, l.exp, e1)(e1.pos, e1.info, e1.errT), quantifiedVars))
+      case (QuantifierContext(q), Some((e1, quantifiedVars))) => Some((e1, quantifiedVars ++ q.variables.map(_.name)))
+      case (_, result) => result
+    }.map(_._1)
 }
