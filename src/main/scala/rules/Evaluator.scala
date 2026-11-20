@@ -1368,19 +1368,15 @@ object evaluator extends EvaluationRules {
         other
     }
 
-    /* Possible triggers that were recorded inside a let of the body, or triggers that contain lets, are found by
-     * comparing them modulo lets (see the Let case of eval2). If a trigger is not found, it is evaluated below.
+    /* Possible triggers that were recorded inside a let of the body (see the Let case of eval2), and triggers
+     * that contain lets, are found by comparing them modulo lets. If a trigger is not found, it is evaluated below.
      */
     val (cachedTriggerTerms, remainingTriggerExpressions) =
       exps.map { e =>
+        lazy val eContainsLet = e.exists(_.isInstanceOf[ast.Let])
         val cachedTrigger =
-          (e match {
-            case pt @ (_: ast.PossibleTrigger | _: ast.FieldAccess | _: ast.LabelledOld | _: ast.Old) =>
-              s.possibleTriggers.get(pt)
-            case _ =>
-              None
-          }).orElse(s.possibleTriggers.collectFirst {
-            case (pt, t) if Expressions.equalModuloLets(e, pt) => t
+          s.possibleTriggers.get(e).orElse(s.possibleTriggers.collectFirst {
+            case (pt, t) if (eContainsLet || pt.exists(_.isInstanceOf[ast.Let])) && Expressions.equalModuloLets(e, pt) => t
           }).map(t => transformPotentialFuncApp(t))
         (cachedTrigger, if (cachedTrigger.isDefined) None else Some(e))
       }.unzip match {

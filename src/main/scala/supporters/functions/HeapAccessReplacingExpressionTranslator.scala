@@ -188,20 +188,22 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
           }
         }
 
-        // The expression might have been recorded with different lets. For example, a trigger is translated
-        // with its lets inlined (see ExpressionTranslator), while the same function application in the
-        // quantifier body might contain a let, as in g(let x == e in x), or be inside one, as in
-        // let x == e in g(x). Hence, the expressions, inside the lets of their contexts, are also compared
-        // modulo lets.
+        // The expression might have been recorded with different lets. For example, a function application
+        // in a trigger might be written without a let, while the same application in the quantifier body might
+        // contain a let, as in g(let x == e in x), or be inside one, as in let x == e in g(x), or vice versa.
+        // Hence, the expressions, inside the lets of their contexts, are also compared modulo lets.
         val keyInLets = inLetsOf(key, ctx)
         val ctxWithoutLets = ctx.filterNot(_.isInstanceOf[LetContext])
+        lazy val keyContainsLet = keyInLets.exists(_.exists(_.isInstanceOf[ast.Let]))
         def equalModuloLets(k: K, c: Seq[ExpContext]): Boolean = {
           val cWithoutLets = c.filterNot(_.isInstanceOf[LetContext])
-          (cWithoutLets == ctxWithoutLets || (checkInnerContexts && cWithoutLets.startsWith(ctxWithoutLets))) &&
-            ((keyInLets, inLetsOf(k, c)) match {
+          (cWithoutLets == ctxWithoutLets || (checkInnerContexts && cWithoutLets.startsWith(ctxWithoutLets))) && {
+            val kInLets = inLetsOf(k, c)
+            (keyContainsLet || kInLets.exists(_.exists(_.isInstanceOf[ast.Let]))) && ((keyInLets, kInLets) match {
               case (Some(e1), Some(e2)) => Expressions.equalModuloLets(e1, e2)
               case _ => false
             })
+          }
         }
         map.collectFirst({ case ((k, c), v) if equalModuloLets(k, c) => v }) match {
           case Some(v) => return v.convert(sort)

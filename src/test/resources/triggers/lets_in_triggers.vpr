@@ -10,8 +10,8 @@
 // "Might not be able to use trigger ...". LetsInTriggersTests checks that
 // verifying this file reports no such warning, and no "Could not resolve
 // expression ..." warning while axiomatising a function.
-// See letsInTriggersTests/top_level_lets_in_triggers.vpr for triggers whose
-// top-level expression is a let.
+// See top_level_lets_in_triggers.vpr for triggers whose top-level expression
+// is a let.
 
 function div(n: Int, d: Int): Int
   requires d != 0
@@ -59,6 +59,18 @@ method letInLetValue()
   assert t(3)
 }
 
+// The trigger is let-free; the body contains the same term with a let in it.
+method letInBodyOnly()
+  requires forall i: Int :: { s(q(div(10, i)), q(div(10, i))) }
+    i > 0 ==> (s(let x == (q(div(10, i))) in x, q(div(10, i))) && t(i))
+{
+  assert s(q(div(10, 5)), q(div(10, 5)))
+  assert t(5)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
 // A trigger set with several expressions, one of them containing a let.
 method letInTriggerSet()
   requires forall i: Int, j: Int :: { s(let x == (q(div(10, i))) in x, j), t(j) }
@@ -77,8 +89,8 @@ field f: Int
 function g(r: Ref, i: Int): Int
   requires acc(r.f)
 
-// The trigger of a quantifier in a function postcondition is translated with
-// its lets inlined, so g(r, i) in the trigger is resolved like g(r, i) in the body.
+// In the axiom for the postcondition, g(r, let x == (i) in x) in the trigger is
+// resolved modulo lets like g(r, i) in the body.
 function h(r: Ref): Bool
   requires acc(r.f)
   ensures forall i: Int :: { g(r, let x == (i) in x) } g(r, i) > r.f
@@ -105,10 +117,10 @@ method letInTriggerAndBodyOfFunctionPostcondition(r: Ref)
 function k(i: Int, v: Int): Int
 function u(v: Int): Bool
 
-// A let whose variable occurs in an old expression is not inlined, since its
-// value would be evaluated in the old state there. The trigger therefore does
-// not match the body term u(old(k(i, r.f))), which reads the old value of r.f,
-// and is evaluated on its own.
+// The let-bound variable x is used in an old expression but bound outside of
+// it, so its value is not evaluated in the old state. The trigger therefore
+// does not match the body term u(old(k(i, r.f))), which reads the old value of
+// r.f, and is evaluated on its own.
 method letWithVariableInOld(r: Ref)
   requires acc(r.f)
 {

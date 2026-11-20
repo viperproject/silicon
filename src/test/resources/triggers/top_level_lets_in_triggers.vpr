@@ -71,8 +71,8 @@ field f: Int
 function g(r: Ref, i: Int): Int
   requires acc(r.f)
 
-// The trigger of a quantifier in a function postcondition is translated with
-// its lets inlined, so g(r, x) in the trigger is resolved like g(r, i) in the body.
+// In the axiom for the postcondition, g(r, x) in the trigger is resolved modulo
+// lets like g(r, i) in the body.
 function h(r: Ref): Bool
   requires acc(r.f)
   ensures forall i: Int :: { let x == (i) in g(r, x) } g(r, i) > r.f

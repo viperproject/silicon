@@ -96,16 +96,17 @@ trait ExpressionTranslator {
 
         /** IMPORTANT: Keep in sync with [[viper.silicon.rules.evaluator.evalTrigger]].
           *
-          * A heap-dependent function application at the top of a trigger, also inside the lets of the trigger,
-          * is replaced by its limited version.
+          * The lets in a trigger are expanded, so that a trigger that is a let is a possible trigger (see
+          * Quantification.apply) and a heap-dependent function application at its top is replaced by its
+          * limited version, as for a trigger without lets.
           */
-        def withLimitedFunctionAtTop(trigger: Term): Term = trigger match {
-          case app @ App(fun: HeapDepFun, _) => app.copy(applicable = functionSupporter.limitedVersion(fun))
-          case let: Let => Let(let.bindings, withLimitedFunctionAtTop(let.body))
-          case other => other
-        }
-        val translatedTriggers =
-          eTriggers map (triggerSet => Trigger(triggerSet.exps map (trigger => withLimitedFunctionAtTop(f(trigger)))))
+        val translatedTriggers = eTriggers map (triggerSet => Trigger(triggerSet.exps map (trigger =>
+          f(trigger).transform()(post = { case let: Let => let.body.replace(let.bindings) }) match {
+            case app @ App(fun: HeapDepFun, _) =>
+              app.copy(applicable = functionSupporter.limitedVersion(fun))
+            case other => other
+          }
+        )))
         val weight = sourceQuant.info.getUniqueInfo[WeightedQuantifier] match {
           case Some(w) =>
             if (w.weight >= 0) {
