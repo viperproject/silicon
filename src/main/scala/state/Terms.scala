@@ -18,6 +18,7 @@ import viper.silicon.verifier.Verifier
 import viper.silver.utility.Common.Rational
 
 import scala.collection.concurrent.TrieMap
+import scala.util.hashing.MurmurHash3
 import scala.collection.immutable
 
 sealed trait Node {
@@ -521,7 +522,7 @@ trait ConditionalFlyweight[T, V] { self: AnyRef =>
   override lazy val hashCode = if (Verifier.config.useFlyweight)
     System.identityHashCode(this)
   else
-    viper.silver.utility.Common.generateHashCode(equalityDefiningMembers)
+    MurmurHash3.finalizeHash(MurmurHash3.mix(this.getClass.getName.hashCode, equalityDefiningMembers.##), 1)
 
   override def equals(other: Any): Boolean = {
     if (Verifier.config.useFlyweight) {
