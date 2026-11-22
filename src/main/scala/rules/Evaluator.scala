@@ -64,6 +64,13 @@ object evaluator extends EvaluationRules {
   import consumer._
   import producer._
 
+  /* Possible triggers (see State.possibleTriggers) with more AST nodes are not recorded when
+   * inlining a let, since no trigger written in a program is (realistically) this large.
+   */
+  private val maxPossibleTriggerSize: Long = 1000
+
+  private def astSize(n: ast.Node): Long = n.reduceTree[Long]((_, children) => 1 + children.sum)
+
   def evals(s: State, es: Seq[ast.Exp], pvef: ast.Exp => PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
            (Q: (State, List[Term], Option[List[ast.Exp]], Verifier) => VerificationResult)
            : VerificationResult =
@@ -269,7 +276,17 @@ object evaluator extends EvaluationRules {
           eval(s1.copy(g = s1.g + (x.localVar, (t0, e0New)), functionRecorder = newFuncRec), e1, pve, v1, analysisInfos)((s2, t2, e1New, v2) => {
             val newPossibleTriggers = if (s2.recordPossibleTriggers) {
               val addedTriggers = s2.possibleTriggers -- possibleTriggersBefore.keys
-              val addedTriggersReplaced = addedTriggers.map(at => at._1.replace(x.localVar, e0) -> at._2)
+              /* Replacing x by e0 can make keys grow exponentially for chains of lets whose
+               * variables are used several times. Keys that are too large to stem from a trigger
+               * written in the program are therefore dropped.
+               */
+              val e0Size = astSize(e0)
+              val addedTriggersReplaced = addedTriggers.flatMap { case (pt, tPt) =>
+                val (ptSize, occurrences) = pt.reduceTree[(Long, Long)]((n, children) =>
+                  (1 + children.map(_._1).sum, (if (n == x.localVar) 1 else 0) + children.map(_._2).sum))
+                if (occurrences == 0 || ptSize + occurrences * (e0Size - 1) > maxPossibleTriggerSize) None
+                else Some(pt.replace(x.localVar, e0) -> tPt)
+              }
               s2.possibleTriggers ++ addedTriggersReplaced
             } else {
               s2.possibleTriggers
