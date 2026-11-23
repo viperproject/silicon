@@ -1,0 +1,582 @@
+domain WellFoundedOrder[T]  {
+  
+  function bounded(v: T): Bool 
+  
+  function decreasing(v1: T, v2: T): Bool 
+}
+
+domain IntOrder  {
+  
+  axiom {
+    (forall i: Int ::0 <= i == (bounded(i): Bool))
+  }
+  
+  axiom {
+    (forall i: Int ::(forall j: Int ::i < j == (decreasing(i, j): Bool)))
+  }
+}
+
+domain array  {
+  
+  function array_loc(a: array, i: Int): Ref 
+  
+  function alen(a: array): Int 
+  
+  function loc_inv_1(loc: Ref): array 
+  
+  function loc_inv_2(loc: Ref): Int 
+  
+  axiom {
+    (forall a: array, i: Int ::
+      { array_loc(a, i) }
+      loc_inv_1(array_loc(a, i)) == a && loc_inv_2(array_loc(a, i)) == i)
+  }
+  
+  axiom {
+    (forall a: array :: { alen(a) } alen(a) >= 0)
+  }
+}
+
+domain any  {
+  
+  
+}
+
+domain option[T1]  {
+  
+  function None(): option[T1] 
+  
+  function some(x: T1): option[T1] 
+  
+  function option_get(opt: option[T1]): T1 
+  
+  axiom {
+    (forall x: T1 ::
+      { (some(x): option[T1]) }
+      (None(): option[T1]) != (some(x): option[T1]))
+  }
+  
+  axiom {
+    (forall x: T1 ::
+      { (some(x): option[T1]) }
+      (option_get((some(x): option[T1])): T1) == x)
+  }
+  
+  axiom {
+    (forall opt: option[T1] ::
+      { (some((option_get(opt): T1)): option[T1]) }
+      (some((option_get(opt): T1)): option[T1]) == opt)
+  }
+}
+
+domain void  {
+  
+  function unit(): void 
+  
+  axiom {
+    (forall v: void ::true ==> unit() == v)
+  }
+}
+
+field int: Int
+
+function aloc(a: array, i: Int): Ref
+  requires 0 <= i
+  requires i < alen(a)
+  decreases 
+  ensures loc_inv_1(result) == a
+  ensures loc_inv_2(result) == i
+{
+  array_loc(a, i)
+}
+
+function any_as(t: any): any
+  decreases 
+
+
+function as_any(t: any): any
+  decreases 
+  ensures any_as(result) == t
+
+
+function opt_get(opt: option[any]): any
+  requires opt != (None(): option[any])
+  decreases 
+  ensures (some(result): option[any]) == opt
+{
+  (option_get(opt): any)
+}
+
+function opt_or_else(opt: option[any], alt: any): any
+  decreases 
+  ensures opt == (None(): option[any]) ==> result == alt
+  ensures opt != (None(): option[any]) ==> result == opt_get(opt)
+{
+  (opt == (None(): option[any]) ? alt : opt_get(opt))
+}
+
+function opt_get1(opt: option[array]): array
+  requires opt != (None(): option[array])
+  decreases 
+  ensures (some(result): option[array]) == opt
+{
+  (option_get(opt): array)
+}
+
+function distinct(this: Ref, s: Seq[Int]): Bool
+  requires this != null
+{
+  (forall i: Int ::0 <= i && i < |s| ==>
+    (forall j: Int ::0 <= j && j < |s| && s[i] == s[j] ==> i == j))
+}
+
+function leftNeighbor(this: Ref, s: Seq[Int], x: Int): Int
+  requires this != null
+  requires 0 <= x
+  requires x < |s|
+  ensures result < x
+  ensures 0 <= result ==> s[result] < s[x]
+  ensures result < 0 ==> result == -1
+  ensures (forall i: Int ::result + 1 <= i && i < x + 1 ==> s[x] <= s[i])
+
+
+function rightNeighbor(this: Ref, s: Seq[Int], x: Int): Int
+  requires this != null
+  requires 0 <= x
+  requires x < |s|
+  ensures x < result
+  ensures result < |s| ==> s[result] < s[x]
+  ensures |s| <= result ==> result == |s|
+  ensures (forall i: Int ::x <= i && i < result ==> s[x] <= s[i])
+
+
+function correctness_upto(this: Ref, s: Seq[Int], parent: option[array], left: option[array],
+  right: option[array], root: Int, i: Int): Bool
+  requires this != null
+  requires left != (None(): option[array])
+  requires right != (None(): option[array])
+  requires parent != (None(): option[array])
+  requires |s| == alen(opt_get1(parent))
+  requires |s| == alen(opt_get1(left))
+  requires |s| == alen(opt_get1(right))
+  requires (forall j: Int ::
+      { aloc(opt_get1(left), j) }
+      0 <= j && j < |s| ==> acc(aloc(opt_get1(left), j).int, 1 * write))
+  requires (forall j: Int ::
+      { aloc(opt_get1(right), j) }
+      0 <= j && j < |s| ==> acc(aloc(opt_get1(right), j).int, 1 * write))
+  requires (forall j: Int ::
+      { aloc(opt_get1(parent), j) }
+      0 <= j && j < |s| ==> acc(aloc(opt_get1(parent), j).int, 1 * write))
+  requires correctness_invar(this, s, parent, left, right)
+  requires (forall i1: Int ::
+      { aloc(opt_get1(parent), i1) }
+      0 <= i1 && i1 < |s| && aloc(opt_get1(parent), i1).int != -1 ==>
+      0 <= aloc(opt_get1(parent), i1).int)
+  requires (forall i1: Int ::
+      { aloc(opt_get1(parent), i1) }
+      0 <= i1 && i1 < |s| && aloc(opt_get1(parent), i1).int != -1 ==>
+      aloc(opt_get1(parent), i1).int < |s|)
+  requires i <= |s|
+{
+  (forall j: Int ::
+    { aloc(opt_get1(parent), j) }
+    0 <= j && j < i && aloc(opt_get1(parent), j).int != -1 ==>
+    aloc(opt_get1(left), aloc(opt_get1(parent), j).int).int == j ||
+    aloc(opt_get1(right), aloc(opt_get1(parent), j).int).int == j) &&
+  (forall j: Int ::0 <= j && j < i && aloc(opt_get1(parent), j).int == -1 ==>
+    root == j) &&
+  (forall j: Int ::
+    { aloc(opt_get1(parent), j) }
+    0 <= j && j < i && aloc(opt_get1(parent), j).int != -1 ==>
+    s[aloc(opt_get1(parent), j).int] < s[j])
+}
+
+function correctness_invar(this: Ref, s: Seq[Int], parent: option[array], left: option[array],
+  right: option[array]): Bool
+  requires this != null
+  requires left != (None(): option[array])
+  requires right != (None(): option[array])
+  requires parent != (None(): option[array])
+  requires |s| == alen(opt_get1(parent))
+  requires |s| == alen(opt_get1(left))
+  requires |s| == alen(opt_get1(right))
+  requires (forall i: Int ::
+      { aloc(opt_get1(left), i) }
+      0 <= i && i < |s| ==> acc(aloc(opt_get1(left), i).int, 1 * write))
+  requires (forall i: Int ::
+      { aloc(opt_get1(right), i) }
+      0 <= i && i < |s| ==> acc(aloc(opt_get1(right), i).int, 1 * write))
+  requires (forall i: Int ::
+      { aloc(opt_get1(parent), i) }
+      0 <= i && i < |s| ==> acc(aloc(opt_get1(parent), i).int, 1 * write))
+{
+  (forall i: Int ::
+    { aloc(opt_get1(left), i) }
+    0 <= i && i < |s| && aloc(opt_get1(left), i).int != -1 ==>
+    0 <= aloc(opt_get1(left), i).int) &&
+  (forall i: Int ::
+    { aloc(opt_get1(left), i) }
+    0 <= i && i < |s| && aloc(opt_get1(left), i).int != -1 ==>
+    aloc(opt_get1(left), i).int < |s|) &&
+  (forall i: Int ::
+    { aloc(opt_get1(left), i) }
+    0 <= i && i < |s| && aloc(opt_get1(left), i).int != -1 ==>
+    aloc(opt_get1(parent), aloc(opt_get1(left), i).int).int == i) &&
+  ((forall i: Int ::
+    { aloc(opt_get1(right), i) }
+    0 <= i && i < |s| && aloc(opt_get1(right), i).int != -1 ==>
+    0 <= aloc(opt_get1(right), i).int) &&
+  (forall i: Int ::
+    { aloc(opt_get1(right), i) }
+    0 <= i && i < |s| && aloc(opt_get1(right), i).int != -1 ==>
+    aloc(opt_get1(right), i).int < |s|) &&
+  (forall i: Int ::
+    { aloc(opt_get1(right), i) }
+    0 <= i && i < |s| && aloc(opt_get1(right), i).int != -1 ==>
+    aloc(opt_get1(parent), aloc(opt_get1(right), i).int).int == i)) &&
+  ((forall i: Int ::
+    { aloc(opt_get1(parent), i) }
+    0 <= i && i < |s| && aloc(opt_get1(parent), i).int != -1 ==>
+    0 <= aloc(opt_get1(parent), i).int) &&
+  (forall i: Int ::
+    { aloc(opt_get1(parent), i) }
+    0 <= i && i < |s| && aloc(opt_get1(parent), i).int != -1 ==>
+    aloc(opt_get1(parent), i).int < |s|)) &&
+  (forall j: Int ::
+    { aloc(opt_get1(left), j) }
+    0 <= j && j < |s| && aloc(opt_get1(left), j).int != -1 ==>
+    aloc(opt_get1(left), j).int < j) &&
+  (forall j: Int ::
+    { aloc(opt_get1(right), j) }
+    0 <= j && j < |s| && aloc(opt_get1(right), j).int != -1 ==>
+    j < aloc(opt_get1(right), j).int) &&
+  left != (None(): option[array]) &&
+  right != (None(): option[array]) &&
+  parent != (None(): option[array])
+}
+
+function type(type1: Ref): Int
+  decreases 
+  ensures result >= 0
+  ensures result <= 1
+  ensures type1 == null ==> result == 0
+  ensures type1 != null ==> result != 0
+
+
+function subtype(subtype1: Int, subtype2: Int): Bool
+  requires subtype1 >= 0
+  requires subtype1 <= 1
+  requires subtype2 >= 0
+  requires subtype2 <= 1
+  decreases 
+{
+  (subtype1 == 0 ==> true) && (subtype1 == 1 ==> subtype2 == 1)
+}
+
+method check_sat_CartTree()
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method CartTree(tid: Int) returns (res: Ref)
+{
+  var exc: Ref
+  var return: Ref
+  var CartTree1: Ref
+  var flatten: Ref
+  exc := null
+  flatten := new()
+  inhale type(flatten) == 1
+  CartTree1 := flatten
+  return := CartTree1
+  goto end
+  label end
+  res := return
+  label bubble
+  assert exc == null
+}
+
+method check_sat_make_array(dim0: Int)
+  requires 0 <= dim0
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method make_array(tid: Int, dim0: Int) returns (res: option[array])
+  requires 0 <= dim0
+  ensures res != (None(): option[array])
+  ensures alen(opt_get1(res)) == dim0
+  ensures (forall i0: Int ::
+      { aloc(opt_get1(res), i0) }
+      0 <= i0 && i0 < dim0 ==> acc(aloc(opt_get1(res), i0).int, write))
+  ensures (forall i0: Int ::
+      { aloc(opt_get1(res), i0) }
+      0 <= i0 && i0 < dim0 ==> aloc(opt_get1(res), i0).int == 0)
+
+
+method check_sat_distinct(this: Ref)
+  requires this != null
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method check_sat_leftNeighbor(x: Int, s: Seq[Int], this: Ref)
+  requires this != null
+  requires 0 <= x
+  requires x < |s|
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method check_sat_rightNeighbor(x: Int, s: Seq[Int], this: Ref)
+  requires this != null
+  requires 0 <= x
+  requires x < |s|
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method check_sat_correctness_upto(s: Seq[Int], this: Ref, parent: option[array],
+  i: Int, left: option[array], right: option[array])
+  requires this != null
+  requires left != (None(): option[array])
+  requires right != (None(): option[array])
+  requires parent != (None(): option[array])
+  requires |s| == alen(opt_get1(parent))
+  requires |s| == alen(opt_get1(left))
+  requires |s| == alen(opt_get1(right))
+  requires (forall j: Int ::
+      { aloc(opt_get1(left), j) }
+      0 <= j && j < |s| ==> acc(aloc(opt_get1(left), j).int, 1 * write))
+  requires (forall j: Int ::
+      { aloc(opt_get1(right), j) }
+      0 <= j && j < |s| ==> acc(aloc(opt_get1(right), j).int, 1 * write))
+  requires (forall j: Int ::
+      { aloc(opt_get1(parent), j) }
+      0 <= j && j < |s| ==> acc(aloc(opt_get1(parent), j).int, 1 * write))
+  requires correctness_invar(this, s, parent, left, right)
+  requires (forall i1: Int ::
+      { aloc(opt_get1(parent), i1) }
+      0 <= i1 && i1 < |s| && aloc(opt_get1(parent), i1).int != -1 ==>
+      0 <= aloc(opt_get1(parent), i1).int)
+  requires (forall i1: Int ::
+      { aloc(opt_get1(parent), i1) }
+      0 <= i1 && i1 < |s| && aloc(opt_get1(parent), i1).int != -1 ==>
+      aloc(opt_get1(parent), i1).int < |s|)
+  requires i <= |s|
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method check_sat_correctness_invar(parent: option[array], this: Ref, s: Seq[Int],
+  right: option[array], left: option[array])
+  requires this != null
+  requires left != (None(): option[array])
+  requires right != (None(): option[array])
+  requires parent != (None(): option[array])
+  requires |s| == alen(opt_get1(parent))
+  requires |s| == alen(opt_get1(left))
+  requires |s| == alen(opt_get1(right))
+  requires (forall i: Int ::
+      { aloc(opt_get1(left), i) }
+      0 <= i && i < |s| ==> acc(aloc(opt_get1(left), i).int, 1 * write))
+  requires (forall i: Int ::
+      { aloc(opt_get1(right), i) }
+      0 <= i && i < |s| ==> acc(aloc(opt_get1(right), i).int, 1 * write))
+  requires (forall i: Int ::
+      { aloc(opt_get1(parent), i) }
+      0 <= i && i < |s| ==> acc(aloc(opt_get1(parent), i).int, 1 * write))
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method check_sat_cartTree(this: Ref)
+  requires this != null
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method cartTree(this: Ref, tid: Int, s: Seq[Int])
+  returns (res: void, parent: option[array], left: option[array], right: option[array],
+  root: Int)
+  requires this != null
+  ensures right != (None(): option[array])
+  ensures parent != (None(): option[array])
+  ensures left != (None(): option[array])
+  ensures |s| == alen(opt_get1(parent))
+  ensures |s| == alen(opt_get1(left))
+  ensures |s| == alen(opt_get1(right))
+  ensures (forall i: Int ::
+      { aloc(opt_get1(left), i) }
+      0 <= i && i < |s| ==> acc(aloc(opt_get1(left), i).int, 1 * write))
+  ensures (forall i: Int ::
+      { aloc(opt_get1(right), i) }
+      0 <= i && i < |s| ==> acc(aloc(opt_get1(right), i).int, 1 * write))
+  ensures (forall i: Int ::
+      { aloc(opt_get1(parent), i) }
+      0 <= i && i < |s| ==> acc(aloc(opt_get1(parent), i).int, 1 * write))
+  ensures correctness_invar(this, s, parent, left, right)
+  ensures (forall i: Int ::
+      { aloc(opt_get1(parent), i) }
+      0 <= i && i < |s| && aloc(opt_get1(parent), i).int != -1 ==>
+      0 <= aloc(opt_get1(parent), i).int)
+  ensures (forall i: Int ::
+      { aloc(opt_get1(parent), i) }
+      0 <= i && i < |s| && aloc(opt_get1(parent), i).int != -1 ==>
+      aloc(opt_get1(parent), i).int < |s|)
+  ensures correctness_upto(this, s, parent, left, right, root, |s|)
+{
+  var exc: Ref
+  var return: void
+  var root1: Int
+  var i: Int
+  var res1: option[array]
+  var flatten: option[array]
+  var res2: option[array]
+  var flatten1: option[array]
+  var res3: option[array]
+  var flatten2: option[array]
+  var flatten3: Int
+  var flatten4: Int
+  var flatten5: Int
+  var flatten6: Int
+  var flatten7: Int
+  var flatten8: Int
+  var flatten9: Int
+  var flatten10: Int
+  var flatten11: Int
+  var flatten12: Int
+  var flatten13: Int
+  var flatten14: Int
+  var flatten15: Int
+  var flatten16: Int
+  var flatten17: Int
+  var excBeforeLoop: Ref
+  var excBeforeLoop1: Ref
+  exc := null
+  res1 := make_array(tid, |s|)
+  flatten := res1
+  parent := flatten
+  res2 := make_array(tid, |s|)
+  flatten1 := res2
+  left := flatten1
+  res3 := make_array(tid, |s|)
+  flatten2 := res3
+  right := flatten2
+  flatten3 := -1
+  root1 := flatten3
+  flatten4 := 0
+  i := flatten4
+  label loop
+  excBeforeLoop := exc
+  while (i < |s|)
+    invariant exc == excBeforeLoop
+    invariant 0 <= i
+    invariant i < |s| + 1
+    invariant alen(opt_get1(parent)) == |s|
+    invariant alen(opt_get1(left)) == |s|
+    invariant alen(opt_get1(right)) == |s|
+    invariant left != (None(): option[array])
+    invariant right != (None(): option[array])
+    invariant parent != (None(): option[array])
+    invariant (forall j: Int ::
+        { aloc(opt_get1(parent), j) }
+        0 <= j && j < |s| ==> acc(aloc(opt_get1(parent), j).int, 1 * write))
+    invariant (forall j: Int ::
+        { aloc(opt_get1(left), j) }
+        0 <= j && j < |s| ==> acc(aloc(opt_get1(left), j).int, 1 * write))
+    invariant (forall j: Int ::
+        { aloc(opt_get1(right), j) }
+        0 <= j && j < |s| ==> acc(aloc(opt_get1(right), j).int, 1 * write)) 
+  {
+    flatten5 := -1
+    aloc(opt_get1(left), i).int := flatten5
+    flatten6 := -1
+    aloc(opt_get1(right), i).int := flatten6
+  }
+  flatten7 := 0
+  i := flatten7
+  label loop1
+  excBeforeLoop1 := exc
+  while (i < |s|)
+    invariant exc == excBeforeLoop1
+    invariant 0 <= i
+    invariant i < |s| + 1
+    invariant alen(opt_get1(parent)) == |s|
+    invariant alen(opt_get1(left)) == |s|
+    invariant alen(opt_get1(right)) == |s|
+    invariant left != (None(): option[array])
+    invariant right != (None(): option[array])
+    invariant parent != (None(): option[array])
+    invariant (forall j: Int ::
+        { aloc(opt_get1(parent), j) }
+        0 <= j && j < |s| ==> acc(aloc(opt_get1(parent), j).int, 1 * write))
+    invariant (forall j: Int ::
+        { aloc(opt_get1(left), j) }
+        0 <= j && j < |s| ==> acc(aloc(opt_get1(left), j).int, 1 * write))
+    invariant (forall j: Int ::
+        { aloc(opt_get1(right), j) }
+        0 <= j && j < |s| ==> acc(aloc(opt_get1(right), j).int, 1 * write))
+    invariant correctness_invar(this, s, parent, left, right)
+    invariant correctness_upto(this, s, parent, left, right, root1, i) 
+  {
+    if (rightNeighbor(this, s, i) == |s|) {
+      if (leftNeighbor(this, s, i) == -1) {
+        flatten8 := -1
+        aloc(opt_get1(parent), i).int := flatten8
+        root1 := i
+      } else {
+        flatten9 := leftNeighbor(this, s, i)
+        aloc(opt_get1(parent), i).int := flatten9
+        flatten10 := leftNeighbor(this, s, i)
+        aloc(opt_get1(right), flatten10).int := i
+      }
+    } elseif (leftNeighbor(this, s, i) == -1) {
+      flatten11 := rightNeighbor(this, s, i)
+      aloc(opt_get1(parent), i).int := flatten11
+      flatten12 := rightNeighbor(this, s, i)
+      aloc(opt_get1(left), flatten12).int := i
+    } elseif (s[rightNeighbor(this, s, i)] < s[leftNeighbor(this, s, i)]) {
+      flatten13 := leftNeighbor(this, s, i)
+      aloc(opt_get1(parent), i).int := flatten13
+      flatten14 := leftNeighbor(this, s, i)
+      aloc(opt_get1(right), flatten14).int := i
+    } else {
+      flatten15 := rightNeighbor(this, s, i)
+      aloc(opt_get1(parent), i).int := flatten15
+      flatten16 := rightNeighbor(this, s, i)
+      aloc(opt_get1(left), flatten16).int := i
+    }
+    flatten17 := i
+    i := i + 1
+  }
+  label end
+  res := return
+  label bubble
+  assert exc == null
+}
+
+method check_sat_type()
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method check_sat_subtype(subtype1: Int, subtype2: Int)
+  requires subtype1 >= 0
+  requires subtype1 <= 1
+  requires subtype2 >= 0
+  requires subtype2 <= 1
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}

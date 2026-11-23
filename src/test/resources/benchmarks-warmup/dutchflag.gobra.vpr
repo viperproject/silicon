@@ -1,0 +1,590 @@
+domain String  {
+  
+  function strLen(id: Int): Int 
+  
+  function strConcat(l: Int, r: Int): Int 
+  
+  unique function stringLit(): Int 
+  
+  axiom {
+    (forall l: Int, r: Int ::
+      { strLen(strConcat(l, r)) }
+      strLen(strConcat(l, r)) == strLen(l) + strLen(r))
+  }
+  
+  axiom {
+    (forall str: Int :: { strLen(str) } 0 <= strLen(str))
+  }
+  
+  axiom {
+    strLen(stringLit()) == 0
+  }
+}
+
+domain Types  {
+  
+  function empty_interface_Types(): Types 
+  
+  unique function empty_interface_Types_tag(): Int 
+  
+  function behavioral_subtype_Types(l: Types, r: Types): Bool 
+  
+  function nil_Types(): Types 
+  
+  unique function nil_Types_tag(): Int 
+  
+  function comparableType_Types(t: Types): Bool 
+  
+  function tag_Types(t: Types): Int 
+  
+  axiom {
+    (forall a: Types ::
+      { behavioral_subtype_Types(a, empty_interface_Types()) }
+      behavioral_subtype_Types(a, empty_interface_Types()))
+  }
+  
+  axiom {
+    (forall a: Types ::
+      { behavioral_subtype_Types(a, a) }
+      behavioral_subtype_Types(a, a))
+  }
+  
+  axiom {
+    (forall a: Types, b: Types, c: Types ::
+      { behavioral_subtype_Types(a, b), behavioral_subtype_Types(b, c) }
+      behavioral_subtype_Types(a, b) && behavioral_subtype_Types(b, c) ==>
+      behavioral_subtype_Types(a, c))
+  }
+  
+  axiom {
+    comparableType_Types(empty_interface_Types()) == false
+  }
+  
+  axiom {
+    tag_Types(empty_interface_Types()) == empty_interface_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(nil_Types()) == true
+  }
+  
+  axiom {
+    tag_Types(nil_Types()) == nil_Types_tag()
+  }
+}
+
+domain Emb_1_Intint$$$_S_$$$  {
+  
+  
+}
+
+domain Tuple2[T0, T1]  {
+  
+  function tuple2(t0: T0, t1: T1): Tuple2[T0, T1] 
+  
+  function get0of2(p: Tuple2[T0, T1]): T0 
+  
+  function get1of2(p: Tuple2[T0, T1]): T1 
+  
+  axiom getter_over_tuple2 {
+    (forall t0: T0, t1: T1 ::
+      { (tuple2(t0, t1): Tuple2[T0, T1]) }
+      (get0of2((tuple2(t0, t1): Tuple2[T0, T1])): T0) == t0 &&
+      (get1of2((tuple2(t0, t1): Tuple2[T0, T1])): T1) == t1)
+  }
+  
+  axiom tuple2_over_getter {
+    (forall p: Tuple2[T0, T1] ::
+      { (get0of2(p): T0) }
+      { (get1of2(p): T1) }
+      (tuple2((get0of2(p): T0), (get1of2(p): T1)): Tuple2[T0, T1]) == p)
+  }
+}
+
+domain Slice[T]  {
+  
+  function sarray(s: Slice[T]): ShArray[T] 
+  
+  function soffset(s: Slice[T]): Int 
+  
+  function slen(s: Slice[T]): Int 
+  
+  function scap(s: Slice[T]): Int 
+  
+  function smake(a: ShArray[T], o: Int, l: Int, c: Int): Slice[T] 
+  
+  axiom {
+    (forall s: Slice[T] :: { (soffset(s): Int) } 0 <= (soffset(s): Int))
+  }
+  
+  axiom {
+    (forall s: Slice[T] :: { (slen(s): Int) } 0 <= (slen(s): Int))
+  }
+  
+  axiom {
+    (forall s: Slice[T] ::
+      { (slen(s): Int) }
+      { (scap(s): Int) }
+      (slen(s): Int) <= (scap(s): Int))
+  }
+  
+  axiom {
+    (forall s: Slice[T] ::
+      { (soffset(s): Int), (scap(s): Int) }
+      { (ShArraylen((sarray(s): ShArray[T])): Int) }
+      (soffset(s): Int) + (scap(s): Int) <=
+      (ShArraylen((sarray(s): ShArray[T])): Int))
+  }
+  
+  axiom {
+    (forall s: Slice[T] ::
+      { (sarray(s): ShArray[T]) }
+      { (soffset(s): Int) }
+      { (slen(s): Int) }
+      { (scap(s): Int) }
+      s ==
+      (smake((sarray(s): ShArray[T]), (soffset(s): Int), (slen(s): Int), (scap(s): Int)): Slice[T]))
+  }
+  
+  axiom deconstructor_over_constructor_array {
+    (forall a: ShArray[T], o: Int, l: Int, c: Int ::
+      { (sarray((smake(a, o, l, c): Slice[T])): ShArray[T]) }
+      0 <= o && (0 <= l && (l <= c && o + c <= (ShArraylen(a): Int))) ==>
+      (sarray((smake(a, o, l, c): Slice[T])): ShArray[T]) == a)
+  }
+  
+  axiom deconstructor_over_constructor_offset {
+    (forall a: ShArray[T], o: Int, l: Int, c: Int ::
+      { (soffset((smake(a, o, l, c): Slice[T])): Int) }
+      0 <= o && (0 <= l && (l <= c && o + c <= (ShArraylen(a): Int))) ==>
+      (soffset((smake(a, o, l, c): Slice[T])): Int) == o)
+  }
+  
+  axiom deconstructor_over_constructor_len {
+    (forall a: ShArray[T], o: Int, l: Int, c: Int ::
+      { (slen((smake(a, o, l, c): Slice[T])): Int) }
+      0 <= o && (0 <= l && (l <= c && o + c <= (ShArraylen(a): Int))) ==>
+      (slen((smake(a, o, l, c): Slice[T])): Int) == l)
+  }
+  
+  axiom deconstructor_over_constructor_cap {
+    (forall a: ShArray[T], o: Int, l: Int, c: Int ::
+      { (scap((smake(a, o, l, c): Slice[T])): Int) }
+      0 <= o && (0 <= l && (l <= c && o + c <= (ShArraylen(a): Int))) ==>
+      (scap((smake(a, o, l, c): Slice[T])): Int) == c)
+  }
+}
+
+domain ShArray[T]  {
+  
+  function ShArrayloc(a: ShArray[T], i: Int): T 
+  
+  function ShArraylen(a: ShArray[T]): Int 
+  
+  function ShArrayfirst(r: T): ShArray[T] 
+  
+  function ShArraysecond(r: T): Int 
+  
+  axiom {
+    (forall a: ShArray[T], i: Int ::
+      { (ShArrayloc(a, i): T) }
+      0 <= i && i < (ShArraylen(a): Int) ==>
+      (ShArrayfirst((ShArrayloc(a, i): T)): ShArray[T]) == a &&
+      (ShArraysecond((ShArrayloc(a, i): T)): Int) == i)
+  }
+  
+  axiom {
+    (forall a: ShArray[T] ::
+      { (ShArraylen(a): Int) }
+      (ShArraylen(a): Int) >= 0)
+  }
+}
+
+domain WellFoundedOrder[T]  {
+  
+  function decreasing(arg1: T, arg2: T): Bool 
+  
+  function bounded(arg1: T): Bool 
+}
+
+field Intint$$$$_E_$$$: Int
+
+// decreases _
+function sliceDefault_Intint$$$_S_$$$(): Slice[Ref]
+  ensures (soffset(result): Int) == 0
+  ensures (slen(result): Int) == 0
+  ensures (scap(result): Int) == 0
+  ensures (sarray(result): ShArray[Ref]) ==
+    unbox_Emb_1_Intint$$$_S_$$$_ShArray_Ref(box_Emb_1_Intint$$$_S_$$$_ShArray_Ref(arrayNil_1_Intint$$$_S_$$$()))
+
+
+function sconstruct_Ref(a: ShArray[Ref], offset: Int, len: Int, cap: Int): Slice[Ref]
+  requires 0 <= offset
+  requires 0 <= len
+  requires len <= cap
+  requires offset + cap <= (ShArraylen(a): Int)
+  ensures (sarray(result): ShArray[Ref]) == a
+  ensures (soffset(result): Int) == offset
+  ensures (slen(result): Int) == len
+  ensures (scap(result): Int) == cap
+
+
+// decreases _
+function arrayNil_1_Intint$$$_S_$$$(): ShArray[Ref]
+  ensures (ShArraylen(result): Int) == 1
+  ensures (forall idx: Int ::
+      { (ShArrayloc(result, idx): Ref) }
+      (ShArrayloc(result, idx): Ref) == null)
+
+
+// decreases _
+function box_Emb_1_Intint$$$_S_$$$_ShArray_Ref(x: ShArray[Ref]): Emb_1_Intint$$$_S_$$$
+  requires (ShArraylen(x): Int) == 1 || x == arrayNil_1_Intint$$$_S_$$$()
+  ensures unbox_Emb_1_Intint$$$_S_$$$_ShArray_Ref(result) == x
+
+
+// decreases _
+function unbox_Emb_1_Intint$$$_S_$$$_ShArray_Ref(y: Emb_1_Intint$$$_S_$$$): ShArray[Ref]
+  ensures (ShArraylen(result): Int) == 1 ||
+    result == arrayNil_1_Intint$$$_S_$$$()
+  ensures box_Emb_1_Intint$$$_S_$$$_ShArray_Ref(result) == y
+
+
+function sadd(left: Int, right: Int): Int
+  ensures result == left + right
+{
+  left + right
+}
+
+// decreases 
+function IsDuplicableMem_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types]): Bool
+  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), wildcard)
+
+
+predicate ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types]) 
+
+method dutchflag_37d1251d_F(s_V0: Slice[Ref], mid_V0: Int)
+  returns (a_V0: Int, b_V0: Int)
+  requires (forall n_V1: Int ::
+      { (ShArrayloc((sarray(s_V0): ShArray[Ref]), sadd((soffset(s_V0): Int),
+      n_V1)): Ref) }
+      0 <= n_V1 && n_V1 < (slen(s_V0): Int) ==>
+      acc((ShArrayloc((sarray(s_V0): ShArray[Ref]), sadd((soffset(s_V0): Int),
+      n_V1)): Ref).Intint$$$$_E_$$$, write))
+  ensures (forall n_V1: Int ::
+      { (ShArrayloc((sarray(s_V0): ShArray[Ref]), sadd((soffset(s_V0): Int),
+      n_V1)): Ref) }
+      0 <= n_V1 && n_V1 < (slen(s_V0): Int) ==>
+      acc((ShArrayloc((sarray(s_V0): ShArray[Ref]), sadd((soffset(s_V0): Int),
+      n_V1)): Ref).Intint$$$$_E_$$$, write))
+  ensures 0 <= a_V0 && a_V0 <= b_V0 && b_V0 <= (slen(s_V0): Int)
+  ensures (forall n_V2: Int ::
+      { (ShArrayloc((sarray(s_V0): ShArray[Ref]), sadd((soffset(s_V0): Int),
+      n_V2)): Ref) }
+      0 <= n_V2 && n_V2 < a_V0 ==>
+      (ShArrayloc((sarray(s_V0): ShArray[Ref]), sadd((soffset(s_V0): Int), n_V2)): Ref).Intint$$$$_E_$$$ <
+      mid_V0)
+  ensures (forall n_V3: Int ::
+      { (ShArrayloc((sarray(s_V0): ShArray[Ref]), sadd((soffset(s_V0): Int),
+      n_V3)): Ref) }
+      a_V0 <= n_V3 && n_V3 < b_V0 ==>
+      (ShArrayloc((sarray(s_V0): ShArray[Ref]), sadd((soffset(s_V0): Int), n_V3)): Ref).Intint$$$$_E_$$$ ==
+      mid_V0)
+  ensures (forall n_V4: Int ::
+      { (ShArrayloc((sarray(s_V0): ShArray[Ref]), sadd((soffset(s_V0): Int),
+      n_V4)): Ref) }
+      b_V0 <= n_V4 && n_V4 < (slen(s_V0): Int) ==>
+      mid_V0 <
+      (ShArrayloc((sarray(s_V0): ShArray[Ref]), sadd((soffset(s_V0): Int), n_V4)): Ref).Intint$$$$_E_$$$)
+{
+  inhale a_V0 == 0
+  inhale b_V0 == 0
+  
+  // decl s_V0_CN0: []int@°°, mid_V0_CN1: int°°, a_V0_CN2: int°°, b_V0_CN3: int°°
+  {
+    var b_V0_CN3: Int
+    var a_V0_CN2: Int
+    var mid_V0_CN1: Int
+    var s_V0_CN0: Slice[Ref]
+    
+    
+    
+    // init s_V0_CN0
+    inhale s_V0_CN0 == sliceDefault_Intint$$$_S_$$$()
+    
+    // init mid_V0_CN1
+    inhale mid_V0_CN1 == 0
+    
+    // init a_V0_CN2
+    inhale a_V0_CN2 == 0
+    
+    // init b_V0_CN3
+    inhale b_V0_CN3 == 0
+    
+    // s_V0_CN0 = s_V0
+    s_V0_CN0 := s_V0
+    
+    // mid_V0_CN1 = mid_V0
+    mid_V0_CN1 := mid_V0
+    
+    // decl i_V5: int°°, j_V5: int°°, k_V5: int°°
+    {
+      var k_V5: Int
+      var j_V5: Int
+      var i_V5: Int
+      
+      // init i_V5
+      inhale i_V5 == 0
+      
+      // i_V5 = 0
+      i_V5 := 0
+      
+      // init j_V5
+      inhale j_V5 == 0
+      
+      // j_V5 = 0
+      j_V5 := 0
+      
+      // init k_V5
+      inhale k_V5 == 0
+      
+      // k_V5 = len(s_V0_CN0)
+      k_V5 := (slen(s_V0_CN0): Int)
+      
+      // decl L$11$2$Break
+      {
+        
+        // while(j_V5 < k_V5)
+// invariant 0 <= i_V5 && i_V5 <= j_V5 && j_V5 <= k_V5 && k_V5 <= len(s_V0_CN0)
+// invariant forall n_V1: int° :: {  } 0 <= n_V1 && n_V1 < len(s_V0_CN0) ==> acc(s_V0_CN0[n_V1])
+// invariant forall n_V6: int° :: {  } 0 <= n_V6 && n_V6 < i_V5 ==> s_V0_CN0[n_V6] < mid_V0_CN1
+// invariant forall n_V7: int° :: {  } i_V5 <= n_V7 && n_V7 < j_V5 ==> s_V0_CN0[n_V7] == mid_V0_CN1
+// invariant forall n_V8: int° :: {  } k_V5 <= n_V8 && n_V8 < len(s_V0_CN0) ==> mid_V0_CN1 < s_V0_CN0[n_V8]
+
+        
+        while (j_V5 < k_V5)
+          invariant 0 <= i_V5 && i_V5 <= j_V5 && j_V5 <= k_V5 &&
+            k_V5 <= (slen(s_V0_CN0): Int)
+          invariant (forall n_V1: Int ::
+              { (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+              n_V1)): Ref) }
+              0 <= n_V1 && n_V1 < (slen(s_V0_CN0): Int) ==>
+              acc((ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+              n_V1)): Ref).Intint$$$$_E_$$$, write))
+          invariant (forall n_V6: Int ::
+              { (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+              n_V6)): Ref) }
+              0 <= n_V6 && n_V6 < i_V5 ==>
+              (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+              n_V6)): Ref).Intint$$$$_E_$$$ <
+              mid_V0_CN1)
+          invariant (forall n_V7: Int ::
+              { (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+              n_V7)): Ref) }
+              i_V5 <= n_V7 && n_V7 < j_V5 ==>
+              (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+              n_V7)): Ref).Intint$$$$_E_$$$ ==
+              mid_V0_CN1)
+          invariant (forall n_V8: Int ::
+              { (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+              n_V8)): Ref) }
+              k_V5 <= n_V8 && n_V8 < (slen(s_V0_CN0): Int) ==>
+              mid_V0_CN1 <
+              (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+              n_V8)): Ref).Intint$$$$_E_$$$) 
+        {
+          
+          // decl L$11$2$Continue
+          {
+            
+            // decl 
+            
+            // if(s_V0_CN0[j_V5] < mid_V0_CN1) {...} else {...}
+            if ((ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+            j_V5)): Ref).Intint$$$$_E_$$$ <
+            mid_V0_CN1) {
+              
+              // decl tmp_V10: int°°
+              {
+                var tmp_V10: Int
+                
+                // init tmp_V10
+                inhale tmp_V10 == 0
+                
+                // tmp_V10 = s_V0_CN0[i_V5]
+                tmp_V10 := (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+                  i_V5)): Ref).Intint$$$$_E_$$$
+                
+                // s_V0_CN0[i_V5] = s_V0_CN0[j_V5]
+                (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+                i_V5)): Ref).Intint$$$$_E_$$$ := (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]),
+                  sadd((soffset(s_V0_CN0): Int), j_V5)): Ref).Intint$$$$_E_$$$
+                
+                // s_V0_CN0[j_V5] = tmp_V10
+                (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+                j_V5)): Ref).Intint$$$$_E_$$$ := tmp_V10
+                
+                // i_V5 = i_V5 + 1
+                i_V5 := i_V5 + 1
+                
+                // j_V5 = j_V5 + 1
+                j_V5 := j_V5 + 1
+              }
+            } else {
+              
+              // if(s_V0_CN0[j_V5] > mid_V0_CN1) {...} else {...}
+              if ((ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+              j_V5)): Ref).Intint$$$$_E_$$$ >
+              mid_V0_CN1) {
+                
+                // decl tmp_V9: int°°
+                {
+                  var tmp_V9: Int
+                  
+                  // init tmp_V9
+                  inhale tmp_V9 == 0
+                  
+                  // tmp_V9 = s_V0_CN0[j_V5]
+                  tmp_V9 := (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+                    j_V5)): Ref).Intint$$$$_E_$$$
+                  
+                  // s_V0_CN0[j_V5] = s_V0_CN0[k_V5 - 1]
+                  (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+                  j_V5)): Ref).Intint$$$$_E_$$$ := (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]),
+                    sadd((soffset(s_V0_CN0): Int), k_V5 - 1)): Ref).Intint$$$$_E_$$$
+                  
+                  // s_V0_CN0[k_V5 - 1] = tmp_V9
+                  (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+                  k_V5 - 1)): Ref).Intint$$$$_E_$$$ := tmp_V9
+                  
+                  // k_V5 = k_V5 - 1
+                  k_V5 := k_V5 - 1
+                }
+              } else {
+                
+                // decl 
+                
+                // j_V5 = j_V5 + 1
+                j_V5 := j_V5 + 1
+              }
+            }
+            
+            // L$11$2$Continue
+            label L$11$2$Continue
+          }
+          if (j_V5 < k_V5) {
+          }
+          
+        }
+        
+        // L$11$2$Break
+        label L$11$2$Break
+      }
+      
+      // a_V0_CN2 = i_V5
+      a_V0_CN2 := i_V5
+      
+      // b_V0_CN3 = j_V5
+      b_V0_CN3 := j_V5
+      
+      // assert forall n_V2: int° :: {  } 0 <= n_V2 && n_V2 < a_V0_CN2 ==> s_V0_CN0[n_V2] < mid_V0_CN1
+      assert (forall n_V2: Int ::
+          { (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+          n_V2)): Ref) }
+          0 <= n_V2 && n_V2 < a_V0_CN2 ==>
+          (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+          n_V2)): Ref).Intint$$$$_E_$$$ <
+          mid_V0_CN1)
+      
+      // assert forall n_V3: int° :: {  } a_V0_CN2 <= n_V3 && n_V3 < b_V0_CN3 ==> s_V0_CN0[n_V3] == mid_V0_CN1
+      assert (forall n_V3: Int ::
+          { (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+          n_V3)): Ref) }
+          a_V0_CN2 <= n_V3 && n_V3 < b_V0_CN3 ==>
+          (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+          n_V3)): Ref).Intint$$$$_E_$$$ ==
+          mid_V0_CN1)
+      
+      // assert forall n_V4: int° :: {  } b_V0_CN3 <= n_V4 && n_V4 < len(s_V0_CN0) ==> mid_V0_CN1 < s_V0_CN0[n_V4]
+      assert (forall n_V4: Int ::
+          { (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+          n_V4)): Ref) }
+          b_V0_CN3 <= n_V4 && n_V4 < (slen(s_V0_CN0): Int) ==>
+          mid_V0_CN1 <
+          (ShArrayloc((sarray(s_V0_CN0): ShArray[Ref]), sadd((soffset(s_V0_CN0): Int),
+          n_V4)): Ref).Intint$$$$_E_$$$)
+    }
+    label returnLabel
+    
+    // a_V0 = a_V0_CN2
+    a_V0 := a_V0_CN2
+    
+    // b_V0 = b_V0_CN3
+    b_V0 := b_V0_CN3
+  }
+}
+
+method $IMPORTS_37d1251d_37d1251d()
+{
+  
+  // decl 
+  {
+    
+    
+    label returnLabel
+  }
+}
+
+method $IMPORTS_37d1251d_bffb141e()
+{
+  
+  // decl 
+  {
+    
+    
+    label returnLabel
+  }
+}
+
+// decreases 
+method $INIT_37d1251d_c885bc2a()
+{
+  
+  // decl 
+  {
+    
+    
+    label returnLabel
+  }
+}
+
+method panic_bffb141e_F(v_V0: Tuple2[Ref, Types])
+  requires false
+
+
+// decreases 
+method Error_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types])
+  returns (P0_PO0: Int)
+  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+  ensures acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+
+
+// decreases 
+method Duplicate_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types])
+  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+  ensures acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+  ensures IsDuplicableMem_bffb141e_SY$c04328b0_bffb141e_(thisItf) ==>
+    acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+
+
+// decreases 
+method IsDuplicableMem_bffb141e_SY$c04328b0_bffb141e__pres_termination_proof(thisItf: Tuple2[Ref, Types])
+{
+  var $condInEx: Bool
+  if (!(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))) {
+    inhale acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), wildcard)
+  }
+}

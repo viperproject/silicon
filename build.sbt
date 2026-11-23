@@ -40,6 +40,11 @@ lazy val silicon = (project in file("."))
 
     // Test settings
     Test / javaOptions ++= (run / javaOptions).value,
+    // Forward benchmark settings (e.g. `sbt -DSILICONTESTS_REPETITIONS=5 benchmark`) to the forked JVM.
+    // Scoped to `Test / run` (used by the `benchmark` alias's `Test/runMain`), so `sbt test` is unaffected.
+    Test / run / javaOptions ++= sys.props.toSeq.collect {
+      case (k, v) if k.startsWith("SILICONTESTS_") => s"-D$k=$v"
+    },
     Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-u", "target/test-reports", "-oD"),
     // Options passed to JVMs forked by test-related Sbt command.
     // See http://www.scala-sbt.org/0.12.4/docs/Detailed-Topics/Forking.html
@@ -79,6 +84,10 @@ lazy val silicon = (project in file("."))
       "gitBranch" -> gitInfo.value._2
     ),
     buildInfoPackage := "viper.silicon")
+
+// Pre-PR benchmarks (not part of `sbt test`). See src/test/scala/SiliconBenchmark.scala.
+addCommandAlias("benchmark",
+  "Test/runMain org.scalatest.tools.Runner -oD -s viper.silicon.tests.SiliconBenchmarks")
 
 // Pair of revision and branch information from Mercurial. Empty strings if an error occurred.
 lazy val gitInfo: Def.Initialize[(String, String)] = Def.setting {

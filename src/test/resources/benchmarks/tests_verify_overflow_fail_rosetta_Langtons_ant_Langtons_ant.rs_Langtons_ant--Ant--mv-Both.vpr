@@ -1,0 +1,1640 @@
+domain MirrorDomain  {
+  
+  function mirror_simple$f_Ant$$valid__$TY$__Snap$struct$m_Ant$$int$$$int$$$bool$(_1: Snap$struct$m_Ant,
+  _2: Int, _3: Int): Bool 
+  
+  function mirror_simple$f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(_1: Snap$struct$m_Matrix,
+  _2: Int, _3: Int): Int 
+  
+  function mirror_simple$f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(_1: Snap$struct$m_Matrix): Int 
+  
+  function mirror_simple$f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(_1: Snap$struct$m_Matrix): Int 
+}
+
+domain Snap$m_Direction$_beg_$_end_  {
+  
+  function discriminant$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_$$int$(self: Snap$m_Direction$_beg_$_end_): Int 
+  
+  function cons$0$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_(): Snap$m_Direction$_beg_$_end_ 
+  
+  function cons$1$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_(): Snap$m_Direction$_beg_$_end_ 
+  
+  function cons$2$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_(): Snap$m_Direction$_beg_$_end_ 
+  
+  function cons$3$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_(): Snap$m_Direction$_beg_$_end_ 
+  
+  axiom Snap$m_Direction$_beg_$_end_$discriminant_range {
+    (forall self: Snap$m_Direction$_beg_$_end_ ::
+      { discriminant$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_$$int$(self) }
+      0 <=
+      discriminant$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_$$int$(self) &&
+      discriminant$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_$$int$(self) <=
+      3)
+  }
+  
+  axiom Snap$m_Direction$_beg_$_end_$0$discriminant_axiom {
+    discriminant$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_$$int$(cons$0$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_()) ==
+    0
+  }
+  
+  axiom Snap$m_Direction$_beg_$_end_$1$discriminant_axiom {
+    discriminant$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_$$int$(cons$1$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_()) ==
+    1
+  }
+  
+  axiom Snap$m_Direction$_beg_$_end_$2$discriminant_axiom {
+    discriminant$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_$$int$(cons$2$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_()) ==
+    2
+  }
+  
+  axiom Snap$m_Direction$_beg_$_end_$3$discriminant_axiom {
+    discriminant$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_$$int$(cons$3$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_()) ==
+    3
+  }
+}
+
+domain Snap$struct$m_Ant  {
+  
+  function cons$0$__$TY$__Snap$struct$m_Ant$$int$$$int$$Snap$m_Direction$_beg_$_end_$Snap$struct$m_Ant(_0: Int,
+  _1: Int, _2: Snap$m_Direction$_beg_$_end_): Snap$struct$m_Ant 
+  
+  function Snap$struct$m_Ant$0$field$f$x__$TY$__Snap$struct$m_Ant$$int$(self: Snap$struct$m_Ant): Int 
+  
+  function Snap$struct$m_Ant$0$field$f$y__$TY$__Snap$struct$m_Ant$$int$(self: Snap$struct$m_Ant): Int 
+  
+  function Snap$struct$m_Ant$0$field$f$dir__$TY$__Snap$struct$m_Ant$Snap$m_Direction$_beg_$_end_(self: Snap$struct$m_Ant): Snap$m_Direction$_beg_$_end_ 
+  
+  axiom Snap$struct$m_Ant$0$injectivity {
+    (forall _l_0: Int, _l_1: Int, _l_2: Snap$m_Direction$_beg_$_end_, _r_0: Int,
+    _r_1: Int, _r_2: Snap$m_Direction$_beg_$_end_ ::
+      { cons$0$__$TY$__Snap$struct$m_Ant$$int$$$int$$Snap$m_Direction$_beg_$_end_$Snap$struct$m_Ant(_l_0,
+      _l_1, _l_2), cons$0$__$TY$__Snap$struct$m_Ant$$int$$$int$$Snap$m_Direction$_beg_$_end_$Snap$struct$m_Ant(_r_0,
+      _r_1, _r_2) }
+      cons$0$__$TY$__Snap$struct$m_Ant$$int$$$int$$Snap$m_Direction$_beg_$_end_$Snap$struct$m_Ant(_l_0,
+      _l_1, _l_2) ==
+      cons$0$__$TY$__Snap$struct$m_Ant$$int$$$int$$Snap$m_Direction$_beg_$_end_$Snap$struct$m_Ant(_r_0,
+      _r_1, _r_2) ==>
+      _l_0 == _r_0 && (_l_1 == _r_1 && _l_2 == _r_2))
+  }
+  
+  axiom Snap$struct$m_Ant$0$field$f$x$axiom {
+    (forall _0: Int, _1: Int, _2: Snap$m_Direction$_beg_$_end_ ::
+      { Snap$struct$m_Ant$0$field$f$x__$TY$__Snap$struct$m_Ant$$int$(cons$0$__$TY$__Snap$struct$m_Ant$$int$$$int$$Snap$m_Direction$_beg_$_end_$Snap$struct$m_Ant(_0,
+      _1, _2)) }
+      Snap$struct$m_Ant$0$field$f$x__$TY$__Snap$struct$m_Ant$$int$(cons$0$__$TY$__Snap$struct$m_Ant$$int$$$int$$Snap$m_Direction$_beg_$_end_$Snap$struct$m_Ant(_0,
+      _1, _2)) ==
+      _0)
+  }
+  
+  axiom Snap$struct$m_Ant$0$field$f$x$valid {
+    (forall self: Snap$struct$m_Ant ::
+      { Snap$struct$m_Ant$0$field$f$x__$TY$__Snap$struct$m_Ant$$int$(self) }
+      0 <=
+      Snap$struct$m_Ant$0$field$f$x__$TY$__Snap$struct$m_Ant$$int$(self) &&
+      Snap$struct$m_Ant$0$field$f$x__$TY$__Snap$struct$m_Ant$$int$(self) <=
+      18446744073709551615)
+  }
+  
+  axiom Snap$struct$m_Ant$0$field$f$y$axiom {
+    (forall _0: Int, _1: Int, _2: Snap$m_Direction$_beg_$_end_ ::
+      { Snap$struct$m_Ant$0$field$f$y__$TY$__Snap$struct$m_Ant$$int$(cons$0$__$TY$__Snap$struct$m_Ant$$int$$$int$$Snap$m_Direction$_beg_$_end_$Snap$struct$m_Ant(_0,
+      _1, _2)) }
+      Snap$struct$m_Ant$0$field$f$y__$TY$__Snap$struct$m_Ant$$int$(cons$0$__$TY$__Snap$struct$m_Ant$$int$$$int$$Snap$m_Direction$_beg_$_end_$Snap$struct$m_Ant(_0,
+      _1, _2)) ==
+      _1)
+  }
+  
+  axiom Snap$struct$m_Ant$0$field$f$y$valid {
+    (forall self: Snap$struct$m_Ant ::
+      { Snap$struct$m_Ant$0$field$f$y__$TY$__Snap$struct$m_Ant$$int$(self) }
+      0 <=
+      Snap$struct$m_Ant$0$field$f$y__$TY$__Snap$struct$m_Ant$$int$(self) &&
+      Snap$struct$m_Ant$0$field$f$y__$TY$__Snap$struct$m_Ant$$int$(self) <=
+      18446744073709551615)
+  }
+  
+  axiom Snap$struct$m_Ant$0$field$f$dir$axiom {
+    (forall _0: Int, _1: Int, _2: Snap$m_Direction$_beg_$_end_ ::
+      { Snap$struct$m_Ant$0$field$f$dir__$TY$__Snap$struct$m_Ant$Snap$m_Direction$_beg_$_end_(cons$0$__$TY$__Snap$struct$m_Ant$$int$$$int$$Snap$m_Direction$_beg_$_end_$Snap$struct$m_Ant(_0,
+      _1, _2)) }
+      Snap$struct$m_Ant$0$field$f$dir__$TY$__Snap$struct$m_Ant$Snap$m_Direction$_beg_$_end_(cons$0$__$TY$__Snap$struct$m_Ant$$int$$$int$$Snap$m_Direction$_beg_$_end_$Snap$struct$m_Ant(_0,
+      _1, _2)) ==
+      _2)
+  }
+}
+
+domain Snap$struct$m_Matrix  {
+  
+  function cons$0$__$TY$__Snap$struct$m_Matrix$$int$$$int$$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_Matrix(_0: Int,
+  _1: Int, _2: Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global): Snap$struct$m_Matrix 
+  
+  function Snap$struct$m_Matrix$0$field$f$_ghost_y_size__$TY$__Snap$struct$m_Matrix$$int$(self: Snap$struct$m_Matrix): Int 
+  
+  function Snap$struct$m_Matrix$0$field$f$_ghost_x_size__$TY$__Snap$struct$m_Matrix$$int$(self: Snap$struct$m_Matrix): Int 
+  
+  function Snap$struct$m_Matrix$0$field$f$vec__$TY$__Snap$struct$m_Matrix$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self: Snap$struct$m_Matrix): Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global 
+  
+  axiom Snap$struct$m_Matrix$0$injectivity {
+    (forall _l_0: Int, _l_1: Int, _l_2: Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global,
+    _r_0: Int, _r_1: Int, _r_2: Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global ::
+      { cons$0$__$TY$__Snap$struct$m_Matrix$$int$$$int$$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_Matrix(_l_0,
+      _l_1, _l_2), cons$0$__$TY$__Snap$struct$m_Matrix$$int$$$int$$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_Matrix(_r_0,
+      _r_1, _r_2) }
+      cons$0$__$TY$__Snap$struct$m_Matrix$$int$$$int$$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_Matrix(_l_0,
+      _l_1, _l_2) ==
+      cons$0$__$TY$__Snap$struct$m_Matrix$$int$$$int$$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_Matrix(_r_0,
+      _r_1, _r_2) ==>
+      _l_0 == _r_0 && (_l_1 == _r_1 && _l_2 == _r_2))
+  }
+  
+  axiom Snap$struct$m_Matrix$0$field$f$_ghost_y_size$axiom {
+    (forall _0: Int, _1: Int, _2: Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global ::
+      { Snap$struct$m_Matrix$0$field$f$_ghost_y_size__$TY$__Snap$struct$m_Matrix$$int$(cons$0$__$TY$__Snap$struct$m_Matrix$$int$$$int$$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_Matrix(_0,
+      _1, _2)) }
+      Snap$struct$m_Matrix$0$field$f$_ghost_y_size__$TY$__Snap$struct$m_Matrix$$int$(cons$0$__$TY$__Snap$struct$m_Matrix$$int$$$int$$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_Matrix(_0,
+      _1, _2)) ==
+      _0)
+  }
+  
+  axiom Snap$struct$m_Matrix$0$field$f$_ghost_y_size$valid {
+    (forall self: Snap$struct$m_Matrix ::
+      { Snap$struct$m_Matrix$0$field$f$_ghost_y_size__$TY$__Snap$struct$m_Matrix$$int$(self) }
+      0 <=
+      Snap$struct$m_Matrix$0$field$f$_ghost_y_size__$TY$__Snap$struct$m_Matrix$$int$(self) &&
+      Snap$struct$m_Matrix$0$field$f$_ghost_y_size__$TY$__Snap$struct$m_Matrix$$int$(self) <=
+      18446744073709551615)
+  }
+  
+  axiom Snap$struct$m_Matrix$0$field$f$_ghost_x_size$axiom {
+    (forall _0: Int, _1: Int, _2: Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global ::
+      { Snap$struct$m_Matrix$0$field$f$_ghost_x_size__$TY$__Snap$struct$m_Matrix$$int$(cons$0$__$TY$__Snap$struct$m_Matrix$$int$$$int$$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_Matrix(_0,
+      _1, _2)) }
+      Snap$struct$m_Matrix$0$field$f$_ghost_x_size__$TY$__Snap$struct$m_Matrix$$int$(cons$0$__$TY$__Snap$struct$m_Matrix$$int$$$int$$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_Matrix(_0,
+      _1, _2)) ==
+      _1)
+  }
+  
+  axiom Snap$struct$m_Matrix$0$field$f$_ghost_x_size$valid {
+    (forall self: Snap$struct$m_Matrix ::
+      { Snap$struct$m_Matrix$0$field$f$_ghost_x_size__$TY$__Snap$struct$m_Matrix$$int$(self) }
+      0 <=
+      Snap$struct$m_Matrix$0$field$f$_ghost_x_size__$TY$__Snap$struct$m_Matrix$$int$(self) &&
+      Snap$struct$m_Matrix$0$field$f$_ghost_x_size__$TY$__Snap$struct$m_Matrix$$int$(self) <=
+      18446744073709551615)
+  }
+  
+  axiom Snap$struct$m_Matrix$0$field$f$vec$axiom {
+    (forall _0: Int, _1: Int, _2: Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global ::
+      { Snap$struct$m_Matrix$0$field$f$vec__$TY$__Snap$struct$m_Matrix$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(cons$0$__$TY$__Snap$struct$m_Matrix$$int$$$int$$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_Matrix(_0,
+      _1, _2)) }
+      Snap$struct$m_Matrix$0$field$f$vec__$TY$__Snap$struct$m_Matrix$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(cons$0$__$TY$__Snap$struct$m_Matrix$$int$$$int$$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_Matrix(_0,
+      _1, _2)) ==
+      _2)
+  }
+}
+
+domain Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global  {
+  
+  
+}
+
+domain FloatDomain24e8 interpretation (SMTLIB: "(_ FloatingPoint 8 24)", Boogie: "float24e8") {
+  
+  function f32_from_bv(a: BitVectorDomain32): FloatDomain24e8 interpretation "(_ to_fp 8 24)"
+  
+  function f32_fp_add(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.add RNE"
+  
+  function f32_fp_sub(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.sub RNE"
+  
+  function f32_fp_mul(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.mul RNE"
+  
+  function f32_fp_div(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.div RNE"
+  
+  function f32_fp_min(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.min"
+  
+  function f32_fp_max(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.max"
+  
+  function f32_fp_eq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.eq"
+  
+  function f32_fp_leq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.leq"
+  
+  function f32_fp_geq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.geq"
+  
+  function f32_fp_lt(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.lt"
+  
+  function f32_fp_gt(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.gt"
+  
+  function f32_fp_neg(a: FloatDomain24e8): FloatDomain24e8 interpretation "fp.neg"
+  
+  function f32_fp_abs(a: FloatDomain24e8): FloatDomain24e8 interpretation "fp.abs"
+  
+  function f32_fp_is_zero(a: FloatDomain24e8): Bool interpretation "fp.isZero"
+  
+  function f32_fp_is_infinite(a: FloatDomain24e8): Bool interpretation "fp.isInfinite"
+  
+  function f32_fp_is_nan(a: FloatDomain24e8): Bool interpretation "fp.isNaN"
+  
+  function f32_fp_is_negative(a: FloatDomain24e8): Bool interpretation "fp.isNegative"
+  
+  function f32_fp_is_positive(a: FloatDomain24e8): Bool interpretation "fp.isPositive"
+}
+
+domain FloatDomain52e12 interpretation (SMTLIB: "(_ FloatingPoint 12 52)", Boogie: "float52e12") {
+  
+  function f64_from_bv(a: BitVectorDomain64): FloatDomain52e12 interpretation "(_ to_fp 12 52)"
+  
+  function f64_fp_add(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.add RNE"
+  
+  function f64_fp_sub(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.sub RNE"
+  
+  function f64_fp_mul(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.mul RNE"
+  
+  function f64_fp_div(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.div RNE"
+  
+  function f64_fp_min(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.min"
+  
+  function f64_fp_max(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.max"
+  
+  function f64_fp_eq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.eq"
+  
+  function f64_fp_leq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.leq"
+  
+  function f64_fp_geq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.geq"
+  
+  function f64_fp_lt(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.lt"
+  
+  function f64_fp_gt(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.gt"
+  
+  function f64_fp_neg(a: FloatDomain52e12): FloatDomain52e12 interpretation "fp.neg"
+  
+  function f64_fp_abs(a: FloatDomain52e12): FloatDomain52e12 interpretation "fp.abs"
+  
+  function f64_fp_is_zero(a: FloatDomain52e12): Bool interpretation "fp.isZero"
+  
+  function f64_fp_is_infinite(a: FloatDomain52e12): Bool interpretation "fp.isInfinite"
+  
+  function f64_fp_is_nan(a: FloatDomain52e12): Bool interpretation "fp.isNaN"
+  
+  function f64_fp_is_negative(a: FloatDomain52e12): Bool interpretation "fp.isNegative"
+  
+  function f64_fp_is_positive(a: FloatDomain52e12): Bool interpretation "fp.isPositive"
+  
+  function f64_fp_typ(a: FloatDomain52e12): Bool interpretation "fp.typ"
+}
+
+domain BitVectorDomain8 interpretation (SMTLIB: "(_ BitVec 8)", Boogie: "bv8") {
+  
+  function bv8_from_int(i: Int): BitVectorDomain8 interpretation "(_ int2bv 8)"
+  
+  function bv8_to_int(i: BitVectorDomain8): Int interpretation "(_ bv2int 8)"
+  
+  function bv8_and(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvand"
+  
+  function bv8_or(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvor"
+  
+  function bv8_xor(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvxor"
+  
+  function bv8_add(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvadd"
+  
+  function bv8_sub(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvsub"
+  
+  function bv8_mul(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvmul"
+  
+  function bv8_udiv(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvudiv"
+  
+  function bv8_shl(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvshl"
+  
+  function bv8_lshr(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvlshr"
+  
+  function bv8_ashr(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvashr"
+  
+  function bv8_not(a: BitVectorDomain8): BitVectorDomain8 interpretation "bvnot"
+  
+  function bv8_neg(a: BitVectorDomain8): BitVectorDomain8 interpretation "bvneg"
+}
+
+domain BitVectorDomain16 interpretation (SMTLIB: "(_ BitVec 16)", Boogie: "bv16") {
+  
+  function bv16_from_int(i: Int): BitVectorDomain16 interpretation "(_ int2bv 16)"
+  
+  function bv16_to_int(i: BitVectorDomain16): Int interpretation "(_ bv2int 16)"
+  
+  function bv16_and(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvand"
+  
+  function bv16_or(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvor"
+  
+  function bv16_xor(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvxor"
+  
+  function bv16_add(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvadd"
+  
+  function bv16_sub(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvsub"
+  
+  function bv16_mul(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvmul"
+  
+  function bv16_udiv(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvudiv"
+  
+  function bv16_shl(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvshl"
+  
+  function bv16_lshr(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvlshr"
+  
+  function bv16_ashr(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvashr"
+  
+  function bv16_not(a: BitVectorDomain16): BitVectorDomain16 interpretation "bvnot"
+  
+  function bv16_neg(a: BitVectorDomain16): BitVectorDomain16 interpretation "bvneg"
+}
+
+domain BitVectorDomain32 interpretation (SMTLIB: "(_ BitVec 32)", Boogie: "bv32") {
+  
+  function bv32_from_int(i: Int): BitVectorDomain32 interpretation "(_ int2bv 32)"
+  
+  function bv32_to_int(i: BitVectorDomain32): Int interpretation "(_ bv2int 32)"
+  
+  function bv32_and(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvand"
+  
+  function bv32_or(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvor"
+  
+  function bv32_xor(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvxor"
+  
+  function bv32_add(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvadd"
+  
+  function bv32_sub(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvsub"
+  
+  function bv32_mul(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvmul"
+  
+  function bv32_udiv(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvudiv"
+  
+  function bv32_shl(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvshl"
+  
+  function bv32_lshr(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvlshr"
+  
+  function bv32_ashr(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvashr"
+  
+  function bv32_not(a: BitVectorDomain32): BitVectorDomain32 interpretation "bvnot"
+  
+  function bv32_neg(a: BitVectorDomain32): BitVectorDomain32 interpretation "bvneg"
+}
+
+domain BitVectorDomain64 interpretation (SMTLIB: "(_ BitVec 64)", Boogie: "bv64") {
+  
+  function bv64_from_int(i: Int): BitVectorDomain64 interpretation "(_ int2bv 64)"
+  
+  function bv64_to_int(i: BitVectorDomain64): Int interpretation "(_ bv2int 64)"
+  
+  function bv64_and(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvand"
+  
+  function bv64_or(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvor"
+  
+  function bv64_xor(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvxor"
+  
+  function bv64_add(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvadd"
+  
+  function bv64_sub(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvsub"
+  
+  function bv64_mul(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvmul"
+  
+  function bv64_udiv(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvudiv"
+  
+  function bv64_shl(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvshl"
+  
+  function bv64_lshr(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvlshr"
+  
+  function bv64_ashr(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvashr"
+  
+  function bv64_not(a: BitVectorDomain64): BitVectorDomain64 interpretation "bvnot"
+  
+  function bv64_neg(a: BitVectorDomain64): BitVectorDomain64 interpretation "bvneg"
+}
+
+domain BitVectorDomain128 interpretation (SMTLIB: "(_ BitVec 128)", Boogie: "bv128") {
+  
+  function bv128_from_int(i: Int): BitVectorDomain128 interpretation "(_ int2bv 128)"
+  
+  function bv128_to_int(i: BitVectorDomain128): Int interpretation "(_ bv2int 128)"
+  
+  function bv128_and(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvand"
+  
+  function bv128_or(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvor"
+  
+  function bv128_xor(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvxor"
+  
+  function bv128_add(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvadd"
+  
+  function bv128_sub(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvsub"
+  
+  function bv128_mul(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvmul"
+  
+  function bv128_udiv(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvudiv"
+  
+  function bv128_shl(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvshl"
+  
+  function bv128_lshr(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvlshr"
+  
+  function bv128_ashr(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvashr"
+  
+  function bv128_not(a: BitVectorDomain128): BitVectorDomain128 interpretation "bvnot"
+  
+  function bv128_neg(a: BitVectorDomain128): BitVectorDomain128 interpretation "bvneg"
+}
+
+field discriminant: Int
+
+field f$_ghost_x_size: Ref
+
+field f$_ghost_y_size: Ref
+
+field f$dir: Ref
+
+field f$vec: Ref
+
+field f$x: Ref
+
+field f$y: Ref
+
+field tuple_0: Ref
+
+field tuple_1: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+function f_Ant$$valid__$TY$__Snap$struct$m_Ant$$int$$$int$$$bool$(_1: Snap$struct$m_Ant,
+  _2: Int, _3: Int): Bool
+  requires 0 <= _3
+  requires _3 <= 18446744073709551615
+  requires 0 <= _2
+  requires _2 <= 18446744073709551615
+  requires true
+  requires _2 >= 0 && _3 >= 0
+  ensures true
+  ensures [result ==
+    mirror_simple$f_Ant$$valid__$TY$__Snap$struct$m_Ant$$int$$$int$$$bool$(_1,
+    _2, _3),
+    true]
+{
+  (!(0 <= Snap$struct$m_Ant$0$field$f$y__$TY$__Snap$struct$m_Ant$$int$(_1)) ==>
+  false) &&
+  (0 <= Snap$struct$m_Ant$0$field$f$y__$TY$__Snap$struct$m_Ant$$int$(_1) ==>
+  (!(Snap$struct$m_Ant$0$field$f$y__$TY$__Snap$struct$m_Ant$$int$(_1) < _2) ==>
+  false) &&
+  (Snap$struct$m_Ant$0$field$f$y__$TY$__Snap$struct$m_Ant$$int$(_1) < _2 ==>
+  0 <= Snap$struct$m_Ant$0$field$f$x__$TY$__Snap$struct$m_Ant$$int$(_1) &&
+  (0 <= Snap$struct$m_Ant$0$field$f$x__$TY$__Snap$struct$m_Ant$$int$(_1) ==>
+  Snap$struct$m_Ant$0$field$f$x__$TY$__Snap$struct$m_Ant$$int$(_1) < _3)))
+}
+
+function f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(_1: Snap$struct$m_Matrix,
+  _2: Int, _3: Int): Int
+  requires 0 <= _3
+  requires _3 <= 18446744073709551615
+  requires 0 <= _2
+  requires _2 <= 18446744073709551615
+  requires true
+  requires 0 <= _2 &&
+    _2 < f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(_1) &&
+    (0 <= _3 && _3 < f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(_1))
+  ensures 0 <= result
+  ensures result <= 255
+  ensures true
+  ensures [result ==
+    mirror_simple$f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(_1,
+    _2, _3),
+    true]
+
+
+function f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(_1: Snap$struct$m_Matrix): Int
+  requires true
+  requires true
+  ensures 0 <= result
+  ensures result <= 18446744073709551615
+  ensures 0 <= result
+  ensures [result ==
+    mirror_simple$f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(_1),
+    true]
+
+
+function f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(_1: Snap$struct$m_Matrix): Int
+  requires true
+  requires true
+  ensures 0 <= result
+  ensures result <= 18446744073709551615
+  ensures 0 <= result
+  ensures [result ==
+    mirror_simple$f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(_1),
+    true]
+
+
+function m_Direction$_beg_$_end_$$discriminant$$__$TY$__m_Direction$_beg_$_end_$$int$(self: Ref): Int
+  requires acc(m_Direction$_beg_$_end_(self), read$())
+  ensures 0 <= result && result <= 3
+  ensures discriminant$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_$$int$(snap$__$TY$__Snap$m_Direction$_beg_$_end_$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_(self)) ==
+    result
+{
+  (unfolding acc(m_Direction$_beg_$_end_(self), read$()) in
+    self.discriminant)
+}
+
+function snap$__$TY$__Snap$m_Direction$_beg_$_end_$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_(self: Ref): Snap$m_Direction$_beg_$_end_
+  requires acc(m_Direction$_beg_$_end_(self), read$())
+{
+  ((unfolding acc(m_Direction$_beg_$_end_(self), read$()) in
+    self.discriminant) ==
+  3 ?
+    cons$3$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_() :
+    ((unfolding acc(m_Direction$_beg_$_end_(self), read$()) in
+      self.discriminant) ==
+    2 ?
+      cons$2$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_() :
+      ((unfolding acc(m_Direction$_beg_$_end_(self), read$()) in
+        self.discriminant) ==
+      1 ?
+        cons$1$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_() :
+        cons$0$__$TY$__Snap$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_())))
+}
+
+function snap$__$TY$__Snap$struct$m_Ant$struct$m_Ant$Snap$struct$m_Ant(self: Ref): Snap$struct$m_Ant
+  requires acc(struct$m_Ant(self), read$())
+{
+  cons$0$__$TY$__Snap$struct$m_Ant$$int$$$int$$Snap$m_Direction$_beg_$_end_$Snap$struct$m_Ant((unfolding acc(struct$m_Ant(self), read$()) in
+    (unfolding acc(usize(self.f$x), read$()) in self.f$x.val_int)), (unfolding acc(struct$m_Ant(self), read$()) in
+    (unfolding acc(usize(self.f$y), read$()) in self.f$y.val_int)), (unfolding acc(struct$m_Ant(self), read$()) in
+    snap$__$TY$__Snap$m_Direction$_beg_$_end_$m_Direction$_beg_$_end_$Snap$m_Direction$_beg_$_end_(self.f$dir)))
+}
+
+function snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(self: Ref): Snap$struct$m_Matrix
+  requires acc(struct$m_Matrix(self), read$())
+{
+  cons$0$__$TY$__Snap$struct$m_Matrix$$int$$$int$$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_Matrix((unfolding acc(struct$m_Matrix(self), read$()) in
+    (unfolding acc(usize(self.f$_ghost_y_size), read$()) in
+      self.f$_ghost_y_size.val_int)), (unfolding acc(struct$m_Matrix(self), read$()) in
+    (unfolding acc(usize(self.f$_ghost_x_size), read$()) in
+      self.f$_ghost_x_size.val_int)), (unfolding acc(struct$m_Matrix(self), read$()) in
+    snap$__$TY$__Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self.f$vec)))
+}
+
+function snap$__$TY$__Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self: Ref): Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global
+  requires acc(struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self), read$())
+
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate m_Direction$_beg_$_end_(self: Ref) {
+  acc(self.discriminant, write) &&
+  (0 <= self.discriminant && self.discriminant <= 3)
+}
+
+predicate struct$m_Ant(self: Ref) {
+  acc(self.f$x, write) &&
+  (acc(usize(self.f$x), write) &&
+  (acc(self.f$y, write) &&
+  (acc(usize(self.f$y), write) &&
+  (acc(self.f$dir, write) &&
+  acc(m_Direction$_beg_$_end_(self.f$dir), write)))))
+}
+
+predicate struct$m_Matrix(self: Ref) {
+  acc(self.f$_ghost_y_size, write) &&
+  (acc(usize(self.f$_ghost_y_size), write) &&
+  (acc(self.f$_ghost_x_size, write) &&
+  (acc(usize(self.f$_ghost_x_size), write) &&
+  (acc(self.f$vec, write) &&
+  acc(struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self.f$vec), write)))))
+}
+
+predicate struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$u8$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self: Ref) 
+
+predicate tuple0$(self: Ref) {
+  true
+}
+
+predicate u8(self: Ref) {
+  acc(self.val_int, write) && (0 <= self.val_int && self.val_int <= 255)
+}
+
+predicate usize(self: Ref) {
+  acc(self.val_int, write) &&
+  (0 <= self.val_int && self.val_int <= 18446744073709551615)
+}
+
+method m_Ant$$mv() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var __t18: Bool
+  var __t19: Bool
+  var __t20: Bool
+  var __t21: Bool
+  var __t22: Bool
+  var __t23: Bool
+  var __t24: Bool
+  var __t25: Bool
+  var __t26: Bool
+  var __t27: Bool
+  var __t28: Bool
+  var __t29: Bool
+  var __t30: Bool
+  var __t31: Bool
+  var __t32: Bool
+  var __t33: Bool
+  var __t34: Bool
+  var __t35: Bool
+  var __t36: Bool
+  var __t37: Bool
+  var __t38: Bool
+  var __t39: Bool
+  var _old$l19$0: Ref
+  var __t40: Bool
+  var __t41: Bool
+  var __t42: Int
+  var __t43: Int
+  var __t44: Bool
+  var __t45: Bool
+  var __t46: Bool
+  var __t47: Bool
+  var _old$pre$0: Ref
+  var _old$pre$1: Ref
+  var _1: Ref
+  var _2: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Int
+  var _10: Int
+  var _11: Ref
+  var _12: Ref
+  var _13: Ref
+  var _14: Int
+  var _15: Int
+  var _17: Ref
+  var _18: Ref
+  var _19: Int
+  var _20: Int
+  var _22: Ref
+  var _23: Ref
+  var _24: Ref
+  var _25: Int
+  var _26: Ref
+  var _27: Int
+  var _30: Ref
+  var _31: Ref
+  var _32: Ref
+  var _33: Ref
+  var _34: Ref
+  var _35: Ref
+  var _38: Ref
+  var _39: Ref
+  var _40: Int
+  var _41: Ref
+  var _42: Ref
+  var _43: Ref
+  var _44: Ref
+  var _t45: Ref
+  
+  label start
+  // ========== start ==========
+  // Def path: "Langtons_ant::{impl#1}::mv"
+  // Span: tests/verify_overflow/fail/rosetta/Langtons_ant.rs:109:5: 132:6 (#0)
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  __t14 := false
+  __t15 := false
+  __t16 := false
+  __t17 := false
+  __t18 := false
+  __t19 := false
+  __t20 := false
+  __t21 := false
+  __t22 := false
+  __t23 := false
+  __t24 := false
+  __t25 := false
+  __t26 := false
+  __t27 := false
+  __t28 := false
+  __t29 := false
+  __t30 := false
+  __t31 := false
+  __t32 := false
+  __t33 := false
+  __t34 := false
+  __t35 := false
+  __t36 := false
+  __t37 := false
+  // Preconditions:
+  inhale acc(_1.val_ref, write) &&
+    (acc(struct$m_Ant(_1.val_ref), write) &&
+    (acc(_2.val_ref, write) && acc(struct$m_Matrix(_2.val_ref), write)))
+  inhale true
+  inhale f_Ant$$valid__$TY$__Snap$struct$m_Ant$$int$$$int$$$bool$(snap$__$TY$__Snap$struct$m_Ant$struct$m_Ant$Snap$struct$m_Ant(_1.val_ref),
+    f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_2.val_ref)),
+    f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_2.val_ref))) &&
+    (forall _0_quant_0: Int, _1_quant_0: Int ::0 <= _0_quant_0 &&
+      (_0_quant_0 <= 18446744073709551615 &&
+      (0 <= _1_quant_0 && _1_quant_0 <= 18446744073709551615)) ==>
+      !(0 <= _1_quant_0) ||
+      (!(_1_quant_0 <
+      f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_2.val_ref))) ||
+      (!(0 <= _0_quant_0) ||
+      (_0_quant_0 <
+      f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_2.val_ref)) ==>
+      !(f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_2.val_ref),
+      _0_quant_0, _1_quant_0) ==
+      0) ==>
+      f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_2.val_ref),
+      _0_quant_0, _1_quant_0) ==
+      1))))
+  label pre
+  // ========== bb0 ==========
+  __t0 := true
+  // [mir] StorageLive(_3)
+  // [mir] StorageLive(_4)
+  // [mir] StorageLive(_5)
+  // [mir] StorageLive(_6)
+  // [mir] StorageLive(_7)
+  // [mir] StorageLive(_8)
+  // [mir] _8 = &(*_2)
+  _8 := builtin$havoc_ref()
+  inhale acc(_8.val_ref, write)
+  _8.val_ref := _2.val_ref
+  exhale acc(struct$m_Matrix(_2.val_ref), write - read$())
+  inhale acc(struct$m_Matrix(_8.val_ref), read$())
+  label l0
+  // [mir] StorageLive(_9)
+  // [mir] _9 = ((*_1).1: usize)
+  _9 := builtin$havoc_int()
+  unfold acc(struct$m_Ant(_1.val_ref), write)
+  unfold acc(usize(_1.val_ref.f$y), write)
+  _9 := _1.val_ref.f$y.val_int
+  label l1
+  // [mir] StorageLive(_10)
+  // [mir] _10 = ((*_1).0: usize)
+  _10 := builtin$havoc_int()
+  unfold acc(usize(_1.val_ref.f$x), write)
+  _10 := _1.val_ref.f$x.val_int
+  label l2
+  // [mir] _7 = Matrix::lookup(move _8, move _9, move _10) -> [return: bb4, unwind: bb38]
+  label l3
+  _7 := builtin$havoc_ref()
+  inhale acc(u8(_7), write)
+  inhale (unfolding acc(u8(_7), write) in _7.val_int) ==
+    f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_8.val_ref),
+    _9, _10)
+  // transfer perm _8.val_ref --> old[l3](_8.val_ref) // unchecked: false
+  // ========== l4 ==========
+  // MIR edge bb0 --> bb4
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L11,L0,)
+
+  if (__t0 && __t0) {
+    // expire loan L0
+    // transfer perm old[l3](_8.val_ref) --> old[l0](_8.val_ref) // unchecked: false
+    exhale acc(struct$m_Matrix(old[l0](_8.val_ref)), read$())
+    inhale acc(struct$m_Matrix(_2.val_ref), write - read$())
+  }
+  // ========== bb4 ==========
+  __t1 := true
+  // [mir] StorageDead(_10)
+  // [mir] StorageDead(_9)
+  // [mir] StorageDead(_8)
+  // [mir] _6 = Eq(move _7, const 0_u8)
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_bool, write)
+  unfold acc(u8(_7), write)
+  _6.val_bool := _7.val_int == 0
+  // [mir] StorageDead(_7)
+  // [mir] switchInt(move _6) -> [0: bb2, otherwise: bb1]
+  __t38 := _6.val_bool
+  if (__t38) {
+    goto l4
+  }
+  goto bb0
+  
+  label bb0
+  // ========== l5 ==========
+  // MIR edge bb4 --> bb2
+  // ========== bb2 ==========
+  __t3 := true
+  // [mir] StorageLive(_11)
+  // [mir] StorageLive(_12)
+  // [mir] StorageLive(_13)
+  // [mir] _13 = &(*_2)
+  _13 := builtin$havoc_ref()
+  inhale acc(_13.val_ref, write)
+  _13.val_ref := _2.val_ref
+  exhale acc(struct$m_Matrix(_2.val_ref), write - read$())
+  inhale acc(struct$m_Matrix(_13.val_ref), read$())
+  label l7
+  // [mir] StorageLive(_14)
+  // [mir] _14 = ((*_1).1: usize)
+  _14 := builtin$havoc_int()
+  _14 := _1.val_ref.f$y.val_int
+  label l8
+  // [mir] StorageLive(_15)
+  // [mir] _15 = ((*_1).0: usize)
+  _15 := builtin$havoc_int()
+  _15 := _1.val_ref.f$x.val_int
+  label l9
+  // [mir] _12 = Matrix::lookup(move _13, move _14, move _15) -> [return: bb5, unwind: bb38]
+  label l10
+  _12 := builtin$havoc_ref()
+  inhale acc(u8(_12), write)
+  inhale (unfolding acc(u8(_12), write) in _12.val_int) ==
+    f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_13.val_ref),
+    _14, _15)
+  // transfer perm _13.val_ref --> old[l10](_13.val_ref) // unchecked: false
+  // ========== l11 ==========
+  // MIR edge bb2 --> bb5
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L10,L4,)
+
+  if (__t3 && __t3) {
+    // expire loan L4
+    // transfer perm old[l10](_13.val_ref) --> old[l7](_13.val_ref) // unchecked: false
+    exhale acc(struct$m_Matrix(old[l7](_13.val_ref)), read$())
+    inhale acc(struct$m_Matrix(_2.val_ref), write - read$())
+  }
+  // ========== bb5 ==========
+  __t4 := true
+  // [mir] StorageDead(_15)
+  // [mir] StorageDead(_14)
+  // [mir] StorageDead(_13)
+  // [mir] _11 = Eq(move _12, const 1_u8)
+  _11 := builtin$havoc_ref()
+  inhale acc(_11.val_bool, write)
+  unfold acc(u8(_12), write)
+  _11.val_bool := _12.val_int == 1
+  // [mir] StorageDead(_12)
+  // [mir] _5 = move _11
+  _5 := _11
+  label l12
+  // [mir] goto -> bb3
+  // ========== l56 ==========
+  // drop Acc(_14.val_int, write) (Acc(_14.val_int, write))
+  // drop Acc(_15.val_int, write) (Acc(_15.val_int, write))
+  // drop Acc(_13.val_ref, write) (Acc(_13.val_ref, write))
+  // drop Acc(old[l7](_13.val_ref), write) (Acc(old[l7](_13.val_ref), write))
+  // drop Acc(_12.val_int, write) (Acc(_12.val_int, write))
+  goto bb4
+  
+  label bb1
+  // ========== l22 ==========
+  // MIR edge bb8 --> bb10
+  // ========== bb10 ==========
+  __t10 := true
+  // [mir] StorageLive(_26)
+  // [mir] StorageLive(_27)
+  // [mir] _27 = (*_17)
+  _27 := builtin$havoc_int()
+  _27 := _17.val_ref.val_int
+  label l23
+  // [mir] _26 = Eq(move _27, const 1_u8)
+  _26 := builtin$havoc_ref()
+  inhale acc(_26.val_bool, write)
+  _26.val_bool := _27 == 1
+  // [mir] StorageDead(_27)
+  // [mir] _23 = move _26
+  _23 := _26
+  label l24
+  // [mir] goto -> bb11
+  // ========== l58 ==========
+  // drop Acc(_27.val_int, write) (Acc(_27.val_int, write))
+  goto bb2
+  
+  label bb10
+  // ========== l14 ==========
+  // MIR edge bb3 --> bb6
+  // ========== bb6 ==========
+  __t6 := true
+  // [mir] StorageLive(_16)
+  // [mir] _16 = core::panicking::panic(const "assertion failed: vec.lookup(self.y, self.x) == 0 || vec.lookup(self.y, self.x) == 1") -> bb38
+  // Rust panic - const "assertion failed: vec.lookup(self.y, self.x) == 0 || vec.lookup(self.y, self.x) == 1"
+  assert false
+  goto end_of_method
+  
+  label bb2
+  // ========== bb11 ==========
+  __t11 := true
+  // [mir] StorageDead(_26)
+  // [mir] StorageDead(_24)
+  // [mir] _22 = Not(move _23)
+  _22 := builtin$havoc_ref()
+  inhale acc(_22.val_bool, write)
+  _22.val_bool := !_23.val_bool
+  // [mir] StorageDead(_23)
+  // [mir] switchInt(move _22) -> [0: bb13, otherwise: bb12]
+  __t41 := _22.val_bool
+  if (__t41) {
+    goto bb9
+  }
+  goto l11
+  
+  label bb3
+  // ========== l29 ==========
+  // MIR edge bb13 --> bb15
+  // ========== bb15 ==========
+  __t15 := true
+  // [mir] falseEdge -> [real: bb20, imaginary: bb16]
+  // ========== bb20 ==========
+  __t16 := true
+  // [mir] StorageLive(_33)
+  // [mir] StorageLive(_34)
+  // [mir] StorageLive(_35)
+  // [mir] _35 = &mut ((*_1).2: Direction)
+  _35 := builtin$havoc_ref()
+  inhale acc(_35.val_ref, write)
+  _35.val_ref := _1.val_ref.f$dir
+  label l30
+  // [mir] _34 = Direction::clone(move _35) -> [return: bb21, unwind: bb38]
+  label l31
+  assert true
+  exhale acc(_35.val_ref, write) &&
+    acc(m_Direction$_beg_$_end_(_35.val_ref), write)
+  _34 := builtin$havoc_ref()
+  inhale acc(m_Direction$_beg_$_end_(old[l31](_35.val_ref)), write)
+  inhale acc(m_Direction$_beg_$_end_(_34), write)
+  inhale true
+  label l32
+  // ========== l33 ==========
+  // MIR edge bb20 --> bb21
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L14,L2,)
+
+  // ========== bb21 ==========
+  __t17 := true
+  // [mir] StorageDead(_35)
+  // [mir] _33 = Direction::left(move _34) -> [return: bb22, unwind: bb38]
+  label l34
+  assert true
+  exhale acc(m_Direction$_beg_$_end_(_34), write)
+  _33 := builtin$havoc_ref()
+  inhale acc(m_Direction$_beg_$_end_(_33), write)
+  inhale true
+  label l35
+  // ========== bb22 ==========
+  __t18 := true
+  // [mir] StorageDead(_34)
+  // [mir] ((*_1).2: Direction) = move _33
+  _1.val_ref.f$dir := _33
+  label l36
+  // [mir] _29 = const ()
+  // [mir] StorageDead(_33)
+  // [mir] goto -> bb23
+  goto l14
+  
+  label bb4
+  // ========== bb3 ==========
+  __t5 := true
+  // [mir] StorageDead(_11)
+  // [mir] StorageDead(_6)
+  // [mir] _4 = Not(move _5)
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_bool, write)
+  _4.val_bool := !_5.val_bool
+  // [mir] StorageDead(_5)
+  // [mir] switchInt(move _4) -> [0: bb7, otherwise: bb6]
+  __t39 := _4.val_bool
+  if (__t39) {
+    goto bb10
+  }
+  goto l5
+  
+  label bb5
+  // ========== l27 ==========
+  // MIR edge bb13 --> bb16
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L12,L13,L1,)
+
+  if (__t7) {
+    // expire loan L12
+    _old$l19$0 := _17.val_ref
+    inhale acc(DeadBorrowToken$(12), write) && acc(u8(_old$l19$0), write) --*
+      acc(struct$m_Matrix(old[l18](_18.val_ref)), write) &&
+      (f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref))) ==
+      old[l18](f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref))) &&
+      (f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref))) ==
+      old[l18](f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref))) &&
+      (f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)),
+      old[l18](_19), old[l18](_20)) ==
+      old[lhs]((unfolding acc(u8(_old$l19$0), write) in _old$l19$0.val_int)) &&
+      (forall _0_quant_0: Int, _1_quant_0: Int ::0 <= _0_quant_0 &&
+        (_0_quant_0 <= 18446744073709551615 &&
+        (0 <= _1_quant_0 && _1_quant_0 <= 18446744073709551615)) ==>
+        !(0 <= _0_quant_0) ||
+        (!(_0_quant_0 <
+        f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)))) ||
+        (_0_quant_0 == old[l18](_19) ||
+        (!(0 <= _1_quant_0) ||
+        (!(_1_quant_0 <
+        f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)))) ||
+        (!(_1_quant_0 == old[l18](_20)) ==>
+        f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)),
+        _0_quant_0, _1_quant_0) ==
+        old[l18](f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref),
+        _0_quant_0, _1_quant_0)))))))))))
+    fold acc(u8(_old$l19$0), write)
+    inhale acc(DeadBorrowToken$(12), write)
+    apply acc(DeadBorrowToken$(12), write) && acc(u8(_old$l19$0), write) --*
+      acc(struct$m_Matrix(old[l18](_18.val_ref)), write) &&
+      (f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref))) ==
+      old[l18](f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref))) &&
+      (f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref))) ==
+      old[l18](f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref))) &&
+      (f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)),
+      old[l18](_19), old[l18](_20)) ==
+      old[lhs]((unfolding acc(u8(_old$l19$0), write) in _old$l19$0.val_int)) &&
+      (forall _0_quant_0: Int, _1_quant_0: Int ::0 <= _0_quant_0 &&
+        (_0_quant_0 <= 18446744073709551615 &&
+        (0 <= _1_quant_0 && _1_quant_0 <= 18446744073709551615)) ==>
+        !(0 <= _0_quant_0) ||
+        (!(_0_quant_0 <
+        f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)))) ||
+        (_0_quant_0 == old[l18](_19) ||
+        (!(0 <= _1_quant_0) ||
+        (!(_1_quant_0 <
+        f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)))) ||
+        (!(_1_quant_0 == old[l18](_20)) ==>
+        f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)),
+        _0_quant_0, _1_quant_0) ==
+        old[l18](f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref),
+        _0_quant_0, _1_quant_0)))))))))))
+  }
+  // ========== bb16 ==========
+  __t14 := true
+  // [mir] StorageLive(_37)
+  // [mir] _37 = std::rt::begin_panic::<&str>(const "Unexpected colour in grid") -> bb38
+  // Rust panic - const "Unexpected colour in grid"
+  assert false
+  goto end_of_method
+  
+  label bb6
+  // ========== l48 ==========
+  // MIR edge bb24 --> bb28
+  // ========== bb28 ==========
+  __t26 := true
+  // [mir] _44 = CheckedSub(((*_1).0: usize), const 1_usize)
+  _44 := builtin$havoc_ref()
+  inhale acc(_44.tuple_0, write)
+  inhale acc(_44.tuple_0.val_int, write)
+  inhale acc(_44.tuple_1, write)
+  inhale acc(_44.tuple_1.val_bool, write)
+  _44.tuple_0.val_int := _1.val_ref.f$x.val_int - 1
+  _44.tuple_1.val_bool := _1.val_ref.f$x.val_int - 1 < 0 ||
+    _1.val_ref.f$x.val_int - 1 > 18446744073709551615
+  // [mir] assert(!move (_44.1: bool), "attempt to compute `{} - {}`, which would overflow", ((*_1).0: usize), const 1_usize) -> [success: bb36, unwind: bb38]
+  __t44 := _44.tuple_1.val_bool
+  // Rust assertion: attempt to subtract with overflow
+  assert !__t44
+  // ========== bb36 ==========
+  __t27 := true
+  // [mir] ((*_1).0: usize) = move (_44.0: usize)
+  _1.val_ref.f$x := _44.tuple_0
+  label l52
+  // [mir] _0 = const ()
+  // [mir] goto -> bb37
+  // ========== l59 ==========
+  // drop Acc(_44.tuple_0, write) (Acc(_44.tuple_0, write))
+  // drop Acc(_44.tuple_1.val_bool, write) (Acc(_44.tuple_1.val_bool, write))
+  // drop Acc(_44.tuple_1, write) (Acc(_44.tuple_1, write))
+  goto l22
+  
+  label bb7
+  // ========== l51 ==========
+  // MIR edge bb24 --> bb27
+  // ========== bb27 ==========
+  __t28 := true
+  // [mir] falseEdge -> [real: bb32, imaginary: bb26]
+  // ========== bb32 ==========
+  __t29 := true
+  // [mir] _42 = CheckedAdd(((*_1).1: usize), const 1_usize)
+  _42 := builtin$havoc_ref()
+  inhale acc(_42.tuple_0, write)
+  inhale acc(_42.tuple_0.val_int, write)
+  inhale acc(_42.tuple_1, write)
+  inhale acc(_42.tuple_1.val_bool, write)
+  _42.tuple_0.val_int := _1.val_ref.f$y.val_int + 1
+  _42.tuple_1.val_bool := _1.val_ref.f$y.val_int + 1 < 0 ||
+    _1.val_ref.f$y.val_int + 1 > 18446744073709551615
+  // [mir] assert(!move (_42.1: bool), "attempt to compute `{} + {}`, which would overflow", ((*_1).1: usize), const 1_usize) -> [success: bb33, unwind: bb38]
+  __t45 := _42.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  assert !__t45
+  // ========== bb33 ==========
+  __t30 := true
+  // [mir] ((*_1).1: usize) = move (_42.0: usize)
+  _1.val_ref.f$y := _42.tuple_0
+  label l53
+  // [mir] _0 = const ()
+  // [mir] goto -> bb37
+  // ========== l60 ==========
+  // drop Acc(_42.tuple_1.val_bool, write) (Acc(_42.tuple_1.val_bool, write))
+  // drop Acc(_42.tuple_0, write) (Acc(_42.tuple_0, write))
+  // drop Acc(_42.tuple_1, write) (Acc(_42.tuple_1, write))
+  goto l22
+  
+  label bb8
+  // ========== l50 ==========
+  // MIR edge bb24 --> bb26
+  // ========== bb26 ==========
+  __t31 := true
+  // [mir] falseEdge -> [real: bb34, imaginary: bb28]
+  // ========== bb34 ==========
+  __t32 := true
+  // [mir] _43 = CheckedAdd(((*_1).0: usize), const 1_usize)
+  _43 := builtin$havoc_ref()
+  inhale acc(_43.tuple_0, write)
+  inhale acc(_43.tuple_0.val_int, write)
+  inhale acc(_43.tuple_1, write)
+  inhale acc(_43.tuple_1.val_bool, write)
+  _43.tuple_0.val_int := _1.val_ref.f$x.val_int + 1
+  _43.tuple_1.val_bool := _1.val_ref.f$x.val_int + 1 < 0 ||
+    _1.val_ref.f$x.val_int + 1 > 18446744073709551615
+  // [mir] assert(!move (_43.1: bool), "attempt to compute `{} + {}`, which would overflow", ((*_1).0: usize), const 1_usize) -> [success: bb35, unwind: bb38]
+  __t46 := _43.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  assert !__t46
+  // ========== bb35 ==========
+  __t33 := true
+  // [mir] ((*_1).0: usize) = move (_43.0: usize)
+  _1.val_ref.f$x := _43.tuple_0
+  label l54
+  // [mir] _0 = const ()
+  // [mir] goto -> bb37
+  // ========== l61 ==========
+  // drop Acc(_43.tuple_1.val_bool, write) (Acc(_43.tuple_1.val_bool, write))
+  // drop Acc(_43.tuple_0, write) (Acc(_43.tuple_0, write))
+  // drop Acc(_43.tuple_1, write) (Acc(_43.tuple_1, write))
+  goto l22
+  
+  label bb9
+  // ========== l26 ==========
+  // MIR edge bb11 --> bb12
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L12,L13,L1,)
+
+  if (__t7) {
+    // expire loan L12
+    _old$l19$0 := _17.val_ref
+    inhale acc(DeadBorrowToken$(12), write) && acc(u8(_old$l19$0), write) --*
+      acc(struct$m_Matrix(old[l18](_18.val_ref)), write) &&
+      (f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref))) ==
+      old[l18](f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref))) &&
+      (f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref))) ==
+      old[l18](f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref))) &&
+      (f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)),
+      old[l18](_19), old[l18](_20)) ==
+      old[lhs]((unfolding acc(u8(_old$l19$0), write) in _old$l19$0.val_int)) &&
+      (forall _0_quant_0: Int, _1_quant_0: Int ::0 <= _0_quant_0 &&
+        (_0_quant_0 <= 18446744073709551615 &&
+        (0 <= _1_quant_0 && _1_quant_0 <= 18446744073709551615)) ==>
+        !(0 <= _0_quant_0) ||
+        (!(_0_quant_0 <
+        f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)))) ||
+        (_0_quant_0 == old[l18](_19) ||
+        (!(0 <= _1_quant_0) ||
+        (!(_1_quant_0 <
+        f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)))) ||
+        (!(_1_quant_0 == old[l18](_20)) ==>
+        f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)),
+        _0_quant_0, _1_quant_0) ==
+        old[l18](f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref),
+        _0_quant_0, _1_quant_0)))))))))))
+    fold acc(u8(_old$l19$0), write)
+    inhale acc(DeadBorrowToken$(12), write)
+    apply acc(DeadBorrowToken$(12), write) && acc(u8(_old$l19$0), write) --*
+      acc(struct$m_Matrix(old[l18](_18.val_ref)), write) &&
+      (f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref))) ==
+      old[l18](f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref))) &&
+      (f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref))) ==
+      old[l18](f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref))) &&
+      (f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)),
+      old[l18](_19), old[l18](_20)) ==
+      old[lhs]((unfolding acc(u8(_old$l19$0), write) in _old$l19$0.val_int)) &&
+      (forall _0_quant_0: Int, _1_quant_0: Int ::0 <= _0_quant_0 &&
+        (_0_quant_0 <= 18446744073709551615 &&
+        (0 <= _1_quant_0 && _1_quant_0 <= 18446744073709551615)) ==>
+        !(0 <= _0_quant_0) ||
+        (!(_0_quant_0 <
+        f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)))) ||
+        (_0_quant_0 == old[l18](_19) ||
+        (!(0 <= _1_quant_0) ||
+        (!(_1_quant_0 <
+        f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)))) ||
+        (!(_1_quant_0 == old[l18](_20)) ==>
+        f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)),
+        _0_quant_0, _1_quant_0) ==
+        old[l18](f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref),
+        _0_quant_0, _1_quant_0)))))))))))
+  }
+  // ========== bb12 ==========
+  __t12 := true
+  // [mir] StorageLive(_28)
+  // [mir] _28 = core::panicking::panic(const "assertion failed: *pointer == 0 || *pointer == 1") -> bb38
+  // Rust panic - const "assertion failed: *pointer == 0 || *pointer == 1"
+  assert false
+  goto end_of_method
+  
+  label l11
+  // ========== l25 ==========
+  // MIR edge bb11 --> bb13
+  // ========== bb13 ==========
+  __t13 := true
+  // [mir] _21 = const ()
+  // [mir] StorageDead(_22)
+  // [mir] StorageDead(_21)
+  // [mir] StorageLive(_29)
+  // [mir] FakeRead(ForMatchedPlace(None), (*_17))
+  // [mir] switchInt((*_17)) -> [0: bb14, 1: bb15, otherwise: bb16]
+  __t42 := _17.val_ref.val_int
+  if (__t42 == 0) {
+    goto l13
+  }
+  if (__t42 == 1) {
+    goto bb3
+  }
+  goto bb5
+  
+  label l13
+  // ========== l28 ==========
+  // MIR edge bb13 --> bb14
+  // ========== bb14 ==========
+  __t19 := true
+  // [mir] falseEdge -> [real: bb17, imaginary: bb15]
+  // ========== bb17 ==========
+  __t20 := true
+  // [mir] StorageLive(_30)
+  // [mir] StorageLive(_31)
+  // [mir] StorageLive(_32)
+  // [mir] _32 = &mut ((*_1).2: Direction)
+  _32 := builtin$havoc_ref()
+  inhale acc(_32.val_ref, write)
+  _32.val_ref := _1.val_ref.f$dir
+  label l37
+  // [mir] _31 = Direction::clone(move _32) -> [return: bb18, unwind: bb38]
+  label l38
+  assert true
+  exhale acc(_32.val_ref, write) &&
+    acc(m_Direction$_beg_$_end_(_32.val_ref), write)
+  _31 := builtin$havoc_ref()
+  inhale acc(m_Direction$_beg_$_end_(old[l38](_32.val_ref)), write)
+  inhale acc(m_Direction$_beg_$_end_(_31), write)
+  inhale true
+  label l39
+  // ========== l40 ==========
+  // MIR edge bb17 --> bb18
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L9,L3,)
+
+  // ========== bb18 ==========
+  __t21 := true
+  // [mir] StorageDead(_32)
+  // [mir] _30 = Direction::right(move _31) -> [return: bb19, unwind: bb38]
+  label l41
+  assert true
+  exhale acc(m_Direction$_beg_$_end_(_31), write)
+  _30 := builtin$havoc_ref()
+  inhale acc(m_Direction$_beg_$_end_(_30), write)
+  inhale true
+  label l42
+  // ========== bb19 ==========
+  __t22 := true
+  // [mir] StorageDead(_31)
+  // [mir] ((*_1).2: Direction) = move _30
+  _1.val_ref.f$dir := _30
+  label l43
+  // [mir] _29 = const ()
+  // [mir] StorageDead(_30)
+  // [mir] goto -> bb23
+  goto l14
+  
+  label l14
+  // ========== bb23 ==========
+  __t23 := true
+  // [mir] StorageDead(_29)
+  // [mir] StorageLive(_38)
+  // [mir] StorageLive(_39)
+  // [mir] _39 = (*_17)
+  _39 := builtin$havoc_ref()
+  inhale acc(_39.val_int, write)
+  _39.val_int := _17.val_ref.val_int
+  label l44
+  // [mir] _38 = xor(move _39, const 1_u8) -> [return: bb24, unwind: bb38]
+  label l45
+  _t45 := builtin$havoc_ref()
+  inhale acc(u8(_t45), write)
+  assert true
+  fold acc(u8(_39), write)
+  exhale acc(u8(_39), write) && acc(u8(_t45), write)
+  _38 := builtin$havoc_ref()
+  inhale acc(u8(_38), write)
+  inhale true
+  inhale (unfolding acc(u8(_38), write) in
+      (!(old[l45](_39.val_int) == 0) ||
+      (old[l45](1) == 1 ==> _38.val_int == 1)) &&
+      (!(old[l45](_39.val_int) == 1) ||
+      (old[l45](1) == 1 ==> _38.val_int == 0)))
+  label l46
+  // ========== bb24 ==========
+  __t24 := true
+  // [mir] StorageDead(_39)
+  // [mir] (*_17) = move _38
+  _17.val_ref := _38
+  label l47
+  // expire_borrows ReborrowingDAG(L12,L13,L1,)
+
+  if (__t7) {
+    // expire loan L12
+    _old$l19$0 := _17.val_ref
+    inhale acc(DeadBorrowToken$(12), write) && acc(u8(_old$l19$0), write) --*
+      acc(struct$m_Matrix(old[l18](_18.val_ref)), write) &&
+      (f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref))) ==
+      old[l18](f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref))) &&
+      (f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref))) ==
+      old[l18](f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref))) &&
+      (f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)),
+      old[l18](_19), old[l18](_20)) ==
+      old[lhs]((unfolding acc(u8(_old$l19$0), write) in _old$l19$0.val_int)) &&
+      (forall _0_quant_0: Int, _1_quant_0: Int ::0 <= _0_quant_0 &&
+        (_0_quant_0 <= 18446744073709551615 &&
+        (0 <= _1_quant_0 && _1_quant_0 <= 18446744073709551615)) ==>
+        !(0 <= _0_quant_0) ||
+        (!(_0_quant_0 <
+        f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)))) ||
+        (_0_quant_0 == old[l18](_19) ||
+        (!(0 <= _1_quant_0) ||
+        (!(_1_quant_0 <
+        f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)))) ||
+        (!(_1_quant_0 == old[l18](_20)) ==>
+        f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)),
+        _0_quant_0, _1_quant_0) ==
+        old[l18](f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref),
+        _0_quant_0, _1_quant_0)))))))))))
+    inhale acc(DeadBorrowToken$(12), write)
+    apply acc(DeadBorrowToken$(12), write) && acc(u8(_old$l19$0), write) --*
+      acc(struct$m_Matrix(old[l18](_18.val_ref)), write) &&
+      (f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref))) ==
+      old[l18](f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref))) &&
+      (f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref))) ==
+      old[l18](f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref))) &&
+      (f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)),
+      old[l18](_19), old[l18](_20)) ==
+      old[lhs]((unfolding acc(u8(_old$l19$0), write) in _old$l19$0.val_int)) &&
+      (forall _0_quant_0: Int, _1_quant_0: Int ::0 <= _0_quant_0 &&
+        (_0_quant_0 <= 18446744073709551615 &&
+        (0 <= _1_quant_0 && _1_quant_0 <= 18446744073709551615)) ==>
+        !(0 <= _0_quant_0) ||
+        (!(_0_quant_0 <
+        f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)))) ||
+        (_0_quant_0 == old[l18](_19) ||
+        (!(0 <= _1_quant_0) ||
+        (!(_1_quant_0 <
+        f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)))) ||
+        (!(_1_quant_0 == old[l18](_20)) ==>
+        f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(old[l18](_18.val_ref)),
+        _0_quant_0, _1_quant_0) ==
+        old[l18](f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref),
+        _0_quant_0, _1_quant_0)))))))))))
+  }
+  // [mir] StorageDead(_38)
+  // [mir] FakeRead(ForMatchedPlace(None), ((*_1).2: Direction))
+  // [mir] _40 = discriminant(((*_1).2: Direction))
+  _40 := builtin$havoc_int()
+  _40 := m_Direction$_beg_$_end_$$discriminant$$__$TY$__m_Direction$_beg_$_end_$$int$(_1.val_ref.f$dir)
+  // [mir] switchInt(move _40) -> [0: bb25, 1: bb26, 2: bb27, 3: bb28, otherwise: bb29]
+  __t43 := _40
+  // Ignore default target bb29, as the compiler marked it as unreachable.
+
+  // Benchmark edit: exclude direction 3 (Left, `x - 1`, bb28). Its overflow check mirrors the
+  // Up branch's (`y - 1`, bb30); with one error reported per method, which of the two Silicon
+  // reports depends on branch order, so only the Up failure is kept.
+  assume __t43 != 3
+  if (__t43 == 0) {
+    goto l21
+  }
+  if (__t43 == 1) {
+    goto bb8
+  }
+  if (__t43 == 2) {
+    goto bb7
+  }
+  goto bb6
+  
+  label l21
+  // ========== l49 ==========
+  // MIR edge bb24 --> bb25
+  // ========== bb25 ==========
+  __t34 := true
+  // [mir] falseEdge -> [real: bb30, imaginary: bb27]
+  // ========== bb30 ==========
+  __t35 := true
+  // [mir] _41 = CheckedSub(((*_1).1: usize), const 1_usize)
+  _41 := builtin$havoc_ref()
+  inhale acc(_41.tuple_0, write)
+  inhale acc(_41.tuple_0.val_int, write)
+  inhale acc(_41.tuple_1, write)
+  inhale acc(_41.tuple_1.val_bool, write)
+  _41.tuple_0.val_int := _1.val_ref.f$y.val_int - 1
+  _41.tuple_1.val_bool := _1.val_ref.f$y.val_int - 1 < 0 ||
+    _1.val_ref.f$y.val_int - 1 > 18446744073709551615
+  // [mir] assert(!move (_41.1: bool), "attempt to compute `{} - {}`, which would overflow", ((*_1).1: usize), const 1_usize) -> [success: bb31, unwind: bb38]
+  __t47 := _41.tuple_1.val_bool
+  // Rust assertion: attempt to subtract with overflow
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert !__t47
+  // ========== bb31 ==========
+  __t36 := true
+  // [mir] ((*_1).1: usize) = move (_41.0: usize)
+  _1.val_ref.f$y := _41.tuple_0
+  label l55
+  // [mir] _0 = const ()
+  // [mir] goto -> bb37
+  // ========== l62 ==========
+  // drop Acc(_41.tuple_0, write) (Acc(_41.tuple_0, write))
+  // drop Acc(_41.tuple_1.val_bool, write) (Acc(_41.tuple_1.val_bool, write))
+  // drop Acc(_41.tuple_1, write) (Acc(_41.tuple_1, write))
+  goto l22
+  
+  label l22
+  // ========== bb37 ==========
+  __t37 := true
+  // [mir] StorageDead(_17)
+  // [mir] return
+  // ========== return ==========
+  // Target of any 'return' statement.
+  // Exhale postcondition
+  label l57
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  fold acc(usize(_1.val_ref.f$y), write)
+  fold acc(usize(_1.val_ref.f$x), write)
+  fold acc(struct$m_Ant(_1.val_ref), write)
+  // obtain acc(struct$m_Ant(_1.val_ref), write)
+  _old$pre$0 := _1.val_ref
+  // obtain acc(struct$m_Matrix(_2.val_ref), write)
+  _old$pre$1 := _2.val_ref
+  // Fold the result
+  fold acc(tuple0$(_0), write)
+  // obtain acc(tuple0$(_0), write)
+  // Assert possible strengthening
+  // Assert functional specification of postcondition
+  // Assert type invariants
+  assert true
+  // Exhale permissions of postcondition (1/3)
+  exhale acc(struct$m_Ant(_old$pre$0), write) &&
+    acc(struct$m_Matrix(_old$pre$1), write)
+  // Exhale permissions of postcondition (2/3)
+  exhale acc(tuple0$(_0), write)
+  // Exhale permissions of postcondition (3/3)
+  goto end_of_method
+  
+  label l4
+  // ========== l6 ==========
+  // MIR edge bb4 --> bb1
+  // ========== bb1 ==========
+  __t2 := true
+  // [mir] _5 = const true
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_bool, write)
+  _5.val_bool := true
+  // [mir] goto -> bb3
+  goto bb4
+  
+  label l5
+  // ========== l13 ==========
+  // MIR edge bb3 --> bb7
+  // ========== bb7 ==========
+  __t7 := true
+  // [mir] _3 = const ()
+  // [mir] StorageDead(_4)
+  // [mir] StorageDead(_3)
+  // [mir] StorageLive(_17)
+  // [mir] StorageLive(_18)
+  // [mir] _18 = &mut (*_2)
+  _18 := builtin$havoc_ref()
+  inhale acc(_18.val_ref, write)
+  _18.val_ref := _2.val_ref
+  label l15
+  // [mir] StorageLive(_19)
+  // [mir] _19 = ((*_1).1: usize)
+  _19 := builtin$havoc_int()
+  _19 := _1.val_ref.f$y.val_int
+  label l16
+  // [mir] StorageLive(_20)
+  // [mir] _20 = ((*_1).0: usize)
+  _20 := builtin$havoc_int()
+  _20 := _1.val_ref.f$x.val_int
+  label l17
+  // [mir] _17 = Matrix::borrow(move _18, move _19, move _20) -> [return: bb8, unwind: bb38]
+  label l18
+  assert 0 <= _19 &&
+    _19 <
+    f_Matrix$$y_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref)) &&
+    (0 <= _20 &&
+    _20 <
+    f_Matrix$$x_size__$TY$__Snap$struct$m_Matrix$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref)))
+  assert true
+  assert _19 >= 0 && 18446744073709551615 >= _19
+  assert _20 >= 0 && 18446744073709551615 >= _20
+  exhale acc(_18.val_ref, write) &&
+    (acc(struct$m_Matrix(_18.val_ref), write) &&
+    (_19 >= 0 && 18446744073709551615 >= _19 &&
+    (_20 >= 0 && 18446744073709551615 >= _20)))
+  _17 := builtin$havoc_ref()
+  inhale acc(_17.val_ref, write) && acc(u8(_17.val_ref), write)
+  inhale true
+  inhale (unfolding acc(u8(_17.val_ref), write) in
+      _17.val_ref.val_int ==
+      old[l18](f_Matrix$$lookup__$TY$__Snap$struct$m_Matrix$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_Matrix$struct$m_Matrix$Snap$struct$m_Matrix(_18.val_ref),
+      _19, _20)))
+  label l19
+  // ========== bb8 ==========
+  __t8 := true
+  // [mir] StorageDead(_20)
+  // [mir] StorageDead(_19)
+  // [mir] StorageDead(_18)
+  // [mir] FakeRead(ForLet(None), _17)
+  // [mir] StorageLive(_21)
+  // [mir] StorageLive(_22)
+  // [mir] StorageLive(_23)
+  // [mir] StorageLive(_24)
+  // [mir] StorageLive(_25)
+  // [mir] _25 = (*_17)
+  _25 := builtin$havoc_int()
+  unfold acc(u8(_17.val_ref), write)
+  _25 := _17.val_ref.val_int
+  label l20
+  // [mir] _24 = Eq(move _25, const 0_u8)
+  _24 := builtin$havoc_ref()
+  inhale acc(_24.val_bool, write)
+  _24.val_bool := _25 == 0
+  // [mir] StorageDead(_25)
+  // [mir] switchInt(move _24) -> [0: bb10, otherwise: bb9]
+  __t40 := _24.val_bool
+  if (!__t40) {
+    goto bb1
+  }
+  goto l6
+  
+  label l6
+  // ========== l21 ==========
+  // MIR edge bb8 --> bb9
+  // ========== bb9 ==========
+  __t9 := true
+  // [mir] _23 = const true
+  _23 := builtin$havoc_ref()
+  inhale acc(_23.val_bool, write)
+  _23.val_bool := true
+  // [mir] goto -> bb11
+  goto bb2
+  
+  label return
+  // ========== bb29 ==========
+  __t25 := true
+  // [mir] unreachable
+  goto end_of_method
+  label end_of_method
+}
+
+method builtin$havoc_bool() returns (ret: Bool)
+
+
+method builtin$havoc_int() returns (ret: Int)
+
+
+method builtin$havoc_ref() returns (ret: Ref)

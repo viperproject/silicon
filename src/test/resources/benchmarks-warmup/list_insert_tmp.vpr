@@ -1,0 +1,139 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+/* This example encodes and specifies an iterative implementation of inserting
+ * a value into a linked list. A magic wand is used to book-keep permissions.
+ *
+ * Notes:
+ *  - It might take Silicon quite a while to verify this example, which is due
+ *    to a problem with our sequence axiomatisation that can slow down Z3 quite
+ *    a bit.
+ *  - The additional two asserts are currently necessary because of a known
+ *    incompleteness of Silicon related to recursive functions.
+ *  - See list_insert_noseq.vpr for a version from which all sequences have
+ *    been removed.
+ */
+
+
+field val: Int
+field next: Ref
+
+/* The usual linked-list predicate. */
+predicate List(xs: Ref) {
+	acc(xs.val) && acc(xs.next) && (xs.next != null ==> acc(List(xs.next)))
+}
+
+/* Returns the elements stored in the linked-list xs. */
+function elems(xs: Ref): Seq[Int]
+  requires acc(List(xs))
+{ unfolding List(xs) in Seq(xs.val) ++ (xs.next == null ? Seq[Int]() : elems(xs.next)) }
+
+/* Returns the head value of the linked-list xs. */
+function head(xs: Ref): Int
+  requires acc(List(xs))
+{ unfolding List(xs) in xs.val }
+
+/* Inserts value x at an appropriate position into the ordered linked-list xs, such that
+ * the list remains ordered if it was in ascending order before.
+ */
+method insert(xs: Ref, x: Int) returns (i: Int)
+  requires acc(List(xs))
+  requires head(xs) < x
+  ensures acc(List(xs))
+  ensures elems(xs) == old(elems(xs))[0..i+1] ++ Seq(x) ++ old(elems(xs))[i+1..]
+{
+  var crt: Ref
+  /* LHS */ var crtElems: Seq[Int]
+  var nxt: Ref
+  i := 0
+
+  define A acc(List(crt)) /* LHS */ && elems(crt) == Seq(x) ++ crtElems
+  define B acc(List(xs)) && elems(xs) == old(elems(xs))[0..i] ++ /* LHS */ (Seq(x) ++ crtElems) // lhs(elems(crt))
+
+  /* LHS */ crtElems := elems(xs)
+  unfold List(xs)
+  crt := xs
+  nxt := xs.next
+
+  package A --* B
+
+	/* Find the appropriate position for x in the linked-list. After the loop,
+	 * crt points to the first node in the list s.t. crt.next is either null,
+	 * or crt.next.val >= x. nxt is always equal to crt.next.
+	 */
+  while (nxt != null && head(nxt) < x)
+    invariant 0 <= i && i < |old(elems(xs))|
+    invariant nxt == null ==> i == |old(elems(xs))| - 1 /* INV2*/
+    invariant acc(crt.val) && acc(crt.next)
+    invariant nxt == crt.next
+    invariant crt.val == old(elems(xs))[i] /* INV5 */
+    invariant nxt != null ==> (acc(List(nxt)) && elems(nxt) == old(elems(xs))[i+1..])
+    invariant A --* B
+    invariant crtElems == Seq(crt.val) ++ (crt.next == null ? Seq[Int]() : elems(crt.next))
+  {
+    assert old(elems(xs))[i+1] == elems(nxt)[0]
+
+    var prev: Ref := crt
+    var oElems: Seq[Int] := crtElems
+    var oi: Int := i
+
+    /* LHS */ crtElems := elems(nxt)
+
+    unfold List(nxt)
+    crt := nxt
+    nxt := nxt.next
+    i := i + 1
+
+    package (A) --* B {
+        fold List(prev)
+        //:: UnexpectedOutput(apply.failed:assertion.false, /silicon/issue/190/)
+        //:: UnexpectedOutput(apply.failed:assertion.false, /carbon/issue/290/)
+        apply (acc(List(prev)) && elems(prev) == Seq(x) ++ oElems) --*  (acc(List(xs)) && elems(xs) == old(elems(xs))[0..oi] ++ (Seq(x) ++ oElems))
+    }
+  }
+
+  assert
+    acc(List(crt))&& elems(crt) == Seq(x) ++ crtElems
+      --*
+    acc(List(xs)) && elems(xs) == old(elems(xs))[0..i] ++ (Seq(x) ++ crtElems)
+
+	/* Create a new node with value x and append the list tail starting at nxt to it. */
+  var node: Ref
+  node := new(val, next)
+  node.val := x
+  node.next := nxt
+
+  fold List(node)
+
+//  assert old(elems(xs))[i+1..] == Seq[Int]()
+
+//  assSeq(xs.val) ++ (xs.next == null ? Seq[Int]() : elems(xs.next))
+
+  assert elems(node) == Seq(x) ++ old(elems(xs))[i+1..]
+//  assert elems(node) == Seq(x) ++ Seq[Int]()
+
+	/* Append the new node (and its tail) to the current node. */
+  crt.next := node
+  fold List(crt)
+
+//  assert crtElems ++ Seq(x)
+
+	/* Give up the sublist starting at crt and get back the original list *with*
+	 * the newly inserted value.
+	 */
+//  apply A --* B
+//  crtElems := elems(crt)
+
+  assert
+    acc(List(crt))&& elems(crt) == Seq(x) ++ crtElems
+      --*
+    acc(List(xs)) && elems(xs) == old(elems(xs))[0..i] ++ (Seq(x) ++ crtElems)
+
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/290/)
+  assert acc(List(crt))&& elems(crt) == Seq(x) ++ crtElems
+
+  apply
+    acc(List(crt))&& elems(crt) == Seq(x) ++ crtElems
+      --*
+    acc(List(xs)) && elems(xs) == old(elems(xs))[0..i] ++ (Seq(x) ++ crtElems)
+}
