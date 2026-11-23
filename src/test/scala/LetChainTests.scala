@@ -128,6 +128,7 @@ class LetChainTests extends AnyFunSuite {
          |function gs(i: Int, a: Seq[Int]): Bool
          |function ks(b: Bool, a: Seq[Int]): Bool
          |function hs(i: Int): Bool
+         |function pp(k: Int, i: Int): Bool
          |function g(i: Int): Bool { ${letChain("i")} }
          |
          |method instantiate()
@@ -165,6 +166,10 @@ class LetChainTests extends AnyFunSuite {
          |method qpCondition(xs: Seq[Ref])
          |  requires forall i: Int, j: Int :: 0 <= i && i < j && j < |xs| ==> xs[i] != xs[j]
          |  requires ${letChain("0", s"(forall i: Int :: { xs[i] } 0 <= i && i < |xs| && p(a$n) ==> acc(xs[i].v))")}
+         |{}
+         |
+         |method nestedQuantifiers()
+         |  requires ${letChain("0", s"(forall i: Int :: { q(i) } (forall k: Int :: { pp(k, i) } pp(k, f(i, a$n))))")}
          |{}
          |
          |method fail()

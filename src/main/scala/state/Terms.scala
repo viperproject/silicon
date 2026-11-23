@@ -363,9 +363,23 @@ sealed trait Term extends Node {
   def reduceTree[R](f: (Term, Seq[R]) => R): R =
     ast.utility.Visitor.reduceTree(this, state.utils.subterms)(f)
 
-  /** @see [[ast.utility.Visitor.existsDefined]] */
-  def existsDefined(f: PartialFunction[Term, Any]): Boolean =
-    ast.utility.Visitor.existsDefined(this, state.utils.subterms)(f)
+  /** Whether f is defined for this term or one of its (transitive) subterms. Like
+    * [[ast.utility.Visitor.existsDefined]], but visits each shared subterm once: terms are DAGs,
+    * and traversing one as a tree takes exponential time, e.g., for terms from chains of lets
+    * whose variables are used several times.
+    */
+  def existsDefined(f: PartialFunction[Term, Any]): Boolean = {
+    val visited = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[Term, java.lang.Boolean]())
+    val toVisit = scala.collection.mutable.Stack[Term](this)
+    while (toVisit.nonEmpty) {
+      val t = toVisit.pop()
+      if (visited.add(t)) {
+        if (f.isDefinedAt(t)) return true
+        toVisit.pushAll(state.utils.subterms(t))
+      }
+    }
+    false
+  }
 
   /** @see [[ast.utility.Visitor.hasSubnode]] */
   def hasSubterm(subterm: Term): Boolean =
@@ -559,7 +573,7 @@ trait ConditionalFlyweight[T, V] { self: AnyRef =>
           || (other match {
           case se: ConditionalFlyweight[T, V] if this.getClass.eq(se.getClass) =>
             val equal = equalityDefiningMembers == se.equalityDefiningMembers
-            if (equal && !isLastEqual(se)) lastEqual = new java.lang.ref.WeakReference(se)
+            if (equal) lastEqual = new java.lang.ref.WeakReference(se)
             equal
           case _ => false
         }))
@@ -823,9 +837,13 @@ object Quantification
   private val triggerGenerator = new TriggerGenerator()
 
   def transformSeqTerms(t: Trigger): Seq[Trigger] = {
-    /* Trigger terms without SeqIn are kept as they are (see mayContainSeqIn) */
+    /* Trigger terms without SeqIn are kept as they are (see mayContainSeqIn); subterms shared by
+     * several trigger terms are transformed once.
+     */
+    val transformedSubterms = new java.util.IdentityHashMap[Term, Term]()
     val transformed = Trigger(t.p.map(term =>
-      if (mayContainSeqIn(term)) state.utils.transformShared(term, { case SeqIn(t0, t1) => SeqInTrigger(t0, t1) })
+      if (mayContainSeqIn(term))
+        state.utils.transformShared(term, { case SeqIn(t0, t1) => SeqInTrigger(t0, t1) }, transformedSubterms)
       else term))
     if (transformed != t)
       Seq(t, transformed)
