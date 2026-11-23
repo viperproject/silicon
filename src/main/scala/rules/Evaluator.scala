@@ -64,12 +64,27 @@ object evaluator extends EvaluationRules {
   import consumer._
   import producer._
 
-  /* Possible triggers (see State.possibleTriggers) with more AST nodes are not recorded when
-   * inlining a let, since no trigger written in a program is (realistically) this large.
-   */
-  private val maxPossibleTriggerSize: Long = 1000
-
   private def astSize(n: ast.Node): Long = n.reduceTree[Long]((_, children) => 1 + children.sum)
+
+  /* Possible triggers (see State.possibleTriggers) are only looked up by the trigger expressions
+   * of quantifiers, so possible triggers with more AST nodes than every trigger expression in the
+   * program (including the inferred ones) are not recorded when inlining a let. The bound is at
+   * least 1000 nodes, since trigger expressions can also be instantiated, e.g. with the arguments
+   * of a function application whose precondition contains a quantifier.
+   */
+  @volatile private var cachedMaxPossibleTriggerSize: (ast.Program, Long) = (null, 0)
+
+  private def maxPossibleTriggerSize(program: ast.Program): Long = {
+    val cached = cachedMaxPossibleTriggerSize
+    if (cached._1 eq program) {
+      cached._2
+    } else {
+      val triggerSizes = program.deepCollect { case t: ast.Trigger => t.exps.map(astSize) }.flatten
+      val max = (1000L +: triggerSizes).max
+      cachedMaxPossibleTriggerSize = (program, max)
+      max
+    }
+  }
 
   def evals(s: State, es: Seq[ast.Exp], pvef: ast.Exp => PartialVerificationError, v: Verifier, analysisInfos: AnalysisInfos)
            (Q: (State, List[Term], Option[List[ast.Exp]], Verifier) => VerificationResult)
@@ -277,14 +292,15 @@ object evaluator extends EvaluationRules {
             val newPossibleTriggers = if (s2.recordPossibleTriggers) {
               val addedTriggers = s2.possibleTriggers -- possibleTriggersBefore.keys
               /* Replacing x by e0 can make keys grow exponentially for chains of lets whose
-               * variables are used several times. Keys that are too large to stem from a trigger
-               * written in the program are therefore dropped.
+               * variables are used several times. Keys too large to match a trigger are dropped.
                */
-              val e0Size = astSize(e0)
+              lazy val e0Size = astSize(e0)
+              lazy val xSize = astSize(x.localVar)
+              lazy val maxSize = maxPossibleTriggerSize(s2.program)
               val addedTriggersReplaced = addedTriggers.flatMap { case (pt, tPt) =>
                 val (ptSize, occurrences) = pt.reduceTree[(Long, Long)]((n, children) =>
                   (1 + children.map(_._1).sum, (if (n == x.localVar) 1 else 0) + children.map(_._2).sum))
-                if (occurrences == 0 || ptSize + occurrences * (e0Size - 1) > maxPossibleTriggerSize) None
+                if (occurrences == 0 || ptSize + occurrences * (e0Size - xSize) > maxSize) None
                 else Some(pt.replace(x.localVar, e0) -> tPt)
               }
               s2.possibleTriggers ++ addedTriggersReplaced

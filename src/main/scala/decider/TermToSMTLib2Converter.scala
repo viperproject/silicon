@@ -126,60 +126,61 @@ class TermToSMTLib2Converter
    */
   protected val sharingThreshold: Long = 10000
 
-  /* The let-bound names of shared subterms of the binder scope that is currently rendered; null
-   * if there are none. Compared by reference, which suffices because sharing in the rendered tree
-   * comes from shared objects.
+  /* The let-bound names of shared subterms of the binder scope that is currently rendered, with
+   * the let (counted from the outermost one) that binds each; null if there are none. Compared by
+   * reference, which suffices because sharing in the rendered tree comes from shared objects.
    */
-  private var sharedNames: java.util.IdentityHashMap[Term, String] = _
+  private var sharedNames: java.util.IdentityHashMap[Term, (String, Int)] = _
   private var sharedNameCounter: Long = 0
+  /* The innermost let whose names have been rendered since this was last reset; -1 if none. */
+  private var innermostUsedLet: Int = -1
 
   /** Renders a term that is not in the scope of the shared names that are currently bound:
     * the root of a term that is converted, or the body of a binder.
     */
   protected def renderScope(root: Term): Cont = {
     val outerNames = sharedNames
+    val outerInnermostUsedLet = innermostUsedLet
     sharedNames = null
     try {
       val (subterms, occurrences) = scopeSubterms(root)
       if (subterms.isEmpty) {
         render(root)
       } else {
-        val names = new java.util.IdentityHashMap[Term, String]()
-        /* The shared subterms, grouped by the number of nested lets needed to bind the shared
-         * subterms they depend on, such that each group can be bound by a single let.
+        val names = new java.util.IdentityHashMap[Term, (String, Int)]()
+        /* The bindings of the lets, where each let binds the shared subterms whose rendering uses
+         * only names bound by lets further out.
          */
-        val groups = mutable.ArrayBuffer.empty[mutable.ArrayBuffer[(String, Cont)]]
-        val level = new java.util.IdentityHashMap[Term, Integer]()
+        val lets = mutable.ArrayBuffer.empty[mutable.ArrayBuffer[(String, Cont)]]
         sharedNames = names
         subterms foreach (t => { // Each subterm comes after its subterms
-          var l = 0
-          scopeChildren(t) foreach (c => {
-            val lc: Int = level.get(c)
-            l = math.max(l, if (names.containsKey(c)) lc + 1 else lc)
-          })
-          level.put(t, l)
           if (occurrences.get(t) > 1 && isShareable(t)) {
+            innermostUsedLet = -1
+            val doc = renderTerm(t)
+            val let = innermostUsedLet + 1
             val name = s"$$t@$sharedNameCounter"
             sharedNameCounter += 1
-            while (groups.length <= l) groups += mutable.ArrayBuffer.empty
-            groups(l) += ((name, renderTerm(t)))
-            names.put(t, name)
+            while (lets.length <= let) lets += mutable.ArrayBuffer.empty
+            lets(let) += ((name, doc))
+            names.put(t, (name, let))
           }
         })
         val bodyDoc = render(root)
-        groups.foldRight(bodyDoc)((group, doc) => {
-          val bindings = group.map { case (name, d) => parens(text(name) <+> d) }
-          parens(text("let") <+> parens(ssep(bindings.to(collection.immutable.Seq), line)) <> line <> doc)
+        lets.foldRight(bodyDoc)((bindings, doc) => {
+          val bindingDocs = bindings.map { case (name, d) => parens(text(name) <+> d) }
+          parens(text("let") <+> parens(ssep(bindingDocs.to(collection.immutable.Seq), line)) <> line <> doc)
         })
       }
     } finally {
       sharedNames = outerNames
+      innermostUsedLet = outerInnermostUsedLet
     }
   }
 
   /* All subterms of root that are in the same binder scope, in post-order (i.e., each subterm
-   * comes after its subterms), and how often each occurs in the tree of root; or no subterms if
-   * rendering root as a tree would duplicate at most sharingThreshold nodes.
+   * comes after its subterms), and for each, the number of subterms (counted with multiplicity)
+   * that have it as a direct subterm; or no subterms if rendering root as a tree would duplicate at
+   * most sharingThreshold nodes.
    */
   private def scopeSubterms(root: Term): (Seq[Term], java.util.IdentityHashMap[Term, Integer]) = {
     val treeSize = new java.util.IdentityHashMap[Term, java.lang.Long]()
@@ -230,8 +231,13 @@ class TermToSMTLib2Converter
       sharedNames = null
       try renderTerm(term) finally sharedNames = outerNames
     case _ =>
-      val name = if (sharedNames == null) null else sharedNames.get(term)
-      if (name != null) text(name) else renderTerm(term)
+      val binding = if (sharedNames == null) null else sharedNames.get(term)
+      if (binding == null) {
+        renderTerm(term)
+      } else {
+        innermostUsedLet = math.max(innermostUsedLet, binding._2)
+        text(binding._1)
+      }
   }
 
   protected def renderTerm(term: Term): Cont = term match {
@@ -507,7 +513,7 @@ class TermToSMTLib2Converter
       parens(text("distinct") <+> ssep((symbols.toSeq map (s => render(s.id): Cont)).to(collection.immutable.Seq), space))
 
     case Let(bindings, body) =>
-      val docBindings = ssep((bindings.toSeq map (p => parens(render(p._1) <+> render(p._2)))).to(collection.immutable.Seq), space)
+      val docBindings = ssep((bindings.toSeq map (p => parens(render(p._1) <+> renderScope(p._2)))).to(collection.immutable.Seq), space)
       parens(text("let") <+> parens(docBindings) <+> renderScope(body))
 
     case MagicWandSnapshot(mwsf) => render(mwsf)
