@@ -89,6 +89,15 @@ class LetChainTests extends AnyFunSuite {
     assert(rendered.contains("(let"))
   }
 
+  test("Trigger terms with a lot of sharing are rendered with lets") {
+    val x = Var(Identifier("x"), sorts.Int, false)
+    val y = Var(Identifier("y"), sorts.Int, false)
+    val shared = chain(60, y)
+    val rendered = convert(Forall(Seq(x), BuiltinEquals(Plus(x, shared), IntLiteral(0)), Seq(Trigger(Seq(Plus(x, shared)))), "q"))
+    assert(rendered.contains(":pattern ((let"))
+    assert(rendered.length < 10000)
+  }
+
   test("Terms with little sharing are rendered without lets") {
     val x = Var(Identifier("x"), sorts.Int, false)
     val rendered = convert(BuiltinEquals(chain(3, x), IntLiteral(0)))
@@ -99,15 +108,16 @@ class LetChainTests extends AnyFunSuite {
   test("Quantifiers with chains of lets are verified in reasonable time") {
     val n = 30
 
-    def letChain(arg: String): String =
+    def letChain(arg: String, body: String = s"p(a$n)"): String =
       s"let a0 == (q($arg)) in " +
         (1 to n).map(k => s"let a$k == (f(a${k - 1}, a${k - 1})) in ").mkString +
-        s"p(a$n)"
+        body
 
     val program =
       s"""function q(i: Int): Int
          |function f(a: Int, b: Int): Int
          |function p(i: Int): Bool
+         |function h(i: Int, a: Int): Bool
          |function g(i: Int): Bool { ${letChain("i")} }
          |
          |method instantiate()
@@ -122,6 +132,14 @@ class LetChainTests extends AnyFunSuite {
          |method inFunction()
          |  requires forall i: Int :: { q(i) } g(i) && ${letChain("i")}
          |{ assert g(3) }
+         |
+         |method assumeThenAssert()
+         |  requires ${letChain("3")}
+         |{ assert ${letChain("3")} }
+         |
+         |method triggerOutsideLet()
+         |  requires ${letChain("0", s"(forall i: Int :: { h(i, a$n) } h(i, a$n))")}
+         |{ assert ${letChain("0", s"h(5, a$n)")} }
          |
          |method fail()
          |  requires forall i: Int :: { q(i) } ${letChain("i")}

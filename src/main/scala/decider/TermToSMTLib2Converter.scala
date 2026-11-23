@@ -224,8 +224,8 @@ class TermToSMTLib2Converter
     case _: Quantification | _: Let if sharedNames != null =>
       /* A shared subterm named outside a binder may mention a variable that the binder rebinds,
        * so inside the binder (including its triggers) its name would denote a different term.
-       * Binders therefore do not use outer names, and their bodies start their own scope (see
-       * renderScope).
+       * Binders therefore do not use outer names, and their bodies and trigger terms start their own
+       * scope (see renderScope).
        */
       val outerNames = sharedNames
       sharedNames = null
@@ -270,7 +270,7 @@ class TermToSMTLib2Converter
         // Render only triggers with non-empty terms since cvc5 breaks on
         // empty patterns (i.e. :pattern ()).
         val renderedTriggerTerms = triggers.collect {
-            case trigger if trigger.p.nonEmpty => ssep((trigger.p map render).to(collection.immutable.Seq), space)
+            case trigger if trigger.p.nonEmpty => ssep((trigger.p map renderScope).to(collection.immutable.Seq), space)
           }
 
         val docTriggers =

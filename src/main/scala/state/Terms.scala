@@ -523,15 +523,25 @@ trait ConditionalFlyweight[T, V] { self: AnyRef =>
   else
     viper.silver.utility.Common.generateHashCode(equalityDefiningMembers)
 
+  /* The term this term was last found to be structurally equal to (terms are immutable). Terms are
+   * DAGs, so comparing two of them structurally can compare the same pair of subterms many times,
+   * which takes exponential time, e.g., for terms from chains of lets whose variables are used
+   * several times. Remembering the last successful comparison avoids repeating it.
+   */
+  @volatile private var lastEqual: AnyRef = null
+
   override def equals(other: Any): Boolean = {
     if (Verifier.config.useFlyweight) {
       this.eq(other.asInstanceOf[AnyRef])
     } else {
       (
         this.eq(other.asInstanceOf[AnyRef])
+          || (lastEqual != null && lastEqual.eq(other.asInstanceOf[AnyRef]))
           || (other match {
           case se: ConditionalFlyweight[T, V] if this.getClass.eq(se.getClass) =>
-            equalityDefiningMembers == se.equalityDefiningMembers
+            val equal = equalityDefiningMembers == se.equalityDefiningMembers
+            if (equal) lastEqual = se
+            equal
           case _ => false
         }))
     }
@@ -794,13 +804,36 @@ object Quantification
   private val triggerGenerator = new TriggerGenerator()
 
   def transformSeqTerms(t: Trigger): Seq[Trigger] = {
-    val transformed = Trigger(t.p.map(_.transform{
-      case SeqIn(t0, t1) => SeqInTrigger(t0, t1)
-    }()))
-    if (transformed != t)
-      Seq(t, transformed)
-    else
+    if (!t.p.exists(mayContainSeqIn)) {
       Seq(t)
+    } else {
+      val transformed = Trigger(t.p.map(_.transform{
+        case SeqIn(t0, t1) => SeqInTrigger(t0, t1)
+      }()))
+      if (transformed != t)
+        Seq(t, transformed)
+      else
+        Seq(t)
+    }
+  }
+
+  /* Whether t may contain a SeqIn. Visits each shared subterm once, since terms are DAGs and
+   * transforming one as a tree takes exponential time, e.g., for terms from chains of lets whose
+   * variables are used several times (and loses the sharing).
+   */
+  private def mayContainSeqIn(t: Term): Boolean = {
+    val visited = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[Term, java.lang.Boolean]())
+    val toVisit = scala.collection.mutable.Stack(t)
+    while (toVisit.nonEmpty) {
+      val s = toVisit.pop()
+      if (visited.add(s)) s match {
+        case _: SeqIn => return true
+        case _ =>
+          // Term.subterms does not support all terms; assume that unsupported ones contain a SeqIn
+          try toVisit.pushAll(s.subterms) catch { case _: MatchError => return true }
+      }
+    }
+    false
   }
 
   def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =

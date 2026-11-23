@@ -9,6 +9,7 @@ package viper.silicon.supporters
 import viper.silicon.rules.evaluator
 import viper.silicon.state.terms._
 import viper.silver.parser.{PType, PUnknown}
+import scala.collection.mutable
 
 trait QuantifierSupporter {
   def autoTrigger(q: Quantification): Quantification
@@ -67,18 +68,37 @@ class DefaultQuantifierSupporter(triggerGenerator: TriggerGenerator) extends Qua
 //  }
 
   def makeTriggersHeapIndependent(q: Quantification, fresh: (String, Sort, Option[PType]) => Var): Seq[Quantification] = {
-    def computeHeapDeps(t: Term): Seq[Term] = t match {
-      case App(HeapDepFun(_,_,_), args) => args.flatMap(computeHeapDeps)
-      case fvf: Application[_] if fvf.sort.isInstanceOf[sorts.FieldValueFunction] => Seq(fvf)
-      case psf: Application[_] if psf.sort.isInstanceOf[sorts.PredicateSnapFunction] => Seq(psf)
-      case _ => Seq()
+    /* Terms are DAGs, so both functions visit each shared subterm once: traversing them as trees
+     * takes exponential time, e.g., for terms from chains of lets whose variables are used several
+     * times (and would lose the sharing).
+     */
+    def computeHeapDeps(t: Term): Seq[Term] = {
+      val visited = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[Term, java.lang.Boolean]())
+      val deps = mutable.LinkedHashSet.empty[Term]
+      def collect(t: Term): Unit = if (visited.add(t)) t match {
+        case App(HeapDepFun(_,_,_), args) => args foreach collect
+        case fvf: Application[_] if fvf.sort.isInstanceOf[sorts.FieldValueFunction] => deps += fvf
+        case psf: Application[_] if psf.sort.isInstanceOf[sorts.PredicateSnapFunction] => deps += psf
+        case _ =>
+      }
+      collect(t)
+      deps.toSeq
     }
 
-    def replaceHeapDeps(t: Term, m: Map[Term, Var]): Term = t match {
-      case App(f, args) => App(f, args.map(replaceHeapDeps(_,m)))
-      case fvf: Application[_] if fvf.sort.isInstanceOf[sorts.FieldValueFunction] => m(fvf)
-      case psf: Application[_] if psf.sort.isInstanceOf[sorts.PredicateSnapFunction] => m(psf)
-      case _ => t
+    def replaceHeapDeps(t: Term, m: Map[Term, Var], replaced: java.util.IdentityHashMap[Term, Term]): Term = {
+      val known = replaced.get(t)
+      if (known != null) {
+        known
+      } else {
+        val res = t match {
+          case App(f, args) => App(f, args.map(replaceHeapDeps(_, m, replaced)))
+          case fvf: Application[_] if fvf.sort.isInstanceOf[sorts.FieldValueFunction] => m(fvf)
+          case psf: Application[_] if psf.sort.isInstanceOf[sorts.PredicateSnapFunction] => m(psf)
+          case _ => t
+        }
+        replaced.put(t, res)
+        res
+      }
     }
 
     // TODO: Keep all heap-independent triggers under one quantifier instead of splitting
@@ -97,7 +117,8 @@ class DefaultQuantifierSupporter(triggerGenerator: TriggerGenerator) extends Qua
           q.q,
           q.vars ++ m.values.toSeq,
           q.body,
-          Seq(Trigger(ts.map(replaceHeapDeps(_,m)))),
+          if (m.isEmpty) Seq(Trigger(ts))
+          else Seq(Trigger(ts.map(replaceHeapDeps(_, m, new java.util.IdentityHashMap[Term, Term]())))),
           q.name,
           q.isGlobal)})
   }
