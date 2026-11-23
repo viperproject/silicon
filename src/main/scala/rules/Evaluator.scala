@@ -66,14 +66,18 @@ object evaluator extends EvaluationRules {
 
   private def astSize(n: ast.Node): Long = n.reduceTree[Long]((_, children) => 1 + children.sum)
 
-  /* Possible triggers (see State.possibleTriggers) are only looked up by the trigger expressions
-   * of quantifiers, so possible triggers with more AST nodes than every trigger expression in the
-   * program (including the inferred ones) are not recorded when inlining a let. The bound is at
-   * least 1000 nodes, since trigger expressions can also be instantiated, e.g. with the arguments
-   * of a function application whose precondition contains a quantifier.
+  /* The bound of maxPossibleTriggerSize for the program last verified on each thread; weakly
+   * referenced so that it does not keep that program alive.
    */
   private val cachedMaxPossibleTriggerSize = new ThreadLocal[(java.lang.ref.WeakReference[ast.Program], Long)]
 
+  /* Possible triggers (see State.possibleTriggers) are only looked up by the trigger expressions
+   * of quantifiers, so possible triggers with more AST nodes than every trigger expression in the
+   * program (including the inferred ones) are not recorded when inlining a let. Trigger expressions
+   * can also be instantiated, e.g. with the arguments of a function application whose precondition
+   * contains a quantifier, and then become larger than written; the bound is therefore at least
+   * 1000 nodes, a generous margin for that.
+   */
   private def maxPossibleTriggerSize(program: ast.Program): Long = {
     val cached = cachedMaxPossibleTriggerSize.get()
     if (cached != null && (cached._1.get() eq program)) {
@@ -293,9 +297,10 @@ object evaluator extends EvaluationRules {
               val addedTriggers = s2.possibleTriggers -- possibleTriggersBefore.keys
               /* Replacing x by e0 can make keys grow exponentially for chains of lets whose
                * variables are used several times. Keys too large to match a trigger are dropped.
+               * Keys without x are already in s2.possibleTriggers.
                */
               lazy val e0Size = astSize(e0)
-              lazy val xSize = astSize(x.localVar)
+              lazy val xSize = astSize(x.localVar) // Not 1: astSize also counts the type of a variable
               lazy val maxSize = maxPossibleTriggerSize(s2.program)
               val addedTriggersReplaced = addedTriggers.flatMap { case (pt, tPt) =>
                 val (ptSize, occurrences) = pt.reduceTree[(Long, Long)]((n, children) =>

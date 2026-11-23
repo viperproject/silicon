@@ -27,18 +27,19 @@ object FunctionPreconditionTransformer {
      * can take exponential time.
      */
     val memo = new java.util.IdentityHashMap[Term, Term]()
-    def transform(t: Term, p: ast.Program): Term = {
+    def memoised(t: Term, p: ast.Program): Term = {
       val known = memo.get(t)
       if (known != null) known
       else {
-        val res = transformUncached(t, p, transform)
+        val res = transformUncached(t, p, memoised)
         memo.put(t, res)
         res
       }
     }
-    transform(t, p)
+    memoised(t, p)
   }
 
+  /* Transforms t, using transform for its subterms */
   private def transformUncached(t: Term, p: ast.Program, transform: (Term, ast.Program) => Term): Term = {
     val res = t match {
       case _:Literal => True

@@ -143,33 +143,33 @@ class TermToSMTLib2Converter
     val outerInnermostUsedLet = innermostUsedLet
     sharedNames = null
     try {
-      val (subterms, occurrences) = scopeSubterms(root)
-      if (subterms.isEmpty) {
-        render(root)
-      } else {
-        val names = new java.util.IdentityHashMap[Term, (String, Int)]()
-        /* The bindings of the lets, where each let binds the shared subterms whose rendering uses
-         * only names bound by lets further out.
-         */
-        val lets = mutable.ArrayBuffer.empty[mutable.ArrayBuffer[(String, Cont)]]
-        sharedNames = names
-        subterms foreach (t => { // Each subterm comes after its subterms
-          if (occurrences.get(t) > 1 && isShareable(t)) {
-            innermostUsedLet = -1
-            val doc = renderTerm(t)
-            val let = innermostUsedLet + 1
-            val name = s"$$t@$sharedNameCounter"
-            sharedNameCounter += 1
-            while (lets.length <= let) lets += mutable.ArrayBuffer.empty
-            lets(let) += ((name, doc))
-            names.put(t, (name, let))
-          }
-        })
-        val bodyDoc = render(root)
-        lets.foldRight(bodyDoc)((bindings, doc) => {
-          val bindingDocs = bindings.map { case (name, d) => parens(text(name) <+> d) }
-          parens(text("let") <+> parens(ssep(bindingDocs.to(collection.immutable.Seq), line)) <> line <> doc)
-        })
+      scopeSubterms(root) match {
+        case None =>
+          render(root)
+        case Some((subterms, occurrences)) =>
+          val names = new java.util.IdentityHashMap[Term, (String, Int)]()
+          /* The bindings of the lets, where each let binds the shared subterms whose rendering uses
+           * only names bound by lets further out.
+           */
+          val lets = mutable.ArrayBuffer.empty[mutable.ArrayBuffer[(String, Cont)]]
+          sharedNames = names
+          subterms foreach (t => { // Each subterm comes after its subterms
+            if (occurrences.get(t) > 1 && isShareable(t)) {
+              innermostUsedLet = -1
+              val doc = renderTerm(t)
+              val let = innermostUsedLet + 1
+              val name = s"$$t@$sharedNameCounter"
+              sharedNameCounter += 1
+              while (lets.length <= let) lets += mutable.ArrayBuffer.empty
+              lets(let) += ((name, doc))
+              names.put(t, (name, let))
+            }
+          })
+          val bodyDoc = render(root)
+          lets.foldRight(bodyDoc)((bindings, doc) => {
+            val bindingDocs = bindings.map { case (name, d) => parens(text(name) <+> d) }
+            parens(text("let") <+> parens(ssep(bindingDocs.to(collection.immutable.Seq), line)) <> line <> doc)
+          })
       }
     } finally {
       sharedNames = outerNames
@@ -177,12 +177,12 @@ class TermToSMTLib2Converter
     }
   }
 
-  /* All subterms of root that are in the same binder scope, in post-order (i.e., each subterm
-   * comes after its subterms), and for each, the number of subterms (counted with multiplicity)
-   * that have it as a direct subterm; or no subterms if rendering root as a tree would duplicate at
-   * most sharingThreshold nodes.
+  /* None if rendering root as a tree would duplicate at most sharingThreshold nodes. Otherwise,
+   * the distinct subterms of root that are in the same binder scope, in post-order (i.e., each
+   * subterm comes after its subterms), and for each, its number of parents among them, counted
+   * with multiplicity (so a subterm with more than one is rendered more than once).
    */
-  private def scopeSubterms(root: Term): (Seq[Term], java.util.IdentityHashMap[Term, Integer]) = {
+  private def scopeSubterms(root: Term): Option[(collection.Seq[Term], java.util.IdentityHashMap[Term, Integer])] = {
     val treeSize = new java.util.IdentityHashMap[Term, java.lang.Long]()
     val occurrences = new java.util.IdentityHashMap[Term, Integer]()
     val visited = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[Term, java.lang.Boolean]())
@@ -206,8 +206,8 @@ class TermToSMTLib2Converter
         })
       }
     }
-    if (treeSize.get(root) - postOrder.length <= sharingThreshold) (Nil, occurrences)
-    else (postOrder.toSeq, occurrences)
+    if (treeSize.get(root) - postOrder.length <= sharingThreshold) None
+    else Some((postOrder, occurrences))
   }
 
   /* The subterms of t that are rendered in the same binder scope as t. */
@@ -217,13 +217,15 @@ class TermToSMTLib2Converter
     case _ => t.subterms
   }
 
-  /* Binders and atoms are not let-bound */
+  /* Binders, atoms and terms rendered by their varRepr are not let-bound. */
   private def isShareable(t: Term): Boolean = scopeChildren(t).nonEmpty
 
   protected def render(term: Term): Cont = term match {
     case _: Quantification | _: Let if sharedNames != null =>
-      /* Binders, including their triggers, are rendered without the names bound outside of them,
-       * which might be captured.
+      /* A shared subterm named outside a binder may mention a variable that the binder rebinds,
+       * so inside the binder (including its triggers) its name would denote a different term.
+       * Binders therefore do not use outer names, and their bodies start their own scope (see
+       * renderScope).
        */
       val outerNames = sharedNames
       sharedNames = null
@@ -238,6 +240,7 @@ class TermToSMTLib2Converter
       }
   }
 
+  /** Renders term itself, ignoring a let-bound name for it. */
   protected def renderTerm(term: Term): Cont = term match {
     case hvr: HasVarRepr if hvr.varRepr.isDefined => render(hvr.varRepr.get)
 

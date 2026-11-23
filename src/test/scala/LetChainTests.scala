@@ -77,7 +77,7 @@ class LetChainTests extends AnyFunSuite {
     assert(rendered.length < 10000)
   }
 
-  test("Shared subterms are bound before they are used, even in subterms that are rendered but not traversed") {
+  test("Shared subterms are bound before they are used, even in parts of a term that are not among its subterms") {
     // MergeSingle's location is rendered, but is not among its subterms
     val x = Var(Identifier("x"), sorts.Int, false)
     val heap = Var(Identifier("h"), sorts.HeapSort(sorts.Int), false)
@@ -89,7 +89,7 @@ class LetChainTests extends AnyFunSuite {
     assert(rendered.contains("(let"))
   }
 
-  test("Terms with little sharing are rendered as before, without lets") {
+  test("Terms with little sharing are rendered without lets") {
     val x = Var(Identifier("x"), sorts.Int, false)
     val rendered = convert(BuiltinEquals(chain(3, x), IntLiteral(0)))
     assert(!rendered.contains("let"))
@@ -134,12 +134,14 @@ class LetChainTests extends AnyFunSuite {
       frontend.reset(file)
       frontend.runTo(frontend.Translation)
       assert(frontend.errors.isEmpty, frontend.errors)
-      /* Fail instead of hanging if verification takes exponential time again (it takes seconds) */
+      /* Fail instead of hanging if verification takes exponential time (it should take seconds) */
       val result = Await.result(Future(tests.verifyProgram(frontend.translationResult, frontend)), 5.minutes)
       result match {
         case Failure(Seq(error: AssertFailed)) =>
           error.pos match {
-            case pos: HasLineColumn => assert(pos.line == 21, error) // The assertion in method fail
+            case pos: HasLineColumn =>
+              val failLine = program.linesIterator.indexWhere(_.contains("assert !(")) + 1
+              assert(pos.line == failLine, error) // The assertion in method fail
             case _ => fail(s"Unexpected position of $error")
           }
         case Failure(errors) => fail(s"Unexpected errors: $errors")
