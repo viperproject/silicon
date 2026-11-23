@@ -412,22 +412,35 @@ sealed trait Term extends Node {
 
   def contains(t: Term): Boolean = this.existsDefined{case `t` =>}
 
-  lazy val freeVariables: InsertionOrderedSet[Var] =
-    this.reduceTree((t: Term, freeVarsChildren: Seq[Set[Var]]) => {
-      val freeVars: InsertionOrderedSet[Var] = InsertionOrderedSet(freeVarsChildren.flatten)
+  lazy val freeVariables: InsertionOrderedSet[Var] = {
+    /* Visits each shared subterm once: terms are DAGs, and reducing one as a tree takes
+     * exponential time, e.g., for terms from chains of lets whose variables are used several times.
+     */
+    val known = new java.util.IdentityHashMap[Term, InsertionOrderedSet[Var]]()
+    def freeVariablesOf(t: Term): InsertionOrderedSet[Var] = {
+      val knownFreeVars = known.get(t)
+      if (knownFreeVars != null) {
+        knownFreeVars
+      } else {
+        val freeVars: InsertionOrderedSet[Var] = InsertionOrderedSet(state.utils.subterms(t).flatMap(freeVariablesOf))
 
-      t match {
-        case q: Quantification =>
-          freeVars filterNot q.vars.contains
-        case l: Let =>
-          val lvars = l.bindings.keySet
-          freeVars diff lvars
-        case v: Var =>
-          freeVars + v
-        case _ =>
-          freeVars
+        val res = t match {
+          case q: Quantification =>
+            freeVars filterNot q.vars.contains
+          case l: Let =>
+            val lvars = l.bindings.keySet
+            freeVars diff lvars
+          case v: Var =>
+            freeVars + v
+          case _ =>
+            freeVars
+        }
+        known.put(t, res)
+        res
       }
-    })
+    }
+    freeVariablesOf(this)
+  }
 
   lazy val topLevelConjuncts: Seq[Term] = {
     this match {
@@ -540,7 +553,7 @@ trait ConditionalFlyweight[T, V] { self: AnyRef =>
           || (other match {
           case se: ConditionalFlyweight[T, V] if this.getClass.eq(se.getClass) =>
             val equal = equalityDefiningMembers == se.equalityDefiningMembers
-            if (equal) lastEqual = se
+            if (equal && (lastEqual ne se)) lastEqual = se
             equal
           case _ => false
         }))
@@ -804,23 +817,32 @@ object Quantification
   private val triggerGenerator = new TriggerGenerator()
 
   def transformSeqTerms(t: Trigger): Seq[Trigger] = {
-    if (!t.p.exists(mayContainSeqIn)) {
-      Seq(t)
-    } else {
-      val transformed = Trigger(t.p.map(_.transform{
-        case SeqIn(t0, t1) => SeqInTrigger(t0, t1)
-      }()))
-      if (transformed != t)
-        Seq(t, transformed)
-      else
-        Seq(t)
+    /* Terms are DAGs, and transforming one as a tree takes exponential time, e.g., for terms from
+     * chains of lets whose variables are used several times (and loses the sharing). Each shared
+     * subterm is therefore rewritten once, and terms without SeqIn are kept.
+     */
+    val rewritten = new java.util.IdentityHashMap[Term, Term]()
+    def rewrite(s: Term): Term = {
+      val known = rewritten.get(s)
+      if (known != null) {
+        known
+      } else {
+        val res = s match {
+          case SeqIn(t0, t1) => SeqInTrigger(t0, t1)
+          case _ => s.transform({ case sub if sub ne s => rewrite(sub) })(sub => sub eq s) // Only s itself
+        }
+        rewritten.put(s, res)
+        res
+      }
     }
+    val transformed = Trigger(t.p.map(term => if (mayContainSeqIn(term)) rewrite(term) else term))
+    if (transformed != t)
+      Seq(t, transformed)
+    else
+      Seq(t)
   }
 
-  /* Whether t may contain a SeqIn. Visits each shared subterm once, since terms are DAGs and
-   * transforming one as a tree takes exponential time, e.g., for terms from chains of lets whose
-   * variables are used several times (and loses the sharing).
-   */
+  /* Whether t may contain a SeqIn, visiting each shared subterm once. */
   private def mayContainSeqIn(t: Term): Boolean = {
     val visited = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[Term, java.lang.Boolean]())
     val toVisit = scala.collection.mutable.Stack(t)

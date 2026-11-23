@@ -113,11 +113,20 @@ class LetChainTests extends AnyFunSuite {
         (1 to n).map(k => s"let a$k == (f(a${k - 1}, a${k - 1})) in ").mkString +
         body
 
+    def seqLetChain(body: String): String =
+      "let b0 == (s) in " +
+        (1 to n).map(k => s"let b$k == (fs(b${k - 1}, b${k - 1})) in ").mkString +
+        body
+
     val program =
       s"""function q(i: Int): Int
          |function f(a: Int, b: Int): Int
          |function p(i: Int): Bool
          |function h(i: Int, a: Int): Bool
+         |function fs(a: Seq[Int], b: Seq[Int]): Seq[Int]
+         |function gs(i: Int, a: Seq[Int]): Bool
+         |function ks(b: Bool, a: Seq[Int]): Bool
+         |function hs(i: Int): Bool
          |function g(i: Int): Bool { ${letChain("i")} }
          |
          |method instantiate()
@@ -140,6 +149,17 @@ class LetChainTests extends AnyFunSuite {
          |method triggerOutsideLet()
          |  requires ${letChain("0", s"(forall i: Int :: { h(i, a$n) } h(i, a$n))")}
          |{ assert ${letChain("0", s"h(5, a$n)")} }
+         |
+         |method seqInTrigger(s: Seq[Int])
+         |  requires ${seqLetChain(s"(forall i: Int :: { i in s, gs(i, b$n) } (i in s && gs(i, b$n)) ==> hs(i))")}
+         |  requires 5 in s
+         |  requires ${seqLetChain(s"gs(5, b$n)")}
+         |{ assert hs(5) }
+         |
+         |method seqInNestedTrigger(s: Seq[Int])
+         |  requires ${seqLetChain(s"(forall i: Int :: { ks(i in s, b$n) } ks(i in s, b$n) ==> hs(i))")}
+         |  requires ${seqLetChain(s"ks(5 in s, b$n)")}
+         |{ assert hs(5) }
          |
          |method fail()
          |  requires forall i: Int :: { q(i) } ${letChain("i")}
