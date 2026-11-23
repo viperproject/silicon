@@ -217,10 +217,8 @@ class TermToSMTLib2Converter
     case _ => t.subterms
   }
 
-  private def isShareable(t: Term): Boolean = t match {
-    case _: Quantification | _: Let => false
-    case _ => scopeChildren(t).nonEmpty
-  }
+  /* Binders and atoms are not let-bound */
+  private def isShareable(t: Term): Boolean = scopeChildren(t).nonEmpty
 
   protected def render(term: Term): Cont = term match {
     case _: Quantification | _: Let if sharedNames != null =>

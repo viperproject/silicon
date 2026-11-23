@@ -72,16 +72,16 @@ object evaluator extends EvaluationRules {
    * least 1000 nodes, since trigger expressions can also be instantiated, e.g. with the arguments
    * of a function application whose precondition contains a quantifier.
    */
-  @volatile private var cachedMaxPossibleTriggerSize: (ast.Program, Long) = (null, 0)
+  private val cachedMaxPossibleTriggerSize = new ThreadLocal[(java.lang.ref.WeakReference[ast.Program], Long)]
 
   private def maxPossibleTriggerSize(program: ast.Program): Long = {
-    val cached = cachedMaxPossibleTriggerSize
-    if (cached._1 eq program) {
+    val cached = cachedMaxPossibleTriggerSize.get()
+    if (cached != null && (cached._1.get() eq program)) {
       cached._2
     } else {
       val triggerSizes = program.deepCollect { case t: ast.Trigger => t.exps.map(astSize) }.flatten
       val max = (1000L +: triggerSizes).max
-      cachedMaxPossibleTriggerSize = (program, max)
+      cachedMaxPossibleTriggerSize.set((new java.lang.ref.WeakReference(program), max))
       max
     }
   }
