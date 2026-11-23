@@ -393,13 +393,13 @@ sealed trait Term extends Node {
     if (original == replacement)
       this
     else
-      this.transform{case `original` => replacement}()
+      state.utils.transformShared(this, {case `original` => replacement})
 
   def replace[T <: Term : ClassTag](replacements: Map[T, Term]): Term =
     if (replacements.isEmpty)
       this
     else
-      this.transform{case t: T if replacements.contains(t) => replacements(t)}()
+      state.utils.transformShared(this, {case t: T if replacements.contains(t) => replacements(t)})
 
   def replace(originals: Seq[Term], replacements: Seq[Term]): Term = {
     //    assert(originals.length == replacements.length)
@@ -539,9 +539,15 @@ trait ConditionalFlyweight[T, V] { self: AnyRef =>
   /* The term this term was last found to be structurally equal to (terms are immutable). Terms are
    * DAGs, so comparing two of them structurally can compare the same pair of subterms many times,
    * which takes exponential time, e.g., for terms from chains of lets whose variables are used
-   * several times. Remembering the last successful comparison avoids repeating it.
+   * several times. Remembering the last successful comparison avoids repeating it. Weak, so that it
+   * does not keep the other term alive.
    */
-  @volatile private var lastEqual: AnyRef = null
+  @volatile private var lastEqual: java.lang.ref.WeakReference[AnyRef] = null
+
+  private def isLastEqual(other: AnyRef): Boolean = {
+    val last = lastEqual
+    other != null && last != null && last.get().eq(other)
+  }
 
   override def equals(other: Any): Boolean = {
     if (Verifier.config.useFlyweight) {
@@ -549,11 +555,11 @@ trait ConditionalFlyweight[T, V] { self: AnyRef =>
     } else {
       (
         this.eq(other.asInstanceOf[AnyRef])
-          || (lastEqual != null && lastEqual.eq(other.asInstanceOf[AnyRef]))
+          || isLastEqual(other.asInstanceOf[AnyRef])
           || (other match {
           case se: ConditionalFlyweight[T, V] if this.getClass.eq(se.getClass) =>
             val equal = equalityDefiningMembers == se.equalityDefiningMembers
-            if (equal && (lastEqual ne se)) lastEqual = se
+            if (equal && !isLastEqual(se)) lastEqual = new java.lang.ref.WeakReference(se)
             equal
           case _ => false
         }))
@@ -817,32 +823,20 @@ object Quantification
   private val triggerGenerator = new TriggerGenerator()
 
   def transformSeqTerms(t: Trigger): Seq[Trigger] = {
-    /* Terms are DAGs, and transforming one as a tree takes exponential time, e.g., for terms from
-     * chains of lets whose variables are used several times (and loses the sharing). Each shared
-     * subterm is therefore rewritten once, and terms without SeqIn are kept.
-     */
-    val rewritten = new java.util.IdentityHashMap[Term, Term]()
-    def rewrite(s: Term): Term = {
-      val known = rewritten.get(s)
-      if (known != null) {
-        known
-      } else {
-        val res = s match {
-          case SeqIn(t0, t1) => SeqInTrigger(t0, t1)
-          case _ => s.transform({ case sub if sub ne s => rewrite(sub) })(sub => sub eq s) // Only s itself
-        }
-        rewritten.put(s, res)
-        res
-      }
-    }
-    val transformed = Trigger(t.p.map(term => if (mayContainSeqIn(term)) rewrite(term) else term))
+    /* Trigger terms without SeqIn are kept as they are (see mayContainSeqIn) */
+    val transformed = Trigger(t.p.map(term =>
+      if (mayContainSeqIn(term)) state.utils.transformShared(term, { case SeqIn(t0, t1) => SeqInTrigger(t0, t1) })
+      else term))
     if (transformed != t)
       Seq(t, transformed)
     else
       Seq(t)
   }
 
-  /* Whether t may contain a SeqIn, visiting each shared subterm once. */
+  /* Whether t may contain a SeqIn. Visits each shared subterm once, since terms are DAGs and
+   * traversing one as a tree takes exponential time, e.g., for terms from chains of lets whose
+   * variables are used several times.
+   */
   private def mayContainSeqIn(t: Term): Boolean = {
     val visited = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[Term, java.lang.Boolean]())
     val toVisit = scala.collection.mutable.Stack(t)

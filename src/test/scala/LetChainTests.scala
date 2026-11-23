@@ -119,7 +119,8 @@ class LetChainTests extends AnyFunSuite {
         body
 
     val program =
-      s"""function q(i: Int): Int
+      s"""field v: Int
+         |function q(i: Int): Int
          |function f(a: Int, b: Int): Int
          |function p(i: Int): Bool
          |function h(i: Int, a: Int): Bool
@@ -160,6 +161,11 @@ class LetChainTests extends AnyFunSuite {
          |  requires ${seqLetChain(s"(forall i: Int :: { ks(i in s, b$n) } ks(i in s, b$n) ==> hs(i))")}
          |  requires ${seqLetChain(s"ks(5 in s, b$n)")}
          |{ assert hs(5) }
+         |
+         |method qpCondition(xs: Seq[Ref])
+         |  requires forall i: Int, j: Int :: 0 <= i && i < j && j < |xs| ==> xs[i] != xs[j]
+         |  requires ${letChain("0", s"(forall i: Int :: { xs[i] } 0 <= i && i < |xs| && p(a$n) ==> acc(xs[i].v))")}
+         |{}
          |
          |method fail()
          |  requires forall i: Int :: { q(i) } ${letChain("i")}
