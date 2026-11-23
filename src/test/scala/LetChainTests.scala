@@ -98,6 +98,23 @@ class LetChainTests extends AnyFunSuite {
     assert(rendered.length < 10000)
   }
 
+  /* Fails instead of hanging if f takes exponential time (it should take milliseconds) */
+  private def quickly[A](f: => A): A = Await.result(Future(f), 1.minute)
+
+  test("Operations on terms with a lot of sharing visit shared subterms once") {
+    val x = Var(Identifier("x"), sorts.Int, false)
+    val y = Var(Identifier("y"), sorts.Int, false)
+    val t = chain(60, x)
+    assert(quickly(t.contains(x)))
+    assert(!quickly(t.contains(y)))
+    assert(quickly(t.freeVariables.toSeq) == Seq(x))
+    assert(quickly(t == chain(60, x))) // Structurally equal, but different objects
+    assert(quickly(t != chain(59, x)))
+    val replaced = quickly(t.replace(x, y))
+    assert(quickly(replaced == chain(60, y)))
+    assert(quickly(convert(BuiltinEquals(replaced, IntLiteral(0)))).length < 10000) // Sharing is kept
+  }
+
   test("Terms with little sharing are rendered without lets") {
     val x = Var(Identifier("x"), sorts.Int, false)
     val rendered = convert(BuiltinEquals(chain(3, x), IntLiteral(0)))

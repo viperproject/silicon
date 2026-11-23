@@ -375,7 +375,7 @@ sealed trait Term extends Node {
       val t = toVisit.pop()
       if (visited.add(t)) {
         if (f.isDefinedAt(t)) return true
-        toVisit.pushAll(state.utils.subterms(t))
+        toVisit.pushAll(state.utils.subterms(t).reverseIterator) // Visit them from left to right
       }
     }
     false
@@ -851,24 +851,10 @@ object Quantification
       Seq(t)
   }
 
-  /* Whether t may contain a SeqIn. Visits each shared subterm once, since terms are DAGs and
-   * traversing one as a tree takes exponential time, e.g., for terms from chains of lets whose
-   * variables are used several times.
-   */
-  private def mayContainSeqIn(t: Term): Boolean = {
-    val visited = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[Term, java.lang.Boolean]())
-    val toVisit = scala.collection.mutable.Stack(t)
-    while (toVisit.nonEmpty) {
-      val s = toVisit.pop()
-      if (visited.add(s)) s match {
-        case _: SeqIn => return true
-        case _ =>
-          // Term.subterms does not support all terms; assume that unsupported ones contain a SeqIn
-          try toVisit.pushAll(s.subterms) catch { case _: MatchError => return true }
-      }
-    }
-    false
-  }
+  /* Whether t may contain a SeqIn */
+  private def mayContainSeqIn(t: Term): Boolean =
+    // Term.subterms does not support all terms; assume that unsupported ones contain a SeqIn
+    try t.existsDefined { case _: SeqIn => } catch { case _: MatchError => true }
 
   def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =
     apply(q, vars, tBody, triggers, s"quant-${qidCounter.getAndIncrement()}")
