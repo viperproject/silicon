@@ -94,9 +94,13 @@ trait ExpressionTranslator {
         val body = eQuant.exp
         val vars = eQuant.variables map (_.localVar)
 
-        /** IMPORTANT: Keep in sync with [[viper.silicon.rules.evaluator.evalTrigger]] */
+        /** IMPORTANT: Keep in sync with [[viper.silicon.rules.evaluator.evalTrigger]].
+          *
+          * Lets in a trigger are expanded, so that a trigger is handled like the same trigger without lets: a
+          * heap-dependent function application at its top is limited, and --maskHeapMode does not filter it out.
+          */
         val translatedTriggers = eTriggers map (triggerSet => Trigger(triggerSet.exps map (trigger =>
-          f(trigger) match {
+          f(trigger).transform()(post = { case let: Let => let.body.replace(let.bindings) }) match {
             case app @ App(fun: HeapDepFun, _) =>
               app.copy(applicable = functionSupporter.limitedVersion(fun))
             case other => other

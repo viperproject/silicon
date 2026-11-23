@@ -11,6 +11,7 @@ import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.JoinMode
 import viper.silver.ast
 import viper.silver.ast.{AnnotationInfo, FalseLit, LocalVarWithVersion, WeightedQuantifier}
+import viper.silver.ast.utility.Expressions
 import viper.silver.dependencyAnalysis._
 import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, VerifierWarning}
 import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
@@ -269,7 +270,9 @@ object evaluator extends EvaluationRules {
           eval(s1.copy(g = s1.g + (x.localVar, (t0, e0New)), functionRecorder = newFuncRec), e1, pve, v1, analysisInfos)((s2, t2, e1New, v2) => {
             val newPossibleTriggers = if (s2.recordPossibleTriggers) {
               val addedTriggers = s2.possibleTriggers -- possibleTriggersBefore.keys
-              val addedTriggersReplaced = addedTriggers.map(at => at._1.replace(x.localVar, e0) -> at._2)
+              // Also record the possible triggers of the let body with the let inlined (see evalTrigger)
+              val addedTriggersReplaced = addedTriggers.map(at =>
+                Expressions.inlineLets(ast.Let(x, e0, at._1)(at._1.pos, at._1.info, at._1.errT)) -> at._2)
               s2.possibleTriggers ++ addedTriggersReplaced
             } else {
               s2.possibleTriggers
@@ -1360,12 +1363,21 @@ object evaluator extends EvaluationRules {
         other
     }
 
+    def lookupPossibleTrigger(e: ast.Exp): Option[Term] = e match {
+      case pt @ (_: ast.PossibleTrigger | _: ast.FieldAccess | _: ast.LabelledOld | _: ast.Old) =>
+        s.possibleTriggers.get(pt)
+      case _ =>
+        None
+    }
+
+    /* The possible triggers recorded in a let body are also recorded with the let inlined (see the Let case of
+     * eval2). Hence, a trigger is also looked up with its lets inlined.
+     */
     val (cachedTriggerTerms, remainingTriggerExpressions) =
-      exps.map {
-        case pt @ (_: ast.PossibleTrigger | _: ast.FieldAccess | _: ast.LabelledOld | _: ast.Old) =>
-          val cachedTrigger = s.possibleTriggers.get(pt).map(t => transformPotentialFuncApp(t))
-          (cachedTrigger, if (cachedTrigger.isDefined) None else Some(pt))
-        case e => (None, Some(e))
+      exps.map { e =>
+        val cachedTrigger =
+          lookupPossibleTrigger(e).orElse(lookupPossibleTrigger(Expressions.inlineLets(e))).map(t => transformPotentialFuncApp(t))
+        (cachedTrigger, if (cachedTrigger.isDefined) None else Some(e))
       }.unzip match {
         case (optCachedTriggerTerms, optRemainingTriggerExpressions) =>
           (optCachedTriggerTerms.flatten, optRemainingTriggerExpressions.flatten)

@@ -1,0 +1,107 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Triggers whose top-level expression is a let. They are found among the
+// terms of the quantifier body modulo lets, as in lets_in_triggers.vpr, which
+// has the same cases with lets nested inside the triggers, and two more (a
+// nested quantifier in a function postcondition, and a let-bound variable used
+// in old).
+// LetsInTriggersTests checks that verifying this file reports no "Might not be
+// able to use trigger ..." and no "Could not resolve expression ..." warning.
+
+function div(n: Int, d: Int): Int
+  requires d != 0
+{ n \ d }
+
+function q(n: Int): Int
+function s(a: Int, b: Int): Bool
+function t(i: Int): Bool
+
+// The trigger and the body use the same let.
+method letInTriggerAndBody()
+  requires forall i: Int :: { let x == (q(div(10, i))) in s(x, x) }
+    i > 0 ==> (let x == (q(div(10, i))) in (s(x, x) && t(i)))
+{
+  // The quantifier is instantiated through the let trigger.
+  assert s(q(div(10, 5)), q(div(10, 5)))
+  assert t(5)
+
+  // The trigger is still restrictive: there is no term s(q(div(10, 3)), q(div(10, 3))).
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+// Only the trigger uses a let; the body is let-free.
+method letInTriggerOnly()
+  requires forall i: Int :: { let x == (q(div(10, i))) in s(x, x) }
+    i > 0 ==> (s(q(div(10, i)), q(div(10, i))) && t(i))
+{
+  assert s(q(div(10, 5)), q(div(10, 5)))
+  assert t(5)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+// The value of a let is itself a let, in the trigger and in the body.
+method letInLetValue()
+  requires forall i: Int :: { let x == (let y == (div(10, i)) in q(y)) in s(x, x) }
+    i > 0 ==> (let x == (let y == (div(10, i)) in q(y)) in (s(x, x) && t(i)))
+{
+  assert s(q(div(10, 5)), q(div(10, 5)))
+  assert t(5)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+// A trigger set with several expressions, one of them a let.
+method letInTriggerSet()
+  requires forall i: Int, j: Int :: { let x == (q(div(10, i))) in s(x, j), t(j) }
+    i > 0 ==> (let x == (q(div(10, i))) in (s(x, j) && t(i)))
+  requires t(7)
+{
+  assert s(q(div(10, 5)), 7)
+  assert t(5)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+field f: Int
+
+function g(r: Ref, i: Int): Int
+  requires acc(r.f)
+
+// In the axiom for the postcondition, g(r, x) in the trigger is resolved modulo
+// lets like g(r, i) in the body.
+function h(r: Ref): Bool
+  requires acc(r.f)
+  ensures forall i: Int :: { let x == (i) in g(r, x) } g(r, i) > r.f && t(i)
+
+method letTriggerOfFunctionPostcondition(r: Ref)
+  requires acc(r.f)
+{
+  var b: Bool := h(r)
+  assert g(r, 3) > r.f
+  assert t(3)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(4)
+}
+
+// The trigger and the body of a quantifier in a function postcondition use the same let.
+function h2(r: Ref): Bool
+  requires acc(r.f)
+  ensures forall i: Int :: { let x == (i) in g(r, x) } (let x == (i) in g(r, x) > r.f) && t(i)
+
+method letTriggerAndBodyOfFunctionPostcondition(r: Ref)
+  requires acc(r.f)
+{
+  var b: Bool := h2(r)
+  assert g(r, 3) > r.f
+  assert t(3)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(4)
+}

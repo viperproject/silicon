@@ -19,6 +19,7 @@ import viper.silicon.utils.ast.extractPTypeFromExp
 import viper.silicon.verifier.Verifier
 import viper.silver.parser.{PType, PUnknown}
 import viper.silver.ast.AnnotationInfo
+import viper.silver.ast.utility.Expressions
 import viper.silver.reporter.{InternalWarningMessage, Reporter}
 
 class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
@@ -172,7 +173,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
       case _ => super.translate(symbolConverter.toSort)(e)
     }
 
-  def getOrFail[K <: ast.Positioned](map: Map[(K, Seq[ExpContext]), Term], key: K, ctx: Seq[ExpContext], sort: Sort, pType: Option[PType]): Term =
+  def getOrFail[K <: ast.Exp](map: Map[(K, Seq[ExpContext]), Term], key: K, ctx: Seq[ExpContext], sort: Sort, pType: Option[PType]): Term =
     map.get((key, ctx)) match {
       case Some(s) =>
         s.convert(sort)
@@ -185,6 +186,20 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
           if (innerContextVals.nonEmpty) {
             return innerContextVals.get._2.convert(sort)
           }
+        }
+
+        // An expression might only have been recorded in a different form modulo lets, e.g. as g(r, i) in the body
+        // for g(r, let x == (i) in x) in a trigger that evalTrigger found in the body. Hence, the expressions are also
+        // compared with their lets inlined, including the lets around them, i.e. those of their let contexts.
+        val (keyInlined, ctxWithoutLets) = inlinedInLetContexts(key, ctx)
+        def matches(k: ast.Exp, c: Seq[ExpContext]): Boolean = {
+          val (kInlined, cWithoutLets) = inlinedInLetContexts(k, c)
+          kInlined == keyInlined &&
+            (cWithoutLets == ctxWithoutLets || (checkInnerContexts && cWithoutLets.startsWith(ctxWithoutLets)))
+        }
+        map.collectFirst({ case ((k, c), v) if matches(k, c) => v }) match {
+          case Some(v) => return v.convert(sort)
+          case None =>
         }
 
         if (!failed && data.verificationFailures.isEmpty) {
@@ -202,4 +217,12 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
          */
         fresh("$unresolved", sort, pType)
     }
+
+  private def inlinedInLetContexts(e: ast.Exp, ctx: Seq[ExpContext]): (ast.Exp, Seq[ExpContext]) = {
+    val inLets = ctx.foldRight(e) {
+      case (LetContext(l), e1) => ast.Let(l.variable, l.exp, e1)(e1.pos, e1.info, e1.errT)
+      case (_, e1) => e1
+    }
+    (Expressions.inlineLets(inLets), ctx.filterNot(_.isInstanceOf[LetContext]))
+  }
 }

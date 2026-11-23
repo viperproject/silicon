@@ -15,7 +15,7 @@ import viper.silver.verifier.Verifier
 
 class SiliconTests extends SilSuite {
   private val siliconTestDirectories =
-    Seq("consistency")
+    Seq("consistency", "triggers")
 
   private val silTestDirectories =
     Seq("all",
