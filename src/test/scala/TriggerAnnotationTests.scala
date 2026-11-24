@@ -23,13 +23,18 @@ class TriggerAnnotationTests extends AnyFunSuite {
       }
     }
     val silicon = new Silicon(reporter, Seq("startedBy" -> "TriggerAnnotationTests"))
-    silicon.parseCommandLine(Seq("dummy-program.vpr"))
+    silicon.parseCommandLine(Seq(Silicon.dummyInputFilename))
     silicon.start()
     val result = try silicon.verify(AstBuiltTriggerProgram.encoded) finally silicon.stop()
 
     assert(result == Success)
     /* Inferred (not given) triggers; the axioms of the encoded ADT come with triggers */
     val inferred = chosen.toSeq.filter(_.oldTriggers.isEmpty).map(_.triggers.map(_.exps.mkString(", ")))
-    assert(inferred.map(_.mkString("; ")).sorted == AstBuiltTriggerProgram.expectedTriggers.map(_.mkString("; ")).sorted)
+    /* The quantifier that has no triggers in Silver's default inference gets them from Silicon's fallback, which
+     * admits `+` and rewrites it away (introducing a variable `__rw_...`), but still respects the annotation. */
+    val (rewritten, others) = inferred.partition(_.exists(_.contains("__rw_")))
+    assert(others.map(_.mkString("; ")).sorted ==
+      AstBuiltTriggerProgram.expectedTriggers.filter(_.nonEmpty).map(_.mkString("; ")).sorted)
+    assert(rewritten.size == 1 && rewritten.head.nonEmpty && !rewritten.head.exists(_.contains("add(")))
   }
 }
