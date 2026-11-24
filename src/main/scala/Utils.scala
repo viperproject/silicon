@@ -9,7 +9,7 @@ package viper.silicon
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver
-import viper.silver.ast.utility.Triggers.TriggerGenerationWithAddAndSubtract
+import viper.silver.ast.utility.Triggers.TriggerGeneration
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.SourcePNodeInfo
 import viper.silver.components.StatefulComponent
@@ -205,9 +205,12 @@ package object utils {
       *
       * @param q The quantifier to compute triggers for.
       * @param withAutoTrigger TODO: Why is this argument needed? Why not use q.autoTrigger instead?
+      * @param fallbackTriggerGeneration The generator to try if `withAutoTrigger` has no triggers; it admits `+` and
+      *                                  `-`, which are rewritten away afterwards.
       * @return A quantifier that is equal to the input quantifier, except potentially for triggers.
       */
-    def autoTrigger[T <: silver.ast.QuantifiedExp](q: T, withAutoTrigger: T): T = {
+    def autoTrigger[T <: silver.ast.QuantifiedExp](q: T, withAutoTrigger: T, fallbackTriggerGeneration: TriggerGeneration)
+                                                  : T = {
       val triggers = withAutoTrigger match {
         case f: silver.ast.Forall => f.triggers
         case e: silver.ast.Exists => e.triggers
@@ -222,7 +225,7 @@ package object utils {
           /* Standard trigger generation code failed.
            * Let's try generating (certain) invalid triggers, which will then be rewritten
            */
-          val optTriggerSet = silver.ast.utility.Expressions.generateTriggerSet(q, TriggerGenerationWithAddAndSubtract)
+          val optTriggerSet = silver.ast.utility.Expressions.generateTriggerSet(q, fallbackTriggerGeneration)
 
           val advancedTriggerForall =
             optTriggerSet match {

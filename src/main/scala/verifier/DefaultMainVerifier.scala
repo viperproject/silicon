@@ -34,6 +34,7 @@ import viper.silicon.supporters._
 import viper.silicon.utils.Counter
 import viper.silver.ast.utility.QuantifiedPermissions.collectInDependencies
 import viper.silver.ast.utility.rewriter.Traverse
+import viper.silver.ast.utility.Triggers.{TriggerGeneration, TriggerGenerationWithAddAndSubtract}
 import viper.silver.ast.{BackendType, Member}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.frontend.FrontendStateCache
@@ -187,6 +188,9 @@ class DefaultMainVerifier(config: Config,
     doVerify(v, member)
 
   def verify(originalProgram: ast.Program, cfgs: Seq[SilverCfg], inputFile: Option[String]): List[VerificationResult] = {
+    val triggerGeneration = new TriggerGeneration(Some(originalProgram))
+    val fallbackTriggerGeneration = new TriggerGenerationWithAddAndSubtract(Some(originalProgram))
+
     /** Trigger computation is currently not thread-safe; hence, all triggers are computed
       * up-front, before the program is verified in parallel.
       * This is done bottom-up to ensure that nested quantifiers are transformed as well
@@ -196,13 +200,15 @@ class DefaultMainVerifier(config: Config,
     var program: ast.Program =
       originalProgram.transform({
         case forall: ast.Forall if forall.isPure =>
-          val res = viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
+          val res = viper.silicon.utils.ast.autoTrigger(
+            forall, forall.autoTriggerWith(triggerGeneration), fallbackTriggerGeneration)
           if (res.triggers.isEmpty)
             reporter.report(WarningsDuringVerification(Seq(VerifierWarning("No triggers provided or inferred for quantifier.", res.pos))))
           reporter report QuantifierChosenTriggersMessage(res, res.triggers, forall.triggers)
           res
         case exists: ast.Exists =>
-          val res = viper.silicon.utils.ast.autoTrigger(exists, exists.autoTrigger)
+          val res = viper.silicon.utils.ast.autoTrigger(
+            exists, exists.autoTriggerWith(triggerGeneration), fallbackTriggerGeneration)
           if (res.triggers.isEmpty)
             reporter.report(WarningsDuringVerification(Seq(VerifierWarning("No triggers provided or inferred for quantifier.", res.pos))))
           reporter report QuantifierChosenTriggersMessage(res, res.triggers, exists.triggers)
