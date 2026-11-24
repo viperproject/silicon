@@ -9,7 +9,7 @@ package viper.silicon
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver
-import viper.silver.ast.utility.Triggers.{TriggerGeneration, TriggerGenerationWithAddAndSubtract}
+import viper.silver.ast.utility.Triggers.TriggerGeneration
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.SourcePNodeInfo
 import viper.silver.components.StatefulComponent
@@ -205,11 +205,11 @@ package object utils {
       *
       * @param q The quantifier to compute triggers for.
       * @param withAutoTrigger TODO: Why is this argument needed? Why not use q.autoTrigger instead?
+      * @param fallbackTriggerGeneration The generator to try if `withAutoTrigger` has no triggers; it admits `+` and
+      *                                  `-`, which are rewritten away afterwards.
       * @return A quantifier that is equal to the input quantifier, except potentially for triggers.
       */
-    def autoTrigger[T <: silver.ast.QuantifiedExp](q: T,
-                                                   withAutoTrigger: T,
-                                                   fallbackTriggerGeneration: TriggerGeneration = TriggerGenerationWithAddAndSubtract)
+    def autoTrigger[T <: silver.ast.QuantifiedExp](q: T, withAutoTrigger: T, fallbackTriggerGeneration: TriggerGeneration)
                                                   : T = {
       val triggers = withAutoTrigger match {
         case f: silver.ast.Forall => f.triggers

@@ -18,7 +18,7 @@ class TriggerAnnotationTests extends AnyFunSuite {
     val reporter = new Reporter {
       val name = "TriggerAnnotationTests"
       def report(msg: Message): Unit = msg match {
-        case m: QuantifierChosenTriggersMessage => chosen.synchronized { chosen += m }
+        case m: QuantifierChosenTriggersMessage => chosen += m
         case _ =>
       }
     }
@@ -33,8 +33,7 @@ class TriggerAnnotationTests extends AnyFunSuite {
     /* The quantifier that has no triggers in Silver's default inference gets them from Silicon's fallback, which
      * admits `+` and rewrites it away (introducing a variable `__rw_...`), but still respects the annotation. */
     val (rewritten, others) = inferred.partition(_.exists(_.contains("__rw_")))
-    assert(others.map(_.mkString("; ")).sorted ==
-      AstBuiltTriggerProgram.expectedTriggers.filter(_.nonEmpty).map(_.mkString("; ")).sorted)
+    assert(others == AstBuiltTriggerProgram.expectedTriggers.filter(_.nonEmpty))
     assert(rewritten.size == 1 && rewritten.head.nonEmpty && !rewritten.head.exists(_.contains("add(")))
   }
 }
