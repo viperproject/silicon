@@ -13,7 +13,7 @@ import viper.silver.verifier.Success
 /** Silicon infers triggers that respect Silver's trigger annotations, also for a program that a client (e.g. Prusti)
   * builds as an AST and verifies directly, without parsing. */
 class TriggerAnnotationTests extends AnyFunSuite {
-  test("Silicon respects @notInTrigger() annotations in a program built as an AST") {
+  test("Silicon respects @noAutoTrigger() annotations in a program built as an AST") {
     val chosen = mutable.ArrayBuffer.empty[QuantifierChosenTriggersMessage]
     val reporter = new Reporter {
       val name = "TriggerAnnotationTests"
