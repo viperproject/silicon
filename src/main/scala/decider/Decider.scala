@@ -482,11 +482,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     protected def deciderAssertInternal(t: Term, timeout: Option[Int], analysisInfos: AnalysisInfos, isCheck: Boolean): (Boolean, Option[Int]) =
       (proverAssert(t, timeout)(prover.assert(t, timeout)), None)
 
-    protected def isKnownToBeTrue(t: Term) = t match {
+    protected def isKnownToBeTrue(t: Term): Boolean = t match {
       case True => true
-  //    case eq: BuiltinEquals => eq.p0 == eq.p1 /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
+      // case eq: BuiltinEquals => eq.p0 == eq.p1 /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
       case _ if pcs.assumptions contains t => true
       case q: Quantification if q.body == True => true
+      case and: And => and.ts.forall(isKnownToBeTrue)
       case _ => false
     }
 
