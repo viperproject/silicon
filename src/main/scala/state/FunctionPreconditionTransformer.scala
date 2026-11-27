@@ -22,6 +22,25 @@ import viper.silver.ast
   */
 object FunctionPreconditionTransformer {
   def transform(t: Term, p: ast.Program): Term = {
+    /* Terms are DAGs (e.g. let-bound variables are replaced by the terms of their values), so the
+     * results for subterms are memoised to avoid traversing shared subterms more than once, which
+     * can take exponential time.
+     */
+    val memo = new java.util.IdentityHashMap[Term, Term]()
+    def memoised(t: Term, p: ast.Program): Term = {
+      val known = memo.get(t)
+      if (known != null) known
+      else {
+        val res = transformUncached(t, p, memoised)
+        memo.put(t, res)
+        res
+      }
+    }
+    memoised(t, p)
+  }
+
+  /* Transforms t, using transform for its subterms */
+  private def transformUncached(t: Term, p: ast.Program, transform: (Term, ast.Program) => Term): Term = {
     val res = t match {
       case _:Literal => True
       case And(ts) => And(transform(ts.head, p), Implies(ts.head, transform(And(ts.tail), p)))

@@ -150,6 +150,32 @@ package object utils {
     case HeapsOverlap(h1, m1, h2, m2) => h1 :: m1 :: h2 :: m2 :: Nil
   }
 
+  /** Like `transform(term, pre)()`: replaces each subterm for which `pre` is defined (without
+    * transforming the result further) and rebuilds the other subterms from their transformed
+    * subterms. Terms are DAGs, and transforming one as a tree takes exponential time, e.g., for
+    * terms from chains of lets whose variables are used several times (and loses the sharing);
+    * each shared subterm is therefore transformed once. pre must therefore not depend on where a
+    * subterm occurs. `transformed` maps subterms to their transformations, and can be shared by
+    * several calls with the same pre.
+    */
+  def transformShared[T <: Term](term: T,
+                                 pre: PartialFunction[Term, Term],
+                                 transformed: java.util.IdentityHashMap[Term, Term] = new java.util.IdentityHashMap[Term, Term]())
+                                : T = {
+    def go(t: Term): Term = {
+      val known = transformed.get(t)
+      if (known != null) {
+        known
+      } else {
+        // If pre is not defined for t, rebuild t only, from its transformed subterms
+        val res = pre.applyOrElse(t, (t: Term) => transform(t, { case sub if sub ne t => go(sub) })(_ eq t))
+        transformed.put(t, res)
+        res
+      }
+    }
+    go(term).asInstanceOf[T]
+  }
+
   /** @see [[viper.silver.ast.utility.Simplifier.simplify]] */
   def transform[T <: Term](term: T,
                            pre: PartialFunction[Term, Term] = PartialFunction.empty)

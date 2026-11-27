@@ -100,13 +100,13 @@ class TermToSMTLib2Converter
       val idDoc = render(id)
       val argDocs = (args map (v => parens(text(render(v.id)) <+> render(v.sort)))).to(collection.immutable.Seq)
       val bodySortDoc = render(body.sort)
-      val bodyDoc = render(body)
+      val bodyDoc = renderScope(body)
 
       parens(text("define-fun") <+> idDoc <+> parens(ssep(argDocs, space)) <+> bodySortDoc <> nest(defaultIndent, line <> bodyDoc))
   }
 
   def convert(t: Term): String = {
-    super.pretty(defaultWidth, render(t))
+    super.pretty(defaultWidth, renderScope(t))
   }
 
   private def renderHeapType(s: Sort) = s match {
@@ -116,7 +116,132 @@ class TermToSMTLib2Converter
     case sorts.WandHeapSort => text("$MWSF")
   }
 
+  /* Silicon's terms are DAGs (e.g. a let-bound variable is replaced by the term of its value),
+   * but SMT-LIB terms are trees. Rendering a term with a lot of sharing, e.g. one resulting from
+   * a chain of lets whose variables are used several times, can therefore take exponential time
+   * and space. If rendering a term (within a binder scope, see renderScope) would duplicate more
+   * than sharingThreshold nodes, each subterm that occurs more than once is bound by an SMT-LIB
+   * let and rendered only once. Solvers expand lets while parsing, so this does not change the
+   * term the solver sees, not even for matching triggers.
+   */
+  protected val sharingThreshold: Long = 10000
+
+  /* The let-bound names of shared subterms of the binder scope that is currently rendered, with
+   * the let (counted from the outermost one) that binds each; null if there are none. Compared by
+   * reference, which suffices because sharing in the rendered tree comes from shared objects.
+   */
+  private var sharedNames: java.util.IdentityHashMap[Term, (String, Int)] = _
+  private var sharedNameCounter: Long = 0
+  /* The innermost let whose names have been rendered since this was last reset; -1 if none. */
+  private var innermostUsedLet: Int = -1
+
+  /** Renders a term that is not in the scope of the shared names that are currently bound:
+    * the root of a term that is converted, or the body of a binder.
+    */
+  protected def renderScope(root: Term): Cont = {
+    val outerNames = sharedNames
+    val outerInnermostUsedLet = innermostUsedLet
+    sharedNames = null
+    try {
+      scopeSubterms(root) match {
+        case None =>
+          render(root)
+        case Some((subterms, occurrences)) =>
+          val names = new java.util.IdentityHashMap[Term, (String, Int)]()
+          /* The bindings of the lets, where each let binds the shared subterms whose rendering uses
+           * only names bound by lets further out.
+           */
+          val lets = mutable.ArrayBuffer.empty[mutable.ArrayBuffer[(String, Cont)]]
+          sharedNames = names
+          subterms foreach (t => { // Each subterm comes after its subterms
+            if (occurrences.get(t) > 1 && isShareable(t)) {
+              innermostUsedLet = -1
+              val doc = renderTerm(t)
+              val let = innermostUsedLet + 1
+              val name = s"$$t@$sharedNameCounter"
+              sharedNameCounter += 1
+              while (lets.length <= let) lets += mutable.ArrayBuffer.empty
+              lets(let) += ((name, doc))
+              names.put(t, (name, let))
+            }
+          })
+          val bodyDoc = render(root)
+          lets.foldRight(bodyDoc)((bindings, doc) => {
+            val bindingDocs = bindings.map { case (name, d) => parens(text(name) <+> d) }
+            parens(text("let") <+> parens(ssep(bindingDocs.to(collection.immutable.Seq), line)) <> line <> doc)
+          })
+      }
+    } finally {
+      sharedNames = outerNames
+      innermostUsedLet = outerInnermostUsedLet
+    }
+  }
+
+  /* None if rendering root as a tree would duplicate at most sharingThreshold nodes. Otherwise,
+   * the distinct subterms of root that are in the same binder scope, in post-order (i.e., each
+   * subterm comes after its subterms), and for each, its number of parents among them, counted
+   * with multiplicity (so a subterm with more than one is rendered more than once).
+   */
+  private def scopeSubterms(root: Term): Option[(collection.Seq[Term], java.util.IdentityHashMap[Term, Integer])] = {
+    val treeSize = new java.util.IdentityHashMap[Term, java.lang.Long]()
+    val occurrences = new java.util.IdentityHashMap[Term, Integer]()
+    val visited = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[Term, java.lang.Boolean]())
+    val postOrder = mutable.ArrayBuffer.empty[Term]
+    val stack = mutable.Stack[(Term, Boolean)]((root, false))
+    occurrences.put(root, 1)
+    while (stack.nonEmpty) {
+      val (t, childrenDone) = stack.pop()
+      val children = scopeChildren(t)
+      if (childrenDone) {
+        var size = 1L
+        children foreach (c => size = math.min(size + treeSize.get(c), Long.MaxValue / 2))
+        treeSize.put(t, size)
+        postOrder += t
+      } else if (visited.add(t)) {
+        stack.push((t, true))
+        children foreach (c => {
+          val n = occurrences.get(c)
+          occurrences.put(c, if (n == null) 1 else n + 1)
+          if (!visited.contains(c)) stack.push((c, false))
+        })
+      }
+    }
+    if (treeSize.get(root) - postOrder.length <= sharingThreshold) None
+    else Some((postOrder, occurrences))
+  }
+
+  /* The subterms of t that are rendered in the same binder scope as t. */
+  private def scopeChildren(t: Term): Seq[Term] = t match {
+    case _: Quantification | _: Let => Nil
+    case hvr: HasVarRepr if hvr.varRepr.isDefined => Nil
+    case _ => t.subterms
+  }
+
+  /* Binders, atoms and terms rendered by their varRepr are not let-bound. */
+  private def isShareable(t: Term): Boolean = scopeChildren(t).nonEmpty
+
   protected def render(term: Term): Cont = term match {
+    case _: Quantification | _: Let if sharedNames != null =>
+      /* A shared subterm named outside a binder may mention a variable that the binder rebinds,
+       * so inside the binder (including its triggers) its name would denote a different term.
+       * Binders therefore do not use outer names, and their bodies and trigger terms start their own
+       * scope (see renderScope).
+       */
+      val outerNames = sharedNames
+      sharedNames = null
+      try renderTerm(term) finally sharedNames = outerNames
+    case _ =>
+      val binding = if (sharedNames == null) null else sharedNames.get(term)
+      if (binding == null) {
+        renderTerm(term)
+      } else {
+        innermostUsedLet = math.max(innermostUsedLet, binding._2)
+        text(binding._1)
+      }
+  }
+
+  /** Renders term itself, ignoring a let-bound name for it. */
+  protected def renderTerm(term: Term): Cont = term match {
     case hvr: HasVarRepr if hvr.varRepr.isDefined => render(hvr.varRepr.get)
 
     case lit: Literal => render(lit)
@@ -136,7 +261,7 @@ class TermToSMTLib2Converter
 
     /* Handle quantifiers that have at most one trigger set */
     case Quantification(quant, vars, body, triggers, name, _, weight) =>
-      val docBody = render(body)
+      val docBody = renderScope(body)
 
       if (vars.nonEmpty) {
         val docVars = ssep((vars map (v => parens(text(render(v.id)) <+> render(v.sort)))).to(collection.immutable.Seq), space)
@@ -145,7 +270,7 @@ class TermToSMTLib2Converter
         // Render only triggers with non-empty terms since cvc5 breaks on
         // empty patterns (i.e. :pattern ()).
         val renderedTriggerTerms = triggers.collect {
-            case trigger if trigger.p.nonEmpty => ssep((trigger.p map render).to(collection.immutable.Seq), space)
+            case trigger if trigger.p.nonEmpty => ssep((trigger.p map renderScope).to(collection.immutable.Seq), space)
           }
 
         val docTriggers =
@@ -389,8 +514,8 @@ class TermToSMTLib2Converter
       parens(text("distinct") <+> ssep((symbols.toSeq map (s => render(s.id): Cont)).to(collection.immutable.Seq), space))
 
     case Let(bindings, body) =>
-      val docBindings = ssep((bindings.toSeq map (p => parens(render(p._1) <+> render(p._2)))).to(collection.immutable.Seq), space)
-      parens(text("let") <+> parens(docBindings) <+> render(body))
+      val docBindings = ssep((bindings.toSeq map (p => parens(render(p._1) <+> renderScope(p._2)))).to(collection.immutable.Seq), space)
+      parens(text("let") <+> parens(docBindings) <+> renderScope(body))
 
     case MagicWandSnapshot(mwsf) => render(mwsf)
     case MWSFLookup(mwsf, snap) => renderApp("MWSF_apply", Seq(mwsf, snap), sorts.Snap)
@@ -494,6 +619,7 @@ class TermToSMTLib2Converter
 
   def reset(): Unit = {
     sanitizedNamesCache.clear()
+    sharedNameCounter = 0
   }
 
   def stop(): Unit = {

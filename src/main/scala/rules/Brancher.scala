@@ -91,8 +91,11 @@ object brancher extends BranchingRules {
 
     val cnt = v.counter(this).next()
 
-    val thenBranchComment = s"[then-branch: $cnt | $condition | ${if (executeThenBranch) "live" else "dead"}]"
-    val elseBranchComment = s"[else-branch: $cnt | $negatedCondition | ${if (executeElseBranch) "live" else "dead"}]"
+    /* Lazy, since the prover only uses comments when it logs, and printing a term can take
+     * exponential time (e.g., for terms from chains of lets whose variables are used several times).
+     */
+    lazy val thenBranchComment = s"[then-branch: $cnt | $condition | ${if (executeThenBranch) "live" else "dead"}]"
+    lazy val elseBranchComment = s"[else-branch: $cnt | $negatedCondition | ${if (executeElseBranch) "live" else "dead"}]"
 
     v.decider.prover.comment(thenBranchComment)
     v.decider.prover.comment(elseBranchComment)

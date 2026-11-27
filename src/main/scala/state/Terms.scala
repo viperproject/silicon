@@ -363,9 +363,23 @@ sealed trait Term extends Node {
   def reduceTree[R](f: (Term, Seq[R]) => R): R =
     ast.utility.Visitor.reduceTree(this, state.utils.subterms)(f)
 
-  /** @see [[ast.utility.Visitor.existsDefined]] */
-  def existsDefined(f: PartialFunction[Term, Any]): Boolean =
-    ast.utility.Visitor.existsDefined(this, state.utils.subterms)(f)
+  /** Whether f is defined for this term or one of its (transitive) subterms. Like
+    * [[ast.utility.Visitor.existsDefined]], but visits each shared subterm once: terms are DAGs,
+    * and traversing one as a tree takes exponential time, e.g., for terms from chains of lets
+    * whose variables are used several times.
+    */
+  def existsDefined(f: PartialFunction[Term, Any]): Boolean = {
+    val visited = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[Term, java.lang.Boolean]())
+    val toVisit = scala.collection.mutable.Stack[Term](this)
+    while (toVisit.nonEmpty) {
+      val t = toVisit.pop()
+      if (visited.add(t)) {
+        if (f.isDefinedAt(t)) return true
+        toVisit.pushAll(state.utils.subterms(t).reverseIterator) // Visit them from left to right
+      }
+    }
+    false
+  }
 
   /** @see [[ast.utility.Visitor.hasSubnode]] */
   def hasSubterm(subterm: Term): Boolean =
@@ -393,13 +407,13 @@ sealed trait Term extends Node {
     if (original == replacement)
       this
     else
-      this.transform{case `original` => replacement}()
+      state.utils.transformShared(this, {case `original` => replacement})
 
   def replace[T <: Term : ClassTag](replacements: Map[T, Term]): Term =
     if (replacements.isEmpty)
       this
     else
-      this.transform{case t: T if replacements.contains(t) => replacements(t)}()
+      state.utils.transformShared(this, {case t: T if replacements.contains(t) => replacements(t)})
 
   def replace(originals: Seq[Term], replacements: Seq[Term]): Term = {
     //    assert(originals.length == replacements.length)
@@ -412,22 +426,35 @@ sealed trait Term extends Node {
 
   def contains(t: Term): Boolean = this.existsDefined{case `t` =>}
 
-  lazy val freeVariables: InsertionOrderedSet[Var] =
-    this.reduceTree((t: Term, freeVarsChildren: Seq[Set[Var]]) => {
-      val freeVars: InsertionOrderedSet[Var] = InsertionOrderedSet(freeVarsChildren.flatten)
+  lazy val freeVariables: InsertionOrderedSet[Var] = {
+    /* Visits each shared subterm once: terms are DAGs, and reducing one as a tree takes
+     * exponential time, e.g., for terms from chains of lets whose variables are used several times.
+     */
+    val known = new java.util.IdentityHashMap[Term, InsertionOrderedSet[Var]]()
+    def freeVariablesOf(t: Term): InsertionOrderedSet[Var] = {
+      val knownFreeVars = known.get(t)
+      if (knownFreeVars != null) {
+        knownFreeVars
+      } else {
+        val freeVars: InsertionOrderedSet[Var] = InsertionOrderedSet(state.utils.subterms(t).flatMap(freeVariablesOf))
 
-      t match {
-        case q: Quantification =>
-          freeVars filterNot q.vars.contains
-        case l: Let =>
-          val lvars = l.bindings.keySet
-          freeVars diff lvars
-        case v: Var =>
-          freeVars + v
-        case _ =>
-          freeVars
+        val res = t match {
+          case q: Quantification =>
+            freeVars filterNot q.vars.contains
+          case l: Let =>
+            val lvars = l.bindings.keySet
+            freeVars diff lvars
+          case v: Var =>
+            freeVars + v
+          case _ =>
+            freeVars
+        }
+        known.put(t, res)
+        res
       }
-    })
+    }
+    freeVariablesOf(this)
+  }
 
   lazy val topLevelConjuncts: Seq[Term] = {
     this match {
@@ -525,15 +552,31 @@ trait ConditionalFlyweight[T, V] { self: AnyRef =>
   else
     viper.silver.utility.Common.generateHashCode((this.getClass.getName, equalityDefiningMembers))
 
+  /* The term this term was last found to be structurally equal to (terms are immutable). Terms are
+   * DAGs, so comparing two of them structurally can compare the same pair of subterms many times,
+   * which takes exponential time, e.g., for terms from chains of lets whose variables are used
+   * several times. Remembering the last successful comparison avoids repeating it. Weak, so that it
+   * does not keep the other term alive.
+   */
+  @volatile private var lastEqual: java.lang.ref.WeakReference[AnyRef] = null
+
+  private def isLastEqual(other: AnyRef): Boolean = {
+    val last = lastEqual
+    other != null && last != null && last.get().eq(other)
+  }
+
   override def equals(other: Any): Boolean = {
     if (Verifier.config.useFlyweight) {
       this.eq(other.asInstanceOf[AnyRef])
     } else {
       (
         this.eq(other.asInstanceOf[AnyRef])
+          || isLastEqual(other.asInstanceOf[AnyRef])
           || (other match {
           case se: ConditionalFlyweight[T, V] if this.getClass.eq(se.getClass) =>
-            equalityDefiningMembers == se.equalityDefiningMembers
+            val equal = equalityDefiningMembers == se.equalityDefiningMembers
+            if (equal) lastEqual = new java.lang.ref.WeakReference(se)
+            equal
           case _ => false
         }))
     }
@@ -796,14 +839,24 @@ object Quantification
   private val triggerGenerator = new TriggerGenerator()
 
   def transformSeqTerms(t: Trigger): Seq[Trigger] = {
-    val transformed = Trigger(t.p.map(_.transform{
-      case SeqIn(t0, t1) => SeqInTrigger(t0, t1)
-    }()))
+    /* Trigger terms without SeqIn are kept as they are (see mayContainSeqIn); subterms shared by
+     * several trigger terms are transformed once.
+     */
+    val transformedSubterms = new java.util.IdentityHashMap[Term, Term]()
+    val transformed = Trigger(t.p.map(term =>
+      if (mayContainSeqIn(term))
+        state.utils.transformShared(term, { case SeqIn(t0, t1) => SeqInTrigger(t0, t1) }, transformedSubterms)
+      else term))
     if (transformed != t)
       Seq(t, transformed)
     else
       Seq(t)
   }
+
+  /* Whether t may contain a SeqIn */
+  private def mayContainSeqIn(t: Term): Boolean =
+    // Term.subterms does not support all terms; assume that unsupported ones contain a SeqIn
+    try t.existsDefined { case _: SeqIn => } catch { case _: MatchError => true }
 
   def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =
     apply(q, vars, tBody, triggers, s"quant-${qidCounter.getAndIncrement()}")
