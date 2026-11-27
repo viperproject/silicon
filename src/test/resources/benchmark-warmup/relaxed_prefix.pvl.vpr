@@ -1,0 +1,648 @@
+domain WellFoundedOrder[T]  {
+  
+  function bounded(v: T): Bool 
+  
+  function decreasing(v1: T, v2: T): Bool 
+}
+
+domain IntOrder  {
+  
+  axiom {
+    (forall i: Int ::0 <= i == (bounded(i): Bool))
+  }
+  
+  axiom {
+    (forall i: Int ::(forall j: Int ::i < j == (decreasing(i, j): Bool)))
+  }
+}
+
+domain array  {
+  
+  function array_loc(a: array, i: Int): Ref 
+  
+  function alen(a: array): Int 
+  
+  function loc_inv_1(loc: Ref): array 
+  
+  function loc_inv_2(loc: Ref): Int 
+  
+  axiom {
+    (forall a: array, i: Int ::
+      { array_loc(a, i) }
+      loc_inv_1(array_loc(a, i)) == a && loc_inv_2(array_loc(a, i)) == i)
+  }
+  
+  axiom {
+    (forall a: array :: { alen(a) } alen(a) >= 0)
+  }
+}
+
+domain any  {
+  
+  
+}
+
+domain option[T1]  {
+  
+  function None(): option[T1] 
+  
+  function some(x: T1): option[T1] 
+  
+  function option_get(opt: option[T1]): T1 
+  
+  axiom {
+    (forall x: T1 ::
+      { (some(x): option[T1]) }
+      (None(): option[T1]) != (some(x): option[T1]))
+  }
+  
+  axiom {
+    (forall x: T1 ::
+      { (some(x): option[T1]) }
+      (option_get((some(x): option[T1])): T1) == x)
+  }
+  
+  axiom {
+    (forall opt: option[T1] ::
+      { (some((option_get(opt): T1)): option[T1]) }
+      (some((option_get(opt): T1)): option[T1]) == opt)
+  }
+}
+
+domain frac  {
+  
+  function frac_val(f: frac): Perm 
+  
+  axiom {
+    (forall f: frac, g: frac ::
+      { frac_val(f), frac_val(g) }
+      frac_val(f) == frac_val(g) ==> f == g)
+  }
+  
+  axiom {
+    (forall f: frac ::
+      { frac_val(f) }
+      true ==> none < frac_val(f) && frac_val(f) <= write)
+  }
+}
+
+field int: Int
+
+function aloc(a: array, i: Int): Ref
+  requires 0 <= i
+  requires i < alen(a)
+  decreases 
+  ensures loc_inv_1(result) == a
+  ensures loc_inv_2(result) == i
+{
+  array_loc(a, i)
+}
+
+function any_as(t: any): any
+  decreases 
+
+
+function as_any(t: any): any
+  decreases 
+  ensures any_as(result) == t
+
+
+function opt_get(opt: option[any]): any
+  requires opt != (None(): option[any])
+  decreases 
+  ensures (some(result): option[any]) == opt
+{
+  (option_get(opt): any)
+}
+
+function opt_or_else(opt: option[any], alt: any): any
+  decreases 
+  ensures opt == (None(): option[any]) ==> result == alt
+  ensures opt != (None(): option[any]) ==> result == opt_get(opt)
+{
+  (opt == (None(): option[any]) ? alt : opt_get(opt))
+}
+
+function opt_get1(opt: option[array]): array
+  requires opt != (None(): option[array])
+  decreases 
+  ensures (some(result): option[array]) == opt
+{
+  (option_get(opt): array)
+}
+
+function prefix(this: Ref, pat: option[array], a: option[array], len: Int): Bool
+  requires this != null
+  requires pat != (None(): option[array])
+  requires a != (None(): option[array])
+  requires (forall i: Int ::
+      { aloc(opt_get1(pat), i) }
+      0 <= i && i < alen(opt_get1(pat)) ==>
+      acc(aloc(opt_get1(pat), i).int, wildcard))
+  requires (forall i: Int ::
+      { aloc(opt_get1(a), i) }
+      0 <= i && i < alen(opt_get1(a)) ==>
+      acc(aloc(opt_get1(a), i).int, wildcard))
+  requires len <= alen(opt_get1(pat))
+  requires alen(opt_get1(pat)) < alen(opt_get1(a)) + 1
+{
+  (forall j: Int ::
+    { aloc(opt_get1(pat), j) }
+    0 <= j && j < len ==>
+    aloc(opt_get1(pat), j).int == aloc(opt_get1(a), j).int)
+}
+
+function relaxed(this: Ref, pat: option[array], a: option[array], len: Int,
+  splitPoint: Int): Bool
+  requires this != null
+  requires pat != (None(): option[array])
+  requires a != (None(): option[array])
+  requires (forall i: Int ::
+      { aloc(opt_get1(pat), i) }
+      0 <= i && i < alen(opt_get1(pat)) ==>
+      acc(aloc(opt_get1(pat), i).int, wildcard))
+  requires (forall i: Int ::
+      { aloc(opt_get1(a), i) }
+      0 <= i && i < alen(opt_get1(a)) ==>
+      acc(aloc(opt_get1(a), i).int, wildcard))
+  requires 0 < len
+  requires 0 <= splitPoint
+  requires len <= alen(opt_get1(pat))
+  requires alen(opt_get1(pat)) < alen(opt_get1(a)) + 1
+  requires splitPoint < alen(opt_get1(pat))
+{
+  (forall j: Int ::
+    { aloc(opt_get1(pat), j) }
+    0 <= j && j < splitPoint ==>
+    aloc(opt_get1(pat), j).int == aloc(opt_get1(a), j).int) &&
+  (forall j: Int ::
+    { aloc(opt_get1(pat), j) }
+    0 <= j - (splitPoint + 1) &&
+    j - (splitPoint + 1) < -1 + (len - splitPoint) ==>
+    aloc(opt_get1(pat), j).int == aloc(opt_get1(a), j - 1).int)
+}
+
+function new_frac(p: Perm): frac
+  requires none < p
+  requires p <= write
+  decreases 
+  ensures frac_val(result) == p
+
+
+function type(type1: Ref): Int
+  decreases 
+  ensures result >= 0
+  ensures result <= 2
+  ensures type1 == null ==> result == 0
+  ensures type1 != null ==> result != 0
+
+
+function subtype(subtype1: Int, subtype2: Int): Bool
+  requires subtype1 >= 0
+  requires subtype1 <= 2
+  requires subtype2 >= 0
+  requires subtype2 <= 2
+  decreases 
+{
+  (subtype1 == 0 ==> true) &&
+  ((subtype1 == 2 ==> subtype2 == 2) && (subtype1 == 1 ==> subtype2 == 1))
+}
+
+method check_sat_Relaxed()
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method Relaxed(tid: Int) returns (res: Ref)
+{
+  var exc: Ref
+  var return: Ref
+  var Relaxed1: Ref
+  var flatten: Ref
+  exc := null
+  flatten := new()
+  inhale type(flatten) == 1
+  Relaxed1 := flatten
+  return := Relaxed1
+  goto end
+  label end
+  res := return
+  label bubble
+  assert exc == null
+}
+
+method check_sat_prefix(a: option[array], pat: option[array], len: Int, this: Ref)
+  requires this != null
+  requires pat != (None(): option[array])
+  requires a != (None(): option[array])
+  requires (forall i: Int ::
+      { aloc(opt_get1(pat), i) }
+      0 <= i && i < alen(opt_get1(pat)) ==>
+      acc(aloc(opt_get1(pat), i).int, wildcard))
+  requires (forall i: Int ::
+      { aloc(opt_get1(a), i) }
+      0 <= i && i < alen(opt_get1(a)) ==>
+      acc(aloc(opt_get1(a), i).int, wildcard))
+  requires len <= alen(opt_get1(pat))
+  requires alen(opt_get1(pat)) < alen(opt_get1(a)) + 1
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method check_sat_relaxed(len: Int, this: Ref, splitPoint: Int, a: option[array],
+  pat: option[array])
+  requires this != null
+  requires pat != (None(): option[array])
+  requires a != (None(): option[array])
+  requires (forall i: Int ::
+      { aloc(opt_get1(pat), i) }
+      0 <= i && i < alen(opt_get1(pat)) ==>
+      acc(aloc(opt_get1(pat), i).int, wildcard))
+  requires (forall i: Int ::
+      { aloc(opt_get1(a), i) }
+      0 <= i && i < alen(opt_get1(a)) ==>
+      acc(aloc(opt_get1(a), i).int, wildcard))
+  requires 0 < len
+  requires 0 <= splitPoint
+  requires len <= alen(opt_get1(pat))
+  requires alen(opt_get1(pat)) < alen(opt_get1(a)) + 1
+  requires splitPoint < alen(opt_get1(pat))
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method check_sat_isRelaxedPrefix(pat: option[array], a: option[array], p: frac,
+  this: Ref)
+  requires this != null
+  requires a != (None(): option[array])
+  requires pat != (None(): option[array])
+  requires (forall i: Int ::
+      { aloc(opt_get1(pat), i) }
+      0 <= i && i < alen(opt_get1(pat)) ==>
+      acc(aloc(opt_get1(pat), i).int, frac_val(p)))
+  requires (forall i: Int ::
+      { aloc(opt_get1(a), i) }
+      0 <= i && i < alen(opt_get1(a)) ==>
+      acc(aloc(opt_get1(a), i).int, frac_val(p)))
+  requires alen(opt_get1(pat)) <= alen(opt_get1(a))
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method isRelaxedPrefix(this: Ref, tid: Int, pat: option[array], a: option[array],
+  p: frac)
+  returns (res: Bool)
+  requires this != null
+  requires a != (None(): option[array])
+  requires pat != (None(): option[array])
+  requires (forall i: Int ::
+      { aloc(opt_get1(pat), i) }
+      0 <= i && i < alen(opt_get1(pat)) ==>
+      acc(aloc(opt_get1(pat), i).int, frac_val(p)))
+  requires (forall i: Int ::
+      { aloc(opt_get1(a), i) }
+      0 <= i && i < alen(opt_get1(a)) ==>
+      acc(aloc(opt_get1(a), i).int, frac_val(p)))
+  requires alen(opt_get1(pat)) <= alen(opt_get1(a))
+  ensures a != (None(): option[array])
+  ensures pat != (None(): option[array])
+  ensures (forall i: Int ::
+      { aloc(opt_get1(pat), i) }
+      0 <= i && i < alen(opt_get1(pat)) ==>
+      acc(aloc(opt_get1(pat), i).int, frac_val(p)))
+  ensures (forall i: Int ::
+      { aloc(opt_get1(a), i) }
+      0 <= i && i < alen(opt_get1(a)) ==>
+      acc(aloc(opt_get1(a), i).int, frac_val(p)))
+  ensures alen(opt_get1(pat)) <= alen(opt_get1(a))
+  ensures res ==
+    (prefix(this, pat, a, alen(opt_get1(pat))) ||
+    (exists splitPoint: Int :: 0 <= splitPoint &&
+      splitPoint < alen(opt_get1(pat)) &&
+      relaxed(this, pat, a, alen(opt_get1(pat)), splitPoint)))
+{
+  var exc: Ref
+  var return: Bool
+  var splitPoint: Int
+  var shift: Int
+  var i: Int
+  var flatten: Int
+  var flatten1: Int
+  var flatten2: Int
+  var flatten3: Int
+  var flatten4: Int
+  var flatten5: Bool
+  var flatten6: Bool
+  var excBeforeLoop: Ref
+  exc := null
+  flatten := -1
+  splitPoint := flatten
+  flatten1 := 0
+  shift := flatten1
+  label loop
+  excBeforeLoop := exc
+  flatten2 := 0
+  i := flatten2
+  while (i < alen(opt_get1(pat)))
+    invariant exc == excBeforeLoop
+    invariant a != (None(): option[array])
+    invariant pat != (None(): option[array])
+    invariant (forall i1: Int ::
+        { aloc(opt_get1(pat), i1) }
+        0 <= i1 && i1 < alen(opt_get1(pat)) ==>
+        acc(aloc(opt_get1(pat), i1).int, frac_val(p)))
+    invariant (forall i1: Int ::
+        { aloc(opt_get1(a), i1) }
+        0 <= i1 && i1 < alen(opt_get1(a)) ==>
+        acc(aloc(opt_get1(a), i1).int, frac_val(p)))
+    invariant alen(opt_get1(pat)) <= alen(opt_get1(a))
+    invariant 0 <= i
+    invariant i < alen(opt_get1(pat)) + 1
+    invariant (shift == 0) == (splitPoint == -1)
+    invariant (shift == 1) ==
+      (0 <= splitPoint && splitPoint < alen(opt_get1(pat)) &&
+      aloc(opt_get1(pat), splitPoint).int !=
+      aloc(opt_get1(a), splitPoint).int)
+    invariant splitPoint < i
+    invariant i == 0 ==> shift == 0
+    invariant shift == 0 || shift == 1
+    invariant shift == 0 ==>
+      (forall j: Int ::
+        { aloc(opt_get1(pat), j) }
+        0 <= j && j < i ==>
+        aloc(opt_get1(pat), j).int == aloc(opt_get1(a), j).int)
+    invariant shift == 1 ==>
+      (forall j: Int ::
+        { aloc(opt_get1(pat), j) }
+        0 <= j && j < splitPoint ==>
+        aloc(opt_get1(pat), j).int == aloc(opt_get1(a), j).int)
+    invariant shift == 1 ==>
+      (forall j: Int ::
+        { aloc(opt_get1(pat), j) }
+        0 <= j - (splitPoint + 1) &&
+        j - (splitPoint + 1) < -1 + (i - splitPoint) ==>
+        aloc(opt_get1(pat), j).int == aloc(opt_get1(a), j - 1).int) 
+  {
+    if (aloc(opt_get1(pat), i).int != aloc(opt_get1(a), i - shift).int) {
+      if (shift == 0) {
+        splitPoint := i
+        flatten4 := 1
+        shift := flatten4
+      } else {
+        flatten5 := false
+        return := flatten5
+        goto end
+      }
+    }
+    flatten3 := i
+    i := i + 1
+  }
+  assert shift == 0 ==> prefix(this, pat, a, alen(opt_get1(pat)))
+  assert shift == 1 ==>
+    relaxed(this, pat, a, alen(opt_get1(pat)), splitPoint)
+  flatten6 := true
+  return := flatten6
+  goto end
+  label end
+  res := return
+  label bubble
+  assert exc == null
+}
+
+method check_sat_Relaxed2()
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method Relaxed2(tid: Int) returns (res: Ref)
+{
+  var exc: Ref
+  var return: Ref
+  var Relaxed3: Ref
+  var flatten: Ref
+  exc := null
+  flatten := new()
+  inhale type(flatten) == 2
+  Relaxed3 := flatten
+  return := Relaxed3
+  goto end
+  label end
+  res := return
+  label bubble
+  assert exc == null
+}
+
+method check_sat_isRelaxedPrefix1(pat: option[array], a: option[array], this: Ref)
+  requires this != null
+  requires pat != (None(): option[array])
+  requires a != (None(): option[array])
+  requires 0 < alen(opt_get1(a))
+  requires 0 < alen(opt_get1(pat))
+  requires alen(opt_get1(pat)) <= alen(opt_get1(a))
+  requires (forall i: Int ::
+      { aloc(opt_get1(pat), i) }
+      0 <= i && i < alen(opt_get1(pat)) ==>
+      acc(aloc(opt_get1(pat), i).int, wildcard))
+  requires (forall i: Int ::
+      { aloc(opt_get1(a), i) }
+      0 <= i && i < alen(opt_get1(a)) ==>
+      acc(aloc(opt_get1(a), i).int, wildcard))
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method isRelaxedPrefix1(this: Ref, tid: Int, pat: option[array], a: option[array])
+  returns (res: Bool, pivot: Int, pivot2: Int)
+  requires this != null
+  requires pat != (None(): option[array])
+  requires a != (None(): option[array])
+  requires 0 < alen(opt_get1(a))
+  requires 0 < alen(opt_get1(pat))
+  requires alen(opt_get1(pat)) <= alen(opt_get1(a))
+  requires (forall i: Int ::
+      { aloc(opt_get1(pat), i) }
+      0 <= i && i < alen(opt_get1(pat)) ==>
+      acc(aloc(opt_get1(pat), i).int, wildcard))
+  requires (forall i: Int ::
+      { aloc(opt_get1(a), i) }
+      0 <= i && i < alen(opt_get1(a)) ==>
+      acc(aloc(opt_get1(a), i).int, wildcard))
+  ensures pat != (None(): option[array])
+  ensures a != (None(): option[array])
+  ensures 0 < alen(opt_get1(a))
+  ensures 0 < alen(opt_get1(pat))
+  ensures alen(opt_get1(pat)) <= alen(opt_get1(a))
+  ensures (forall i: Int ::
+      { aloc(opt_get1(pat), i) }
+      0 <= i && i < alen(opt_get1(pat)) ==>
+      acc(aloc(opt_get1(pat), i).int, wildcard))
+  ensures (forall i: Int ::
+      { aloc(opt_get1(a), i) }
+      0 <= i && i < alen(opt_get1(a)) ==>
+      acc(aloc(opt_get1(a), i).int, wildcard))
+  ensures res ==> -1 <= pivot
+  ensures res ==> pivot < alen(opt_get1(pat))
+  ensures res && pivot == -1 ==>
+    (forall i: Int ::
+      { aloc(opt_get1(a), i) }
+      0 <= i && i < alen(opt_get1(pat)) ==>
+      aloc(opt_get1(a), i).int == aloc(opt_get1(pat), i).int)
+  ensures res && pivot != -1 ==>
+    (forall i: Int ::
+      { aloc(opt_get1(pat), i) }
+      0 <= i && i < pivot ==>
+      aloc(opt_get1(pat), i).int == aloc(opt_get1(a), i).int)
+  ensures res && pivot != -1 ==>
+    (forall i: Int ::
+      { aloc(opt_get1(pat), i) }
+      0 <= i - (pivot + 1) &&
+      i - (pivot + 1) < -1 + (alen(opt_get1(pat)) - pivot) ==>
+      aloc(opt_get1(pat), i).int == aloc(opt_get1(a), i - 1).int)
+  ensures !res ==> 0 <= pivot
+  ensures !res ==> pivot < alen(opt_get1(pat))
+  ensures !res ==> 1 <= pivot2
+  ensures !res ==> pivot2 < alen(opt_get1(pat))
+  ensures !res ==>
+    aloc(opt_get1(pat), pivot).int != aloc(opt_get1(a), pivot).int
+  ensures !res ==>
+    aloc(opt_get1(pat), pivot2).int != aloc(opt_get1(a), pivot2 - 1).int
+  ensures !res ==> pivot != pivot2
+  ensures !res ==>
+    (forall i: Int ::
+      { aloc(opt_get1(pat), i) }
+      0 <= i && i < pivot ==>
+      aloc(opt_get1(pat), i).int == aloc(opt_get1(a), i).int)
+  ensures !res ==>
+    (forall i: Int ::
+      { aloc(opt_get1(pat), i) }
+      0 <= i - (pivot + 1) && i - (pivot + 1) < -1 + (pivot2 - pivot) ==>
+      aloc(opt_get1(pat), i).int == aloc(opt_get1(a), i - 1).int)
+{
+  var exc: Ref
+  var return: Bool
+  var shift: Int
+  var isPrefix: Bool
+  var i: Int
+  var flatten: Int
+  var flatten1: Bool
+  var flatten2: Int
+  var flatten3: Int
+  var flatten4: Int
+  var flatten5: Int
+  var flatten6: Int
+  var flatten7: Bool
+  var excBeforeLoop: Ref
+  exc := null
+  flatten := 0
+  shift := flatten
+  flatten1 := true
+  isPrefix := flatten1
+  flatten2 := -1
+  pivot := flatten2
+  flatten3 := -1
+  pivot2 := flatten3
+  label loop
+  excBeforeLoop := exc
+  flatten4 := 0
+  i := flatten4
+  while (i < alen(opt_get1(pat)) && isPrefix)
+    invariant exc == excBeforeLoop
+    invariant pat != (None(): option[array])
+    invariant a != (None(): option[array])
+    invariant 0 < alen(opt_get1(a))
+    invariant 0 < alen(opt_get1(pat))
+    invariant alen(opt_get1(pat)) <= alen(opt_get1(a))
+    invariant (forall i1: Int ::
+        { aloc(opt_get1(pat), i1) }
+        0 <= i1 && i1 < alen(opt_get1(pat)) ==>
+        acc(aloc(opt_get1(pat), i1).int, wildcard))
+    invariant (forall i1: Int ::
+        { aloc(opt_get1(a), i1) }
+        0 <= i1 && i1 < alen(opt_get1(a)) ==>
+        acc(aloc(opt_get1(a), i1).int, wildcard))
+    invariant 0 <= i
+    invariant i < alen(opt_get1(pat)) + 1
+    invariant shift == 0 || shift == 1
+    invariant shift <= i
+    invariant -1 <= pivot
+    invariant pivot < alen(opt_get1(pat))
+    invariant pivot2 == -1 || 1 <= pivot2 && pivot2 < alen(opt_get1(pat))
+    invariant isPrefix && shift == 0 ==>
+      (forall j: Int ::
+        { aloc(opt_get1(pat), j) }
+        0 <= j && j < i ==>
+        aloc(opt_get1(pat), j).int == aloc(opt_get1(a), j).int)
+    invariant isPrefix && shift == 1 ==> 0 <= pivot
+    invariant isPrefix && shift == 1 ==> pivot < alen(opt_get1(pat))
+    invariant isPrefix && shift == 1 ==>
+      (forall j: Int ::
+        { aloc(opt_get1(pat), j) }
+        0 <= j && j < pivot ==>
+        aloc(opt_get1(pat), j).int == aloc(opt_get1(a), j).int)
+    invariant isPrefix && shift == 1 ==>
+      (forall j: Int ::
+        { aloc(opt_get1(pat), j) }
+        0 <= j - (pivot + 1) && j - (pivot + 1) < -1 + (i - pivot) ==>
+        aloc(opt_get1(pat), j).int == aloc(opt_get1(a), j - 1).int)
+    invariant !isPrefix ==> pivot != -1
+    invariant !isPrefix ==> pivot2 != -1
+    invariant !isPrefix ==> pivot != pivot2
+    invariant !isPrefix ==>
+      (forall i1: Int ::
+        { aloc(opt_get1(pat), i1) }
+        0 <= i1 && i1 < pivot ==>
+        aloc(opt_get1(pat), i1).int == aloc(opt_get1(a), i1).int)
+    invariant !isPrefix ==>
+      (forall i1: Int ::
+        { aloc(opt_get1(pat), i1) }
+        0 <= i1 - (pivot + 1) && i1 - (pivot + 1) < -1 + (pivot2 - pivot) ==>
+        aloc(opt_get1(pat), i1).int == aloc(opt_get1(a), i1 - 1).int)
+    invariant pivot != -1 ==> pivot < i
+    invariant pivot != -1 ==>
+      aloc(opt_get1(pat), pivot).int != aloc(opt_get1(a), pivot).int
+    invariant pivot2 != -1 ==>
+      aloc(opt_get1(pat), pivot2).int != aloc(opt_get1(a), pivot2 - 1).int 
+  {
+    if (aloc(opt_get1(pat), i).int != aloc(opt_get1(a), i - shift).int) {
+      if (shift == 0) {
+        flatten6 := 1
+        shift := flatten6
+        pivot := i
+      } else {
+        flatten7 := false
+        isPrefix := flatten7
+        pivot2 := i
+      }
+    }
+    flatten5 := i
+    i := i + 1
+  }
+  return := isPrefix
+  goto end
+  label end
+  res := return
+  label bubble
+  assert exc == null
+}
+
+method check_sat_type()
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method check_sat_subtype(subtype1: Int, subtype2: Int)
+  requires subtype1 >= 0
+  requires subtype1 <= 2
+  requires subtype2 >= 0
+  requires subtype2 <= 2
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}

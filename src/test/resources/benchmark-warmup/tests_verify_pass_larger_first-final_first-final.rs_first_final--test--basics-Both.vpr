@@ -1,0 +1,1925 @@
+domain MirrorDomain  {
+  
+  function mirror_simple$f_Link$$is_empty__$TY$__Snap$m_Link$_beg_$_end_$$bool$(_1: Snap$m_Link$_beg_$_end_): Bool 
+  
+  function mirror_simple$f_Link$$len__$TY$__Snap$m_Link$_beg_$_end_$$int$(_1: Snap$m_Link$_beg_$_end_): Int 
+  
+  function mirror_simple$f_Link$$lookup__$TY$__Snap$m_Link$_beg_$_end_$$int$$$int$(_1: Snap$m_Link$_beg_$_end_,
+  _2: Int): Int 
+  
+  function mirror_simple$f_List$$len__$TY$__Snap$struct$m_List$$int$(_1: Snap$struct$m_List): Int 
+  
+  function mirror_simple$f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(_1: Snap$struct$m_List,
+  _2: Int): Int 
+  
+  function mirror_simple$f_TrustedOption$$is_none__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(_1: Snap$m_TrustedOption$_beg_$_end_): Bool 
+  
+  function mirror_simple$f_TrustedOption$$is_some__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(_1: Snap$m_TrustedOption$_beg_$_end_): Bool 
+  
+  function mirror_simple$f_TrustedOption$$peek__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(_1: Snap$m_TrustedOption$_beg_$_end_): Int 
+}
+
+domain Snap$m_Link$_beg_$_end_  {
+  
+  function discriminant$__$TY$__Snap$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_$$int$(self: Snap$m_Link$_beg_$_end_): Int 
+  
+  function Snap$m_Link$_beg_$_end_$1$field$f$0__$TY$__Snap$m_Link$_beg_$_end_$Snap$struct$m_Node(self: Snap$m_Link$_beg_$_end_): Snap$struct$m_Node 
+}
+
+domain Snap$m_TrustedOption$_beg_$_end_  {
+  
+  function discriminant$__$TY$__Snap$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_$$int$(self: Snap$m_TrustedOption$_beg_$_end_): Int 
+  
+  function cons$0$__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$$Snap$m_TrustedOption$_beg_$_end_(_0: Int): Snap$m_TrustedOption$_beg_$_end_ 
+  
+  function Snap$m_TrustedOption$_beg_$_end_$0$field$f$0__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(self: Snap$m_TrustedOption$_beg_$_end_): Int 
+  
+  function cons$1$__$TY$__Snap$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(): Snap$m_TrustedOption$_beg_$_end_ 
+  
+  axiom Snap$m_TrustedOption$_beg_$_end_$discriminant_range {
+    (forall self: Snap$m_TrustedOption$_beg_$_end_ ::
+      { discriminant$__$TY$__Snap$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_$$int$(self) }
+      0 <=
+      discriminant$__$TY$__Snap$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_$$int$(self) &&
+      discriminant$__$TY$__Snap$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_$$int$(self) <=
+      1)
+  }
+  
+  axiom Snap$m_TrustedOption$_beg_$_end_$0$injectivity {
+    (forall _l_0: Int, _r_0: Int ::
+      { cons$0$__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$$Snap$m_TrustedOption$_beg_$_end_(_l_0),
+      cons$0$__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$$Snap$m_TrustedOption$_beg_$_end_(_r_0) }
+      cons$0$__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$$Snap$m_TrustedOption$_beg_$_end_(_l_0) ==
+      cons$0$__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$$Snap$m_TrustedOption$_beg_$_end_(_r_0) ==>
+      _l_0 == _r_0)
+  }
+  
+  axiom Snap$m_TrustedOption$_beg_$_end_$0$discriminant_axiom {
+    (forall _0: Int ::
+      { cons$0$__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$$Snap$m_TrustedOption$_beg_$_end_(_0) }
+      discriminant$__$TY$__Snap$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_$$int$(cons$0$__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$$Snap$m_TrustedOption$_beg_$_end_(_0)) ==
+      0)
+  }
+  
+  axiom Snap$m_TrustedOption$_beg_$_end_$0$field$f$0$axiom {
+    (forall _0: Int ::
+      { Snap$m_TrustedOption$_beg_$_end_$0$field$f$0__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(cons$0$__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$$Snap$m_TrustedOption$_beg_$_end_(_0)) }
+      Snap$m_TrustedOption$_beg_$_end_$0$field$f$0__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(cons$0$__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$$Snap$m_TrustedOption$_beg_$_end_(_0)) ==
+      _0)
+  }
+  
+  axiom Snap$m_TrustedOption$_beg_$_end_$0$field$f$0$valid {
+    (forall self: Snap$m_TrustedOption$_beg_$_end_ ::
+      { Snap$m_TrustedOption$_beg_$_end_$0$field$f$0__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(self) }
+      -2147483648 <=
+      Snap$m_TrustedOption$_beg_$_end_$0$field$f$0__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(self) &&
+      Snap$m_TrustedOption$_beg_$_end_$0$field$f$0__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(self) <=
+      2147483647)
+  }
+  
+  axiom Snap$m_TrustedOption$_beg_$_end_$1$discriminant_axiom {
+    discriminant$__$TY$__Snap$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_$$int$(cons$1$__$TY$__Snap$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_()) ==
+    1
+  }
+}
+
+domain Snap$struct$m_List  {
+  
+  function cons$0$__$TY$__Snap$struct$m_List$Snap$m_Link$_beg_$_end_$Snap$struct$m_List(_0: Snap$m_Link$_beg_$_end_): Snap$struct$m_List 
+  
+  function Snap$struct$m_List$0$field$f$head__$TY$__Snap$struct$m_List$Snap$m_Link$_beg_$_end_(self: Snap$struct$m_List): Snap$m_Link$_beg_$_end_ 
+  
+  axiom Snap$struct$m_List$0$injectivity {
+    (forall _l_0: Snap$m_Link$_beg_$_end_, _r_0: Snap$m_Link$_beg_$_end_ ::
+      { cons$0$__$TY$__Snap$struct$m_List$Snap$m_Link$_beg_$_end_$Snap$struct$m_List(_l_0),
+      cons$0$__$TY$__Snap$struct$m_List$Snap$m_Link$_beg_$_end_$Snap$struct$m_List(_r_0) }
+      cons$0$__$TY$__Snap$struct$m_List$Snap$m_Link$_beg_$_end_$Snap$struct$m_List(_l_0) ==
+      cons$0$__$TY$__Snap$struct$m_List$Snap$m_Link$_beg_$_end_$Snap$struct$m_List(_r_0) ==>
+      _l_0 == _r_0)
+  }
+  
+  axiom Snap$struct$m_List$0$field$f$head$axiom {
+    (forall _0: Snap$m_Link$_beg_$_end_ ::
+      { Snap$struct$m_List$0$field$f$head__$TY$__Snap$struct$m_List$Snap$m_Link$_beg_$_end_(cons$0$__$TY$__Snap$struct$m_List$Snap$m_Link$_beg_$_end_$Snap$struct$m_List(_0)) }
+      Snap$struct$m_List$0$field$f$head__$TY$__Snap$struct$m_List$Snap$m_Link$_beg_$_end_(cons$0$__$TY$__Snap$struct$m_List$Snap$m_Link$_beg_$_end_$Snap$struct$m_List(_0)) ==
+      _0)
+  }
+}
+
+domain Snap$struct$m_Node  {
+  
+  function Snap$struct$m_Node$0$field$f$elem__$TY$__Snap$struct$m_Node$$int$(self: Snap$struct$m_Node): Int 
+  
+  function Snap$struct$m_Node$0$field$f$next__$TY$__Snap$struct$m_Node$Snap$m_Link$_beg_$_end_(self: Snap$struct$m_Node): Snap$m_Link$_beg_$_end_ 
+  
+  axiom Snap$struct$m_Node$0$field$f$elem$valid {
+    (forall self: Snap$struct$m_Node ::
+      { Snap$struct$m_Node$0$field$f$elem__$TY$__Snap$struct$m_Node$$int$(self) }
+      -2147483648 <=
+      Snap$struct$m_Node$0$field$f$elem__$TY$__Snap$struct$m_Node$$int$(self) &&
+      Snap$struct$m_Node$0$field$f$elem__$TY$__Snap$struct$m_Node$$int$(self) <=
+      2147483647)
+  }
+}
+
+domain FloatDomain24e8 interpretation (SMTLIB: "(_ FloatingPoint 8 24)", Boogie: "float24e8") {
+  
+  function f32_from_bv(a: BitVectorDomain32): FloatDomain24e8 interpretation "(_ to_fp 8 24)"
+  
+  function f32_fp_add(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.add RNE"
+  
+  function f32_fp_sub(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.sub RNE"
+  
+  function f32_fp_mul(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.mul RNE"
+  
+  function f32_fp_div(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.div RNE"
+  
+  function f32_fp_min(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.min"
+  
+  function f32_fp_max(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.max"
+  
+  function f32_fp_eq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.eq"
+  
+  function f32_fp_leq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.leq"
+  
+  function f32_fp_geq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.geq"
+  
+  function f32_fp_lt(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.lt"
+  
+  function f32_fp_gt(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.gt"
+  
+  function f32_fp_neg(a: FloatDomain24e8): FloatDomain24e8 interpretation "fp.neg"
+  
+  function f32_fp_abs(a: FloatDomain24e8): FloatDomain24e8 interpretation "fp.abs"
+  
+  function f32_fp_is_zero(a: FloatDomain24e8): Bool interpretation "fp.isZero"
+  
+  function f32_fp_is_infinite(a: FloatDomain24e8): Bool interpretation "fp.isInfinite"
+  
+  function f32_fp_is_nan(a: FloatDomain24e8): Bool interpretation "fp.isNaN"
+  
+  function f32_fp_is_negative(a: FloatDomain24e8): Bool interpretation "fp.isNegative"
+  
+  function f32_fp_is_positive(a: FloatDomain24e8): Bool interpretation "fp.isPositive"
+}
+
+domain FloatDomain52e12 interpretation (SMTLIB: "(_ FloatingPoint 12 52)", Boogie: "float52e12") {
+  
+  function f64_from_bv(a: BitVectorDomain64): FloatDomain52e12 interpretation "(_ to_fp 12 52)"
+  
+  function f64_fp_add(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.add RNE"
+  
+  function f64_fp_sub(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.sub RNE"
+  
+  function f64_fp_mul(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.mul RNE"
+  
+  function f64_fp_div(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.div RNE"
+  
+  function f64_fp_min(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.min"
+  
+  function f64_fp_max(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.max"
+  
+  function f64_fp_eq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.eq"
+  
+  function f64_fp_leq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.leq"
+  
+  function f64_fp_geq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.geq"
+  
+  function f64_fp_lt(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.lt"
+  
+  function f64_fp_gt(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.gt"
+  
+  function f64_fp_neg(a: FloatDomain52e12): FloatDomain52e12 interpretation "fp.neg"
+  
+  function f64_fp_abs(a: FloatDomain52e12): FloatDomain52e12 interpretation "fp.abs"
+  
+  function f64_fp_is_zero(a: FloatDomain52e12): Bool interpretation "fp.isZero"
+  
+  function f64_fp_is_infinite(a: FloatDomain52e12): Bool interpretation "fp.isInfinite"
+  
+  function f64_fp_is_nan(a: FloatDomain52e12): Bool interpretation "fp.isNaN"
+  
+  function f64_fp_is_negative(a: FloatDomain52e12): Bool interpretation "fp.isNegative"
+  
+  function f64_fp_is_positive(a: FloatDomain52e12): Bool interpretation "fp.isPositive"
+  
+  function f64_fp_typ(a: FloatDomain52e12): Bool interpretation "fp.typ"
+}
+
+domain BitVectorDomain8 interpretation (SMTLIB: "(_ BitVec 8)", Boogie: "bv8") {
+  
+  function bv8_from_int(i: Int): BitVectorDomain8 interpretation "(_ int2bv 8)"
+  
+  function bv8_to_int(i: BitVectorDomain8): Int interpretation "(_ bv2int 8)"
+  
+  function bv8_and(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvand"
+  
+  function bv8_or(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvor"
+  
+  function bv8_xor(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvxor"
+  
+  function bv8_add(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvadd"
+  
+  function bv8_sub(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvsub"
+  
+  function bv8_mul(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvmul"
+  
+  function bv8_udiv(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvudiv"
+  
+  function bv8_shl(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvshl"
+  
+  function bv8_lshr(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvlshr"
+  
+  function bv8_ashr(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvashr"
+  
+  function bv8_not(a: BitVectorDomain8): BitVectorDomain8 interpretation "bvnot"
+  
+  function bv8_neg(a: BitVectorDomain8): BitVectorDomain8 interpretation "bvneg"
+}
+
+domain BitVectorDomain16 interpretation (SMTLIB: "(_ BitVec 16)", Boogie: "bv16") {
+  
+  function bv16_from_int(i: Int): BitVectorDomain16 interpretation "(_ int2bv 16)"
+  
+  function bv16_to_int(i: BitVectorDomain16): Int interpretation "(_ bv2int 16)"
+  
+  function bv16_and(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvand"
+  
+  function bv16_or(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvor"
+  
+  function bv16_xor(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvxor"
+  
+  function bv16_add(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvadd"
+  
+  function bv16_sub(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvsub"
+  
+  function bv16_mul(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvmul"
+  
+  function bv16_udiv(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvudiv"
+  
+  function bv16_shl(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvshl"
+  
+  function bv16_lshr(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvlshr"
+  
+  function bv16_ashr(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvashr"
+  
+  function bv16_not(a: BitVectorDomain16): BitVectorDomain16 interpretation "bvnot"
+  
+  function bv16_neg(a: BitVectorDomain16): BitVectorDomain16 interpretation "bvneg"
+}
+
+domain BitVectorDomain32 interpretation (SMTLIB: "(_ BitVec 32)", Boogie: "bv32") {
+  
+  function bv32_from_int(i: Int): BitVectorDomain32 interpretation "(_ int2bv 32)"
+  
+  function bv32_to_int(i: BitVectorDomain32): Int interpretation "(_ bv2int 32)"
+  
+  function bv32_and(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvand"
+  
+  function bv32_or(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvor"
+  
+  function bv32_xor(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvxor"
+  
+  function bv32_add(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvadd"
+  
+  function bv32_sub(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvsub"
+  
+  function bv32_mul(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvmul"
+  
+  function bv32_udiv(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvudiv"
+  
+  function bv32_shl(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvshl"
+  
+  function bv32_lshr(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvlshr"
+  
+  function bv32_ashr(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvashr"
+  
+  function bv32_not(a: BitVectorDomain32): BitVectorDomain32 interpretation "bvnot"
+  
+  function bv32_neg(a: BitVectorDomain32): BitVectorDomain32 interpretation "bvneg"
+}
+
+domain BitVectorDomain64 interpretation (SMTLIB: "(_ BitVec 64)", Boogie: "bv64") {
+  
+  function bv64_from_int(i: Int): BitVectorDomain64 interpretation "(_ int2bv 64)"
+  
+  function bv64_to_int(i: BitVectorDomain64): Int interpretation "(_ bv2int 64)"
+  
+  function bv64_and(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvand"
+  
+  function bv64_or(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvor"
+  
+  function bv64_xor(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvxor"
+  
+  function bv64_add(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvadd"
+  
+  function bv64_sub(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvsub"
+  
+  function bv64_mul(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvmul"
+  
+  function bv64_udiv(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvudiv"
+  
+  function bv64_shl(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvshl"
+  
+  function bv64_lshr(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvlshr"
+  
+  function bv64_ashr(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvashr"
+  
+  function bv64_not(a: BitVectorDomain64): BitVectorDomain64 interpretation "bvnot"
+  
+  function bv64_neg(a: BitVectorDomain64): BitVectorDomain64 interpretation "bvneg"
+}
+
+domain BitVectorDomain128 interpretation (SMTLIB: "(_ BitVec 128)", Boogie: "bv128") {
+  
+  function bv128_from_int(i: Int): BitVectorDomain128 interpretation "(_ int2bv 128)"
+  
+  function bv128_to_int(i: BitVectorDomain128): Int interpretation "(_ bv2int 128)"
+  
+  function bv128_and(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvand"
+  
+  function bv128_or(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvor"
+  
+  function bv128_xor(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvxor"
+  
+  function bv128_add(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvadd"
+  
+  function bv128_sub(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvsub"
+  
+  function bv128_mul(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvmul"
+  
+  function bv128_udiv(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvudiv"
+  
+  function bv128_shl(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvshl"
+  
+  function bv128_lshr(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvlshr"
+  
+  function bv128_ashr(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvashr"
+  
+  function bv128_not(a: BitVectorDomain128): BitVectorDomain128 interpretation "bvnot"
+  
+  function bv128_neg(a: BitVectorDomain128): BitVectorDomain128 interpretation "bvneg"
+}
+
+field discriminant: Int
+
+field enum_Some: Ref
+
+field f$0: Ref
+
+field f$head: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+function builtin$unreach__$TY$__$int$$$int$(): Int
+  requires false
+
+
+function f_Link$$is_empty__$TY$__Snap$m_Link$_beg_$_end_$$bool$(_1: Snap$m_Link$_beg_$_end_): Bool
+  requires true
+  requires true
+  ensures true
+  ensures [result ==
+    mirror_simple$f_Link$$is_empty__$TY$__Snap$m_Link$_beg_$_end_$$bool$(_1),
+    true]
+{
+  discriminant$__$TY$__Snap$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_$$int$(_1) ==
+  0
+}
+
+function f_Link$$len__$TY$__Snap$m_Link$_beg_$_end_$$int$(_1: Snap$m_Link$_beg_$_end_): Int
+  requires true
+  requires true
+  ensures (!f_Link$$is_empty__$TY$__Snap$m_Link$_beg_$_end_$$bool$(_1) ==>
+    result > 0) &&
+    result >= 0
+  ensures 0 <= result
+  ensures [result ==
+    mirror_simple$f_Link$$len__$TY$__Snap$m_Link$_beg_$_end_$$int$(_1),
+    true]
+{
+  (discriminant$__$TY$__Snap$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_$$int$(_1) ==
+  0 ?
+    0 :
+    1 +
+    f_Link$$len__$TY$__Snap$m_Link$_beg_$_end_$$int$(Snap$struct$m_Node$0$field$f$next__$TY$__Snap$struct$m_Node$Snap$m_Link$_beg_$_end_(Snap$m_Link$_beg_$_end_$1$field$f$0__$TY$__Snap$m_Link$_beg_$_end_$Snap$struct$m_Node(_1))))
+}
+
+function f_Link$$lookup__$TY$__Snap$m_Link$_beg_$_end_$$int$$$int$(_1: Snap$m_Link$_beg_$_end_,
+  _2: Int): Int
+  requires true
+  requires 0 <= _2 &&
+    _2 < f_Link$$len__$TY$__Snap$m_Link$_beg_$_end_$$int$(_1)
+  requires 0 <= _2
+  ensures true
+  ensures [result ==
+    mirror_simple$f_Link$$lookup__$TY$__Snap$m_Link$_beg_$_end_$$int$$$int$(_1,
+    _2),
+    true]
+{
+  (discriminant$__$TY$__Snap$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_$$int$(_1) ==
+  0 ?
+    builtin$unreach__$TY$__$int$$$int$() :
+    (_2 != 0 ?
+      f_Link$$lookup__$TY$__Snap$m_Link$_beg_$_end_$$int$$$int$(Snap$struct$m_Node$0$field$f$next__$TY$__Snap$struct$m_Node$Snap$m_Link$_beg_$_end_(Snap$m_Link$_beg_$_end_$1$field$f$0__$TY$__Snap$m_Link$_beg_$_end_$Snap$struct$m_Node(_1)),
+      _2 - 1) :
+      Snap$struct$m_Node$0$field$f$elem__$TY$__Snap$struct$m_Node$$int$(Snap$m_Link$_beg_$_end_$1$field$f$0__$TY$__Snap$m_Link$_beg_$_end_$Snap$struct$m_Node(_1))))
+}
+
+function f_List$$len__$TY$__Snap$struct$m_List$$int$(_1: Snap$struct$m_List): Int
+  requires true
+  requires true
+  ensures true
+  ensures 0 <= result
+  ensures [result ==
+    mirror_simple$f_List$$len__$TY$__Snap$struct$m_List$$int$(_1),
+    true]
+{
+  f_Link$$len__$TY$__Snap$m_Link$_beg_$_end_$$int$(Snap$struct$m_List$0$field$f$head__$TY$__Snap$struct$m_List$Snap$m_Link$_beg_$_end_(_1))
+}
+
+function f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(_1: Snap$struct$m_List,
+  _2: Int): Int
+  requires true
+  requires 0 <= _2 && _2 < f_List$$len__$TY$__Snap$struct$m_List$$int$(_1)
+  requires 0 <= _2
+  ensures true
+  ensures [result ==
+    mirror_simple$f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(_1, _2),
+    true]
+{
+  f_Link$$lookup__$TY$__Snap$m_Link$_beg_$_end_$$int$$$int$(Snap$struct$m_List$0$field$f$head__$TY$__Snap$struct$m_List$Snap$m_Link$_beg_$_end_(_1),
+  _2)
+}
+
+function f_TrustedOption$$is_none__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(_1: Snap$m_TrustedOption$_beg_$_end_): Bool
+  requires true
+  requires true
+  ensures true
+  ensures [result ==
+    mirror_simple$f_TrustedOption$$is_none__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(_1),
+    true]
+{
+  !(discriminant$__$TY$__Snap$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_$$int$(_1) ==
+  0)
+}
+
+function f_TrustedOption$$is_some__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(_1: Snap$m_TrustedOption$_beg_$_end_): Bool
+  requires true
+  requires true
+  ensures true
+  ensures [result ==
+    mirror_simple$f_TrustedOption$$is_some__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(_1),
+    true]
+{
+  discriminant$__$TY$__Snap$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_$$int$(_1) ==
+  0
+}
+
+function f_TrustedOption$$peek__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(_1: Snap$m_TrustedOption$_beg_$_end_): Int
+  requires true
+  requires f_TrustedOption$$is_some__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(_1)
+  ensures true
+  ensures [result ==
+    mirror_simple$f_TrustedOption$$peek__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(_1),
+    true]
+{
+  (discriminant$__$TY$__Snap$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_$$int$(_1) ==
+  0 ?
+    Snap$m_TrustedOption$_beg_$_end_$0$field$f$0__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(_1) :
+    builtin$unreach__$TY$__$int$$$int$())
+}
+
+function m_TrustedOption$_beg_$_end_$$discriminant$$__$TY$__m_TrustedOption$_beg_$_end_$$int$(self: Ref): Int
+  requires acc(m_TrustedOption$_beg_$_end_(self), read$())
+  ensures 0 <= result && result <= 1
+  ensures discriminant$__$TY$__Snap$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_$$int$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(self)) ==
+    result
+{
+  (unfolding acc(m_TrustedOption$_beg_$_end_(self), read$()) in
+    self.discriminant)
+}
+
+function snap$__$TY$__Snap$m_Link$_beg_$_end_$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_(self: Ref): Snap$m_Link$_beg_$_end_
+  requires acc(m_Link$_beg_$_end_(self), read$())
+
+
+function snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(self: Ref): Snap$m_TrustedOption$_beg_$_end_
+  requires acc(m_TrustedOption$_beg_$_end_(self), read$())
+{
+  ((unfolding acc(m_TrustedOption$_beg_$_end_(self), read$()) in
+    self.discriminant) ==
+  1 ?
+    cons$1$__$TY$__Snap$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_() :
+    cons$0$__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$$Snap$m_TrustedOption$_beg_$_end_((unfolding acc(m_TrustedOption$_beg_$_end_(self), read$()) in
+      (unfolding acc(m_TrustedOption$_beg_$_end_Some(self.enum_Some), read$()) in
+        (unfolding acc(i32(self.enum_Some.f$0), read$()) in
+          self.enum_Some.f$0.val_int)))))
+}
+
+function snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(self: Ref): Snap$struct$m_List
+  requires acc(struct$m_List(self), read$())
+{
+  cons$0$__$TY$__Snap$struct$m_List$Snap$m_Link$_beg_$_end_$Snap$struct$m_List((unfolding acc(struct$m_List(self), read$()) in
+    snap$__$TY$__Snap$m_Link$_beg_$_end_$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_(self.f$head)))
+}
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate bool(self: Ref) {
+  acc(self.val_bool, write)
+}
+
+predicate i32(self: Ref) {
+  acc(self.val_int, write)
+}
+
+predicate m_Link$_beg_$_end_(self: Ref) 
+
+predicate m_TrustedOption$_beg_$_end_(self: Ref) {
+  acc(self.discriminant, write) &&
+  (0 <= self.discriminant && self.discriminant <= 1 &&
+  (acc(self.enum_Some, write) &&
+  acc(m_TrustedOption$_beg_$_end_Some(self.enum_Some), write)))
+}
+
+predicate m_TrustedOption$_beg_$_end_Some(self: Ref) {
+  acc(self.f$0, write) && acc(i32(self.f$0), write)
+}
+
+predicate struct$m_List(self: Ref) {
+  acc(self.f$head, write) && acc(m_Link$_beg_$_end_(self.f$head), write)
+}
+
+predicate tuple0$(self: Ref) {
+  true
+}
+
+method m_test$$basics() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var __t18: Bool
+  var __t19: Bool
+  var __t20: Bool
+  var __t21: Bool
+  var __t22: Bool
+  var __t23: Bool
+  var __t24: Bool
+  var __t25: Bool
+  var __t26: Bool
+  var __t27: Bool
+  var __t28: Bool
+  var __t29: Bool
+  var __t30: Bool
+  var __t31: Bool
+  var __t32: Bool
+  var __t33: Bool
+  var __t34: Bool
+  var __t35: Bool
+  var __t36: Bool
+  var __t37: Bool
+  var __t38: Bool
+  var __t39: Bool
+  var __t40: Bool
+  var __t41: Bool
+  var __t42: Bool
+  var __t43: Bool
+  var __t44: Bool
+  var __t45: Bool
+  var __t46: Bool
+  var __t47: Int
+  var __t48: Bool
+  var __t49: Int
+  var __t50: Bool
+  var __t51: Int
+  var __t52: Bool
+  var __t53: Int
+  var __t54: Bool
+  var __t55: Int
+  var __t56: Bool
+  var __t57: Bool
+  var _1: Ref
+  var _3: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _9: Ref
+  var _10: Ref
+  var _11: Ref
+  var _12: Ref
+  var _13: Ref
+  var _14: Ref
+  var _16: Ref
+  var _17: Ref
+  var _18: Int
+  var _19: Int
+  var _20: Ref
+  var _21: Ref
+  var _22: Int
+  var _26: Ref
+  var _27: Ref
+  var _28: Int
+  var _29: Int
+  var _30: Ref
+  var _31: Ref
+  var _32: Int
+  var _35: Ref
+  var _36: Ref
+  var _37: Ref
+  var _38: Ref
+  var _40: Ref
+  var _41: Ref
+  var _42: Int
+  var _43: Int
+  var _44: Ref
+  var _45: Ref
+  var _46: Int
+  var _50: Ref
+  var _51: Ref
+  var _52: Int
+  var _53: Int
+  var _54: Ref
+  var _55: Ref
+  var _56: Int
+  var _60: Ref
+  var _61: Ref
+  var _62: Int
+  var _63: Int
+  var _64: Ref
+  var _65: Ref
+  var _66: Int
+  var _70: Ref
+  var _71: Ref
+  var _72: Ref
+  var _73: Ref
+  var _74: Ref
+  var _t76: Ref
+  var _t77: Ref
+  var _t78: Ref
+  var _t79: Ref
+  var _t80: Ref
+  
+  label start
+  // ========== start ==========
+  // Def path: "first_final::test::basics"
+  // Span: tests/verify/pass/larger/first-final.rs:183:5: 224:6 (#0)
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  __t14 := false
+  __t15 := false
+  __t16 := false
+  __t17 := false
+  __t18 := false
+  __t19 := false
+  __t20 := false
+  __t21 := false
+  __t22 := false
+  __t23 := false
+  __t24 := false
+  __t25 := false
+  __t26 := false
+  __t27 := false
+  __t28 := false
+  __t29 := false
+  __t30 := false
+  __t31 := false
+  __t32 := false
+  __t33 := false
+  __t34 := false
+  __t35 := false
+  __t36 := false
+  __t37 := false
+  __t38 := false
+  __t39 := false
+  __t40 := false
+  __t41 := false
+  __t42 := false
+  __t43 := false
+  __t44 := false
+  __t45 := false
+  // Preconditions:
+  label pre
+  // ========== bb0 ==========
+  __t0 := true
+  // [mir] StorageLive(_1)
+  // [mir] _1 = List::new() -> [return: bb1, unwind: bb47]
+  label l0
+  _1 := builtin$havoc_ref()
+  inhale acc(struct$m_List(_1), write)
+  inhale true
+  inhale f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_1)) ==
+    0
+  label l1
+  // ========== bb1 ==========
+  __t1 := true
+  // [mir] FakeRead(ForLet(None), _1)
+  // [mir] StorageLive(_2)
+  // [mir] StorageLive(_3)
+  // [mir] StorageLive(_4)
+  // [mir] StorageLive(_5)
+  // [mir] StorageLive(_6)
+  // [mir] StorageLive(_7)
+  // [mir] _7 = &mut _1
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_ref, write)
+  _7.val_ref := _1
+  label l2
+  // [mir] _6 = List::pop(move _7) -> [return: bb2, unwind: bb46]
+  label l3
+  assert true
+  exhale acc(_7.val_ref, write) && acc(struct$m_List(_7.val_ref), write)
+  _6 := builtin$havoc_ref()
+  inhale acc(struct$m_List(old[l3](_7.val_ref)), write)
+  inhale acc(m_TrustedOption$_beg_$_end_(_6), write)
+  inhale true
+  inhale (old[l3](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_7.val_ref))) ==
+    0 ==>
+    f_TrustedOption$$is_none__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_6))) &&
+    ((old[l3](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_7.val_ref))) ==
+    0 ==>
+    f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l3](_7.val_ref))) ==
+    0) &&
+    ((old[l3](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_7.val_ref))) >
+    0 ==>
+    f_TrustedOption$$is_some__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_6))) &&
+    ((old[l3](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_7.val_ref))) >
+    0 ==>
+    f_TrustedOption$$peek__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_6)) ==
+    old[l3](f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_7.val_ref),
+    0))) &&
+    ((old[l3](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_7.val_ref))) >
+    0 ==>
+    f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l3](_7.val_ref))) ==
+    old[l3](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_7.val_ref)) -
+    1)) &&
+    (old[l3](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_7.val_ref))) >
+    0 ==>
+    (forall _0_quant_0: Int ::0 <= _0_quant_0 ==>
+      !(0 <= _0_quant_0) ||
+      (_0_quant_0 <
+      f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l3](_7.val_ref))) ==>
+      old[l3](f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_7.val_ref),
+      _0_quant_0 + 1)) ==
+      f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l3](_7.val_ref)),
+      _0_quant_0))))))))
+  label l4
+  // ========== l5 ==========
+  // MIR edge bb1 --> bb2
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L26,L0,)
+
+  // ========== bb2 ==========
+  __t2 := true
+  // [mir] _5 = &_6
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_ref, write)
+  _5.val_ref := _6
+  exhale acc(m_TrustedOption$_beg_$_end_(_6), write - read$())
+  inhale acc(m_TrustedOption$_beg_$_end_(_5.val_ref), read$())
+  label l6
+  // [mir] StorageDead(_7)
+  // [mir] _4 = TrustedOption::is_none(move _5) -> [return: bb3, unwind: bb46]
+  label l7
+  _4 := builtin$havoc_ref()
+  inhale acc(bool(_4), write)
+  inhale (unfolding acc(bool(_4), write) in _4.val_bool) ==
+    f_TrustedOption$$is_none__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_5.val_ref))
+  // transfer perm _5.val_ref --> old[l7](_5.val_ref) // unchecked: false
+  // ========== l8 ==========
+  // MIR edge bb2 --> bb3
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L25,L1,)
+
+  if (__t2 && __t2) {
+    // expire loan L1
+    // transfer perm old[l7](_5.val_ref) --> old[l6](_5.val_ref) // unchecked: false
+    exhale acc(m_TrustedOption$_beg_$_end_(old[l6](_5.val_ref)), read$())
+    inhale acc(m_TrustedOption$_beg_$_end_(_6), write - read$())
+  }
+  // ========== bb3 ==========
+  __t3 := true
+  // [mir] StorageDead(_5)
+  // [mir] _3 = Not(move _4)
+  _3 := builtin$havoc_ref()
+  inhale acc(_3.val_bool, write)
+  unfold acc(bool(_4), write)
+  _3.val_bool := !_4.val_bool
+  // [mir] StorageDead(_6)
+  // [mir] StorageDead(_4)
+  // [mir] switchInt(move _3) -> [0: bb5, otherwise: bb4]
+  __t46 := _3.val_bool
+  if (__t46) {
+    goto bb12
+  }
+  goto return
+  
+  label bb0
+  // ========== l27 ==========
+  // MIR edge bb9 --> bb11
+  // ========== bb11 ==========
+  __t10 := true
+  // [mir] StorageLive(_24)
+  // [mir] _24 = core::panicking::panic(const "internal error: entered unreachable code") -> bb46
+  // Rust panic - const "internal error: entered unreachable code"
+  assert false
+  goto end_of_method
+  
+  label bb1
+  // ========== l28 ==========
+  // MIR edge bb9 --> bb10
+  // ========== bb10 ==========
+  __t11 := true
+  // [mir] falseEdge -> [real: bb12, imaginary: bb11]
+  // ========== bb12 ==========
+  __t12 := true
+  // [mir] StorageLive(_19)
+  // [mir] _19 = ((_16 as Some).0: i32)
+  _19 := builtin$havoc_int()
+  unfold acc(m_TrustedOption$_beg_$_end_(_16), write)
+  unfold acc(m_TrustedOption$_beg_$_end_Some(_16.enum_Some), write)
+  unfold acc(i32(_16.enum_Some.f$0), write)
+  _19 := _16.enum_Some.f$0.val_int
+  label l29
+  // [mir] StorageLive(_20)
+  // [mir] StorageLive(_21)
+  // [mir] StorageLive(_22)
+  // [mir] _22 = _19
+  _22 := builtin$havoc_int()
+  _22 := _19
+  label l30
+  // [mir] _21 = Eq(move _22, const 3_i32)
+  _21 := builtin$havoc_ref()
+  inhale acc(_21.val_bool, write)
+  _21.val_bool := _22 == 3
+  // [mir] StorageDead(_22)
+  // [mir] _20 = Not(move _21)
+  _20 := builtin$havoc_ref()
+  inhale acc(_20.val_bool, write)
+  _20.val_bool := !_21.val_bool
+  // [mir] StorageDead(_21)
+  // [mir] switchInt(move _20) -> [0: bb14, otherwise: bb13]
+  __t48 := _20.val_bool
+  if (__t48) {
+    goto bb10
+  }
+  goto l5
+  
+  label bb10
+  // ========== l32 ==========
+  // MIR edge bb12 --> bb13
+  // ========== bb13 ==========
+  __t13 := true
+  // [mir] StorageLive(_23)
+  // [mir] _23 = core::panicking::panic(const "assertion failed: val == 3") -> bb46
+  // Rust panic - const "assertion failed: val == 3"
+  assert false
+  goto end_of_method
+  
+  label bb11
+  // ========== l42 ==========
+  // MIR edge bb18 --> bb19
+  // ========== bb19 ==========
+  __t19 := true
+  // [mir] StorageLive(_33)
+  // [mir] _33 = core::panicking::panic(const "assertion failed: val == 2") -> bb46
+  // Rust panic - const "assertion failed: val == 2"
+  assert false
+  goto end_of_method
+  
+  label bb12
+  // ========== l10 ==========
+  // MIR edge bb3 --> bb4
+  // ========== bb4 ==========
+  __t4 := true
+  // [mir] StorageLive(_8)
+  // [mir] _8 = core::panicking::panic(const "assertion failed: list.pop().is_none()") -> bb46
+  // Rust panic - const "assertion failed: list.pop().is_none()"
+  assert false
+  goto end_of_method
+  
+  label bb2
+  // ========== l37 ==========
+  // MIR edge bb15 --> bb17
+  // ========== bb17 ==========
+  __t16 := true
+  // [mir] StorageLive(_34)
+  // [mir] _34 = core::panicking::panic(const "internal error: entered unreachable code") -> bb46
+  // Rust panic - const "internal error: entered unreachable code"
+  assert false
+  goto end_of_method
+  
+  label bb3
+  // ========== l41 ==========
+  // MIR edge bb18 --> bb20
+  // ========== bb20 ==========
+  __t20 := true
+  // [mir] _25 = const ()
+  // [mir] StorageDead(_30)
+  // [mir] StorageDead(_29)
+  // [mir] StorageDead(_26)
+  // [mir] StorageDead(_25)
+  // [mir] StorageLive(_35)
+  // [mir] StorageLive(_36)
+  // [mir] _36 = &mut _1
+  _36 := builtin$havoc_ref()
+  inhale acc(_36.val_ref, write)
+  _36.val_ref := _1
+  label l43
+  // [mir] _35 = List::push(move _36, const 4_i32) -> [return: bb21, unwind: bb46]
+  label l44
+  _t79 := builtin$havoc_ref()
+  inhale acc(i32(_t79), write)
+  assert true
+  exhale acc(_36.val_ref, write) &&
+    (acc(struct$m_List(_36.val_ref), write) && acc(i32(_t79), write))
+  _35 := builtin$havoc_ref()
+  inhale acc(struct$m_List(old[l44](_36.val_ref)), write)
+  inhale acc(tuple0$(_35), write)
+  inhale true
+  inhale f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l44](_36.val_ref))) ==
+    old[l44](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_36.val_ref))) +
+    1 &&
+    (f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l44](_36.val_ref)),
+    0) ==
+    old[l44](4) &&
+    (forall _0_quant_0: Int ::0 <= _0_quant_0 ==>
+      !(1 <= _0_quant_0) ||
+      (_0_quant_0 <
+      f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l44](_36.val_ref))) ==>
+      old[l44](f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_36.val_ref),
+      _0_quant_0 - 1)) ==
+      f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l44](_36.val_ref)),
+      _0_quant_0))))
+  label l45
+  // ========== l46 ==========
+  // MIR edge bb20 --> bb21
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L21,L7,)
+
+  // ========== bb21 ==========
+  __t21 := true
+  // [mir] StorageDead(_36)
+  // [mir] StorageDead(_35)
+  // [mir] StorageLive(_37)
+  // [mir] StorageLive(_38)
+  // [mir] _38 = &mut _1
+  _38 := builtin$havoc_ref()
+  inhale acc(_38.val_ref, write)
+  _38.val_ref := _1
+  label l47
+  // [mir] _37 = List::push(move _38, const 5_i32) -> [return: bb22, unwind: bb46]
+  label l48
+  _t80 := builtin$havoc_ref()
+  inhale acc(i32(_t80), write)
+  assert true
+  exhale acc(_38.val_ref, write) &&
+    (acc(struct$m_List(_38.val_ref), write) && acc(i32(_t80), write))
+  _37 := builtin$havoc_ref()
+  inhale acc(struct$m_List(old[l48](_38.val_ref)), write)
+  inhale acc(tuple0$(_37), write)
+  inhale true
+  inhale f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l48](_38.val_ref))) ==
+    old[l48](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_38.val_ref))) +
+    1 &&
+    (f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l48](_38.val_ref)),
+    0) ==
+    old[l48](5) &&
+    (forall _0_quant_0: Int ::0 <= _0_quant_0 ==>
+      !(1 <= _0_quant_0) ||
+      (_0_quant_0 <
+      f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l48](_38.val_ref))) ==>
+      old[l48](f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_38.val_ref),
+      _0_quant_0 - 1)) ==
+      f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l48](_38.val_ref)),
+      _0_quant_0))))
+  label l49
+  // ========== l50 ==========
+  // MIR edge bb21 --> bb22
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L19,L8,)
+
+  // ========== bb22 ==========
+  __t22 := true
+  // [mir] StorageDead(_38)
+  // [mir] StorageDead(_37)
+  // [mir] StorageLive(_39)
+  // [mir] StorageLive(_40)
+  // [mir] StorageLive(_41)
+  // [mir] _41 = &mut _1
+  _41 := builtin$havoc_ref()
+  inhale acc(_41.val_ref, write)
+  _41.val_ref := _1
+  label l51
+  // [mir] _40 = List::pop(move _41) -> [return: bb23, unwind: bb46]
+  label l52
+  assert true
+  exhale acc(_41.val_ref, write) && acc(struct$m_List(_41.val_ref), write)
+  _40 := builtin$havoc_ref()
+  inhale acc(struct$m_List(old[l52](_41.val_ref)), write)
+  inhale acc(m_TrustedOption$_beg_$_end_(_40), write)
+  inhale true
+  inhale (old[l52](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_41.val_ref))) ==
+    0 ==>
+    f_TrustedOption$$is_none__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_40))) &&
+    ((old[l52](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_41.val_ref))) ==
+    0 ==>
+    f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l52](_41.val_ref))) ==
+    0) &&
+    ((old[l52](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_41.val_ref))) >
+    0 ==>
+    f_TrustedOption$$is_some__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_40))) &&
+    ((old[l52](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_41.val_ref))) >
+    0 ==>
+    f_TrustedOption$$peek__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_40)) ==
+    old[l52](f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_41.val_ref),
+    0))) &&
+    ((old[l52](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_41.val_ref))) >
+    0 ==>
+    f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l52](_41.val_ref))) ==
+    old[l52](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_41.val_ref)) -
+    1)) &&
+    (old[l52](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_41.val_ref))) >
+    0 ==>
+    (forall _0_quant_0: Int ::0 <= _0_quant_0 ==>
+      !(0 <= _0_quant_0) ||
+      (_0_quant_0 <
+      f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l52](_41.val_ref))) ==>
+      old[l52](f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_41.val_ref),
+      _0_quant_0 + 1)) ==
+      f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l52](_41.val_ref)),
+      _0_quant_0))))))))
+  label l53
+  // ========== l54 ==========
+  // MIR edge bb22 --> bb23
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L22,L9,)
+
+  // ========== bb23 ==========
+  __t23 := true
+  // [mir] StorageDead(_41)
+  // [mir] FakeRead(ForMatchedPlace(None), _40)
+  // [mir] _42 = discriminant(_40)
+  _42 := builtin$havoc_int()
+  _42 := m_TrustedOption$_beg_$_end_$$discriminant$$__$TY$__m_TrustedOption$_beg_$_end_$$int$(_40)
+  // [mir] switchInt(move _42) -> [0: bb24, otherwise: bb25]
+  __t51 := _42
+  if (__t51 == 0) {
+    goto l10
+  }
+  goto l9
+  
+  label bb4
+  // ========== l59 ==========
+  // MIR edge bb26 --> bb28
+  // ========== bb28 ==========
+  __t28 := true
+  // [mir] _39 = const ()
+  // [mir] StorageDead(_44)
+  // [mir] StorageDead(_43)
+  // [mir] StorageDead(_40)
+  // [mir] StorageDead(_39)
+  // [mir] StorageLive(_49)
+  // [mir] StorageLive(_50)
+  // [mir] StorageLive(_51)
+  // [mir] _51 = &mut _1
+  _51 := builtin$havoc_ref()
+  inhale acc(_51.val_ref, write)
+  _51.val_ref := _1
+  label l61
+  // [mir] _50 = List::pop(move _51) -> [return: bb29, unwind: bb46]
+  label l62
+  assert true
+  exhale acc(_51.val_ref, write) && acc(struct$m_List(_51.val_ref), write)
+  _50 := builtin$havoc_ref()
+  inhale acc(struct$m_List(old[l62](_51.val_ref)), write)
+  inhale acc(m_TrustedOption$_beg_$_end_(_50), write)
+  inhale true
+  inhale (old[l62](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_51.val_ref))) ==
+    0 ==>
+    f_TrustedOption$$is_none__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_50))) &&
+    ((old[l62](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_51.val_ref))) ==
+    0 ==>
+    f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l62](_51.val_ref))) ==
+    0) &&
+    ((old[l62](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_51.val_ref))) >
+    0 ==>
+    f_TrustedOption$$is_some__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_50))) &&
+    ((old[l62](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_51.val_ref))) >
+    0 ==>
+    f_TrustedOption$$peek__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_50)) ==
+    old[l62](f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_51.val_ref),
+    0))) &&
+    ((old[l62](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_51.val_ref))) >
+    0 ==>
+    f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l62](_51.val_ref))) ==
+    old[l62](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_51.val_ref)) -
+    1)) &&
+    (old[l62](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_51.val_ref))) >
+    0 ==>
+    (forall _0_quant_0: Int ::0 <= _0_quant_0 ==>
+      !(0 <= _0_quant_0) ||
+      (_0_quant_0 <
+      f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l62](_51.val_ref))) ==>
+      old[l62](f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_51.val_ref),
+      _0_quant_0 + 1)) ==
+      f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l62](_51.val_ref)),
+      _0_quant_0))))))))
+  label l63
+  // ========== l64 ==========
+  // MIR edge bb28 --> bb29
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L28,L10,)
+
+  // ========== bb29 ==========
+  __t29 := true
+  // [mir] StorageDead(_51)
+  // [mir] FakeRead(ForMatchedPlace(None), _50)
+  // [mir] _52 = discriminant(_50)
+  _52 := builtin$havoc_int()
+  _52 := m_TrustedOption$_beg_$_end_$$discriminant$$__$TY$__m_TrustedOption$_beg_$_end_$$int$(_50)
+  // [mir] switchInt(move _52) -> [0: bb30, otherwise: bb31]
+  __t53 := _52
+  if (__t53 == 0) {
+    goto l14
+  }
+  goto bb5
+  
+  label bb5
+  // ========== l65 ==========
+  // MIR edge bb29 --> bb31
+  // ========== bb31 ==========
+  __t30 := true
+  // [mir] StorageLive(_58)
+  // [mir] _58 = core::panicking::panic(const "internal error: entered unreachable code") -> bb46
+  // Rust panic - const "internal error: entered unreachable code"
+  assert false
+  goto end_of_method
+  
+  label bb6
+  // ========== l69 ==========
+  // MIR edge bb32 --> bb34
+  // ========== bb34 ==========
+  __t34 := true
+  // [mir] _49 = const ()
+  // [mir] StorageDead(_54)
+  // [mir] StorageDead(_53)
+  // [mir] StorageDead(_50)
+  // [mir] StorageDead(_49)
+  // [mir] StorageLive(_59)
+  // [mir] StorageLive(_60)
+  // [mir] StorageLive(_61)
+  // [mir] _61 = &mut _1
+  _61 := builtin$havoc_ref()
+  inhale acc(_61.val_ref, write)
+  _61.val_ref := _1
+  label l71
+  // [mir] _60 = List::pop(move _61) -> [return: bb35, unwind: bb46]
+  label l72
+  assert true
+  exhale acc(_61.val_ref, write) && acc(struct$m_List(_61.val_ref), write)
+  _60 := builtin$havoc_ref()
+  inhale acc(struct$m_List(old[l72](_61.val_ref)), write)
+  inhale acc(m_TrustedOption$_beg_$_end_(_60), write)
+  inhale true
+  inhale (old[l72](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_61.val_ref))) ==
+    0 ==>
+    f_TrustedOption$$is_none__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_60))) &&
+    ((old[l72](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_61.val_ref))) ==
+    0 ==>
+    f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l72](_61.val_ref))) ==
+    0) &&
+    ((old[l72](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_61.val_ref))) >
+    0 ==>
+    f_TrustedOption$$is_some__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_60))) &&
+    ((old[l72](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_61.val_ref))) >
+    0 ==>
+    f_TrustedOption$$peek__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_60)) ==
+    old[l72](f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_61.val_ref),
+    0))) &&
+    ((old[l72](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_61.val_ref))) >
+    0 ==>
+    f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l72](_61.val_ref))) ==
+    old[l72](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_61.val_ref)) -
+    1)) &&
+    (old[l72](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_61.val_ref))) >
+    0 ==>
+    (forall _0_quant_0: Int ::0 <= _0_quant_0 ==>
+      !(0 <= _0_quant_0) ||
+      (_0_quant_0 <
+      f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l72](_61.val_ref))) ==>
+      old[l72](f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_61.val_ref),
+      _0_quant_0 + 1)) ==
+      f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l72](_61.val_ref)),
+      _0_quant_0))))))))
+  label l73
+  // ========== l74 ==========
+  // MIR edge bb34 --> bb35
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L18,L11,)
+
+  // ========== bb35 ==========
+  __t35 := true
+  // [mir] StorageDead(_61)
+  // [mir] FakeRead(ForMatchedPlace(None), _60)
+  // [mir] _62 = discriminant(_60)
+  _62 := builtin$havoc_int()
+  _62 := m_TrustedOption$_beg_$_end_$$discriminant$$__$TY$__m_TrustedOption$_beg_$_end_$$int$(_60)
+  // [mir] switchInt(move _62) -> [0: bb36, otherwise: bb37]
+  __t55 := _62
+  if (__t55 == 0) {
+    goto bb7
+  }
+  goto l18
+  
+  label bb7
+  // ========== l76 ==========
+  // MIR edge bb35 --> bb36
+  // ========== bb36 ==========
+  __t37 := true
+  // [mir] falseEdge -> [real: bb38, imaginary: bb37]
+  // ========== bb38 ==========
+  __t38 := true
+  // [mir] StorageLive(_63)
+  // [mir] _63 = ((_60 as Some).0: i32)
+  _63 := builtin$havoc_int()
+  unfold acc(m_TrustedOption$_beg_$_end_(_60), write)
+  unfold acc(m_TrustedOption$_beg_$_end_Some(_60.enum_Some), write)
+  unfold acc(i32(_60.enum_Some.f$0), write)
+  _63 := _60.enum_Some.f$0.val_int
+  label l77
+  // [mir] StorageLive(_64)
+  // [mir] StorageLive(_65)
+  // [mir] StorageLive(_66)
+  // [mir] _66 = _63
+  _66 := builtin$havoc_int()
+  _66 := _63
+  label l78
+  // [mir] _65 = Eq(move _66, const 1_i32)
+  _65 := builtin$havoc_ref()
+  inhale acc(_65.val_bool, write)
+  _65.val_bool := _66 == 1
+  // [mir] StorageDead(_66)
+  // [mir] _64 = Not(move _65)
+  _64 := builtin$havoc_ref()
+  inhale acc(_64.val_bool, write)
+  _64.val_bool := !_65.val_bool
+  // [mir] StorageDead(_65)
+  // [mir] switchInt(move _64) -> [0: bb40, otherwise: bb39]
+  __t56 := _64.val_bool
+  if (__t56) {
+    goto bb9
+  }
+  goto l22
+  
+  label bb8
+  // ========== l88 ==========
+  // MIR edge bb42 --> bb44
+  // ========== bb44 ==========
+  __t44 := true
+  // [mir] _69 = const ()
+  // [mir] StorageDead(_70)
+  // [mir] StorageDead(_69)
+  // [mir] _0 = const ()
+  // [mir] drop(_1) -> [return: bb45, unwind: bb47]
+  // ========== bb45 ==========
+  __t45 := true
+  // [mir] StorageDead(_1)
+  // [mir] return
+  // ========== return ==========
+  // Target of any 'return' statement.
+  // Exhale postcondition
+  label l91
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  // Fold the result
+  fold acc(tuple0$(_0), write)
+  // obtain acc(tuple0$(_0), write)
+  // Assert possible strengthening
+  // Assert functional specification of postcondition
+  // Assert type invariants
+  assert true
+  // Exhale permissions of postcondition (1/3)
+  // Exhale permissions of postcondition (2/3)
+  exhale acc(tuple0$(_0), write)
+  // Exhale permissions of postcondition (3/3)
+  goto end_of_method
+  
+  label bb9
+  // ========== l80 ==========
+  // MIR edge bb38 --> bb39
+  // ========== bb39 ==========
+  __t39 := true
+  // [mir] StorageLive(_67)
+  // [mir] _67 = core::panicking::panic(const "assertion failed: val == 1") -> bb46
+  // Rust panic - const "assertion failed: val == 1"
+  assert false
+  goto end_of_method
+  
+  label l10
+  // ========== l56 ==========
+  // MIR edge bb23 --> bb24
+  // ========== bb24 ==========
+  __t25 := true
+  // [mir] falseEdge -> [real: bb26, imaginary: bb25]
+  // ========== bb26 ==========
+  __t26 := true
+  // [mir] StorageLive(_43)
+  // [mir] _43 = ((_40 as Some).0: i32)
+  _43 := builtin$havoc_int()
+  unfold acc(m_TrustedOption$_beg_$_end_(_40), write)
+  unfold acc(m_TrustedOption$_beg_$_end_Some(_40.enum_Some), write)
+  unfold acc(i32(_40.enum_Some.f$0), write)
+  _43 := _40.enum_Some.f$0.val_int
+  label l57
+  // [mir] StorageLive(_44)
+  // [mir] StorageLive(_45)
+  // [mir] StorageLive(_46)
+  // [mir] _46 = _43
+  _46 := builtin$havoc_int()
+  _46 := _43
+  label l58
+  // [mir] _45 = Eq(move _46, const 5_i32)
+  _45 := builtin$havoc_ref()
+  inhale acc(_45.val_bool, write)
+  _45.val_bool := _46 == 5
+  // [mir] StorageDead(_46)
+  // [mir] _44 = Not(move _45)
+  _44 := builtin$havoc_ref()
+  inhale acc(_44.val_bool, write)
+  _44.val_bool := !_45.val_bool
+  // [mir] StorageDead(_45)
+  // [mir] switchInt(move _44) -> [0: bb28, otherwise: bb27]
+  __t52 := _44.val_bool
+  if (__t52) {
+    goto l28
+  }
+  goto bb4
+  
+  label l14
+  // ========== l66 ==========
+  // MIR edge bb29 --> bb30
+  // ========== bb30 ==========
+  __t31 := true
+  // [mir] falseEdge -> [real: bb32, imaginary: bb31]
+  // ========== bb32 ==========
+  __t32 := true
+  // [mir] StorageLive(_53)
+  // [mir] _53 = ((_50 as Some).0: i32)
+  _53 := builtin$havoc_int()
+  unfold acc(m_TrustedOption$_beg_$_end_(_50), write)
+  unfold acc(m_TrustedOption$_beg_$_end_Some(_50.enum_Some), write)
+  unfold acc(i32(_50.enum_Some.f$0), write)
+  _53 := _50.enum_Some.f$0.val_int
+  label l67
+  // [mir] StorageLive(_54)
+  // [mir] StorageLive(_55)
+  // [mir] StorageLive(_56)
+  // [mir] _56 = _53
+  _56 := builtin$havoc_int()
+  _56 := _53
+  label l68
+  // [mir] _55 = Eq(move _56, const 4_i32)
+  _55 := builtin$havoc_ref()
+  inhale acc(_55.val_bool, write)
+  _55.val_bool := _56 == 4
+  // [mir] StorageDead(_56)
+  // [mir] _54 = Not(move _55)
+  _54 := builtin$havoc_ref()
+  inhale acc(_54.val_bool, write)
+  _54.val_bool := !_55.val_bool
+  // [mir] StorageDead(_55)
+  // [mir] switchInt(move _54) -> [0: bb34, otherwise: bb33]
+  __t54 := _54.val_bool
+  if (__t54) {
+    goto l27
+  }
+  goto bb6
+  
+  label l18
+  // ========== l75 ==========
+  // MIR edge bb35 --> bb37
+  // ========== bb37 ==========
+  __t36 := true
+  // [mir] StorageLive(_68)
+  // [mir] _68 = core::panicking::panic(const "internal error: entered unreachable code") -> bb46
+  // Rust panic - const "internal error: entered unreachable code"
+  assert false
+  goto end_of_method
+  
+  label l22
+  // ========== l79 ==========
+  // MIR edge bb38 --> bb40
+  // ========== bb40 ==========
+  __t40 := true
+  // [mir] _59 = const ()
+  // [mir] StorageDead(_64)
+  // [mir] StorageDead(_63)
+  // [mir] StorageDead(_60)
+  // [mir] StorageDead(_59)
+  // [mir] StorageLive(_69)
+  // [mir] StorageLive(_70)
+  // [mir] StorageLive(_71)
+  // [mir] StorageLive(_72)
+  // [mir] StorageLive(_73)
+  // [mir] StorageLive(_74)
+  // [mir] _74 = &mut _1
+  _74 := builtin$havoc_ref()
+  inhale acc(_74.val_ref, write)
+  _74.val_ref := _1
+  label l81
+  // [mir] _73 = List::pop(move _74) -> [return: bb41, unwind: bb46]
+  label l82
+  assert true
+  exhale acc(_74.val_ref, write) && acc(struct$m_List(_74.val_ref), write)
+  _73 := builtin$havoc_ref()
+  inhale acc(struct$m_List(old[l82](_74.val_ref)), write)
+  inhale acc(m_TrustedOption$_beg_$_end_(_73), write)
+  inhale true
+  inhale (old[l82](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_74.val_ref))) ==
+    0 ==>
+    f_TrustedOption$$is_none__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_73))) &&
+    ((old[l82](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_74.val_ref))) ==
+    0 ==>
+    f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l82](_74.val_ref))) ==
+    0) &&
+    ((old[l82](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_74.val_ref))) >
+    0 ==>
+    f_TrustedOption$$is_some__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_73))) &&
+    ((old[l82](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_74.val_ref))) >
+    0 ==>
+    f_TrustedOption$$peek__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_73)) ==
+    old[l82](f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_74.val_ref),
+    0))) &&
+    ((old[l82](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_74.val_ref))) >
+    0 ==>
+    f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l82](_74.val_ref))) ==
+    old[l82](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_74.val_ref)) -
+    1)) &&
+    (old[l82](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_74.val_ref))) >
+    0 ==>
+    (forall _0_quant_0: Int ::0 <= _0_quant_0 ==>
+      !(0 <= _0_quant_0) ||
+      (_0_quant_0 <
+      f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l82](_74.val_ref))) ==>
+      old[l82](f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_74.val_ref),
+      _0_quant_0 + 1)) ==
+      f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l82](_74.val_ref)),
+      _0_quant_0))))))))
+  label l83
+  // ========== l84 ==========
+  // MIR edge bb40 --> bb41
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L23,L12,)
+
+  // ========== bb41 ==========
+  __t41 := true
+  // [mir] _72 = &_73
+  _72 := builtin$havoc_ref()
+  inhale acc(_72.val_ref, write)
+  _72.val_ref := _73
+  exhale acc(m_TrustedOption$_beg_$_end_(_73), write - read$())
+  inhale acc(m_TrustedOption$_beg_$_end_(_72.val_ref), read$())
+  label l85
+  // [mir] StorageDead(_74)
+  // [mir] _71 = TrustedOption::is_none(move _72) -> [return: bb42, unwind: bb46]
+  label l86
+  _71 := builtin$havoc_ref()
+  inhale acc(bool(_71), write)
+  inhale (unfolding acc(bool(_71), write) in _71.val_bool) ==
+    f_TrustedOption$$is_none__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_72.val_ref))
+  // transfer perm _72.val_ref --> old[l86](_72.val_ref) // unchecked: false
+  // ========== l87 ==========
+  // MIR edge bb41 --> bb42
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L24,L13,)
+
+  if (__t41 && __t41) {
+    // expire loan L13
+    // transfer perm old[l86](_72.val_ref) --> old[l85](_72.val_ref) // unchecked: false
+    exhale acc(m_TrustedOption$_beg_$_end_(old[l85](_72.val_ref)), read$())
+    inhale acc(m_TrustedOption$_beg_$_end_(_73), write - read$())
+  }
+  // ========== bb42 ==========
+  __t42 := true
+  // [mir] StorageDead(_72)
+  // [mir] _70 = Not(move _71)
+  _70 := builtin$havoc_ref()
+  inhale acc(_70.val_bool, write)
+  unfold acc(bool(_71), write)
+  _70.val_bool := !_71.val_bool
+  // [mir] StorageDead(_73)
+  // [mir] StorageDead(_71)
+  // [mir] switchInt(move _70) -> [0: bb44, otherwise: bb43]
+  __t57 := _70.val_bool
+  if (__t57) {
+    goto l26
+  }
+  goto bb8
+  
+  label l26
+  // ========== l89 ==========
+  // MIR edge bb42 --> bb43
+  // ========== bb43 ==========
+  __t43 := true
+  // [mir] StorageLive(_75)
+  // [mir] _75 = core::panicking::panic(const "assertion failed: list.pop().is_none()") -> bb46
+  // Rust panic - const "assertion failed: list.pop().is_none()"
+  assert false
+  goto end_of_method
+  
+  label l27
+  // ========== l70 ==========
+  // MIR edge bb32 --> bb33
+  // ========== bb33 ==========
+  __t33 := true
+  // [mir] StorageLive(_57)
+  // [mir] _57 = core::panicking::panic(const "assertion failed: val == 4") -> bb46
+  // Rust panic - const "assertion failed: val == 4"
+  assert false
+  goto end_of_method
+  
+  label l28
+  // ========== l60 ==========
+  // MIR edge bb26 --> bb27
+  // ========== bb27 ==========
+  __t27 := true
+  // [mir] StorageLive(_47)
+  // [mir] _47 = core::panicking::panic(const "assertion failed: val == 5") -> bb46
+  // Rust panic - const "assertion failed: val == 5"
+  assert false
+  goto end_of_method
+  
+  label l5
+  // ========== l31 ==========
+  // MIR edge bb12 --> bb14
+  // ========== bb14 ==========
+  __t14 := true
+  // [mir] _15 = const ()
+  // [mir] StorageDead(_20)
+  // [mir] StorageDead(_19)
+  // [mir] StorageDead(_16)
+  // [mir] StorageDead(_15)
+  // [mir] StorageLive(_25)
+  // [mir] StorageLive(_26)
+  // [mir] StorageLive(_27)
+  // [mir] _27 = &mut _1
+  _27 := builtin$havoc_ref()
+  inhale acc(_27.val_ref, write)
+  _27.val_ref := _1
+  label l33
+  // [mir] _26 = List::pop(move _27) -> [return: bb15, unwind: bb46]
+  label l34
+  assert true
+  exhale acc(_27.val_ref, write) && acc(struct$m_List(_27.val_ref), write)
+  _26 := builtin$havoc_ref()
+  inhale acc(struct$m_List(old[l34](_27.val_ref)), write)
+  inhale acc(m_TrustedOption$_beg_$_end_(_26), write)
+  inhale true
+  inhale (old[l34](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_27.val_ref))) ==
+    0 ==>
+    f_TrustedOption$$is_none__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_26))) &&
+    ((old[l34](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_27.val_ref))) ==
+    0 ==>
+    f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l34](_27.val_ref))) ==
+    0) &&
+    ((old[l34](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_27.val_ref))) >
+    0 ==>
+    f_TrustedOption$$is_some__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_26))) &&
+    ((old[l34](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_27.val_ref))) >
+    0 ==>
+    f_TrustedOption$$peek__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_26)) ==
+    old[l34](f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_27.val_ref),
+    0))) &&
+    ((old[l34](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_27.val_ref))) >
+    0 ==>
+    f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l34](_27.val_ref))) ==
+    old[l34](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_27.val_ref)) -
+    1)) &&
+    (old[l34](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_27.val_ref))) >
+    0 ==>
+    (forall _0_quant_0: Int ::0 <= _0_quant_0 ==>
+      !(0 <= _0_quant_0) ||
+      (_0_quant_0 <
+      f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l34](_27.val_ref))) ==>
+      old[l34](f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_27.val_ref),
+      _0_quant_0 + 1)) ==
+      f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l34](_27.val_ref)),
+      _0_quant_0))))))))
+  label l35
+  // ========== l36 ==========
+  // MIR edge bb14 --> bb15
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L20,L6,)
+
+  // ========== bb15 ==========
+  __t15 := true
+  // [mir] StorageDead(_27)
+  // [mir] FakeRead(ForMatchedPlace(None), _26)
+  // [mir] _28 = discriminant(_26)
+  _28 := builtin$havoc_int()
+  _28 := m_TrustedOption$_beg_$_end_$$discriminant$$__$TY$__m_TrustedOption$_beg_$_end_$$int$(_26)
+  // [mir] switchInt(move _28) -> [0: bb16, otherwise: bb17]
+  __t49 := _28
+  if (__t49 == 0) {
+    goto l8
+  }
+  goto bb2
+  
+  label l8
+  // ========== l38 ==========
+  // MIR edge bb15 --> bb16
+  // ========== bb16 ==========
+  __t17 := true
+  // [mir] falseEdge -> [real: bb18, imaginary: bb17]
+  // ========== bb18 ==========
+  __t18 := true
+  // [mir] StorageLive(_29)
+  // [mir] _29 = ((_26 as Some).0: i32)
+  _29 := builtin$havoc_int()
+  unfold acc(m_TrustedOption$_beg_$_end_(_26), write)
+  unfold acc(m_TrustedOption$_beg_$_end_Some(_26.enum_Some), write)
+  unfold acc(i32(_26.enum_Some.f$0), write)
+  _29 := _26.enum_Some.f$0.val_int
+  label l39
+  // [mir] StorageLive(_30)
+  // [mir] StorageLive(_31)
+  // [mir] StorageLive(_32)
+  // [mir] _32 = _29
+  _32 := builtin$havoc_int()
+  _32 := _29
+  label l40
+  // [mir] _31 = Eq(move _32, const 2_i32)
+  _31 := builtin$havoc_ref()
+  inhale acc(_31.val_bool, write)
+  _31.val_bool := _32 == 2
+  // [mir] StorageDead(_32)
+  // [mir] _30 = Not(move _31)
+  _30 := builtin$havoc_ref()
+  inhale acc(_30.val_bool, write)
+  _30.val_bool := !_31.val_bool
+  // [mir] StorageDead(_31)
+  // [mir] switchInt(move _30) -> [0: bb20, otherwise: bb19]
+  __t50 := _30.val_bool
+  if (__t50) {
+    goto bb11
+  }
+  goto bb3
+  
+  label l9
+  // ========== l55 ==========
+  // MIR edge bb23 --> bb25
+  // ========== bb25 ==========
+  __t24 := true
+  // [mir] StorageLive(_48)
+  // [mir] _48 = core::panicking::panic(const "internal error: entered unreachable code") -> bb46
+  // Rust panic - const "internal error: entered unreachable code"
+  assert false
+  goto end_of_method
+  
+  label return
+  // ========== l9 ==========
+  // MIR edge bb3 --> bb5
+  // ========== bb5 ==========
+  __t5 := true
+  // [mir] _2 = const ()
+  // [mir] StorageDead(_3)
+  // [mir] StorageDead(_2)
+  // [mir] StorageLive(_9)
+  // [mir] StorageLive(_10)
+  // [mir] _10 = &mut _1
+  _10 := builtin$havoc_ref()
+  inhale acc(_10.val_ref, write)
+  _10.val_ref := _1
+  label l11
+  // [mir] _9 = List::push(move _10, const 1_i32) -> [return: bb6, unwind: bb46]
+  label l12
+  _t76 := builtin$havoc_ref()
+  inhale acc(i32(_t76), write)
+  assert true
+  exhale acc(_10.val_ref, write) &&
+    (acc(struct$m_List(_10.val_ref), write) && acc(i32(_t76), write))
+  _9 := builtin$havoc_ref()
+  inhale acc(struct$m_List(old[l12](_10.val_ref)), write)
+  inhale acc(tuple0$(_9), write)
+  inhale true
+  inhale f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l12](_10.val_ref))) ==
+    old[l12](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_10.val_ref))) +
+    1 &&
+    (f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l12](_10.val_ref)),
+    0) ==
+    old[l12](1) &&
+    (forall _0_quant_0: Int ::0 <= _0_quant_0 ==>
+      !(1 <= _0_quant_0) ||
+      (_0_quant_0 <
+      f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l12](_10.val_ref))) ==>
+      old[l12](f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_10.val_ref),
+      _0_quant_0 - 1)) ==
+      f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l12](_10.val_ref)),
+      _0_quant_0))))
+  label l13
+  // ========== l14 ==========
+  // MIR edge bb5 --> bb6
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L17,L2,)
+
+  // ========== bb6 ==========
+  __t6 := true
+  // [mir] StorageDead(_10)
+  // [mir] StorageDead(_9)
+  // [mir] StorageLive(_11)
+  // [mir] StorageLive(_12)
+  // [mir] _12 = &mut _1
+  _12 := builtin$havoc_ref()
+  inhale acc(_12.val_ref, write)
+  _12.val_ref := _1
+  label l15
+  // [mir] _11 = List::push(move _12, const 2_i32) -> [return: bb7, unwind: bb46]
+  label l16
+  _t77 := builtin$havoc_ref()
+  inhale acc(i32(_t77), write)
+  assert true
+  exhale acc(_12.val_ref, write) &&
+    (acc(struct$m_List(_12.val_ref), write) && acc(i32(_t77), write))
+  _11 := builtin$havoc_ref()
+  inhale acc(struct$m_List(old[l16](_12.val_ref)), write)
+  inhale acc(tuple0$(_11), write)
+  inhale true
+  inhale f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l16](_12.val_ref))) ==
+    old[l16](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_12.val_ref))) +
+    1 &&
+    (f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l16](_12.val_ref)),
+    0) ==
+    old[l16](2) &&
+    (forall _0_quant_0: Int ::0 <= _0_quant_0 ==>
+      !(1 <= _0_quant_0) ||
+      (_0_quant_0 <
+      f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l16](_12.val_ref))) ==>
+      old[l16](f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_12.val_ref),
+      _0_quant_0 - 1)) ==
+      f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l16](_12.val_ref)),
+      _0_quant_0))))
+  label l17
+  // ========== l18 ==========
+  // MIR edge bb6 --> bb7
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L29,L3,)
+
+  // ========== bb7 ==========
+  __t7 := true
+  // [mir] StorageDead(_12)
+  // [mir] StorageDead(_11)
+  // [mir] StorageLive(_13)
+  // [mir] StorageLive(_14)
+  // [mir] _14 = &mut _1
+  _14 := builtin$havoc_ref()
+  inhale acc(_14.val_ref, write)
+  _14.val_ref := _1
+  label l19
+  // [mir] _13 = List::push(move _14, const 3_i32) -> [return: bb8, unwind: bb46]
+  label l20
+  _t78 := builtin$havoc_ref()
+  inhale acc(i32(_t78), write)
+  assert true
+  exhale acc(_14.val_ref, write) &&
+    (acc(struct$m_List(_14.val_ref), write) && acc(i32(_t78), write))
+  _13 := builtin$havoc_ref()
+  inhale acc(struct$m_List(old[l20](_14.val_ref)), write)
+  inhale acc(tuple0$(_13), write)
+  inhale true
+  inhale f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l20](_14.val_ref))) ==
+    old[l20](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_14.val_ref))) +
+    1 &&
+    (f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l20](_14.val_ref)),
+    0) ==
+    old[l20](3) &&
+    (forall _0_quant_0: Int ::0 <= _0_quant_0 ==>
+      !(1 <= _0_quant_0) ||
+      (_0_quant_0 <
+      f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l20](_14.val_ref))) ==>
+      old[l20](f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_14.val_ref),
+      _0_quant_0 - 1)) ==
+      f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l20](_14.val_ref)),
+      _0_quant_0))))
+  label l21
+  // ========== l22 ==========
+  // MIR edge bb7 --> bb8
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L27,L4,)
+
+  // ========== bb8 ==========
+  __t8 := true
+  // [mir] StorageDead(_14)
+  // [mir] StorageDead(_13)
+  // [mir] StorageLive(_15)
+  // [mir] StorageLive(_16)
+  // [mir] StorageLive(_17)
+  // [mir] _17 = &mut _1
+  _17 := builtin$havoc_ref()
+  inhale acc(_17.val_ref, write)
+  _17.val_ref := _1
+  label l23
+  // [mir] _16 = List::pop(move _17) -> [return: bb9, unwind: bb46]
+  label l24
+  assert true
+  exhale acc(_17.val_ref, write) && acc(struct$m_List(_17.val_ref), write)
+  _16 := builtin$havoc_ref()
+  inhale acc(struct$m_List(old[l24](_17.val_ref)), write)
+  inhale acc(m_TrustedOption$_beg_$_end_(_16), write)
+  inhale true
+  inhale (old[l24](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_17.val_ref))) ==
+    0 ==>
+    f_TrustedOption$$is_none__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_16))) &&
+    ((old[l24](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_17.val_ref))) ==
+    0 ==>
+    f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l24](_17.val_ref))) ==
+    0) &&
+    ((old[l24](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_17.val_ref))) >
+    0 ==>
+    f_TrustedOption$$is_some__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_16))) &&
+    ((old[l24](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_17.val_ref))) >
+    0 ==>
+    f_TrustedOption$$peek__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(_16)) ==
+    old[l24](f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_17.val_ref),
+    0))) &&
+    ((old[l24](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_17.val_ref))) >
+    0 ==>
+    f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l24](_17.val_ref))) ==
+    old[l24](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_17.val_ref)) -
+    1)) &&
+    (old[l24](f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_17.val_ref))) >
+    0 ==>
+    (forall _0_quant_0: Int ::0 <= _0_quant_0 ==>
+      !(0 <= _0_quant_0) ||
+      (_0_quant_0 <
+      f_List$$len__$TY$__Snap$struct$m_List$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l24](_17.val_ref))) ==>
+      old[l24](f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_17.val_ref),
+      _0_quant_0 + 1)) ==
+      f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(old[l24](_17.val_ref)),
+      _0_quant_0))))))))
+  label l25
+  // ========== l26 ==========
+  // MIR edge bb8 --> bb9
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L16,L5,)
+
+  // ========== bb9 ==========
+  __t9 := true
+  // [mir] StorageDead(_17)
+  // [mir] FakeRead(ForMatchedPlace(None), _16)
+  // [mir] _18 = discriminant(_16)
+  _18 := builtin$havoc_int()
+  _18 := m_TrustedOption$_beg_$_end_$$discriminant$$__$TY$__m_TrustedOption$_beg_$_end_$$int$(_16)
+  // [mir] switchInt(move _18) -> [0: bb10, otherwise: bb11]
+  __t47 := _18
+  if (__t47 == 0) {
+    goto bb1
+  }
+  goto bb0
+  label end_of_method
+}
+
+method builtin$havoc_bool() returns (ret: Bool)
+
+
+method builtin$havoc_int() returns (ret: Int)
+
+
+method builtin$havoc_ref() returns (ret: Ref)

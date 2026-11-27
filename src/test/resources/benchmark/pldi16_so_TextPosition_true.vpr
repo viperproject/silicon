@@ -1,0 +1,425 @@
+function getDir(self: Ref): Int 
+
+
+function getYDirAdj(self: Ref): Int 
+
+
+function getXDirAdj(self: Ref): Int 
+
+
+function getHeightDir(self: Ref): Int 
+
+
+function getWidthDirAdj(self: Ref): Int 
+
+
+function sgn(i: Int): Int
+  ensures i > 0 ==> result == 1
+  ensures i == 0 ==> result == 0
+  ensures i < 0 ==> result == -1 
+
+
+function abs(i: Int): Int 
+{
+  (i < 0 ? -i : i)
+}
+
+method compare(p0: Bool, p1: Bool, p2: Bool, o1: Ref, o1_0: Ref, o1_1: Ref, o2: Ref, o2_0: Ref, o2_1: Ref) returns (res: Int, res_0: Int, res_1: Int)
+  requires (p0 ==> true && p0 && p1 ==> o1 == o1_0) && (p1 ==> true && p0 && p1 ==> o1 == o1_0) && (p2 ==> true) && ((p0 ==> true && p0 && p2 ==> o2 == o1_1) && (p1 ==> true) && (p2 ==> true && p0 && p2 ==> o2 == o1_1) && ((p0 ==> true) && (p1 ==> true && p2 && p1 ==> o2_1 == o2_0) && (p2 ==> true && p2 && p1 ==> o2_1 == o2_0)))
+  ensures (p0 ==> true && p0 && p1 && p2 ==> res == 0 ==> sgn(res_0) == sgn(res_1)) && (p1 ==> true && p0 && p1 && p2 ==> res == 0 ==> sgn(res_0) == sgn(res_1)) && (p2 ==> true && p0 && p1 && p2 ==> res == 0 ==> sgn(res_0) == sgn(res_1))
+{
+  var returned: Bool
+  var retval: Int
+  var _cond0: Bool
+  var returned_0: Bool
+  var returned_1: Bool
+  var retval_0: Int
+  var retval_1: Int
+  var _cond0_0: Bool
+  var _cond0_1: Bool
+  if (p0) {
+    _cond0 := false
+  }
+  if (p1) {
+    _cond0_0 := false
+  }
+  if (p2) {
+    _cond0_1 := false
+  }
+  if (p0) {
+    returned := false
+  }
+  if (p1) {
+    returned_0 := false
+  }
+  if (p2) {
+    returned_1 := false
+  }
+  if (p0) {
+    retval := 0
+  }
+  if (p1) {
+    retval_0 := 0
+  }
+  if (p2) {
+    retval_1 := 0
+  }
+  var pt0: Bool
+  var pt1: Bool
+  var pt2: Bool
+  var pf0: Bool
+  var pf1: Bool
+  var pf2: Bool
+  pt0 := p0 && getDir(o1) < getDir(o2)
+  pt1 := p1 && getDir(o1_0) < getDir(o2_0)
+  pt2 := p2 && getDir(o1_1) < getDir(o2_1)
+  pf0 := p0 && !(getDir(o1) < getDir(o2))
+  pf1 := p1 && !(getDir(o1_0) < getDir(o2_0))
+  pf2 := p2 && !(getDir(o1_1) < getDir(o2_1))
+  assert (pt0 ==> !returned) && (pt1 ==> !returned_0) && (pt2 ==> !returned_1)
+  if (pt0) {
+    returned := true
+  }
+  if (pt1) {
+    returned_0 := true
+  }
+  if (pt2) {
+    returned_1 := true
+  }
+  if (pt0) {
+    res := -1
+  }
+  if (pt1) {
+    res_0 := -1
+  }
+  if (pt2) {
+    res_1 := -1
+  }
+  var pt0_0: Bool
+  var pt1_0: Bool
+  var pt2_0: Bool
+  var pf0_0: Bool
+  var pf1_0: Bool
+  var pf2_0: Bool
+  pt0_0 := pf0 && getDir(o1) > getDir(o2)
+  pt1_0 := pf1 && getDir(o1_0) > getDir(o2_0)
+  pt2_0 := pf2 && getDir(o1_1) > getDir(o2_1)
+  pf0_0 := pf0 && !(getDir(o1) > getDir(o2))
+  pf1_0 := pf1 && !(getDir(o1_0) > getDir(o2_0))
+  pf2_0 := pf2 && !(getDir(o1_1) > getDir(o2_1))
+  assert (pt0_0 ==> !returned) && (pt1_0 ==> !returned_0) && (pt2_0 ==> !returned_1)
+  if (pt0_0) {
+    returned := true
+  }
+  if (pt1_0) {
+    returned_0 := true
+  }
+  if (pt2_0) {
+    returned_1 := true
+  }
+  if (pt0_0) {
+    res := 1
+  }
+  if (pt1_0) {
+    res_0 := 1
+  }
+  if (pt2_0) {
+    res_1 := 1
+  }
+  var pos1YBottom: Int
+  var pos2YBottom: Int
+  var aux: Int
+  var yDifference: Int
+  var pos1YBottom_0: Int
+  var pos1YBottom_1: Int
+  var pos2YBottom_0: Int
+  var pos2YBottom_1: Int
+  var aux_0: Int
+  var aux_1: Int
+  var yDifference_0: Int
+  var yDifference_1: Int
+  if (pf0_0) {
+    pos1YBottom := getYDirAdj(o1)
+  }
+  if (pf1_0) {
+    pos1YBottom_0 := getYDirAdj(o1_0)
+  }
+  if (pf2_0) {
+    pos1YBottom_1 := getYDirAdj(o1_1)
+  }
+  if (pf0_0) {
+    pos2YBottom := getYDirAdj(o2)
+  }
+  if (pf1_0) {
+    pos2YBottom_0 := getYDirAdj(o2_0)
+  }
+  if (pf2_0) {
+    pos2YBottom_1 := getYDirAdj(o2_1)
+  }
+  if (pf0_0) {
+    aux := pos1YBottom - pos2YBottom
+  }
+  if (pf1_0) {
+    aux_0 := pos1YBottom_0 - pos2YBottom_0
+  }
+  if (pf2_0) {
+    aux_1 := pos1YBottom_1 - pos2YBottom_1
+  }
+  if (pf0_0) {
+    yDifference := abs(aux)
+  }
+  if (pf1_0) {
+    yDifference_0 := abs(aux_0)
+  }
+  if (pf2_0) {
+    yDifference_1 := abs(aux_1)
+  }
+  var pt0_1: Bool
+  var pt1_1: Bool
+  var pt2_1: Bool
+  var pf0_1: Bool
+  var pf1_1: Bool
+  var pf2_1: Bool
+  pt0_1 := pf0_0 && yDifference < 1
+  pt1_1 := pf1_0 && yDifference_0 < 1
+  pt2_1 := pf2_0 && yDifference_1 < 1
+  pf0_1 := pf0_0 && !(yDifference < 1)
+  pf1_1 := pf1_0 && !(yDifference_0 < 1)
+  pf2_1 := pf2_0 && !(yDifference_1 < 1)
+  var x1: Int
+  var x2: Int
+  var xDifference: Int
+  var x1_0: Int
+  var x1_1: Int
+  var x2_0: Int
+  var x2_1: Int
+  var xDifference_0: Int
+  var xDifference_1: Int
+  if (pt0_1) {
+    x1 := getXDirAdj(o1)
+  }
+  if (pt1_1) {
+    x1_0 := getXDirAdj(o1_0)
+  }
+  if (pt2_1) {
+    x1_1 := getXDirAdj(o1_1)
+  }
+  if (pt0_1) {
+    x2 := getXDirAdj(o2)
+  }
+  if (pt1_1) {
+    x2_0 := getXDirAdj(o2_0)
+  }
+  if (pt2_1) {
+    x2_1 := getXDirAdj(o2_1)
+  }
+  if (pt0_1) {
+    aux := x1 - x2
+  }
+  if (pt1_1) {
+    aux_0 := x1_0 - x2_0
+  }
+  if (pt2_1) {
+    aux_1 := x1_1 - x2_1
+  }
+  if (pt0_1) {
+    xDifference := abs(aux)
+  }
+  if (pt1_1) {
+    xDifference_0 := abs(aux_0)
+  }
+  if (pt2_1) {
+    xDifference_1 := abs(aux_1)
+  }
+  var pt0_2: Bool
+  var pt1_2: Bool
+  var pt2_2: Bool
+  var pf0_2: Bool
+  var pf1_2: Bool
+  var pf2_2: Bool
+  pt0_2 := pt0_1 && xDifference < 1
+  pt1_2 := pt1_1 && xDifference_0 < 1
+  pt2_2 := pt2_1 && xDifference_1 < 1
+  pf0_2 := pt0_1 && !(xDifference < 1)
+  pf1_2 := pt1_1 && !(xDifference_0 < 1)
+  pf2_2 := pt2_1 && !(xDifference_1 < 1)
+  var pos1Height: Int
+  var pos2Height: Int
+  var heightDifference: Int
+  var pos1Height_0: Int
+  var pos1Height_1: Int
+  var pos2Height_0: Int
+  var pos2Height_1: Int
+  var heightDifference_0: Int
+  var heightDifference_1: Int
+  if (pt0_2) {
+    pos1Height := getHeightDir(o1)
+  }
+  if (pt1_2) {
+    pos1Height_0 := getHeightDir(o1_0)
+  }
+  if (pt2_2) {
+    pos1Height_1 := getHeightDir(o1_1)
+  }
+  if (pt0_2) {
+    pos2Height := getHeightDir(o2)
+  }
+  if (pt1_2) {
+    pos2Height_0 := getHeightDir(o2_0)
+  }
+  if (pt2_2) {
+    pos2Height_1 := getHeightDir(o2_1)
+  }
+  if (pt0_2) {
+    aux := pos1Height - pos2Height
+  }
+  if (pt1_2) {
+    aux_0 := pos1Height_0 - pos2Height_0
+  }
+  if (pt2_2) {
+    aux_1 := pos1Height_1 - pos2Height_1
+  }
+  if (pt0_2) {
+    heightDifference := abs(aux)
+  }
+  if (pt1_2) {
+    heightDifference_0 := abs(aux_0)
+  }
+  if (pt2_2) {
+    heightDifference_1 := abs(aux_1)
+  }
+  var pt0_3: Bool
+  var pt1_3: Bool
+  var pt2_3: Bool
+  var pf0_3: Bool
+  var pf1_3: Bool
+  var pf2_3: Bool
+  pt0_3 := pt0_2 && heightDifference < 1
+  pt1_3 := pt1_2 && heightDifference_0 < 1
+  pt2_3 := pt2_2 && heightDifference_1 < 1
+  pf0_3 := pt0_2 && !(heightDifference < 1)
+  pf1_3 := pt1_2 && !(heightDifference_0 < 1)
+  pf2_3 := pt2_2 && !(heightDifference_1 < 1)
+  var pos1Width: Int
+  var pos2Width: Int
+  var widthDifference: Int
+  var pos1Width_0: Int
+  var pos1Width_1: Int
+  var pos2Width_0: Int
+  var pos2Width_1: Int
+  var widthDifference_0: Int
+  var widthDifference_1: Int
+  if (pt0_3) {
+    pos1Width := getWidthDirAdj(o1)
+  }
+  if (pt1_3) {
+    pos1Width_0 := getWidthDirAdj(o1_0)
+  }
+  if (pt2_3) {
+    pos1Width_1 := getWidthDirAdj(o1_1)
+  }
+  if (pt0_3) {
+    pos2Width := getWidthDirAdj(o2)
+  }
+  if (pt1_3) {
+    pos2Width_0 := getWidthDirAdj(o2_0)
+  }
+  if (pt2_3) {
+    pos2Width_1 := getWidthDirAdj(o2_1)
+  }
+  if (pt0_3) {
+    aux := pos1Width - pos2Width
+  }
+  if (pt1_3) {
+    aux_0 := pos1Width_0 - pos2Width_0
+  }
+  if (pt2_3) {
+    aux_1 := pos1Width_1 - pos2Width_1
+  }
+  if (pt0_3) {
+    widthDifference := abs(aux)
+  }
+  if (pt1_3) {
+    widthDifference_0 := abs(aux_0)
+  }
+  if (pt2_3) {
+    widthDifference_1 := abs(aux_1)
+  }
+  var pt0_4: Bool
+  var pt1_4: Bool
+  var pt2_4: Bool
+  var pf0_4: Bool
+  var pf1_4: Bool
+  var pf2_4: Bool
+  pt0_4 := pt0_3 && widthDifference < 1
+  pt1_4 := pt1_3 && widthDifference_0 < 1
+  pt2_4 := pt2_3 && widthDifference_1 < 1
+  pf0_4 := pt0_3 && !(widthDifference < 1)
+  pf1_4 := pt1_3 && !(widthDifference_0 < 1)
+  pf2_4 := pt2_3 && !(widthDifference_1 < 1)
+  if (pt0_4) {
+    retval := 0
+  }
+  if (pt1_4) {
+    retval_0 := 0
+  }
+  if (pt2_4) {
+    retval_1 := 0
+  }
+  if (pf0_4) {
+    retval := (pos1Width < pos2Width ? -1 : 1)
+  }
+  if (pf1_4) {
+    retval_0 := (pos1Width_0 < pos2Width_0 ? -1 : 1)
+  }
+  if (pf2_4) {
+    retval_1 := (pos1Width_1 < pos2Width_1 ? -1 : 1)
+  }
+  if (pf0_3) {
+    retval := (pos1Height < pos2Height ? -1 : 1)
+  }
+  if (pf1_3) {
+    retval_0 := (pos1Height_0 < pos2Height_0 ? -1 : 1)
+  }
+  if (pf2_3) {
+    retval_1 := (pos1Height_1 < pos2Height_1 ? -1 : 1)
+  }
+  if (pf0_2) {
+    retval := (x1 < x2 ? -1 : 1)
+  }
+  if (pf1_2) {
+    retval_0 := (x1_0 < x2_0 ? -1 : 1)
+  }
+  if (pf2_2) {
+    retval_1 := (x1_1 < x2_1 ? -1 : 1)
+  }
+  if (pf0_1) {
+    retval := (pos1YBottom < pos2YBottom ? -1 : 1)
+  }
+  if (pf1_1) {
+    retval_0 := (pos1YBottom_0 < pos2YBottom_0 ? -1 : 1)
+  }
+  if (pf2_1) {
+    retval_1 := (pos1YBottom_1 < pos2YBottom_1 ? -1 : 1)
+  }
+  assert (pf0_0 ==> !returned) && (pf1_0 ==> !returned_0) && (pf2_0 ==> !returned_1)
+  if (pf0_0) {
+    returned := true
+  }
+  if (pf1_0) {
+    returned_0 := true
+  }
+  if (pf2_0) {
+    returned_1 := true
+  }
+  if (pf0_0) {
+    res := retval
+  }
+  if (pf1_0) {
+    res_0 := retval_0
+  }
+  if (pf2_0) {
+    res_1 := retval_1
+  }
+  assert (p0 ==> returned) && (p1 ==> returned_0) && (p2 ==> returned_1)
+}

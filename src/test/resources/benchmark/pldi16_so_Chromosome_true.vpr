@@ -1,0 +1,302 @@
+function getScore(self: Ref, num: Int): Int 
+
+
+function isNull(self: Ref): Int 
+
+
+function sgn(i: Int): Int
+  ensures i > 0 ==> result == 1
+  ensures i == 0 ==> result == 0
+  ensures i < 0 ==> result == -1 
+
+
+method compare(p0_0: Bool, p1_0: Bool, p2_0: Bool, o1: Ref, o1_2: Ref, o1_3: Ref, o2: Ref, o2_2: Ref, o2_3: Ref) returns (res: Int, res_2: Int, res_3: Int)
+  requires (p0_0 ==> isNull(o1) != 0) && (p1_0 ==> isNull(o1_2) != 0) && (p2_0 ==> isNull(o1_3) != 0)
+  requires (p0_0 ==> true && p0_0 && p1_0 ==> o1 == o1_2) && (p1_0 ==> true && p0_0 && p1_0 ==> o1 == o1_2) && (p2_0 ==> true) && ((p0_0 ==> true && p0_0 && p2_0 ==> o2 == o1_3) && (p1_0 ==> true) && (p2_0 ==> true && p0_0 && p2_0 ==> o2 == o1_3) && ((p0_0 ==> true) && (p1_0 ==> true && p2_0 && p1_0 ==> o2_3 == o2_2) && (p2_0 ==> true && p2_0 && p1_0 ==> o2_3 == o2_2)))
+  ensures (p0_0 ==> true && p0_0 && p1_0 && p2_0 ==> res == 0 ==> sgn(res_2) == sgn(res_3)) && (p1_0 ==> true && p0_0 && p1_0 && p2_0 ==> res == 0 ==> sgn(res_2) == sgn(res_3)) && (p2_0 ==> true && p0_0 && p1_0 && p2_0 ==> res == 0 ==> sgn(res_2) == sgn(res_3))
+{
+  var returned: Bool
+  var _cond0: Bool
+  var returned_0: Bool
+  var returned_1: Bool
+  var _cond0_0: Bool
+  var _cond0_1: Bool
+  if (p0_0) {
+    _cond0 := false
+  }
+  if (p1_0) {
+    _cond0_0 := false
+  }
+  if (p2_0) {
+    _cond0_1 := false
+  }
+  if (p0_0) {
+    returned := false
+  }
+  if (p1_0) {
+    returned_0 := false
+  }
+  if (p2_0) {
+    returned_1 := false
+  }
+  if (p0_0) {
+    res := 0
+  }
+  if (p1_0) {
+    res_2 := 0
+  }
+  if (p2_0) {
+    res_3 := 0
+  }
+  var pt0: Bool
+  var pt1: Bool
+  var pt2: Bool
+  var pf0: Bool
+  var pf1: Bool
+  var pf2: Bool
+  pt0 := p0_0 && isNull(o2) == 0
+  pt1 := p1_0 && isNull(o2_2) == 0
+  pt2 := p2_0 && isNull(o2_3) == 0
+  pf0 := p0_0 && !(isNull(o2) == 0)
+  pf1 := p1_0 && !(isNull(o2_2) == 0)
+  pf2 := p2_0 && !(isNull(o2_3) == 0)
+  if (pt0) {
+    returned := true
+  }
+  if (pt1) {
+    returned_0 := true
+  }
+  if (pt2) {
+    returned_1 := true
+  }
+  if (pt0) {
+    res := 1
+  }
+  if (pt1) {
+    res_2 := 1
+  }
+  if (pt2) {
+    res_3 := 1
+  }
+  var pt0_0: Bool
+  var pt1_0: Bool
+  var pt2_0: Bool
+  var pf0_0: Bool
+  var pf1_0: Bool
+  var pf2_0: Bool
+  pt0_0 := p0_0 && !returned
+  pt1_0 := p1_0 && !returned_0
+  pt2_0 := p2_0 && !returned_1
+  pf0_0 := p0_0 && !!returned
+  pf1_0 := p1_0 && !!returned_0
+  pf2_0 := p2_0 && !!returned_1
+  var comp: Int
+  var i: Int
+  var comp_0: Int
+  var comp_1: Int
+  var i_0: Int
+  var i_1: Int
+  if (pt0_0) {
+    comp := 0
+  }
+  if (pt1_0) {
+    comp_0 := 0
+  }
+  if (pt2_0) {
+    comp_1 := 0
+  }
+  if (pt0_0) {
+    i := 0
+  }
+  if (pt1_0) {
+    i_0 := 0
+  }
+  if (pt2_0) {
+    i_1 := 0
+  }
+  var tmp0: Int
+  var tmp1: Int
+  var tmp2: Int
+  var tmp0_0: Int
+  var tmp1_0: Int
+  var tmp2_0: Int
+  var tmp0_1: Bool
+  var tmp1_1: Bool
+  var tmp2_1: Bool
+  var tmp0_2: Int
+  var tmp1_2: Int
+  var tmp2_2: Int
+  if (!pt0_0) {
+    tmp0 := comp
+  }
+  if (!pt1_0) {
+    tmp1 := comp_0
+  }
+  if (!pt2_0) {
+    tmp2 := comp_1
+  }
+  if (!pt0_0) {
+    tmp0_0 := res
+  }
+  if (!pt1_0) {
+    tmp1_0 := res_2
+  }
+  if (!pt2_0) {
+    tmp2_0 := res_3
+  }
+  if (!pt0_0) {
+    tmp0_1 := returned
+  }
+  if (!pt1_0) {
+    tmp1_1 := returned_0
+  }
+  if (!pt2_0) {
+    tmp2_1 := returned_1
+  }
+  if (!pt0_0) {
+    tmp0_2 := i
+  }
+  if (!pt1_0) {
+    tmp1_2 := i_0
+  }
+  if (!pt2_0) {
+    tmp2_2 := i_1
+  }
+  while (pt0_0 && (i < 5 && !returned) || pt1_0 && (i_0 < 5 && !returned_0) || pt2_0 && (i_1 < 5 && !returned_1))
+    invariant (pt0_0 ==> true && pt0_0 && pt1_0 ==> !returned && !returned_0 ==> i == i_0) && (pt1_0 ==> true && pt0_0 && pt1_0 ==> !returned && !returned_0 ==> i == i_0) && (pt2_0 ==> true)
+    invariant (pt0_0 ==> true) && (pt1_0 ==> true && pt2_0 && pt1_0 ==> !returned_1 && !returned_0 ==> i_1 == i_0) && (pt2_0 ==> true && pt2_0 && pt1_0 ==> !returned_1 && !returned_0 ==> i_1 == i_0)
+    invariant (pt0_0 ==> true && pt0_0 && pt2_0 ==> !returned && !returned_1 ==> i == i_1) && (pt1_0 ==> true) && (pt2_0 ==> true && pt0_0 && pt2_0 ==> !returned && !returned_1 ==> i == i_1)
+    invariant (pt0_0 ==> true && pt0_0 && pt1_0 && pt2_0 ==> !returned && returned_0 ==> returned_1 && sgn(res_2) == sgn(res_3)) && (pt1_0 ==> true && pt0_0 && pt1_0 && pt2_0 ==> !returned && returned_0 ==> returned_1 && sgn(res_2) == sgn(res_3)) && (pt2_0 ==> true && pt0_0 && pt1_0 && pt2_0 ==> !returned && returned_0 ==> returned_1 && sgn(res_2) == sgn(res_3))
+    invariant (pt0_0 ==> true && pt0_0 && pt2_0 && pt1_0 ==> !returned && returned_1 ==> returned_0 && sgn(res_3) == sgn(res_2)) && (pt1_0 ==> true && pt0_0 && pt2_0 && pt1_0 ==> !returned && returned_1 ==> returned_0 && sgn(res_3) == sgn(res_2)) && (pt2_0 ==> true && pt0_0 && pt2_0 && pt1_0 ==> !returned && returned_1 ==> returned_0 && sgn(res_3) == sgn(res_2))
+    invariant (pt0_0 ==> returned ==> res != 0) && (pt1_0 ==> returned_0 ==> res_2 != 0) && (pt2_0 ==> returned_1 ==> res_3 != 0)
+    invariant !pt0_0 ==> tmp0 == comp
+    invariant !pt0_0 ==> tmp0_0 == res
+    invariant !pt0_0 ==> tmp0_1 == returned
+    invariant !pt0_0 ==> tmp0_2 == i
+    invariant !pt1_0 ==> tmp1 == comp_0
+    invariant !pt1_0 ==> tmp1_0 == res_2
+    invariant !pt1_0 ==> tmp1_1 == returned_0
+    invariant !pt1_0 ==> tmp1_2 == i_0
+    invariant !pt2_0 ==> tmp2_1 == returned_1
+    invariant !pt2_0 ==> tmp2_2 == i_1
+    invariant !pt2_0 ==> tmp2_0 == res_3
+    invariant !pt2_0 ==> tmp2 == comp_1 
+  {
+    var p0_1: Bool
+    var p1_1: Bool
+    var p2_1: Bool
+    p0_1 := pt0_0 && (i < 5 && !returned)
+    p1_1 := pt1_0 && (i_0 < 5 && !returned_0)
+    p2_1 := pt2_0 && (i_1 < 5 && !returned_1)
+    var tmp0_3: Int
+    var tmp1_3: Int
+    var tmp2_3: Int
+    var tmp0_4: Int
+    var tmp1_4: Int
+    var tmp2_4: Int
+    var tmp0_5: Int
+    var tmp1_5: Int
+    var tmp2_5: Int
+    if (p0_1) {
+      tmp0_3 := getScore(o1, i)
+    }
+    if (p1_1) {
+      tmp1_3 := getScore(o1_2, i_0)
+    }
+    if (p2_1) {
+      tmp2_3 := getScore(o1_3, i_1)
+    }
+    if (p0_1) {
+      tmp0_4 := getScore(o2, i)
+    }
+    if (p1_1) {
+      tmp1_4 := getScore(o2_2, i_0)
+    }
+    if (p2_1) {
+      tmp2_4 := getScore(o2_3, i_1)
+    }
+    tmp0_5, tmp1_5, tmp2_5 := Int_compare(p0_1, p1_1, p2_1, tmp0_3, tmp1_3, tmp2_3, tmp0_4, tmp1_4, tmp2_4)
+    if (p0_1) {
+      comp := tmp0_5
+    }
+    if (p1_1) {
+      comp_0 := tmp1_5
+    }
+    if (p2_1) {
+      comp_1 := tmp2_5
+    }
+    var pt0_1: Bool
+    var pt1_1: Bool
+    var pt2_1: Bool
+    var pf0_1: Bool
+    var pf1_1: Bool
+    var pf2_1: Bool
+    pt0_1 := p0_1 && comp != 0
+    pt1_1 := p1_1 && comp_0 != 0
+    pt2_1 := p2_1 && comp_1 != 0
+    pf0_1 := p0_1 && !(comp != 0)
+    pf1_1 := p1_1 && !(comp_0 != 0)
+    pf2_1 := p2_1 && !(comp_1 != 0)
+    if (pt0_1) {
+      res := comp
+    }
+    if (pt1_1) {
+      res_2 := comp_0
+    }
+    if (pt2_1) {
+      res_3 := comp_1
+    }
+    if (pt0_1) {
+      returned := true
+    }
+    if (pt1_1) {
+      returned_0 := true
+    }
+    if (pt2_1) {
+      returned_1 := true
+    }
+    if (pf0_1) {
+      i := i + 1
+    }
+    if (pf1_1) {
+      i_0 := i_0 + 1
+    }
+    if (pf2_1) {
+      i_1 := i_1 + 1
+    }
+  }
+  var pt0_2: Bool
+  var pt1_2: Bool
+  var pt2_2: Bool
+  var pf0_2: Bool
+  var pf1_2: Bool
+  var pf2_2: Bool
+  pt0_2 := pt0_0 && !returned
+  pt1_2 := pt1_0 && !returned_0
+  pt2_2 := pt2_0 && !returned_1
+  pf0_2 := pt0_0 && !!returned
+  pf1_2 := pt1_0 && !!returned_0
+  pf2_2 := pt2_0 && !!returned_1
+  if (pt0_2) {
+    res := 0
+  }
+  if (pt1_2) {
+    res_2 := 0
+  }
+  if (pt2_2) {
+    res_3 := 0
+  }
+  if (pt0_2) {
+    returned := true
+  }
+  if (pt1_2) {
+    returned_0 := true
+  }
+  if (pt2_2) {
+    returned_1 := true
+  }
+  assert (p0_0 ==> returned) && (p1_0 ==> returned_0) && (p2_0 ==> returned_1)
+}
+
+method Int_compare(p0: Bool, p1: Bool, p2: Bool, o1: Int, o1_0: Int, o1_1: Int, o2: Int, o2_0: Int, o2_1: Int) returns (res: Int, res_0: Int, res_1: Int)
+  ensures (p0 ==> true && p0 && p1 && p2 ==> o1 == o1_0 && (o2 == o1_1 && (o2_1 == o2_0 && res == 0)) ==> sgn(res_0) == sgn(res_1)) && (p1 ==> true && p0 && p1 && p2 ==> o1 == o1_0 && (o2 == o1_1 && (o2_1 == o2_0 && res == 0)) ==> sgn(res_0) == sgn(res_1)) && (p2 ==> true && p0 && p1 && p2 ==> o1 == o1_0 && (o2 == o1_1 && (o2_1 == o2_0 && res == 0)) ==> sgn(res_0) == sgn(res_1))
