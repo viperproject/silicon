@@ -518,10 +518,12 @@ trait ConditionalFlyweight[T, V] { self: AnyRef =>
   // The single value or tuple of values that define equality
   val equalityDefiningMembers: T
 
+  // Hash the values as a tuple: separate arguments combine their hashes linearly,
+  // causing different orders of snapshot projections to collide.
   override lazy val hashCode = if (Verifier.config.useFlyweight)
     System.identityHashCode(this)
   else
-    viper.silver.utility.Common.generateHashCode(equalityDefiningMembers)
+    viper.silver.utility.Common.generateHashCode((this.getClass.getName, equalityDefiningMembers))
 
   override def equals(other: Any): Boolean = {
     if (Verifier.config.useFlyweight) {
