@@ -9,7 +9,7 @@ lazy val silver = project in file("silver")
 
 // concat module-info.class files when constructing assembly for both common and silver
 ThisBuild / assembly / assemblyMergeStrategy := {
-  case x if x.endsWith("module-info.class") => MergeStrategy.concat
+  case x if x.endsWith("module-info.class") => MergeStrategy.discard
   case x => (ThisBuild / assembly / assemblyMergeStrategy).value(x)
 }
 
